@@ -1,35 +1,67 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState } from 'react';
+import './App.css';
+import Desktop1 from './frontend/components/Desktop1.jsx';
+import Desktop2 from './frontend/components/Desktop2.jsx';
+import Desktop3 from './frontend/components/Desktop3.jsx';
+import Desktop4 from './frontend/components/Desktop4.jsx'; 
+
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [currentView, setCurrentView] = useState('desktop1');
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
+    <div>
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setCurrentView('desktop1')}
+          className={`px-3 py-1 text-xs rounded ${
+            currentView === 'desktop1'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-600 border'
+          }`}
+        >
+          Desktop 1
         </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
+        <button
+          onClick={() => setCurrentView('desktop2')}
+          className={`px-3 py-1 text-xs rounded ${
+            currentView === 'desktop2'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-600 border'
+          }`}
+        >
+          Desktop 2
+        </button>
+        <button
+          onClick={() => setCurrentView('desktop3')}
+          className={`px-3 py-1 text-xs rounded ${
+            currentView === 'desktop3'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-600 border'
+          }`}
+        >
+          Desktop 3
+        </button>
+        
+        <button
+          onClick={() => setCurrentView('desktop4')}
+          className={`px-3 py-1 text-xs rounded ${
+            currentView === 'desktop4'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-600 border'
+          }`}
+        >
+          Desktop 4
+        </button>
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+
+      {/* Render current view */}
+      {currentView === 'desktop1' && <Desktop1 />}
+      {currentView === 'desktop2' && <Desktop2 />}
+      {currentView === 'desktop3' && <Desktop3 />}
+      {currentView === 'desktop4' && <Desktop4 />}
+    </div>
+  );
 }
 
-export default App
+export default App;
