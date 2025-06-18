@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom';
-import pageNotFoundImg from '../assets/page-not-found.png';
+import pageNotFoundImg from '../assets/Dashboard_page-not-found.png';
 
 function NotFound() {
   return (
