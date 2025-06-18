@@ -9,6 +9,7 @@ import ToastContext from "./toasts/ToastService.jsx";
 import DashboardCard from "./DashboardCard";
 import SpinnerDot from "./SpinnerDot.jsx";
 import { useNavigate } from "react-router-dom";
+import Inventory from "./inventory/Inventory.jsx";
 
 function Dashboard() {
   const [hoveredCard, setHoveredCard] = useState(null);
@@ -22,6 +23,9 @@ function Dashboard() {
     if (componentName === "logout") {
       navigate("/login");
     }
+     if (componentName === "inventory") {
+    navigate("/dashboard/inventory");
+  }
     // Add other click logic as needed
   };
 
