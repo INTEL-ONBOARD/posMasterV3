@@ -9,16 +9,17 @@ import {
 } from "react-router-dom";
 
 import './App.css';
-import Desktop1 from './frontend/components/Desktop1.jsx';
-import Desktop2 from './frontend/components/Desktop2.jsx';
-import Desktop3 from './frontend/components/Desktop3.jsx';
-import Desktop4 from './frontend/components/Desktop4.jsx'; 
+// import Desktop1 from './frontend/components/Desktop1.jsx';
+// import Desktop2 from './frontend/components/Desktop2.jsx';
+// import Desktop3 from './frontend/components/Desktop3.jsx';
+// import Desktop4 from './frontend/components/Desktop4.jsx'; 
 
 import Intro from './pages/Intro.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import NotFound from './pages/NotFound.jsx';
 import Inventory from './pages/inventory/Inventory.jsx';
+import ToastProvider from './pages/toasts/ToastProvider.jsx';
 
 // import AddItem from './pages/inventory/AddItem.jsx';
 // import Configurations from './pages/inventory/Configurations.jsx';
@@ -55,6 +56,7 @@ function App() {
 
   return (
 
+    <ToastProvider>
 
     <BrowserRouter>
       <Routes>
@@ -74,6 +76,8 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
+
+    </ToastProvider>
 
     // hover blur effect example is here_____________________________________________________________________________________________________________________
 
@@ -145,59 +149,7 @@ function App() {
     // </div>
   
 
-  //your previous implementatnion here______________________________________________________________________________________________________
-
-    // <div>
-    //   <div className="flex gap-2 mb-4">
-    //     <button
-    //       onClick={() => setCurrentView('desktop1')}
-    //       className={`px-3 py-1 text-xs rounded ${
-    //         currentView === 'desktop1'
-    //           ? 'bg-blue-600 text-white'
-    //           : 'bg-white text-gray-600 border'
-    //       }`}
-    //     >
-    //       Desktop 1
-    //     </button>
-    //     <button
-    //       onClick={() => setCurrentView('desktop2')}
-    //       className={`px-3 py-1 text-xs rounded ${
-    //         currentView === 'desktop2'
-    //           ? 'bg-blue-600 text-white'
-    //           : 'bg-white text-gray-600 border'
-    //       }`}
-    //     >
-    //       Desktop 2
-    //     </button>
-    //     <button
-    //       onClick={() => setCurrentView('desktop3')}
-    //       className={`px-3 py-1 text-xs rounded ${
-    //         currentView === 'desktop3'
-    //           ? 'bg-blue-600 text-white'
-    //           : 'bg-white text-gray-600 border'
-    //       }`}
-    //     >
-    //       Desktop 3
-    //     </button>
-        
-    //     <button
-    //       onClick={() => setCurrentView('desktop4')}
-    //       className={`px-3 py-1 text-xs rounded ${
-    //         currentView === 'desktop4'
-    //           ? 'bg-blue-600 text-white'
-    //           : 'bg-white text-gray-600 border'
-    //       }`}
-    //     >
-    //       Desktop 4
-    //     </button>
-    //   </div>
-
-    //   {/* Render current view */}
-    //   {currentView === 'desktop1' && <Desktop1 />}
-    //   {currentView === 'desktop2' && <Desktop2 />}
-    //   {currentView === 'desktop3' && <Desktop3 />}
-    //   {currentView === 'desktop4' && <Desktop4 />}
-    // </div>
+  
     );
   
 }
