@@ -1,231 +1,163 @@
-import React, { useState } from 'react';
-import inventory from '../assets/inventory.png';
-import logout from '../assets/logout.png';
-import settings from '../assets/settings.png';
-import viewmore from '../assets/viewmore.png';
-import notification from '../assets/notification.png';
-import Morawakle from '../assets/Morawakle.png';
-import { CheckCircle, X } from 'lucide-react';
-
+import React, { useContext, useState } from "react";
+import Dashboard_inventory from "../assets/Dashboard_inventory.png";
+import Dashboard_logout from "../assets/Dashboard_logout.png";
+import Dashboard_settings from "../assets/Dashboard_settings.png";
+import Dashboard_viewmore from "../assets/Dashboard_viewmore.png";
+import Dashboard_notification from "../assets/Dashboard_notification.png";
+import Dashboard_Morawakle from "../assets/Dashboard_Morawakle.png";
+import ToastContext from "./toasts/ToastService.jsx";
+import DashboardCard from "./DashboardCard";
+import SpinnerDot from "./SpinnerDot.jsx";
+import { useNavigate } from "react-router-dom";
 
 function Dashboard() {
-
-const [selectedComponent, setSelectedComponent] = useState(null);
- 
+  const [hoveredCard, setHoveredCard] = useState(null);
+  const toast = useContext(ToastContext);
+  const navigate = useNavigate();
 
   const handleComponentClick = (componentName) => {
-    setSelectedComponent(componentName);
-   
+    if (componentName === "notifications") {
+      toast.open("You have new notifications!");
+    }
+    if (componentName === "logout") {
+      navigate("/login");
+    }
+    // Add other click logic as needed
   };
 
-  const handleCloseModal = () => {
-    setSelectedComponent(null);
-  };
+  // Helper to get blur class
+  const getBlurClass = (cardName) =>
+    hoveredCard && hoveredCard !== cardName ? "blur-sm transition-all duration-300" : "transition-all duration-300";
 
   return (
-    <div className="min-h-screen bg-gray-100 relative pt-3">
-      {/* Success Notification */}
-      <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-40">
-        <div className="bg-green-50 border border-green-200 rounded-lg px-6 py-3 flex items-center gap-3 shadow-sm">
-          <CheckCircle className="w-5 h-5 text-green-500" />
-          <div className="flex items-center gap-2">
-            <span className="text-green-800 font-medium text-sm">Success!</span>
-            <span className="text-green-600 text-sm">NOTIFICATION MESSAGE SHOULD BE LIKE THIS</span>
-          </div>
-          <button className="ml-4 text-green-500 hover:text-green-700 transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-      {/* Header */}
-      <div className="bg-white shadow-sm mt-24">
-        <div className="max-w-6xl mx-auto px-6 py-6">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold">
-              <span className="text-blue-600">POS</span>
-              <span className="text-gray-900"> MASTER</span>
-              <span className="text-gray-700">.3</span>
-            </h1>
-          </div>
-        </div>
+    <div className="pt-16 pb-4">
+      <div className={`bg-gray-100 rounded-xl max-w-6xl mx-auto py-3 px-6 shadow text-center ${hoveredCard ? "blur-sm transition-all duration-300" : "transition-all duration-300"}`}>
+        <h1 className="text-2xl font-bold">
+          <span className="text-blue-600">POS</span>
+          <span className="text-gray-900"> MASTER</span>
+          <span className="text-gray-700">.3</span>
+        </h1>
       </div>
 
       {/* Main Content */}
-      <div className={`max-w-6xl mx-auto px-6 py-8 transition-all duration-300 ${
-        selectedComponent ? 'blur-sm' : ''
-      }`}>
-        {/* First Row */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Store Info Card */}
-          <div>
-            <div
-              className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-gray-200"
-              onClick={() => handleComponentClick('store-info')}
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-green-600 rounded-xl flex items-center justify-center shadow-sm">
-                  <img src={Morawakle} alt="Store" className="w-10 h-10" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-1">Morawakkorale Outlet</h2>
-                  <p className="text-gray-500 text-sm">2025 - 05 - 23</p>
-                </div>
-              </div>
-            </div>
+      <div className="max-w-6xl mx-auto px-6 py-8 transition-all duration-300">
+        {/* Top Row - Store Info and Right Side Cards */}
+        <div className="flex gap-6 mb-6">
+          {/* Large Store Info Card */}
+          <div
+            className={`flex-1 ${getBlurClass("store-info")}`}
+            onMouseEnter={() => setHoveredCard("store-info")}
+            onMouseLeave={() => setHoveredCard(null)}
+          >
+            <DashboardCard
+              onClick={() => handleComponentClick("store-info")}
+              className="p-8 h-48"
+              image={Dashboard_Morawakle}
+              imageClass="w-28 h-20 bg-green-600 rounded-xl shadow-sm"
+              title="Morawakkorale Outlet"
+              subtitle="2025 - 05 - 23"
+            />
           </div>
-          {/* Settings Card */}
-          <div>
+          {/* Right Side Cards Stack */}
+          <div className="w-80 flex flex-col gap-4">
             <div
-              className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-gray-200 h-full"
-              onClick={() => handleComponentClick('settings')}
+              className={getBlurClass("notifications")}
+              onMouseEnter={() => setHoveredCard("notifications")}
+              onMouseLeave={() => setHoveredCard(null)}
             >
-              <div className="flex flex-col items-center text-center h-full justify-center">
-                <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mb-3">
-                  <img src={settings} alt="Settings" className="w-8 h-8" />
-                </div>
-                <span className="text-gray-700 font-medium">Settings</span>
-              </div>
+              <DashboardCard
+                onClick={() => handleComponentClick("notifications")}
+                className="h-14"
+                image={Dashboard_notification}
+                imageClass="w-6 h-6 bg-orange-100 rounded-lg"
+                title={
+                  <span className="flex items-center gap-2">
+                    Notifications
+                  </span>
+                }
+              />
             </div>
-          </div>
-          {/* Notifications Card */}
-          <div>
             <div
-              className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-gray-200 h-full"
-              onClick={() => handleComponentClick('notifications')}
+              className={getBlurClass("settings")}
+              onMouseEnter={() => setHoveredCard("settings")}
+              onMouseLeave={() => setHoveredCard(null)}
             >
-              <div className="flex flex-col items-center text-center h-full justify-center">
-                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-3">
-                  <img src={notification} alt="Notifications" className="w-8 h-8" />
-                </div>
-                <span className="text-gray-700 font-medium">Notifications</span>
-              </div>
+              <DashboardCard
+                onClick={() => handleComponentClick("settings")}
+                className="h-14"
+                image={Dashboard_settings}
+                imageClass="w-6 h-6 bg-gray-100 rounded-lg"
+                title="Settings"
+              />
             </div>
-          </div>
-          {/* Log out Card */}
-          <div>
             <div
-              className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-gray-200 h-full"
-              onClick={() => handleComponentClick('logout')}
+              className={getBlurClass("logout")}
+              onMouseEnter={() => setHoveredCard("logout")}
+              onMouseLeave={() => setHoveredCard(null)}
             >
-              <div className="flex flex-col items-center text-center h-full justify-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-3">
-                  <img src={logout} alt="Logout" className="w-8 h-8" />
-                </div>
-                <span className="text-gray-700 font-medium">Log out</span>
-              </div>
+              <DashboardCard
+                onClick={() => handleComponentClick("logout")}
+                className="h-14"
+                image={Dashboard_logout}
+                imageClass="w-6 h-6 bg-blue-100 rounded-lg"
+                title="Log out"
+              />
             </div>
           </div>
         </div>
-
-        {/* Second Row */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mt-6">
+        {/* Bottom Row - Inventory and Other Cards */}
+        <div className="grid grid-cols-5 gap-6">
           {/* Inventory Card */}
-          <div>
+          <div
+            className={getBlurClass("inventory")}
+            onMouseEnter={() => setHoveredCard("inventory")}
+            onMouseLeave={() => setHoveredCard(null)}
+          >
+            <DashboardCard
+              onClick={() => handleComponentClick("inventory")}
+              className="h-48 p-0"
+              image={Dashboard_inventory}
+              fullImage={true}
+              title={null}
+            />
+          </div>
+          {/* Empty spaces for future cards */}
+          {[1, 2, 3].map((i) => (
             <div
-              className="bg-white rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-gray-200 overflow-hidden h-full"
-              onClick={() => handleComponentClick('inventory')}
+              key={i}
+              className={getBlurClass(`empty${i}`)}
+              onMouseEnter={() => setHoveredCard(`empty${i}`)}
+              onMouseLeave={() => setHoveredCard(null)}
             >
-              <div className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <div className="w-14 h-16 flex items-center justify-center rounded-xl">
-  <img src={inventory} alt="Inventory" className="w-50 h-12" />
-</div>
-                      
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-blue-600">INVENTORY</h3>
-                    </div>
-                  </div>
-                  
-                </div>
-              </div>
+              <div className="bg-gray-200 rounded-xl h-48"></div>
             </div>
-          </div>
-          {/* Empty Card 1 */}
-          <div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-full"></div>
-          </div>
-          {/* Empty Card 2 */}
-          <div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-full"></div>
-          </div>
-          {/* Empty Card 3 */}
-          <div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-full"></div>
-          </div>
+          ))}
           {/* View More Card */}
-          <div>
-            <div
-              className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-gray-200 h-full"
-              onClick={() => handleComponentClick('view-more')}
-            >
-              <div className="flex items-center gap-4 h-full">
-                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <img src={viewmore} alt="View More" className="w-8 h-8" />
-                </div>
-                <span className="text-gray-700 font-medium">View More</span>
-              </div>
-            </div>
+          <div
+            className={getBlurClass("view-more")}
+            onMouseEnter={() => setHoveredCard("view-more")}
+            onMouseLeave={() => setHoveredCard(null)}
+          >
+            <DashboardCard
+              onClick={() => handleComponentClick("view-more")}
+              className="h-48 p-0"
+              image={Dashboard_viewmore}
+              fullImage={true}
+              title={null}
+            />
           </div>
         </div>
       </div>
 
       {/* Bottom Loading Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-blue-800 text-white p-3">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium">Loading...</span>
-          </div>
+      <div className="fixed bottom-0 left-0 right-0 bg-blue-800 text-white py-1">
+        <div className="flex items-center gap-1 justify-start">
+          <SpinnerDot />
+          <span className="text-sm font-medium">Loading...</span>
         </div>
       </div>
-
-      {/* Modal Overlay */}
-      {selectedComponent && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div
-      className={`bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl
-        ${selectedComponent === 'view-more' ? 'h-96 overflow-y-auto' : ''}
-      `}
-    >
-      <div className="text-center">
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          {selectedComponent === 'store-info' && <img src={Morawakle} alt="Store" className="w-8 h-8" />}
-          {selectedComponent === 'notifications' && <img src={notification} alt="Notifications" className="w-8 h-8" />}
-          {selectedComponent === 'settings' && <img src={settings} alt="Settings" className="w-8 h-8" />}
-          {selectedComponent === 'inventory' && <img src={inventory} alt="Inventory" className="w-8 h-8" />}
-          {selectedComponent === 'logout' && <img src={logout} alt="Logout" className="w-8 h-8" />}
-          {selectedComponent === 'view-more' && <img src={viewmore} alt="View More" className="w-8 h-8" />}
-        </div>
-        <h3 className="text-xl font-semibold mb-2 capitalize text-gray-900">
-          {selectedComponent.replace('-', ' ')} Selected
-        </h3>
-        <p className="text-gray-600 mb-6 leading-relaxed">
-          You clicked on the {selectedComponent.replace('-', ' ')} component.
-        </p>
-         {/* Add extra content for demonstration */}
-        {selectedComponent === 'view-more' && (
-          <div>
-            <p className="mb-2">This is a scrollable modal. Add your content here.</p>
-            {[...Array(20)].map((_, i) => (
-              <p key={i} className="text-gray-400 text-sm">Scrollable content line {i + 1}</p>
-            ))}
-          </div>
-        )}
-        <button
-          onClick={handleCloseModal}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg transition-colors font-medium shadow-sm mt-4"
-        >
-          Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  )
+  );
 }
 
-export default Dashboard
+export default Dashboard;
