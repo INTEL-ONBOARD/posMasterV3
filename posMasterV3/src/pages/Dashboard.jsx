@@ -6,10 +6,11 @@ import Dashboard_viewmore from "../assets/Dashboard_viewmore.png";
 import Dashboard_notification from "../assets/Dashboard_notification.png";
 import Dashboard_Morawakle from "../assets/Dashboard_Morawakle.png";
 import ToastContext from "./toasts/ToastService.jsx";
-import DashboardCard from "./DashboardCard";
-import SpinnerDot from "./SpinnerDot.jsx";
+import DashboardCard from "../frontend/components/DashboardCard.jsx";
+import SpinnerDot from "../frontend/components/SpinnerDot.jsx";
 import { useNavigate } from "react-router-dom";
 import Inventory from "./inventory/Inventory.jsx";
+import LoadingBar from "../frontend/components/LoadingBar.jsx";
 
 function Dashboard() {
   const [hoveredCard, setHoveredCard] = useState(null);
@@ -34,7 +35,7 @@ function Dashboard() {
     hoveredCard && hoveredCard !== cardName ? "blur-sm transition-all duration-300" : "transition-all duration-300";
 
   return (
-    <div className="pt-16 pb-4">
+    <div className="pt-32 pb-4">
       <div className={`bg-gray-100 rounded-xl max-w-6xl mx-auto py-3 px-6 shadow text-center ${hoveredCard ? "blur-sm transition-all duration-300" : "transition-all duration-300"}`}>
         <h1 className="text-2xl font-bold">
           <span className="text-blue-600">POS</span>
@@ -121,8 +122,9 @@ function Dashboard() {
               onClick={() => handleComponentClick("inventory")}
               className="h-48 p-0"
               image={Dashboard_inventory}
-              fullImage={true}
-              title={null}
+               title="INVENTORY"
+      subtitle="245 ITEMS"
+      verticalLayout={true}
             />
           </div>
           {/* Empty spaces for future cards */}
@@ -146,20 +148,15 @@ function Dashboard() {
               onClick={() => handleComponentClick("view-more")}
               className="h-48 p-0"
               image={Dashboard_viewmore}
-              fullImage={true}
-              title={null}
+               fullImage={true}   
+              title="View More"
             />
           </div>
         </div>
       </div>
 
       {/* Bottom Loading Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-blue-800 text-white py-1">
-        <div className="flex items-center gap-1 justify-start">
-          <SpinnerDot />
-          <span className="text-sm font-medium">Loading...</span>
-        </div>
-      </div>
+      <LoadingBar />
     </div>
   );
 }
