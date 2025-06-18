@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import InventorySidebar from './Inventory_sidebar';
-import InventoryCard from './Inventory_card';
+import InventoryCard from '../../frontend/components/Inventory_card';
 import AddItemModal from './AddItem_modal';
 import Configurations from './Configurations';
 import bananaImg from '../../assets/Inventory_banana.png';
