@@ -18,9 +18,8 @@ import Intro from './pages/Intro.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import NotFound from './pages/NotFound.jsx';
-import ToastProvider from './pages/toasts/ToastProvider.jsx';
 import Inventory from './pages/inventory/Inventory.jsx';
-
+import ToastProvider from './pages/toasts/ToastProvider.jsx';
 
 // import AddItem from './pages/inventory/AddItem.jsx';
 // import Configurations from './pages/inventory/Configurations.jsx';
