@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
 import { X, Upload, Printer } from 'lucide-react';
+import React, { useState, useEffect, useRef, forwardRef } from 'react';
+import Barcode from 'react-barcode';
+import { useReactToPrint } from 'react-to-print';
 
-export default function AddItemModal({ isOpen, onClose, onSave }) {
+export default function EditItemModal({ isOpen, onClose, onUpdate, item }) {
+
+  const FIXED_COUNT = 21; //40               // ← number of barcodes per page
+  const BARCODE_VALUE = 'SKU-58394324';      // ← your constant value
+  const printRef = useRef();
+  const fileInputRef = useRef();
+
   const [formData, setFormData] = useState({
     name: '',
-    barcode: 'SKU-3847833',
+    barcode: 'SKU-8938495',
     category: '',
     status: 'Available',
     thresholdLimit: '',
@@ -13,21 +21,62 @@ export default function AddItemModal({ isOpen, onClose, onSave }) {
     uom: 'KG'
   });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  // Initialize form with item data
+  useEffect(() => {
+    if (item) {
+      setFormData({
+        name: item.name,
+        barcode: item.barcode,
+        category: item.category,
+        status: 'Available',
+        thresholdLimit: '',
+        maximumThreshold: '',
+        quantity: item.stock.toString(),
+        uom: item.unit
+      });
+    }
+  }, [item]);
+
+  const openFileDialog = () => {
+    fileInputRef.current.click();
   };
 
   const handleSave = () => {
-    onSave(formData);
+    onUpdate({
+      ...formData,
+      id: item.id,
+      price: item.price,
+      image: item.image
+    });
     onClose();
   };
 
-  if (!isOpen) return null;
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,               
+    documentTitle: 'Bulk-Barcodes',
+    pageStyle: `
+      @page { size: A4 landscape; margin: 0 }
+      @media print {
+        body { -webkit-print-color-adjust: exact; }
+        div[ref] { page-break-inside: avoid; }
+      }
+    `,
+  });
+
+  if (!isOpen || !item) return null;
+
 
   return (
     // background around modal
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {/* 2️⃣ The hidden printable grid because this sh*t needs a direct html component to ref*/}
+      <div style={{ display: 'none' }}>
+        <PrintableGrid
+          ref={printRef}
+          value={formData.barcode}
+          count={FIXED_COUNT}
+        />
+      </div>
       {/* modal */}
       <div className="bg-white rounded-lg p-10 w-1/2 mx-4">
         {/* title & close btn(top) */}
@@ -40,7 +89,7 @@ export default function AddItemModal({ isOpen, onClose, onSave }) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6"/>
             </svg>
           </button>
-          <h2 className="text-2xl font-bold text-gray-900">ADD ITEM</h2>
+          <h2 className="text-2xl font-bold text-gray-900">EDIT ITEM</h2>
         </div>
 
         {/* image upload and form(mid) */}
@@ -53,12 +102,21 @@ export default function AddItemModal({ isOpen, onClose, onSave }) {
               </div>
 
             </div>
-            <button className="px-4 py-2 bg-[#4A4A4A] text-white text-sm rounded-md hover:bg-gray-700 transition-colors">
+            {/* Hidden file input */}
+            <input
+              type="file"
+              accept="image/*"
+              //ref={fileInputRef}
+              className="hidden"
+              //onChange={handleFileChange}
+            />
+            <button className="px-4 py-2 bg-[#4A4A4A] text-white text-sm rounded-md hover:bg-gray-700 transition-colors"
+            onClick={openFileDialog}>
               Upload a photo
             </button>
             <div className='flex flex-row'>
               <p className="text-2xl text-black mt-2 mb-4">SKU :</p>
-              <p className="text-2xl text-gray-600 mt-2 mb-4">RX3466</p>
+              <p className="text-2xl text-gray-600 mt-2 mb-4">{formData.barcode}</p>
             </div>
           </div>
           {/* item form(right) */}
@@ -71,7 +129,7 @@ export default function AddItemModal({ isOpen, onClose, onSave }) {
                 type="text"
                 name="name"
                 value={formData.name}
-                onChange={handleInputChange}
+                //onChange={handleInputChange}
                 placeholder="item@gmail.com"
                 className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -86,7 +144,7 @@ export default function AddItemModal({ isOpen, onClose, onSave }) {
                   type="text"
                   name="category"
                   value={formData.category}
-                  onChange={handleInputChange}
+                  //onChange={handleInputChange}
                   placeholder="item@gmail.com"
                   className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -98,7 +156,7 @@ export default function AddItemModal({ isOpen, onClose, onSave }) {
                 <select
                   name="status"
                   value={formData.status}
-                  onChange={handleInputChange}
+                  //onChange={handleInputChange}
                   className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="Available">Available</option>
@@ -140,7 +198,7 @@ export default function AddItemModal({ isOpen, onClose, onSave }) {
                   type="number"
                   name="quantity"
                   value={formData.quantity}
-                  onChange={handleInputChange}
+                  //onChange={handleInputChange}
                   placeholder="12"
                   className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -152,7 +210,7 @@ export default function AddItemModal({ isOpen, onClose, onSave }) {
                 <select
                   name="uom"
                   value={formData.uom}
-                  onChange={handleInputChange}
+                  //onChange={handleInputChange}
                   className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="KG">KG</option>
@@ -169,7 +227,9 @@ export default function AddItemModal({ isOpen, onClose, onSave }) {
         {/* bottom bar(bottom) */}
         <div className="flex justify-between space-x-3 mt-8 p-3 rounded-lg bg-[#F9F9F9]">
             <div className='flex flex-row items-center gap-3'>
-              <button className="flex items-center px-4 py-2 bg-[#D01710] text-white rounded-md hover:bg-red-600 transition-colors">
+              <button className="flex items-center px-4 py-2 bg-[#D01710] text-white rounded-md hover:bg-red-600 transition-colors"
+              onClick={() => handlePrint()}
+              >
                 <Printer className="w-4 h-4 mr-2 " />
               </button>
               <p>Print Barcode</p>
@@ -181,7 +241,7 @@ export default function AddItemModal({ isOpen, onClose, onSave }) {
               </button>
               <button onClick={handleSave}
                 className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-[#1A318C] transition-colors">
-                Save
+                Update
               </button>
             </div>
         </div>
@@ -189,3 +249,46 @@ export default function AddItemModal({ isOpen, onClose, onSave }) {
     </div>
   );
 }
+
+
+// 1️⃣ A printable grid of N barcodes
+const PrintableGrid = forwardRef(({ value, count }, ref) => {
+  const slots = Array.from({ length: count }, (_, i) => `${value}`);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(5, 1fr)',   // e.g. 5 columns
+        gridAutoRows: 'minmax(50px, auto)',     // auto height
+        gap: '10px',
+        width: '100vw',
+        height: '100vh',
+        padding: '10mm',
+        boxSizing: 'border-box',
+      }}
+    >
+      {slots.map((val) => (
+        <div
+          key={val}
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '4mm',
+            border: '1px solid #ccc',
+          }}
+        >
+          <Barcode
+            value={val}
+            format="CODE128"
+            width={1}
+            height={40}
+            displayValue
+          />
+        </div>
+      ))}
+    </div>
+  );
+});

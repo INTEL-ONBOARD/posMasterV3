@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+//barcode generate and printing imports
+import Barcode from 'react-barcode';
+import { useReactToPrint } from 'react-to-print';
 
 function Login() {
   const navigate = useNavigate();
@@ -32,9 +35,9 @@ function Login() {
   };
 
   return (
-    <div className="fixed inset-0 min-h-screen overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+    <div className="fixed inset-0 min-h-screen bg-white overflow-hidden flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+        <div className="bg-white rounded-2xl p-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold">
               <span className="font-bold" style={{ color: "#00489A" }}>
