@@ -2,7 +2,7 @@ import React from "react";
 
 function DashboardCard({
   onClick,
-  className = "",
+  // className = "",
   image,
   imageClass = "",
   title,
@@ -16,7 +16,7 @@ function DashboardCard({
   if (verticalLayout) {
     return (
       <div
-        className={`bg-white rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-gray-200 overflow-hidden flex flex-col items-center justify-center ${className}`}
+        className={"bg-white rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-gray-200 overflow-hidden flex flex-col items-center justify-center h-48 p-0"}
         onClick={onClick}
         {...props}
       >
@@ -63,7 +63,7 @@ function DashboardCard({
   if (fullImage && image) {
     return (
       <div
-        className={`bg-white rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-gray-200 overflow-hidden flex flex-col items-center justify-center ${className}`}
+        className={"bg-white rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-gray-200 overflow-hidden flex flex-col items-center justify-center h-48 p-0"}
         onClick={onClick}
         {...props}
       >
@@ -85,7 +85,7 @@ function DashboardCard({
 
   return (
     <div
-      className={`bg-white rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-gray-200 overflow-hidden ${className}`}
+      className={"bg-white rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-gray-200 overflow-hidden flex flex-col items-center justify-center h-48 p-0"}
       onClick={onClick}
       {...props}
     >
