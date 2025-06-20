@@ -5,7 +5,7 @@ import InventoryCard from '../../frontend/components/Inventory_card';
 import AddItemModal from './AddItem_modal';
 import Configurations from './Configurations';
 import bananaImg from '../../assets/Inventory_banana.png';
-import SpinnerDot from '../SpinnerDot';
+import SpinnerDot from "../../frontend/components/SpinnerDot";
 // Example inventory data
 const inventoryItems = [
   {
