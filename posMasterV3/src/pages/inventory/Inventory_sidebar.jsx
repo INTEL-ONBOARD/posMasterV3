@@ -32,14 +32,14 @@ function InventorySidebar({ activeSection, onSectionChange, onAddItemClick, onCo
   ];
 
   return (
-    <aside className="w-96 bg-blue-300 border-r border-gray-200 p-10">
+    <aside className="w-96 bg-[#F3F3F3] border-r border-gray-200 p-10 rounded-tl-2xl">
       {/* inventory header and back button */}
       <span className='flex flex-row gap-5 justify-center'>
         {/* back button */}
       <button
       onClick={() => navigate("/dashboard")}
       aria-label="Go Back"
-      className="bg-white w-10 h-10 rounded-full p-2 hover:bg-gray-100 active:bg-gray-200 transition focus:outline-none focus:ring-indigo-500"
+      className="bg-white w-10 h-10 rounded-full p-2 hover:bg-gray-50 active:bg-gray-200 transition hover:shadow-md focus:outline-none focus:ring-indigo-500"
     >
       {/* Simple left arrow SVG */}
       <svg
@@ -66,7 +66,7 @@ function InventorySidebar({ activeSection, onSectionChange, onAddItemClick, onCo
             <button
               key={item.id}
               onClick={item.onClick}
-              className={`w-60 h-40 flex flex-col bg-[#FAFAFA] items-center p-10 rounded-lg border-2 transition-all duration-200 hover:shadow-md ${
+              className={`w-60 h-40 flex flex-col bg-[#FAFAFA] items-center p-10 rounded-lg transition-all duration-200 hover:shadow-md ${
                 isActive 
                   ? 'border-blue-500 bg-blue-50' 
                   : 'border-gray-200 hover:border-gray-300'
