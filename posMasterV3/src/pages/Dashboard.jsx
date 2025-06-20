@@ -167,7 +167,7 @@ function Dashboard() {
               onClick={() => handleComponentClick("manage-users")}
               
               image={Dashboard_manageUsers}
-              title="Manage Users"
+              title="MANAGE USERS"
               subtitle="View sales"
               verticalLayout={true}
             />
@@ -182,7 +182,7 @@ function Dashboard() {
               onClick={() => handleComponentClick("dashboard")}
              
               image={Dashboard_card}
-              title="Dashboard"
+              title="DASHBOARD"
               subtitle="Overview of sales"
               verticalLayout={true}
             />
@@ -197,7 +197,7 @@ function Dashboard() {
               onClick={() => handleComponentClick("customers")}
               
               image={Dashboard_manageUsers}
-              title="Customers"
+              title="CUSTOMERS"
               subtitle="Customer list"
               verticalLayout={true}
             />
