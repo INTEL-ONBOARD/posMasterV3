@@ -20,6 +20,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import NotFound from './pages/NotFound.jsx';
 import Inventory from './pages/inventory/Inventory.jsx';
 import ToastProvider from './pages/toasts/ToastProvider.jsx';
+import Settings from './pages/settings/Settings.jsx';
 
 // import AddItem from './pages/inventory/AddItem.jsx';
 // import Configurations from './pages/inventory/Configurations.jsx';
@@ -65,8 +66,10 @@ function App() {
 
         {/* ─── Private routing when needed(disabled for now)─── */}
         {/* <Route element={<ProtectedRoute />}> */}
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="dashboard/inventory/*" element={<Inventory />} />
+        <Route path="dashboard" element={<Dashboard />} >
+          <Route path="inventory/*" element={<Inventory />} />
+          <Route path="settings/*" element={<Settings />} />
+        </Route>
         {/* <Route path="dashboard/inventory/add" element={<AddItem />} />
         <Route path="dashboard/inventory/config" element={<Configurations />} />
         <Route path="dashboard/inventory/reports" element={<InvReport />} /> */}

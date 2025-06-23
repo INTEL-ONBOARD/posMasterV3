@@ -32,32 +32,9 @@ function InventorySidebar({ activeSection, onSectionChange, onAddItemClick, onCo
   ];
 
   return (
-    <aside className="w-96 bg-[#F3F3F3] border-r border-gray-200 p-10 rounded-tl-2xl">
-      {/* inventory header and back button */}
-      <span className='flex flex-row gap-5 justify-center'>
-        {/* back button */}
-      <button
-      onClick={() => navigate("/dashboard")}
-      aria-label="Go Back"
-      className="bg-white w-10 h-10 rounded-full p-2 hover:bg-gray-50 active:bg-gray-200 transition hover:shadow-md focus:outline-none focus:ring-indigo-500"
-    >
-      {/* Simple left arrow SVG */}
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-5 w-5 text-gray-700"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={2}
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-      </svg>
-    </button>
-      <h2 className="text-4xl font-bold mb-6">INVENTORY</h2>
-      </span>
-
+    <aside className="bg-[#F3F3F3] border-r border-gray-200 h-screen">
       {/* sidbar buttons list*/}
-      <div className="flex flex-col gap-10 items-end">
+      <div className="flex flex-col">
         {sidebarItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeSection === item.id;
