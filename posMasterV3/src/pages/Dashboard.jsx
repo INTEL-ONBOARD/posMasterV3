@@ -15,7 +15,7 @@ import Dashboard_card from "../assets/Dashboard_card.png";
 import Dashboard_manageUsers from "../assets/Dashboard_manageUsers.png";
 import Header from "../components/Header.jsx";
 import Sidebar from "../components/Sidebar.jsx";
-
+import Notification from "./notification/Notification.jsx";
 
 function Dashboard() {
   const [hoveredCard, setHoveredCard] = useState(null);
@@ -32,6 +32,7 @@ function Dashboard() {
     if (componentName === "inventory") {
       navigate("/dashboard/inventory");
     }
+    
     // Add other click logic as needed
   };
 
