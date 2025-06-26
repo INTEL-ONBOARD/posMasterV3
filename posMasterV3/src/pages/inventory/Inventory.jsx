@@ -62,6 +62,61 @@ const [inventoryItems, setInventoryItems] = useState([
     stock: 100,
     image: bananaImg
   },
+  {
+    id: '5',
+    name: 'Banana',
+    barcode: 'SKU-34681324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU002',
+    stock: 100,
+    image: bananaImg
+  },
+  {
+    id: '6',
+    name: 'Banana',
+    barcode: 'SKU-34681324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU002',
+    stock: 100,
+    image: bananaImg
+  },
+  {
+    id: '7',
+    name: 'Banana',
+    barcode: 'SKU-34681324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU002',
+    stock: 100,
+    image: bananaImg
+  },
+  {
+    id: '8',
+    name: 'Banana',
+    barcode: 'SKU-34681324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU002',
+    stock: 100,
+    image: bananaImg
+  },
+  {
+    id: '9',
+    name: 'Banana',
+    barcode: 'SKU-34681324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU002',
+    stock: 100,
+    image: bananaImg
+  },
   // Add more items as needed
 ]);
 
@@ -100,7 +155,7 @@ const [inventoryItems, setInventoryItems] = useState([
       <main className="flex-1 p-14 bg-[#F3F3F3] rounded-r-2xl">
 
         {/* inventory card list */}
-        <div className="grid pr-20 grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {inventoryItems.map(item => (
             <InventoryCard key={item.id} item={item} onOpen={() => navigate(`/dashboard/inventory/edit-item/${item.id}`)} onRemove={{/* TODO */}} />
           ))}
