@@ -5,10 +5,18 @@ import configImg from '../../assets/Inventory_settings.png';
 import reportImg from '../../assets/Inventory_report.png';
 import { Package, Settings, FileText, Plus } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
+import ViewInventory from '../../assets/View_inventory.png';
+
 
 function InventorySidebar({ activeSection, onSectionChange, onAddItemClick, onConfigClick }) {
   const navigate = useNavigate();
   const sidebarItems = [
+    {
+    id: 'view-inventory',
+    label: 'View Inventory',
+    icon: ViewInventory,
+    onClick: () => onSectionChange('view-inventory')
+  },
     {
       id: 'add-item',
       label: 'Add Item',
