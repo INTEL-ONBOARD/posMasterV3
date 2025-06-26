@@ -16,10 +16,10 @@ function ToastProvider({ children }) {
   return (
      <ToastContext.Provider value={{ open, close }}>
       {children}
-      <div className="space-y-2 fixed top-6 left-1/2 transform -translate-x-1/2 z-50">
+      <div className="space-y-2 fixed top-6 right-6 z-50">
         {toasts.map(({ id, message }) => (
-          <div key={id}>
-            <div className="bg-green-50 border border-green-200 rounded-lg px-10 py-6 flex items-center gap-4 shadow-sm min-w-[800px] max-w-[1200px]" role="alert">
+          <div key={id} className="transition-all duration-500 ease-in-out transform animate-fade-in-up">
+            <div className="bg-green-50 border border-green-200 rounded-lg px-10 py-6 flex items-center gap-4 shadow-sm min-w-[300px] max-w-[400px]" role="alert">
               <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>

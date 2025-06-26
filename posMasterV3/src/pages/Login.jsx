@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useState,useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 //barcode generate and printing imports
 import Barcode from 'react-barcode';
 import { useReactToPrint } from 'react-to-print';
+import ToastContext from "./toasts/ToastService";
 
 function Login() {
   const navigate = useNavigate();
+   const toast = useContext(ToastContext); 
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -30,6 +32,7 @@ function Login() {
     setTimeout(() => {
       setIsLoading(false);
       // Handle login logic here
+       toast.open("Logged in successfully!");
       navigate("/dashboard");
     }, 2000);
   };
