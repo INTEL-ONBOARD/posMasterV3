@@ -24,61 +24,96 @@ function Sidebar() {
       <div className="h-full overflow-hidden bg-white">
         <ul className="font-medium">
           <li>
-            <Link
-              to="notifications"
-              className={`${
-                currentPath === "/dashboard/notifications" ? "bg-[#EBEBEB]" : ""
-              } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
-            >
-              <img className="w-12 mb-2" src={Dashboard_notification} alt="" />
-              <span className="whitespace-nowrap">Notifications</span>
-            </Link>
+             <Link
+      to="notifications"
+      className={`${
+        currentPath === "/dashboard/notifications" ? "bg-[#EBEBEB] border-blue-500 relative" : ""
+      } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
+    >
+      <img className="w-12 mb-2" src={Dashboard_notification} alt="" />
+      <span className="whitespace-nowrap flex items-center gap-1">
+        Notifications
+        {currentPath === "/dashboard/notifications" && (
+          <svg className="w-4 h-4 text-blue-600 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        )}
+      </span>
+    </Link>
           </li>
           
           <li>
             <Link
-              to="inventory"
-              className={`${
-                currentPath === "/dashboard/inventory" ? "bg-[#EBEBEB]" : ""
-              } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
-            >
-              <img className="w-12 mb-2" src={Dashboard_inventory} alt="" />
-              <span className="whitespace-nowrap">Inventory</span>
-            </Link>
+  to="inventory"
+  className={`${
+    currentPath.startsWith("/dashboard/inventory") ? "bg-[#EBEBEB] border-blue-500 relative" : ""
+  } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
+>
+  <img className="w-12 mb-2" src={Dashboard_inventory} alt="" />
+  <span className="whitespace-nowrap flex items-center gap-1">
+    Inventory
+    {currentPath.startsWith("/dashboard/inventory") && (
+      <svg className="w-4 h-4 text-blue-600 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
+    )}
+  </span>
+</Link>
           </li>
           <li>
             <Link
-              to="sales"
-              className={`${
-                currentPath === "/dashboard/sales" ? "bg-[#EBEBEB]" : ""
-              } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
-            >
-              <img className="w-12 mb-2" src={Dashboard_sales} alt="" />
-              <span className="whitespace-nowrap">Sales</span>
-            </Link>
+      to="sales"
+      className={`${
+        currentPath.startsWith("/dashboard/sales") ? "bg-[#EBEBEB] border-blue-500 relative" : ""
+      } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
+    >
+      <img className="w-12 mb-2" src={Dashboard_sales} alt="" />
+      <span className="whitespace-nowrap flex items-center gap-1">
+        Sales
+        {currentPath.startsWith("/dashboard/sales") && (
+          <svg className="w-4 h-4 text-blue-600 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        )}
+      </span>
+    </Link>
           </li>
           <li>
-            <Link
-              to="settings"
-              className={`${
-                currentPath === "/dashboard/settings" ? "bg-[#EBEBEB]" : ""
-              } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
-            >
-              <img className="w-12 mb-2" src={Dashboard_settings} alt="" />
-              <span className="whitespace-nowrap">Settings</span>
-            </Link>
+           <Link
+      to="settings"
+      className={`${
+        currentPath === "/dashboard/settings" ? "bg-[#EBEBEB] border-blue-500 relative" : ""
+      } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
+    >
+      <img className="w-12 mb-2" src={Dashboard_settings} alt="" />
+      <span className="whitespace-nowrap flex items-center gap-1">
+        Settings
+        {currentPath === "/dashboard/settings" && (
+          <svg className="w-4 h-4 text-blue-600 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        )}
+      </span>
+    </Link>
           </li>
           <li>
-            <button
-              onClick={() => navigate("/login")}
-              className={`${
-                currentPath === "/dashboard/logout" ? "bg-[#EBEBEB]" : ""
-              } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200 bg-transparent outline-none`}
-              style={{ border: "none", background: "none" }}
-            >
-              <img className="w-12 mb-2" src={Dashboard_logout} alt="" />
-              <span className="whitespace-nowrap">Logout</span>
-            </button>
+           <button
+      onClick={() => navigate("/login")}
+      className={`${
+        currentPath === "/dashboard/logout" ? "bg-[#EBEBEB] border-blue-500 relative" : ""
+      } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200 bg-transparent outline-none`}
+      style={{ border: "none", background: "none" }}
+    >
+      <img className="w-12 mb-2" src={Dashboard_logout} alt="" />
+      <span className="whitespace-nowrap flex items-center gap-1">
+        Logout
+        {currentPath === "/dashboard/logout" && (
+          <svg className="w-4 h-4 text-blue-600 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        )}
+      </span>
+    </button>
           </li>
         </ul>
       </div>
