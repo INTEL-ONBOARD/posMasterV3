@@ -4,16 +4,21 @@ export default {
     "./index.html",
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
-  theme: {
+   theme: {
     extend: {
       keyframes: {
-        'fade-in-up': {
-          '0%': { opacity: '0', transform: 'translateY(20px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
+        'slide-in-left': {
+          '0%': { opacity: '0', transform: 'translateX(-100%)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        'slide-out-right': {
+          '0%': { opacity: '1', transform: 'translateX(0)' },
+          '100%': { opacity: '0', transform: 'translateX(100%)' },
         },
       },
       animation: {
-        'fade-in-up': 'fade-in-up 0.5s ease-out',
+        'slide-in-left': 'slide-in-left 0.5s ease-out forwards',
+        'slide-out-right': 'slide-out-right 0.5s ease-in forwards',
       },
     },
   },
