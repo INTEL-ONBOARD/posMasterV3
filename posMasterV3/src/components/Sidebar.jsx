@@ -34,18 +34,7 @@ function Sidebar() {
               <span className="whitespace-nowrap">Notifications</span>
             </Link>
           </li>
-          <li>
-            <button
-              onClick={() => navigate("/login")}
-              className={`${
-                currentPath === "/dashboard/logout" ? "bg-[#EBEBEB]" : ""
-              } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200 bg-transparent outline-none`}
-              style={{ border: "none", background: "none" }}
-            >
-              <img className="w-12 mb-2" src={Dashboard_logout} alt="" />
-              <span className="whitespace-nowrap">Logout</span>
-            </button>
-          </li>
+          
           <li>
             <Link
               to="inventory"
@@ -78,6 +67,18 @@ function Sidebar() {
               <img className="w-12 mb-2" src={Dashboard_settings} alt="" />
               <span className="whitespace-nowrap">Settings</span>
             </Link>
+          </li>
+          <li>
+            <button
+              onClick={() => navigate("/login")}
+              className={`${
+                currentPath === "/dashboard/logout" ? "bg-[#EBEBEB]" : ""
+              } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200 bg-transparent outline-none`}
+              style={{ border: "none", background: "none" }}
+            >
+              <img className="w-12 mb-2" src={Dashboard_logout} alt="" />
+              <span className="whitespace-nowrap">Logout</span>
+            </button>
           </li>
         </ul>
       </div>

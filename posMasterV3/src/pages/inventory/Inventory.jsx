@@ -7,6 +7,7 @@ import Configurations from './Configurations';
 import bananaImg from '../../assets/Inventory_banana.png';
 import SpinnerDot from '../../frontend/components/SpinnerDot';
 import EditItemModal from './EditItem_modal';
+import ViewInventory from './ViewInventory';
 
 
 
@@ -85,7 +86,7 @@ const [inventoryItems, setInventoryItems] = useState([
 
   return (
     // id here controls the blur thingyy
-    <div id="inv-background"  className="flex h-screen bg-[#EBEBEB] -ml-4">
+    <div id="inv-background"  className="flex h-screen bg-[#EBEBEB] -ml-12">
       {/* <div id="inv-background"  className={`flex h-screen bg-red-400 p-24 ${ (isAddItemOpen || isConfigOpen) ? 'blur-md' : 'blur-none' }`}> */}
       {/* inventory sidebar */}
 
