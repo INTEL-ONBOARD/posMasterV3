@@ -29,94 +29,61 @@ const [inventoryItems, setInventoryItems] = useState([
     stock: 100,
     image: bananaImg
   },
-   {
+  {
     id: '2',
-    name: 'Banana',
+    name: 'Apple',
     barcode: 'SKU-5837324',
     category: 'Fruit',
-    price: '340.00',
+    price: '420.00',
     unit: 'KG',
     sku: 'SKU002',
-    stock: 100,
+    stock: 80,
     image: bananaImg
   },
-  {
+   {
     id: '3',
-    name: 'Banana',
+    name: 'Orange',
     barcode: 'SKU-58394324',
     category: 'Fruit',
-    price: '340.00',
+    price: '390.00',
     unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
+    sku: 'SKU003',
+    stock: 60,
     image: bananaImg
   },
   {
     id: '4',
-    name: 'Banana',
+    name: 'Tomato',
     barcode: 'SKU-34681324',
-    category: 'Fruit',
-    price: '340.00',
+    category: 'Vegetable',
+    price: '120.00',
     unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
+    sku: 'SKU004',
+    stock: 150,
     image: bananaImg
   },
-  {
+   {
     id: '5',
-    name: 'Banana',
-    barcode: 'SKU-34681324',
-    category: 'Fruit',
-    price: '340.00',
+    name: 'Potato',
+    barcode: 'SKU-34681325',
+    category: 'Vegetable',
+    price: '80.00',
     unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
+    sku: 'SKU005',
+    stock: 200,
     image: bananaImg
   },
   {
     id: '6',
-    name: 'Banana',
-    barcode: 'SKU-34681324',
-    category: 'Fruit',
-    price: '340.00',
-    unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
+    name: 'Milk',
+    barcode: 'SKU-34681326',
+    category: 'Dairy',
+    price: '60.00',
+    unit: 'LTR',
+    sku: 'SKU006',
+    stock: 50,
     image: bananaImg
-  },
-  {
-    id: '7',
-    name: 'Banana',
-    barcode: 'SKU-34681324',
-    category: 'Fruit',
-    price: '340.00',
-    unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
-    image: bananaImg
-  },
-  {
-    id: '8',
-    name: 'Banana',
-    barcode: 'SKU-34681324',
-    category: 'Fruit',
-    price: '340.00',
-    unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
-    image: bananaImg
-  },
-  {
-    id: '9',
-    name: 'Banana',
-    barcode: 'SKU-34681324',
-    category: 'Fruit',
-    price: '340.00',
-    unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
-    image: bananaImg
-  },
+  }
   // Add more items as needed
 ]);
 
@@ -139,6 +106,15 @@ const [inventoryItems, setInventoryItems] = useState([
   const isEditItemOpen = location.pathname.includes('/edit-item/');
   const isConfigOpen = location.pathname.endsWith('/config');
 
+   const [search, setSearch] = useState("");
+   const [category, setCategory] = useState("All");
+const [viewMode, setViewMode] = useState("grid"); // or "list"
+
+ 
+  const filteredItems = inventoryItems.filter(item =>
+  (category === "All" || item.category === category) &&
+  item.name.toLowerCase().includes(search.toLowerCase())
+);
   return (
     // id here controls the blur thingyy
     <div id="inv-background"  className="flex h-screen bg-[#EBEBEB] -ml-12">
@@ -154,12 +130,72 @@ const [inventoryItems, setInventoryItems] = useState([
       {/* main section */}
       <main className="flex-1 p-14 bg-[#F3F3F3] rounded-r-2xl">
 
-        {/* inventory card list */}
-        <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {inventoryItems.map(item => (
-            <InventoryCard key={item.id} item={item} onOpen={() => navigate(`/dashboard/inventory/edit-item/${item.id}`)} onRemove={{/* TODO */}} />
-          ))}
-        </div>
+        {/* Controls Bar */}
+{activeSection === "view-inventory" && (
+  <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:gap-4 gap-2">
+    {/* Search */}
+    <div className="flex items-center bg-white border border-gray-300 rounded-md px-2 py-1 w-full max-w-xs">
+      <input
+        type="text"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        placeholder="Search your item here"
+        className="flex-1 px-2 py-1 bg-transparent outline-none"
+      />
+      <button className="px-3 py-1 bg-[#1A318C] text-white rounded-md text-sm ml-2">
+        Search
+      </button>
+    </div>
+    {/* Category */}
+    <select
+      value={category}
+      onChange={e => setCategory(e.target.value)}
+      className="bg-white border border-gray-300 rounded-md px-4 py-2 text-sm"
+    >
+      <option value="All">Category</option>
+      {[...new Set(inventoryItems.map(item => item.category))].map(cat => (
+        <option key={cat} value={cat}>{cat}</option>
+      ))}
+    </select>
+    {/* View Mode */}
+    <select
+      value={viewMode}
+      onChange={e => setViewMode(e.target.value)}
+      className="bg-white border border-gray-300 rounded-md px-4 py-2 text-sm"
+    >
+      <option value="grid">View mode</option>
+      <option value="grid">Grid</option>
+      <option value="list">List</option>
+    </select>
+  </div>
+)}
+
+
+
+       {viewMode === "grid" ? (
+  <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {filteredItems.map(item => (
+      <InventoryCard
+        key={item.id}
+        item={item}
+        onOpen={() => navigate(`/dashboard/inventory/edit-item/${item.id}`)}
+        onRemove={{/* TODO */}}
+      />
+    ))}
+  </div>
+) : (
+  <div className="flex flex-col gap-4 pr-20">
+    {filteredItems.map(item => (
+      <InventoryCard
+        key={item.id}
+        item={item}
+        onOpen={() => navigate(`/dashboard/inventory/edit-item/${item.id}`)}
+        onRemove={{/* TODO */}}
+        viewMode="list"
+      />
+    ))}
+  </div>
+)}
       </main>
       
       {/* Bottom Loading Bar */}
