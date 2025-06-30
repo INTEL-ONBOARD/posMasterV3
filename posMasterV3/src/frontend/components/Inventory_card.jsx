@@ -1,7 +1,7 @@
 export default function Inventory_card({ item, onOpen, onRemove }) {
   return (
     <div 
-      className="bg-white  w-120 h-60 border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
+      className="bg-white  w-65 h-50 border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
       onClick={onOpen} // Add onClick handler here
       role="button" // Accessibility improvement
       tabIndex={0} // Make focusable for keyboard accessibility
