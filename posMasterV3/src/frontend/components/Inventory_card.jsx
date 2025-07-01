@@ -1,24 +1,13 @@
 export default function Inventory_card({ item, onOpen, onRemove }) {
   return (
     <div 
-      className="bg-white rounded-2xl w-120 h-60 border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
+      className="bg-white  w-65 h-50 border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
       onClick={onOpen} // Add onClick handler here
       role="button" // Accessibility improvement
       tabIndex={0} // Make focusable for keyboard accessibility
     >
-      {/* Close button with propagation prevention */}
-      <button 
-        aria-label="Close"
-        className="bg-black rounded-full p-1 shadow hover:bg-gray-600 active:bg-gray-200 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        onClick={(e) => {
-          e.stopPropagation(); // Prevent triggering card's onClick
-          onClose();
-        }}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6"/>
-        </svg>
-      </button>
+      
+     
 
       {/* Card content remains unchanged */}
       <div className='flex flex-row bg-white justify-between'>
