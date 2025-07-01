@@ -84,6 +84,25 @@ function Inventory() {
     // Add more items as needed
   ]);
 
+  const [addItemFormData, setAddItemFormData] = useState({
+  name: "",
+  itemCode: "",
+  barcode: "SKU-3847833",
+  category: "",
+  status: "Available",
+  thresholdLimit: "",
+  maximumThreshold: "",
+  quantity: "",
+  uom: "KG",
+});
+
+const [units, setUnits] = useState([
+  { id: 1, name: 'Kilogram', symbol: 'KG' },
+  { id: 2, name: 'Pieces', symbol: 'PCS' },
+  { id: 3, name: 'Liters', symbol: 'LTR' },
+  { id: 4, name: 'Meters', symbol: 'M' },
+]);
+const [newUnit, setNewUnit] = useState({ name: '', symbol: '' });
   // Get item ID from URL
   const getEditingItemId = () => {
     const pathParts = location.pathname.split("/");
@@ -128,7 +147,7 @@ function Inventory() {
   <div className="mb-4">
     <div className="flex flex-row items-center gap-4 bg-white border border-gray-200 rounded-lg px-6 py-4 shadow-sm">
       {/* Search */}
-      <div className="relative flex items-center border border-gray-300 h-10 w-full max-w-4xl px-0 bg-white">
+      <div className="relative flex items-center border border-gray-300 h-10 w-full max-w-5xl px-0 bg-white">
         <input
           type="text"
           value={search}
@@ -147,7 +166,7 @@ function Inventory() {
       <select
         value={category}
         onChange={(e) => setCategory(e.target.value)}
-        className="bg-white border border-gray-300 rounded h-10 px-4 text-sm text-[#A7A7A7] min-w-[210px]"
+        className="bg-white border border-gray-300 rounded h-10 px-4 text-sm text-[#A7A7A7] min-w-[196px]"
       >
         <option value="All">Category</option>
         {[...new Set(inventoryItems.map((item) => item.category))].map(
@@ -162,7 +181,7 @@ function Inventory() {
       <select
         value={viewMode}
         onChange={(e) => setViewMode(e.target.value)}
-        className="bg-white border border-gray-300 rounded h-10 px-4 text-sm text-[#A7A7A7] min-w-[210px]"
+        className="bg-white border border-gray-300 rounded h-10 px-4 text-sm text-[#A7A7A7] min-w-[196px]"
       >
         <option value="grid">View mode</option>
         <option value="grid">Grid</option>
@@ -225,6 +244,8 @@ function Inventory() {
           // handle save logic here
           navigate("/dashboard/inventory");
         }}
+        formData={addItemFormData}
+  setFormData={setAddItemFormData}
       />
 
       <Configurations
@@ -234,6 +255,10 @@ function Inventory() {
           // handle save logic here
           navigate("/dashboard/inventory");
         }}
+        units={units}
+  setUnits={setUnits}
+  newUnit={newUnit}
+  setNewUnit={setNewUnit}
       />
 
       <EditItemModal
