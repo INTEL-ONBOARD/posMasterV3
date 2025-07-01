@@ -1,279 +1,162 @@
-import React, { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import InventorySidebar from "./Inventory_sidebar";
-import InventoryCard from "../../frontend/components/Inventory_card";
-import AddItemModal from "./AddItem_modal";
-import Configurations from "./Configurations";
-import bananaImg from "../../assets/Inventory_banana.png";
-import SpinnerDot from "../../frontend/components/SpinnerDot";
-import EditItemModal from "./EditItem_modal";
-import ViewInventory from "./ViewInventory";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import InventorySidebar from './Inventory_sidebar';
+import InventoryCard from '../../frontend/components/Inventory_card';
+import SpinnerDot from '../../frontend/components/SpinnerDot';
+import bananaImg from '../../assets/Inventory_banana.png';
+import AddItem from './AddItem';
+
 
 function Inventory() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const [activeSection, setActiveSection] = useState('view-inventory');
 
   // Example inventory data
-  const [inventoryItems, setInventoryItems] = useState([
-    {
-      id: "1",
-      name: "Banana",
-      barcode: "SKU-37847324",
-      category: "Fruit",
-      price: "340.00",
-      unit: "KG",
-      sku: "SKU001",
-      stock: 100,
-      image: bananaImg,
-    },
-    {
-      id: "2",
-      name: "Apple",
-      barcode: "SKU-5837324",
-      category: "Fruit",
-      price: "420.00",
-      unit: "KG",
-      sku: "SKU002",
-      stock: 80,
-      image: bananaImg,
-    },
-    {
-      id: "3",
-      name: "Orange",
-      barcode: "SKU-58394324",
-      category: "Fruit",
-      price: "390.00",
-      unit: "KG",
-      sku: "SKU003",
-      stock: 60,
-      image: bananaImg,
-    },
-    {
-      id: "4",
-      name: "Tomato",
-      barcode: "SKU-34681324",
-      category: "Vegetable",
-      price: "120.00",
-      unit: "KG",
-      sku: "SKU004",
-      stock: 150,
-      image: bananaImg,
-    },
-    {
-      id: "5",
-      name: "Potato",
-      barcode: "SKU-34681325",
-      category: "Vegetable",
-      price: "80.00",
-      unit: "KG",
-      sku: "SKU005",
-      stock: 200,
-      image: bananaImg,
-    },
-    {
-      id: "6",
-      name: "Milk",
-      barcode: "SKU-34681326",
-      category: "Dairy",
-      price: "60.00",
-      unit: "LTR",
-      sku: "SKU006",
-      stock: 50,
-      image: bananaImg,
-    },
-    // Add more items as needed
-  ]);
-
-  const [addItemFormData, setAddItemFormData] = useState({
-  name: "",
-  itemCode: "",
-  barcode: "SKU-3847833",
-  category: "",
-  status: "Available",
-  thresholdLimit: "",
-  maximumThreshold: "",
-  quantity: "",
-  uom: "KG",
-});
-
-const [units, setUnits] = useState([
-  { id: 1, name: 'Kilogram', symbol: 'KG' },
-  { id: 2, name: 'Pieces', symbol: 'PCS' },
-  { id: 3, name: 'Liters', symbol: 'LTR' },
-  { id: 4, name: 'Meters', symbol: 'M' },
+const [inventoryItems, setInventoryItems] = useState([
+  {
+    id: '1',
+    name: 'Banana',
+    barcode: 'SKU-37847324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU001',
+    stock: 100,
+    image: bananaImg
+  },
+   {
+    id: '2',
+    name: 'Banana',
+    barcode: 'SKU-5837324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU002',
+    stock: 100,
+    image: bananaImg
+  },
+  {
+    id: '3',
+    name: 'Banana',
+    barcode: 'SKU-58394324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU002',
+    stock: 100,
+    image: bananaImg
+  },
+  {
+    id: '4',
+    name: 'Banana',
+    barcode: 'SKU-34681324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU002',
+    stock: 100,
+    image: bananaImg
+  },
+  {
+    id: '5',
+    name: 'Banana',
+    barcode: 'SKU-34681324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU002',
+    stock: 100,
+    image: bananaImg
+  },
+  {
+    id: '6',
+    name: 'Banana',
+    barcode: 'SKU-34681324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU002',
+    stock: 100,
+    image: bananaImg
+  },
+  {
+    id: '7',
+    name: 'Banana',
+    barcode: 'SKU-34681324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU002',
+    stock: 100,
+    image: bananaImg
+  },
+  {
+    id: '8',
+    name: 'Banana',
+    barcode: 'SKU-34681324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU002',
+    stock: 100,
+    image: bananaImg
+  },
+  {
+    id: '9',
+    name: 'Banana',
+    barcode: 'SKU-34681324',
+    category: 'Fruit',
+    price: '340.00',
+    unit: 'KG',
+    sku: 'SKU002',
+    stock: 100,
+    image: bananaImg
+  },
+  // Add more items as needed
 ]);
-const [newUnit, setNewUnit] = useState({ name: '', symbol: '' });
-  // Get item ID from URL
-  const getEditingItemId = () => {
-    const pathParts = location.pathname.split("/");
-    return pathParts[pathParts.length - 1];
-  };
 
-  const editingItem = inventoryItems.find(
-    (item) => item.id === getEditingItemId()
-  );
-
-  const [activeSection, setActiveSection] = useState("inventory-list");
-  // Show modal if route matches
-  const isAddItemOpen = location.pathname.endsWith("/add-item");
-  const isEditItemOpen = location.pathname.includes("/edit-item/");
-  const isConfigOpen = location.pathname.endsWith("/config");
-
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
-  const [viewMode, setViewMode] = useState("grid"); // or "list"
-
-  const filteredItems = inventoryItems.filter(
-    (item) =>
-      (category === "All" || item.category === category) &&
-      item.name.toLowerCase().includes(search.toLowerCase())
-  );
   return (
-    // id here controls the blur thingyy
     <div id="inv-background" className="flex h-screen bg-[#EBEBEB] -ml-12">
-      {/* <div id="inv-background"  className={`flex h-screen bg-red-400 p-24 ${ (isAddItemOpen || isConfigOpen) ? 'blur-md' : 'blur-none' }`}> */}
-      {/* inventory sidebar */}
-
+      {/* sidebar (left) */}
       <InventorySidebar
         activeSection={activeSection}
-        onSectionChange={setActiveSection}
-        onAddItemClick={() => navigate("/dashboard/inventory/add-item")}
-        onConfigClick={() => navigate("/dashboard/inventory/config")}
+        onViewInvClick={() => setActiveSection('view-inventory')}
+        onAddItemClick={() => setActiveSection('add-item')}
+        onConfigClick={() => setActiveSection('inventory-config')}
+        onCReportClick={() => setActiveSection('inventory-report')}
       />
-      {/* main section */}
-      <main className="flex-1 p-0 bg-[#F3F3F3] rounded-r-2xl">
-        {/* Controls Bar */}
-       {activeSection === "view-inventory" && (
-  <div className="mb-4">
-    <div className="flex flex-row items-center gap-4 bg-white border border-gray-200 rounded-lg px-6 py-4 shadow-sm">
-      {/* Search */}
-      <div className="relative flex items-center border border-gray-300 h-10 w-full max-w-5xl px-0 bg-white">
-        <input
-  type="text"
-  value={search}
-  onChange={(e) => setSearch(e.target.value)}
-  placeholder="Search your item here"
-  className="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm text-[#A7A7A7] placeholder-[#A7A7A7] h-full pl-4 pr-32"
-/>
-        <button
-          className="absolute right-0 top-1/2 -translate-y-1/2 w-28 h-8 bg-[#1A318C] text-white text-sm font-semibold"
-          style={{ minWidth: '90px' }}
-        >
-          Search
-        </button>
-      </div>
-      {/* Category dropdown */}
-      <select
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
-        className="bg-white border border-gray-300 rounded h-10 px-4 text-sm text-[#A7A7A7] min-w-[196px]"
-      >
-        <option value="All">Category</option>
-        {[...new Set(inventoryItems.map((item) => item.category))].map(
-          (cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          )
-        )}
-      </select>
-      {/* View Mode dropdown */}
-      <select
-        value={viewMode}
-        onChange={(e) => setViewMode(e.target.value)}
-        className="bg-white border border-gray-300 rounded h-10 px-4 text-sm text-[#A7A7A7] min-w-[196px]"
-      >
-        <option value="grid">View mode</option>
-        <option value="grid">Grid</option>
-        <option value="list">List</option>
-      </select>
-    </div>
-  </div>
-)}
 
-        {viewMode === "grid" ? (
+      {/* main section selected from sidebar(right) */}
+      <main className="flex-1 bg-[#F3F3F3] ">
+        {/* Conditional Rendering */}
+        {activeSection === 'view-inventory' && (
+          // item list
           <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredItems.map((item) => (
-              <InventoryCard
-                key={item.id}
-                item={item}
-                onOpen={() =>
-                  navigate(`/dashboard/inventory/edit-item/${item.id}`)
-                }
-                onRemove={
-                  {
-                    /* TODO */
-                  }
-                }
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4 pr-20">
-            {filteredItems.map((item) => (
-              <InventoryCard
-                key={item.id}
-                item={item}
-                onOpen={() =>
-                  navigate(`/dashboard/inventory/edit-item/${item.id}`)
-                }
-                onRemove={
-                  {
-                    /* TODO */
-                  }
-                }
-                viewMode="list"
+            {inventoryItems.map(item => (
+              <InventoryCard 
+                key={item.id} 
+                item={item} 
+                onOpen={() => navigate(`/dashboard/inventory/edit-item/${item.id}`)} 
               />
             ))}
           </div>
         )}
+
+        {activeSection === 'add-item' && <div><AddItem/></div>}
+
+        {activeSection === 'inventory-config' && <div>this is config</div>}
+
+        {activeSection === 'inventory-report' && <div>this is inv report</div>}
+
       </main>
 
-      {/* Bottom Loading Bar */}
+      {/* Loading Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-blue-800 text-white py-2">
-        <div className="flex items-center gap-1 justify-start  ml-5">
+        <div className="flex items-center gap-1 justify-start ml-5">
           <SpinnerDot />
           <span className="text-sm font-medium">Loading...</span>
         </div>
       </div>
-
-      <AddItemModal
-        isOpen={isAddItemOpen}
-        onClose={() => navigate("/dashboard/inventory")}
-        onSave={(item) => {
-          // handle save logic here
-          navigate("/dashboard/inventory");
-        }}
-        formData={addItemFormData}
-  setFormData={setAddItemFormData}
-      />
-
-      <Configurations
-        isOpen={isConfigOpen}
-        onClose={() => navigate("/dashboard/inventory")}
-        onSave={(units) => {
-          // handle save logic here
-          navigate("/dashboard/inventory");
-        }}
-        units={units}
-  setUnits={setUnits}
-  newUnit={newUnit}
-  setNewUnit={setNewUnit}
-      />
-
-      <EditItemModal
-        isOpen={isEditItemOpen}
-        item={editingItem}
-        onClose={() => navigate("/dashboard/inventory")}
-        onUpdate={(updatedItem) => {
-          setInventoryItems((prevItems) =>
-            prevItems.map((item) =>
-              item.id === updatedItem.id ? { ...item, ...updatedItem } : item
-            )
-          );
-          navigate("/dashboard/inventory");
-        }}
-      />
     </div>
   );
 }
