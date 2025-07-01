@@ -30,15 +30,21 @@ function Sidebar() {
         currentPath === "/dashboard/notifications" ? "bg-[#EBEBEB] border-blue-500 relative" : ""
       } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
     >
-      <img className="w-12 mb-2" src={Dashboard_notification} alt="" />
-      <span className="whitespace-nowrap flex items-center gap-1">
-        Notifications
-        {currentPath === "/dashboard/notifications" && (
-          <svg className="w-4 h-4 text-blue-600 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        )}
+      {/* Image and arrow */}
+  <div className="relative flex flex-col items-center mb-2">
+    <img className="w-12 object-contain" src={Dashboard_notification} alt="" />
+    {currentPath === "/dashboard/notifications" && (
+      <span className="absolute right-[-32px] top-1/2 -translate-y-1/2">
+        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
       </span>
+    )}
+  </div>
+  {/* Label below image */}
+  <span className="text-sm font-medium text-center mt-1">
+    Notifications
+  </span>
     </Link>
           </li>
           
@@ -49,14 +55,21 @@ function Sidebar() {
     currentPath.startsWith("/dashboard/inventory") ? "bg-[#EBEBEB] border-blue-500 relative" : ""
   } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
 >
-  <img className="w-12 mb-2" src={Dashboard_inventory} alt="" />
-  <span className="whitespace-nowrap flex items-center gap-1">
-    Inventory
-    {currentPath.startsWith("/dashboard/inventory") && (
-      <svg className="w-4 h-4 text-blue-600 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-      </svg>
+
+  {/* Image and arrow */}
+  <div className="relative flex flex-col items-center mb-2">
+    <img className="w-12 object-contain" src={Dashboard_inventory} alt="" />
+    {currentPath === "/dashboard/inventory" && (
+      <span className="absolute right-[-32px] top-1/2 -translate-y-1/2">
+        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </span>
     )}
+  </div>
+  {/* Label below image */}
+  <span className="text-sm font-medium text-center mt-1">
+    Inventory
   </span>
 </Link>
           </li>
@@ -67,15 +80,22 @@ function Sidebar() {
         currentPath.startsWith("/dashboard/sales") ? "bg-[#EBEBEB] border-blue-500 relative" : ""
       } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
     >
-      <img className="w-12 mb-2" src={Dashboard_sales} alt="" />
-      <span className="whitespace-nowrap flex items-center gap-1">
-        Sales
-        {currentPath.startsWith("/dashboard/sales") && (
-          <svg className="w-4 h-4 text-blue-600 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        )}
+      
+      {/* Image and arrow */}
+  <div className="relative flex flex-col items-center mb-2">
+    <img className="w-12 object-contain" src={Dashboard_sales} alt="" />
+    {currentPath === "/dashboard/sales" && (
+      <span className="absolute right-[-32px] top-1/2 -translate-y-1/2">
+        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
       </span>
+    )}
+  </div>
+  {/* Label below image */}
+  <span className="text-sm font-medium text-center mt-1">
+    Sales
+  </span>
     </Link>
           </li>
           <li>
@@ -85,15 +105,21 @@ function Sidebar() {
         currentPath === "/dashboard/settings" ? "bg-[#EBEBEB] border-blue-500 relative" : ""
       } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
     >
-      <img className="w-12 mb-2" src={Dashboard_settings} alt="" />
-      <span className="whitespace-nowrap flex items-center gap-1">
-        Settings
-        {currentPath === "/dashboard/settings" && (
-          <svg className="w-4 h-4 text-blue-600 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        )}
+      {/* Image and arrow */}
+  <div className="relative flex flex-col items-center mb-2">
+    <img className="w-12 object-contain" src={Dashboard_settings} alt="" />
+    {currentPath === "/dashboard/settings" && (
+      <span className="absolute right-[-32px] top-1/2 -translate-y-1/2">
+        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
       </span>
+    )}
+  </div>
+  {/* Label below image */}
+  <span className="text-sm font-medium text-center mt-1">
+    Settings
+  </span>
     </Link>
           </li>
           <li>
@@ -104,15 +130,22 @@ function Sidebar() {
       } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200 bg-transparent outline-none`}
       style={{ border: "none", background: "none" }}
     >
-      <img className="w-12 mb-2" src={Dashboard_logout} alt="" />
-      <span className="whitespace-nowrap flex items-center gap-1">
-        Logout
-        {currentPath === "/dashboard/logout" && (
-          <svg className="w-4 h-4 text-blue-600 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        )}
+      
+    {/* Image and arrow */}
+  <div className="relative flex flex-col items-center mb-2">
+    <img className="w-12 object-contain" src={Dashboard_logout} alt="" />
+    {currentPath === "/dashboard/logout" && (
+      <span className="absolute right-[-32px] top-1/2 -translate-y-1/2">
+        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
       </span>
+    )}
+  </div>
+  {/* Label below image */}
+  <span className="text-sm font-medium text-center mt-1">
+    Logout
+  </span>
     </button>
           </li>
         </ul>
