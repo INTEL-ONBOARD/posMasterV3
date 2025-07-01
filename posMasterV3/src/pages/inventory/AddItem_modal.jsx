@@ -1,18 +1,8 @@
 import React, { useState } from "react";
 import { X, Upload, Printer } from "lucide-react";
 
-export default function AddItemModal({ isOpen, onClose, onSave }) {
-  const [formData, setFormData] = useState({
-    name: "",
-    itemCode: "",
-    barcode: "SKU-3847833",
-    category: "",
-    status: "Available",
-    thresholdLimit: "",
-    maximumThreshold: "",
-    quantity: "",
-    uom: "KG",
-  });
+export default function AddItemModal({ isOpen, onClose, onSave ,formData, setFormData}) {
+ 
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
