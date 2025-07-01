@@ -1,20 +1,15 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import InventorySidebar from './Inventory_sidebar';
 import InventoryCard from '../../frontend/components/Inventory_card';
-import AddItemModal from './AddItem_modal';
-import Configurations from './Configurations';
-import bananaImg from '../../assets/Inventory_banana.png';
 import SpinnerDot from '../../frontend/components/SpinnerDot';
-import EditItemModal from './EditItem_modal';
-import ViewInventory from './ViewInventory';
-
+import bananaImg from '../../assets/Inventory_banana.png';
+import AddItem from './AddItem';
 
 
 function Inventory() {
-
-    const navigate = useNavigate();
-  const location = useLocation();
+  const navigate = useNavigate();
+  const [activeSection, setActiveSection] = useState('view-inventory');
 
   // Example inventory data
 const [inventoryItems, setInventoryItems] = useState([
@@ -120,89 +115,48 @@ const [inventoryItems, setInventoryItems] = useState([
   // Add more items as needed
 ]);
 
-// Get item ID from URL
-  const getEditingItemId = () => {
-    const pathParts = location.pathname.split('/');
-    return pathParts[pathParts.length - 1];
-  };
-
-  const editingItem = inventoryItems.find(
-    item => item.id === getEditingItemId()
-  );
-
-
-
-  
-  const [activeSection, setActiveSection] = useState('inventory-list');
-  // Show modal if route matches
-  const isAddItemOpen = location.pathname.endsWith('/add-item');
-  const isEditItemOpen = location.pathname.includes('/edit-item/');
-  const isConfigOpen = location.pathname.endsWith('/config');
-
   return (
-    // id here controls the blur thingyy
-    <div id="inv-background"  className="flex h-screen bg-[#EBEBEB] -ml-12">
-      {/* <div id="inv-background"  className={`flex h-screen bg-red-400 p-24 ${ (isAddItemOpen || isConfigOpen) ? 'blur-md' : 'blur-none' }`}> */}
-      {/* inventory sidebar */}
-
+    <div id="inv-background" className="flex h-screen bg-[#EBEBEB] -ml-12">
+      {/* sidebar (left) */}
       <InventorySidebar
         activeSection={activeSection}
-        onSectionChange={setActiveSection}
-        onAddItemClick={() => navigate('/dashboard/inventory/add-item')}
-        onConfigClick={() => navigate('/dashboard/inventory/config')}
+        onViewInvClick={() => setActiveSection('view-inventory')}
+        onAddItemClick={() => setActiveSection('add-item')}
+        onConfigClick={() => setActiveSection('inventory-config')}
+        onCReportClick={() => setActiveSection('inventory-report')}
       />
-      {/* main section */}
-      <main className="flex-1 p-14 bg-[#F3F3F3] rounded-r-2xl">
 
-        {/* inventory card list */}
-        <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {inventoryItems.map(item => (
-            <InventoryCard key={item.id} item={item} onOpen={() => navigate(`/dashboard/inventory/edit-item/${item.id}`)} onRemove={{/* TODO */}} />
-          ))}
-        </div>
+      {/* main section selected from sidebar(right) */}
+      <main className="flex-1 bg-[#F3F3F3] ">
+        {/* Conditional Rendering */}
+        {activeSection === 'view-inventory' && (
+          // item list
+          <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {inventoryItems.map(item => (
+              <InventoryCard 
+                key={item.id} 
+                item={item} 
+                onOpen={() => navigate(`/dashboard/inventory/edit-item/${item.id}`)} 
+              />
+            ))}
+          </div>
+        )}
+
+        {activeSection === 'add-item' && <div><AddItem/></div>}
+
+        {activeSection === 'inventory-config' && <div>this is config</div>}
+
+        {activeSection === 'inventory-report' && <div>this is inv report</div>}
+
       </main>
-      
-      {/* Bottom Loading Bar */}
+
+      {/* Loading Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-blue-800 text-white py-2">
-        <div className="flex items-center gap-1 justify-start  ml-5">
+        <div className="flex items-center gap-1 justify-start ml-5">
           <SpinnerDot />
           <span className="text-sm font-medium">Loading...</span>
         </div>
       </div>
-
-
-      <AddItemModal
-        isOpen={isAddItemOpen}
-        onClose={() => navigate('/dashboard/inventory')}
-        onSave={(item) => {
-          // handle save logic here
-          navigate('/dashboard/inventory');
-        }}
-      />
-
-      <Configurations
-        isOpen={isConfigOpen}
-        onClose={() => navigate('/dashboard/inventory')}
-        onSave={(units) => {
-        // handle save logic here
-        navigate('/dashboard/inventory');
-      }}
-      />
-
-      <EditItemModal
-        isOpen={isEditItemOpen}
-        item={editingItem}
-        onClose={() => navigate('/dashboard/inventory')}
-        onUpdate={(updatedItem) => {
-          setInventoryItems(prevItems => 
-            prevItems.map(item => 
-              item.id === updatedItem.id ? {...item, ...updatedItem} : item
-            )
-          );
-          navigate('/dashboard/inventory');
-        }}
-      />
-
     </div>
   );
 }
