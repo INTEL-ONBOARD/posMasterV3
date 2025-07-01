@@ -1,18 +1,8 @@
 import React, { useState } from 'react';
 import { X, Plus, Check, Printer } from 'lucide-react';
 
-export default function ConfigurationModal({ isOpen, onClose, onSave }) {
-  const [units, setUnits] = useState([
-    { id: 1, name: 'Kilogram', symbol: 'KG' },
-    { id: 2, name: 'Pieces', symbol: 'PCS' },
-    { id: 3, name: 'Liters', symbol: 'LTR' },
-    { id: 4, name: 'Meters', symbol: 'M' },
-    { id: 4, name: 'Meters', symbol: 'M' },
-    { id: 4, name: 'Meters', symbol: 'M' },
-    { id: 4, name: 'Meters', symbol: 'M' },
-  ]);
-
-  const [newUnit, setNewUnit] = useState({ name: '', symbol: '' });
+export default function ConfigurationModal({ isOpen, onClose, onSave ,units, setUnits, newUnit, setNewUnit }) {
+ 
 
   const handleAddUnit = () => {
     if (newUnit.name && newUnit.symbol) {
