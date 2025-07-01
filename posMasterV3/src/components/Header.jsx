@@ -43,7 +43,7 @@ function ProfileDropdown() {
       </button>
       {/* Dropdown */}
       <div
-        className={`absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg transition-all duration-200 origin-top-right z-50
+        className={`absolute right-0 mt-2 w-48 bg-white border border-gray-200  shadow-lg transition-all duration-200 origin-top-right z-50
         ${open ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}
         `}
       >
