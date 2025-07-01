@@ -80,7 +80,7 @@ function InventorySidebar({
     )}
   </div>
   {/* Label below image */}
-  <span className={`text-sm font-medium text-center mt-1 ${isActive ? 'text-blue-600' : 'text-gray-700'}`}>
+  <span className={`text-sm font-medium text-center mt-1 ${isActive ? 'text-black-600' : 'text-gray-700'}`}>
     {item.label}
   </span>
 </button>
