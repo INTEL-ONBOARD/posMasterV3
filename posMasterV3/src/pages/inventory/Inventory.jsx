@@ -149,12 +149,12 @@ const [newUnit, setNewUnit] = useState({ name: '', symbol: '' });
       {/* Search */}
       <div className="relative flex items-center border border-gray-300 h-10 w-full max-w-5xl px-0 bg-white">
         <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search your item here"
-          className="flex-1 bg-transparent border-none outline-none text-sm text-[#A7A7A7] placeholder-[#A7A7A7] h-full pl-4 pr-32"
-        />
+  type="text"
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+  placeholder="Search your item here"
+  className="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-sm text-[#A7A7A7] placeholder-[#A7A7A7] h-full pl-4 pr-32"
+/>
         <button
           className="absolute right-0 top-1/2 -translate-y-1/2 w-28 h-8 bg-[#1A318C] text-white text-sm font-semibold"
           style={{ minWidth: '90px' }}

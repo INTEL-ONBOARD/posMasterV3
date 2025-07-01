@@ -45,3 +45,7 @@
 html, body {
   overflow: hidden;
 }
+input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
