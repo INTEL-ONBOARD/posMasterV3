@@ -27,7 +27,7 @@ function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ open, close: handleClose }}>
       {children}
-      <div className="space-y-2 fixed right-6 top-20 z-50">
+      <div className="space-y-2 fixed right-6 top-24 z-50">
         {toasts.map(({ id, message }) => (
           <div
             key={id}
