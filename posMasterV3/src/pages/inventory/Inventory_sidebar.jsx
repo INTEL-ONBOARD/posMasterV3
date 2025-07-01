@@ -58,27 +58,32 @@ function InventorySidebar({
           const isActive = activeSection === item.id;
 
           return (
-             <button
-      key={item.id}
-      onClick={item.onClick}
-      className={`w-60 h-40 flex flex-col items-center p-10 rounded-lg transition-all duration-200 hover:shadow-md ${
-        isActive
-          ? 'border-blue-500 bg-[#EBEBEB] relative'
-          : 'bg-[#FAFAFA] border-gray-200 hover:border-gray-300'
-      }`}
-    >
-      <img src={item.icon} alt={item.label} className="w-16 h-16 object-contain" />
-      <span className={`text-sm font-medium text-center flex items-center gap-2 ${
-        isActive ? 'text-blue-600' : 'text-gray-700'
-      }`}>
-        {item.label}
-        {isActive && (
-          <svg className="w-4 h-4 text-blue-600 ml-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        )}
+       <button
+  key={item.id}
+  onClick={item.onClick}
+  className={`w-60 h-40 flex flex-col items-center justify-center p-4 rounded-lg transition-all duration-200 hover:shadow-md ${
+    isActive
+      ? 'border-blue-500 bg-[#EBEBEB] relative'
+      : 'bg-[#FAFAFA] border-gray-200 hover:border-gray-300'
+  }`}
+>
+  {/* Image and arrow */}
+  <div className="relative flex flex-col items-center mb-2">
+    <img src={item.icon} alt={item.label} className="w-16 h-16 object-contain" />
+    {/* Arrow absolutely positioned to the right of the image, vertically centered */}
+    {isActive && (
+      <span className="absolute right-[-40px] top-1/2 -translate-y-1/2">
+        <svg className="w-8 h-8 text-black" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
       </span>
-    </button>
+    )}
+  </div>
+  {/* Label below image */}
+  <span className={`text-sm font-medium text-center mt-1 ${isActive ? 'text-blue-600' : 'text-gray-700'}`}>
+    {item.label}
+  </span>
+</button>
           );
         })}
       </div>

@@ -9,7 +9,7 @@ function BreadCrumb() {
     <nav className="text-sm py-2 px-4" aria-label="Breadcrumb">
       <ol className="flex items-center space-x-2">
         <li>
-          <Link to="/" className="hover:underline text-[#1A318C] font-semibold">POS MASTER.3</Link>
+          <Link to="/" className="text-[#1A318C] font-semibold">POS MASTER.3</Link>
         </li>
         {pathnames.map((name, idx) => {
           const routeTo = '/' + pathnames.slice(0, idx + 1).join('/');
@@ -23,7 +23,7 @@ function BreadCrumb() {
               {isLast ? (
                 <span className="text-[#1A318C] font-bold uppercase tracking-wide">{decodeURIComponent(name)}</span>
               ) : (
-                <Link to={routeTo} className="hover:underline text-[#1A318C] font-semibold uppercase tracking-wide">
+                <Link to={routeTo} className="text-[#1A318C] font-semibold uppercase tracking-wide">
                   {decodeURIComponent(name)}
                 </Link>
               )}

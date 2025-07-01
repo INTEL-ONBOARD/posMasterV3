@@ -122,50 +122,55 @@ function Inventory() {
         onConfigClick={() => navigate("/dashboard/inventory/config")}
       />
       {/* main section */}
-      <main className="flex-1 p-14 bg-[#F3F3F3] rounded-r-2xl">
+      <main className="flex-1 p-0 bg-[#F3F3F3] rounded-r-2xl">
         {/* Controls Bar */}
-        {activeSection === "view-inventory" && (
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:gap-4 gap-2">
-            {/* Search */}
-            <div className="flex items-center bg-white border border-gray-300 rounded-md px-2 py-1 w-full max-w-2xl">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search your item here"
-                className="flex-1 px-2 py-1 bg-transparent outline-none"
-              />
-              <button className="px-3 py-1 bg-[#1A318C] text-white rounded-md text-sm ml-2">
-                Search
-              </button>
-            </div>
-            {/* Category */}
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="bg-white border border-gray-300 rounded-md px-4 py-2 text-sm"
-            >
-              <option value="All">Category</option>
-              {[...new Set(inventoryItems.map((item) => item.category))].map(
-                (cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                )
-              )}
-            </select>
-            {/* View Mode */}
-            <select
-              value={viewMode}
-              onChange={(e) => setViewMode(e.target.value)}
-              className="bg-white border border-gray-300 rounded-md px-4 py-2 text-sm"
-            >
-              <option value="grid">View mode</option>
-              <option value="grid">Grid</option>
-              <option value="list">List</option>
-            </select>
-          </div>
+       {activeSection === "view-inventory" && (
+  <div className="mb-4">
+    <div className="flex flex-row items-center gap-4 bg-white border border-gray-200 rounded-lg px-6 py-4 shadow-sm">
+      {/* Search */}
+      <div className="relative flex items-center border border-gray-300 h-10 w-full max-w-4xl px-0 bg-white">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search your item here"
+          className="flex-1 bg-transparent border-none outline-none text-sm text-[#A7A7A7] placeholder-[#A7A7A7] h-full pl-4 pr-32"
+        />
+        <button
+          className="absolute right-0 top-1/2 -translate-y-1/2 w-28 h-8 bg-[#1A318C] text-white text-sm font-semibold"
+          style={{ minWidth: '90px' }}
+        >
+          Search
+        </button>
+      </div>
+      {/* Category dropdown */}
+      <select
+        value={category}
+        onChange={(e) => setCategory(e.target.value)}
+        className="bg-white border border-gray-300 rounded h-10 px-4 text-sm text-[#A7A7A7] min-w-[210px]"
+      >
+        <option value="All">Category</option>
+        {[...new Set(inventoryItems.map((item) => item.category))].map(
+          (cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
+          )
         )}
+      </select>
+      {/* View Mode dropdown */}
+      <select
+        value={viewMode}
+        onChange={(e) => setViewMode(e.target.value)}
+        className="bg-white border border-gray-300 rounded h-10 px-4 text-sm text-[#A7A7A7] min-w-[210px]"
+      >
+        <option value="grid">View mode</option>
+        <option value="grid">Grid</option>
+        <option value="list">List</option>
+      </select>
+    </div>
+  </div>
+)}
 
         {viewMode === "grid" ? (
           <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
