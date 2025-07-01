@@ -6,7 +6,7 @@ import bananaImg from '../../assets/Inventory_banana.png';
 function AddItem() {
 
 
-  // Example inventory data
+  // Example inventory dataa
 const [inventoryItems, setInventoryItems] = useState([
   {
     id: '1',
@@ -142,29 +142,29 @@ const [inventoryItems, setInventoryItems] = useState([
           <div className="bg-white w-1/3 h-[55rem] p-10 flex flex-col justify-between">
 
             {/* image upload and form(top) */}
-            <div className="flex flex-col gap-6">
-              {/* image uploading  */}
-              <div className="flex flex-row items-center max-h-48">
+            <div className="flex flex-col justify-end gap-6 h-[45rem]">
+              {/* image uploading block*/}
+              <div className="flex flex-row items-center max-h-full">
                 <div className="w-48 h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center mb-4 hover:border-gray-400 transition-colors">
                   <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-2">
                     <X className="w-6 h-6 text-red-500" />
                   </div>
                 </div>
                 <div className="flex flex-col m-10">
-                <button className="px-4 py-2 mb-4 bg-[#4A4A4A] text-white text-sm hover:bg-gray-700 transition-colors">
-                  Upload a photo
-                </button>
-                <div className="grid grid-cols-2">
-                <p className="text-lg text-black">SKU :</p>
-                <p className="text-lg text-[#A7A7A7]">RX3466</p>
-                <p className="text-lg text-black">BARCODE :</p>
-                <p className="text-lg text-[#A7A7A7]">RX3466</p>
-                </div>
+                  <button className="px-4 py-2 mb-4 bg-[#4A4A4A] text-white text-sm hover:bg-gray-700 transition-colors">
+                    Upload a photo
+                  </button>
+                  <div className="grid grid-cols-2">
+                    <p className="text-lg text-black">SKU :</p>
+                    <p className="text-lg text-[#A7A7A7]">RX3466</p>
+                    <p className="text-lg text-black">BARCODE :</p>
+                    <p className="text-lg text-[#A7A7A7]">RX3466</p>
+                  </div>
                 </div>   
               </div>
 
-              {/* item form */}
-              <div className="space-y-4">
+              {/* item form block*/}
+              <div className="space-y-4 mb-7">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Name
@@ -175,7 +175,7 @@ const [inventoryItems, setInventoryItems] = useState([
                     value={formData.name}
                     onChange={handleInputChange}
                     placeholder="item@gmail.com"
-                    className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
 
@@ -188,7 +188,7 @@ const [inventoryItems, setInventoryItems] = useState([
                       name="category"
                       value={formData.category}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="food">Foods</option>
                       <option value="beverages">Beverages</option>
@@ -203,7 +203,7 @@ const [inventoryItems, setInventoryItems] = useState([
                       name="brand"
                       value={formData.brand}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="Available">Wijaya</option>
                       <option value="Out of Stock">Malibourn</option>
@@ -236,7 +236,7 @@ const [inventoryItems, setInventoryItems] = useState([
                       value={formData.sku}
                       onChange={handleInputChange}
                       placeholder=""
-                      className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                   
@@ -248,7 +248,7 @@ const [inventoryItems, setInventoryItems] = useState([
                       name="status"
                       value={formData.status}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="Available">Available</option>
                       <option value="Out of Stock">Out of Stock</option>
@@ -265,7 +265,7 @@ const [inventoryItems, setInventoryItems] = useState([
                     <input
                       type="number"
                       placeholder="12"
-                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                   <div>
@@ -275,7 +275,7 @@ const [inventoryItems, setInventoryItems] = useState([
                     <input
                       type="number"
                       placeholder="12"
-                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -291,7 +291,7 @@ const [inventoryItems, setInventoryItems] = useState([
                       value={formData.quantity}
                       onChange={handleInputChange}
                       placeholder="12"
-                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                   <div>
@@ -302,7 +302,7 @@ const [inventoryItems, setInventoryItems] = useState([
                       name="uom"
                       value={formData.uom}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="KG">KG</option>
                       <option value="PCS">PCS</option>
@@ -325,13 +325,13 @@ const [inventoryItems, setInventoryItems] = useState([
               <div>
                 <button
                   //   onClick={}
-                  className="px-6 py-2 mr-4 border bg-[#727272] border-gray-300 text-white rounded-md hover:bg-gray-700 transition-colors"
+                  className="px-6 py-2 mr-4 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
                 >
                   Clear
                 </button>
                 <button
                   //   onClick={}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-[#1A318C] transition-colors"
+                  className="px-6 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
                 >
                   Save
                 </button>
@@ -344,16 +344,16 @@ const [inventoryItems, setInventoryItems] = useState([
         {/* search panel */}
         <nav className="w-full flex flex-row justify-between py-8 px-10 h-[7rem] bg-white gap-6">
           {/* search textbox and search button */}
-                  <div className="w-full flex flex-row justify-between border-2 pb-2 border-b-[#EDEDED] h-14">
+                  <div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-2 border-b-[#EDEDED] h-14">
                     <input
                       type="text"
                       placeholder="Search your item here..."
-                      className="px-3 py-2 w-full bg-white border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="px-3 py-2 w-full bg-white border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <button
                     //   onClick={}
-                    className="px-10 py-2 bg-blue-600 text-white rounded-md hover:bg-[#1A318C] transition-colors"
-                      >Search
+                    className="px-10 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors">
+                      Search
                       </button>
                   </div>
 
