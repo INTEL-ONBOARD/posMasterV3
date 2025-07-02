@@ -47,7 +47,7 @@ function InventorySidebar({
             <button
   key={item.id}
   onClick={item.onClick}
-  className={`w-60 h-40 flex flex-col items-center justify-center p-4 rounded-lg transition-all duration-200 hover:shadow-md ${
+  className={`w-60 h-40 flex flex-col items-center justify-center p-4 transition-all duration-200 ${
     isActive
       ? 'border-blue-500 bg-[#EBEBEB] relative'
       : 'bg-[#FAFAFA] border-gray-200 hover:border-gray-300'
