@@ -5,6 +5,7 @@ import InventoryCard from "../../frontend/components/Inventory_card";
 import SpinnerDot from "../../frontend/components/SpinnerDot";
 import bananaImg from "../../assets/Inventory_banana.png";
 import AddItem from "./AddItem";
+import NotFound from "../../assets/nonicons_not-found-16.png";
 
 function Inventory() {
   const navigate = useNavigate();
@@ -173,17 +174,28 @@ function Inventory() {
               <option value="list">List</option>
             </select>
           </nav>
-          <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredItems.map((item) => (
-              <InventoryCard
-                key={item.id}
-                item={item}
-                onOpen={() =>
-                  navigate(`/dashboard/inventory/edit-item/${item.id}`)
-                }
-              />
-            ))}
-          </div>
+         <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[400px]">
+  {filteredItems.length === 0 ? (
+    <div className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg" style={{ minHeight: "50vh" }}>
+      <img
+        src={NotFound}
+        alt="No items found!"
+        className="w-12 h-12 mb-2 opacity-70"
+      />
+      <span>No items found!</span>
+    </div>
+  ) : (
+    filteredItems.map((item) => (
+      <InventoryCard
+        key={item.id}
+        item={item}
+        onOpen={() =>
+          navigate(`/dashboard/inventory/edit-item/${item.id}`)
+        }
+      />
+    ))
+  )}
+</div>
         </div>
 
         {/* Add Item */}
