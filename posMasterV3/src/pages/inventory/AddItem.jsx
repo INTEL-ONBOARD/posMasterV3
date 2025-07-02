@@ -54,6 +54,22 @@ const [inventoryItems, setInventoryItems] = useState([
   // Add more items as needed
 ]);
 
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("All");
+  const [loading, setLoading] = useState(false);
+
+  // search handler to set loading state:
+  const handleSearch = (e) => {
+    setLoading(true);
+    setSearch(e.target.value);
+    setTimeout(() => setLoading(false), 600);
+  };
+
+  // category handler
+  const handleCategoryChange = (e) => {
+    setCategory(e.target.value);
+  };
+
 
   const [formUpdateData, setFormUpdateData] = useState({
     id: "4",
@@ -69,6 +85,13 @@ const [inventoryItems, setInventoryItems] = useState([
     uom: "test kg",
     image: itemImg,
   });
+
+  const filteredItems = inventoryItems.filter(
+    (item) =>
+      (category === "All" || item.category === category) &&
+      item.name.toLowerCase().includes(search.toLowerCase())
+  );
+
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -312,43 +335,57 @@ const [inventoryItems, setInventoryItems] = useState([
         {/* search panel */}
         <nav className="w-full flex flex-row justify-between py-8 px-10 h-[7rem] bg-white gap-6">
           {/* search textbox and search button */}
-                  <div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-2 border-b-[#EDEDED] h-14">
-                    <input
-                      type="text"
-                      placeholder="Search your item here..."
-                      className="px-3 py-2 w-full bg-white border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <button
-                    //   onClick={}
-                    className="px-10 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors">
-                      Search
-                      </button>
-                  </div>
+<div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-2 border-b-[#EDEDED] h-14">
+            <input
+              type="text"
+              value={search}
+              onChange={handleSearch} // Fixed handler
+              placeholder="Search your item here..."
+              className="px-3 py-2 w-full bg-white border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <button className="px-10 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors">
+              Search
+            </button>
+          </div>
 
-                  <select
-                      name="searchCategory"
-                      //value={formData.uom}
-                      onChange={handleInputChange}
-                      className="w-80 h-10 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="electronics">Electronics</option>
-                      <option value="fruit">Fruits</option>
-                      <option value="beverage">Beverage</option>
-                    </select>
+{/* Fixed category filter */}
+          <select
+            value={category}
+            onChange={handleCategoryChange} // Correct handler
+            className="w-80 h-10 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="All">All Categories</option>
+            <option value="electronics">Electronics</option>
+            <option value="fruit">Fruit</option>
+            <option value="beverage">Beverage</option>
+          </select>
         </nav>
                   <div className="h-[45rem] overflow-y-scroll">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 p-10">
+            {loading ? (
+              // Loading spinner
+              <div className="col-span-full flex flex-col items-center justify-center" style={{ minHeight: "60vh" }}>
+                <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
+                <span className="text-gray-700 text-xl mt-1">Please wait...</span>
+              </div>
+            ) : filteredItems.length === 0 ? (
+              // No items found (without image)
+              <div className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg" style={{ minHeight: "50vh" }}>
+                <span>No items found!</span>
+              </div>
+            ) : (
+              // Item cards
+              filteredItems.map((item) => (
+                <InventoryCard
+                  key={item.id}
+                  item={item}
+                  onOpen={() => loadItem(item)}
+                />
+              ))
+            )}
+          </div>
+        </div>
 
-           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4  p-10">
-  {inventoryItems.map(item => (
-    <Add_item_Card
-      key={item.id} 
-      item={item} 
-      onOpen={() => loadItem(item)} 
-      // Optionally add onRemove if you want to support removing items
-    />
-  ))}
-</div>
-                        </div>
         </div>
       </div>
   );
