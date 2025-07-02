@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { X, Upload, Printer } from "lucide-react";
+import Add_item_Card from "../../frontend/components/Add_item_Card";
+import bananaImg from '../../assets/Inventory_banana.png';
 import InventoryCard from '../../frontend/components/Inventory_card';
 import itemImg from '../../assets/Inventory_banana.png';
 
@@ -336,15 +338,16 @@ const [inventoryItems, setInventoryItems] = useState([
         </nav>
                   <div className="h-[45rem] overflow-y-scroll">
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4  p-10">
-                        {inventoryItems.map(item => (
-                          <InventoryCard 
-                          key={item.id} 
-                          item={item} 
-                          onOpen={() => loadItem(item)} 
-                          />
-                        ))}
-                      </div>
+           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4  p-10">
+  {inventoryItems.map(item => (
+    <Add_item_Card
+      key={item.id} 
+      item={item} 
+      onOpen={() => loadItem(item)} 
+      // Optionally add onRemove if you want to support removing items
+    />
+  ))}
+</div>
                         </div>
         </div>
       </div>
