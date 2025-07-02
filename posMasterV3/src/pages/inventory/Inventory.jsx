@@ -10,6 +10,8 @@ import NotFound from "../../assets/nonicons_not-found-16.png";
 function Inventory() {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("view-inventory");
+  // Add this state at the top of your Inventory component:
+
 
   // Example inventory data
   const [inventoryItems, setInventoryItems] = useState([
@@ -116,6 +118,18 @@ function Inventory() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [viewMode, setViewMode] = useState("grid"); // or "list"
+  // Add this state at the top of your Inventory component:
+const [isSearching, setIsSearching] = useState(false);
+
+// search handler to set loading state:
+const handleSearch = (e) => {
+  setIsSearching(true);
+  setSearch(e.target.value);
+  // Simulate async search (replace with your real async logic if needed)
+  setTimeout(() => {
+    setIsSearching(false);
+  }, 600); // 600ms delay for demo
+};
 
   const filteredItems = inventoryItems.filter(
     (item) =>
@@ -146,7 +160,7 @@ function Inventory() {
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={handleSearch}
                 placeholder="Search your item here..."
                 className="flex-1 px-3 py-2 bg-white focus:outline-none"
               />
@@ -175,26 +189,34 @@ function Inventory() {
             </select>
           </nav>
          <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[400px]">
-  {filteredItems.length === 0 ? (
-    <div className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg" style={{ minHeight: "50vh" }}>
-      <img
-        src={NotFound}
-        alt="No items found!"
-        className="w-12 h-12 mb-2 opacity-70"
-      />
-      <span>No items found!</span>
+ {isSearching ? (
+  <div className="col-span-full flex flex-col items-center justify-center" style={{ minHeight: "60vh" }}>
+    <div className="flex flex-col items-center">
+      {/* Custom spinner */}
+      <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
+      <span className="text-gray-700 text-xl mt-1">Please wait...</span>
     </div>
-  ) : (
-    filteredItems.map((item) => (
-      <InventoryCard
-        key={item.id}
-        item={item}
-        onOpen={() =>
-          navigate(`/dashboard/inventory/edit-item/${item.id}`)
-        }
-      />
-    ))
-  )}
+  </div>
+) : filteredItems.length === 0 ? (
+  <div className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg" style={{ minHeight: "50vh" }}>
+    <img
+      src={NotFound}
+      alt="No items found!"
+      className="w-12 h-12 mb-2 opacity-70"
+    />
+    <span>No items found!</span>
+  </div>
+) : (
+  filteredItems.map((item) => (
+    <InventoryCard
+      key={item.id}
+      item={item}
+      onOpen={() =>
+        navigate(`/dashboard/inventory/edit-item/${item.id}`)
+      }
+    />
+  ))
+)}
 </div>
         </div>
 
