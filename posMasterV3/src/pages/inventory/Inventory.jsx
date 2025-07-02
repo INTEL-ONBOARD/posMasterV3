@@ -121,6 +121,11 @@ function Inventory() {
       (category === "All" || item.category === category) &&
       item.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  // helper function to toggle Tailwind visibility hrrngh
+  const isVisible = (section) =>
+    activeSection === section ? "block" : "hidden";
+
   return (
     <div id="inv-background" className="flex h-screen bg-[#EBEBEB] -ml-12">
       {/* sidebar (left) */}
@@ -132,75 +137,71 @@ function Inventory() {
         onCReportClick={() => setActiveSection("inventory-report")}
       />
 
-      <main className="flex-1 bg-[#F3F3F3] ">
-        {/* Conditional Rendering */}
-        {activeSection === "view-inventory" && (
-          <>
-            {/* Search panel */}
-            <nav className="w-full flex flex-row justify-between py-4 px-10 bg-white gap-6 mb-4">
-              {/* search textbox and search button */}
-              <div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-1 border-b-[#EDEDED] h-12">
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search your item here..."
-                  className="px-3 py-2 w-full bg-white border border-transparent focus:outline-none focus:ring-0 focus:border-transparent"
-                />
-                <button className="px-10 py-2 bg-[#1A318C] text-white hover:bg-[#1A318C] transition-colors">
-                  Search
-                </button>
-              </div>
-              {/* Category dropdown */}
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-80 h-10 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-0 focus:border-transparent text-sm"
-              >
-                <option value="All">Category</option>
-                {[...new Set(inventoryItems.map((item) => item.category))].map(
-                  (cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  )
-                )}
-              </select>
-              {/* View Mode dropdown */}
-              <select
-                value={viewMode}
-                onChange={(e) => setViewMode(e.target.value)}
-                className="w-80 h-10 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-0 focus:border-transparent text-sm"
-              >
-                <option value="grid">View mode</option>
-                <option value="grid">Grid</option>
-                <option value="list">List</option>
-              </select>
-            </nav>
-            {/* item list */}
-            <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredItems.map((item) => (
-                <InventoryCard
-                  key={item.id}
-                  item={item}
-                  onOpen={() =>
-                    navigate(`/dashboard/inventory/edit-item/${item.id}`)
-                  }
-                />
-              ))}
+      <main className="flex-1 bg-[#F3F3F3] relative">
+        {/* View Inventory */}
+        <div className={isVisible("view-inventory") + " p-6"}>
+          <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4">
+            <div className="flex-1 flex border-b border-[#EDEDED] h-12">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search your item here..."
+                className="flex-1 px-3 py-2 bg-white focus:outline-none"
+              />
+              <button className="px-10 py-2 bg-[#1A318C] text-white">
+                Search
+              </button>
             </div>
-          </>
-        )}
-
-        {activeSection === "add-item" && (
-          <div>
-            <AddItem />
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
+            >
+              <option value="All">Category</option>
+              {[...new Set(inventoryItems.map((i) => i.category))].map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <select
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value)}
+              className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
+            >
+              <option value="grid">View mode</option>
+              <option value="grid">Grid</option>
+              <option value="list">List</option>
+            </select>
+          </nav>
+          <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredItems.map((item) => (
+              <InventoryCard
+                key={item.id}
+                item={item}
+                onOpen={() =>
+                  navigate(`/dashboard/inventory/edit-item/${item.id}`)
+                }
+              />
+            ))}
           </div>
-        )}
+        </div>
 
-        {activeSection === "inventory-config" && <div>this is config</div>}
+        {/* Add Item */}
+        <div className={isVisible("add-item") + " p-6"}>
+          <AddItem />
+        </div>
 
-        {activeSection === "inventory-report" && <div>this is inv report</div>}
+        {/* Inventory Config */}
+        <div className={isVisible("inventory-config") + " p-6"}>
+          <h2 className="text-xl font-semibold">Inventory Configuration</h2>
+          {/* …your config UI here… */}
+        </div>
+
+        {/* Inventory Report */}
+        <div className={isVisible("inventory-report") + " p-6"}>
+          <h2 className="text-xl font-semibold">Inventory Reports</h2>
+          {/* …your report UI here… */}
+        </div>
       </main>
 
       {/* Loading Bar */}
