@@ -1,138 +1,97 @@
 import React, { useState } from "react";
 import { X, Upload, Printer } from "lucide-react";
 import InventoryCard from '../../frontend/components/Inventory_card';
-import bananaImg from '../../assets/Inventory_banana.png';
+import itemImg from '../../assets/Inventory_banana.png';
 
 function AddItem() {
-
 
   // Example inventory dataa
 const [inventoryItems, setInventoryItems] = useState([
   {
-    id: '1',
-    name: 'Banana',
-    barcode: 'SKU-37847324',
-    category: 'Fruit',
-    price: '340.00',
-    unit: 'KG',
-    sku: 'SKU001',
-    stock: 100,
-    image: bananaImg
-  },
-   {
-    id: '2',
-    name: 'Banana',
-    barcode: 'SKU-5837324',
-    category: 'Fruit',
-    price: '340.00',
-    unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
-    image: bananaImg
+    id: "1",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "234456",
+    sku: "SKU-2347833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
   },
   {
-    id: '3',
-    name: 'Banana',
-    barcode: 'SKU-58394324',
-    category: 'Fruit',
-    price: '340.00',
-    unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
-    image: bananaImg
+    id: "2",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "1543456",
+    sku: "SKU-5343833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
   },
   {
-    id: '4',
-    name: 'Banana',
-    barcode: 'SKU-34681324',
-    category: 'Fruit',
-    price: '340.00',
-    unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
-    image: bananaImg
-  },
-  {
-    id: '5',
-    name: 'Banana',
-    barcode: 'SKU-34681324',
-    category: 'Fruit',
-    price: '340.00',
-    unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
-    image: bananaImg
-  },
-  {
-    id: '6',
-    name: 'Banana',
-    barcode: 'SKU-34681324',
-    category: 'Fruit',
-    price: '340.00',
-    unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
-    image: bananaImg
-  },
-  {
-    id: '7',
-    name: 'Banana',
-    barcode: 'SKU-34681324',
-    category: 'Fruit',
-    price: '340.00',
-    unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
-    image: bananaImg
-  },
-  {
-    id: '8',
-    name: 'Banana',
-    barcode: 'SKU-34681324',
-    category: 'Fruit',
-    price: '340.00',
-    unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
-    image: bananaImg
-  },
-  {
-    id: '9',
-    name: 'Banana',
-    barcode: 'SKU-34681324',
-    category: 'Fruit',
-    price: '340.00',
-    unit: 'KG',
-    sku: 'SKU002',
-    stock: 100,
-    image: bananaImg
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
   },
   // Add more items as needed
 ]);
 
 
-  const [formData, setFormData] = useState({
-    name: "",
-    itemCode: "",
-    sku: "SKU-3847833",
-    barcode: "3847833",
-    category: "provisions",
-    brand: "wijaya",
-    status: "Available",
-    thresholdLimit: "",
-    maximumThreshold: "",
-    quantity: "",
-    uom: "KG",
+  const [formUpdateData, setFormUpdateData] = useState({
+    id: "4",
+    name: "test item",
+    category: "test fruit",
+    brand: "test brand",
+    itemCode: " test 2343234",
+    sku: "test SKU-343423",
+    status: "test available",
+    thresholdLimit: 0,
+    maxmiumCapacity: 0,
+    quantity: 0,
+    uom: "test kg",
+    image: itemImg,
   });
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormUpdateData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    onSave(formData);
-    onClose();
+  // const handleSave = () => {
+  //   onSave(formData);
+  //   onClose();
+  // };
+
+  const loadItem = (selectedItem) => {
+    setFormUpdateData({
+      id: selectedItem.id,
+      name: selectedItem.name,
+      category: selectedItem.category,
+      brand: selectedItem.brand,
+      sku: selectedItem.sku,
+      itemCode: selectedItem.itemCode,
+      status: selectedItem.status,
+      thresholdLimit: selectedItem.thresholdLimit,
+      maxmiumCapacity: selectedItem.maxmiumCapacity,
+      quantity: selectedItem.quantity,
+      uom: selectedItem.uom,
+    })
   };
 
   return (
@@ -156,9 +115,9 @@ const [inventoryItems, setInventoryItems] = useState([
                   </button>
                   <div className="grid grid-cols-2">
                     <p className="text-lg text-black">SKU :</p>
-                    <p className="text-lg text-[#A7A7A7]">RX3466</p>
+                    <p className="text-lg text-[#A7A7A7]">{formUpdateData.sku}</p>
                     <p className="text-lg text-black">BARCODE :</p>
-                    <p className="text-lg text-[#A7A7A7]">RX3466</p>
+                    <p className="text-lg text-[#A7A7A7]">{formUpdateData.itemCode}</p>
                   </div>
                 </div>   
               </div>
@@ -172,9 +131,9 @@ const [inventoryItems, setInventoryItems] = useState([
                   <input
                     type="text"
                     name="name"
-                    value={formData.name}
+                    value={formUpdateData.name}
                     onChange={handleInputChange}
-                    placeholder="item@gmail.com"
+                    placeholder="Enter item name"
                     className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -186,13 +145,13 @@ const [inventoryItems, setInventoryItems] = useState([
                     </label>
                     <select
                       name="category"
-                      value={formData.category}
+                      value={formUpdateData.category}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="food">Foods</option>
-                      <option value="beverages">Beverages</option>
-                      <option value="provisions">Provisions</option>
+                      <option value="electronics">Electronics</option>
+                      <option value="fruit">Fruit</option>
+                      <option value="beverage">Beverage</option>
                     </select>
                   </div>
                     <div>
@@ -201,13 +160,14 @@ const [inventoryItems, setInventoryItems] = useState([
                     </label>
                     <select
                       name="brand"
-                      value={formData.brand}
+                      value={formUpdateData.brand}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="Available">Wijaya</option>
-                      <option value="Out of Stock">Malibourn</option>
-                      <option value="Low Stock">Munchee</option>
+                      <option value="wijaya">Wijaya</option>
+                      <option value="none">No brand</option>
+                      <option value="malibourn">Malibourn</option>
+                      <option value="munchee">Munchee</option>
                     </select>
                   </div>
                 </div>
@@ -232,8 +192,8 @@ const [inventoryItems, setInventoryItems] = useState([
                     </label>
                     <input
                       type="text"
-                      name="sku"
-                      value={formData.sku}
+                      name="itemCode"
+                      value={formUpdateData.itemCode}
                       onChange={handleInputChange}
                       placeholder=""
                       className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -246,13 +206,13 @@ const [inventoryItems, setInventoryItems] = useState([
                     </label>
                     <select
                       name="status"
-                      value={formData.status}
+                      value={formUpdateData.status}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="Available">Available</option>
-                      <option value="Out of Stock">Out of Stock</option>
-                      <option value="Low Stock">Low Stock</option>
+                      <option value="lowStock">Low Stock</option>
+                      <option value="available">Available</option>
+                      <option value="outOfStock">Out of Stock</option>
                     </select>
                   </div>
                 </div>
@@ -264,16 +224,22 @@ const [inventoryItems, setInventoryItems] = useState([
                     </label>
                     <input
                       type="number"
+                      name="thresholdLimit"
+                      value={formUpdateData.thresholdLimit}
+                      onChange={handleInputChange}
                       placeholder="12"
                       className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Maximum Threshold
+                      Maximum Capacity
                     </label>
                     <input
                       type="number"
+                      name="maxmiumCapacity"
+                      value={formUpdateData.maxmiumCapacity}
+                      onChange={handleInputChange}
                       placeholder="12"
                       className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
@@ -288,7 +254,7 @@ const [inventoryItems, setInventoryItems] = useState([
                     <input
                       type="number"
                       name="quantity"
-                      value={formData.quantity}
+                      value={formUpdateData.quantity}
                       onChange={handleInputChange}
                       placeholder="12"
                       className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -300,13 +266,13 @@ const [inventoryItems, setInventoryItems] = useState([
                     </label>
                     <select
                       name="uom"
-                      value={formData.uom}
+                      value={formUpdateData.uom}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="KG">KG</option>
-                      <option value="PCS">PCS</option>
-                      <option value="LTR">LTR</option>
+                      <option value="kg">KG</option>
+                      <option value="pcs">PCS</option>
+                      <option value="ltr">LTR</option>
                     </select>
                   </div>
                 </div>
@@ -363,9 +329,9 @@ const [inventoryItems, setInventoryItems] = useState([
                       onChange={handleInputChange}
                       className="w-80 h-10 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="foods">Foods</option>
-                      <option value="beverages">Beverages</option>
                       <option value="electronics">Electronics</option>
+                      <option value="fruit">Fruits</option>
+                      <option value="beverage">Beverage</option>
                     </select>
         </nav>
                   <div className="h-[45rem] overflow-y-scroll">
@@ -375,7 +341,7 @@ const [inventoryItems, setInventoryItems] = useState([
                           <InventoryCard 
                           key={item.id} 
                           item={item} 
-                          onOpen={() => navigate(`/dashboard/inventory/edit-item/${item.id}`)} 
+                          onOpen={() => loadItem(item)} 
                           />
                         ))}
                       </div>
