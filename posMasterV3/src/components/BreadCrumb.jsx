@@ -8,9 +8,9 @@ function BreadCrumb() {
   return (
     <nav className="text-sm py-2 px-4" aria-label="Breadcrumb">
       <ol className="flex items-center space-x-2">
-        <li>
+        {/* <li>
           <Link to="/" className="text-[#1A318C] font-semibold">POS MASTER.3</Link>
-        </li>
+        </li> */}
         {pathnames.map((name, idx) => {
           const routeTo = '/' + pathnames.slice(0, idx + 1).join('/');
           const isLast = idx === pathnames.length - 1;
