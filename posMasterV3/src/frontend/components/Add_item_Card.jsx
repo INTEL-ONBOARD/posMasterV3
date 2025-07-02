@@ -1,4 +1,4 @@
-export default function Add_item_Card({ item, onOpen, onRemove }) {
+export default function Add_item_Card({ item, onOpen, onRemove ,hideClose}) {
   return (
    <div 
   className="relative bg-white w-65 h-50 border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
@@ -7,19 +7,22 @@ export default function Add_item_Card({ item, onOpen, onRemove }) {
   tabIndex={0}
 >
   {/* Close icon at top right */}
- <button
-  className="absolute top-2 left-2 z-10 p-0.5 bg-black rounded-full hover:bg-gray-800 flex items-center justify-center"
-  onClick={(e) => {
-    e.stopPropagation();
-    if (onRemove) onRemove(item.id);
-  }}
-  aria-label="Close"
-  type="button"
->
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6"/>
-  </svg>
-</button>
+ {/* Only show close icon if hideClose is NOT true */}
+      {!hideClose && (
+        <button
+          className="absolute top-2 left-2 z-10 p-0.5 bg-black rounded-full hover:bg-gray-800 flex items-center justify-center"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onRemove) onRemove(item.id);
+          }}
+          aria-label="Close"
+          type="button"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6"/>
+          </svg>
+        </button>
+      )}
       <div className="flex flex-row bg-white justify-between">
         <div className="flex flex-col items-center justify-center bg-white">
           <img src={item.image} alt={item.name} className="w-48 bg-white object-contain" />
