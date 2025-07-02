@@ -5,6 +5,7 @@ import InventoryCard from "../../frontend/components/Inventory_card";
 import SpinnerDot from "../../frontend/components/SpinnerDot";
 import bananaImg from "../../assets/Inventory_banana.png";
 import AddItem from "./AddItem";
+import NotFound from "../../assets/nonicons_not-found-16.png";
 
 function Inventory() {
   const navigate = useNavigate();
@@ -111,10 +112,43 @@ function Inventory() {
       stock: 25,
       image: bananaImg,
     },
+    {
+      id: "10",
+      name: "Parata",
+      barcode: "SKU-34681329",
+      category: "Dairy",
+      price: "500.00",
+      unit: "KG",
+      sku: "SKU009",
+      stock: 25,
+      image: bananaImg,
+    },
+    {
+      id: "11",
+      name: "Noodles",
+      barcode: "SKU-34681329",
+      category: "Dairy",
+      price: "500.00",
+      unit: "KG",
+      sku: "SKU009",
+      stock: 25,
+      image: bananaImg,
+    },
   ]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [viewMode, setViewMode] = useState("grid"); // or "list"
+  const [isSearching, setIsSearching] = useState(false);
+
+  // search handler to set loading state:
+  const handleSearch = (e) => {
+    setIsSearching(true);
+    setSearch(e.target.value);
+    // Simulate async search (replace with your real async logic if needed)
+    setTimeout(() => {
+      setIsSearching(false);
+    }, 600); // 600ms delay for demo
+  };
 
   const filteredItems = inventoryItems.filter(
     (item) =>
@@ -122,7 +156,7 @@ function Inventory() {
       item.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // helper function to toggle Tailwind visibility hrrngh
+  // helper function to toggle Tailwind visibility
   const isVisible = (section) =>
     activeSection === section ? "block" : "hidden";
 
@@ -145,7 +179,7 @@ function Inventory() {
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={handleSearch}
                 placeholder="Search your item here..."
                 className="flex-1 px-3 py-2 bg-white focus:outline-none"
               />
@@ -173,16 +207,37 @@ function Inventory() {
               <option value="list">List</option>
             </select>
           </nav>
-          <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredItems.map((item) => (
-              <InventoryCard
-                key={item.id}
-                item={item}
-                onOpen={() =>
-                  navigate(`/dashboard/inventory/edit-item/${item.id}`)
-                }
-              />
-            ))}
+          <div className="h-[45rem] overflow-y-scroll bg-transparent">
+            <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[400px]">
+              {isSearching ? (
+                <div className="col-span-full flex flex-col items-center justify-center" style={{ minHeight: "60vh" }}>
+                  <div className="flex flex-col items-center">
+                    {/* Custom spinner */}
+                    <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
+                    <span className="text-gray-700 text-xl mt-1">Please wait...</span>
+                  </div>
+                </div>
+              ) : filteredItems.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg" style={{ minHeight: "50vh" }}>
+                  <img
+                    src={NotFound}
+                    alt="No items found!"
+                    className="w-12 h-12 mb-2 opacity-70"
+                  />
+                  <span>No items found!</span>
+                </div>
+              ) : (
+                filteredItems.map((item) => (
+                  <InventoryCard
+                    key={item.id}
+                    item={item}
+                    onOpen={() =>
+                      navigate(`/dashboard/inventory/edit-item/${item.id}`)
+                    }
+                  />
+                ))
+              )}
+            </div>
           </div>
         </div>
 
@@ -204,7 +259,6 @@ function Inventory() {
         </div>
       </main>
 
-      {/* Loading Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-blue-800 text-white py-2">
         <div className="flex items-center gap-1 justify-start ml-5">
           <SpinnerDot />
