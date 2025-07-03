@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { X, Upload, Printer } from "lucide-react";
 import Add_item_Card from "../../frontend/components/Add_item_Card";
 import bananaImg from '../../assets/Inventory_banana.png';
+import ConfirmDeleteModal from "../../frontend/components/ConfirmDeleteModal";
 import InventoryCard from '../../frontend/components/Inventory_card';
 import itemImg from '../../assets/Inventory_banana.png';
 
@@ -117,6 +118,26 @@ const [inventoryItems, setInventoryItems] = useState([
       quantity: selectedItem.quantity,
       uom: selectedItem.uom,
     })
+  };
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  const handleRemoveClick = (itemId) => {
+    const item = inventoryItems.find(i => i.id === itemId);
+    setSelectedItem(item);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = () => {
+    setInventoryItems(items => items.filter(i => i.id !== selectedItem.id));
+    setShowDeleteModal(false);
+    setSelectedItem(null);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setSelectedItem(null);
   };
 
   return (
@@ -376,17 +397,26 @@ const [inventoryItems, setInventoryItems] = useState([
             ) : (
               // Item cards
               filteredItems.map((item) => (
-                <InventoryCard
-                  key={item.id}
-                  item={item}
-                  onOpen={() => loadItem(item)}
-                />
+                <Add_item_Card
+      key={item.id} 
+      item={item} 
+      onOpen={() => navigate(`/dashboard/inventory/edit-item/${item.id}`)} 
+      onRemove={handleRemoveClick} // Pass the handleRemoveClick function as a prop=han}
+      // Optionally add onRemove if you want to support removing items
+    />
               ))
             )}
           </div>
         </div>
 
         </div>
+        {/* Modal */}
+      <ConfirmDeleteModal
+        open={showDeleteModal}
+        item={selectedItem}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+      />
       </div>
   );
 }
