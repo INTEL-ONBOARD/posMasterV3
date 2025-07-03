@@ -136,7 +136,7 @@ function Inventory() {
     },
   ]);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const [searchCategory, setSearchCategory] = useState("All");
   const [viewMode, setViewMode] = useState("grid"); // or "list"
   const [isSearching, setIsSearching] = useState(false);
 
@@ -152,11 +152,11 @@ function Inventory() {
 
   const filteredItems = inventoryItems.filter(
     (item) =>
-      (category === "All" || item.category === category) &&
+      (searchCategory === "All" || item.category === searchCategory) &&
       item.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // helper function to toggle Tailwind visibility
+  // helper function to toggle Tailwind visibility between sections
   const isVisible = (section) =>
     activeSection === section ? "block" : "hidden";
 
@@ -173,7 +173,7 @@ function Inventory() {
 
       <main className="flex-1 bg-[#F3F3F3] relative">
         {/* View Inventory */}
-        <div className={isVisible("view-inventory") + " p-6"}>
+        <div className={isVisible("view-inventory")}>
           <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4">
             <div className="flex-1 flex border-b border-[#EDEDED] h-12">
               <input
@@ -188,8 +188,8 @@ function Inventory() {
               </button>
             </div>
             <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              value={searchCategory}
+              onChange={(e) => setSearchCategory(e.target.value)}
               className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
             >
               <option value="All">Category</option>
@@ -242,18 +242,18 @@ function Inventory() {
         </div>
 
         {/* Add Item */}
-        <div className={isVisible("add-item") + " p-6"}>
+        <div className={isVisible("add-item")}>
           <AddItem />
         </div>
 
         {/* Inventory Config */}
-        <div className={isVisible("inventory-config") + " p-6"}>
+        <div className={isVisible("inventory-config")}>
           <h2 className="text-xl font-semibold">Inventory Configuration</h2>
           {/* …your config UI here… */}
         </div>
 
         {/* Inventory Report */}
-        <div className={isVisible("inventory-report") + " p-6"}>
+        <div className={isVisible("inventory-report")}>
           <h2 className="text-xl font-semibold">Inventory Reports</h2>
           {/* …your report UI here… */}
         </div>
