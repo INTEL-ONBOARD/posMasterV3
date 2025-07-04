@@ -6,7 +6,71 @@ import ConfirmDeleteModal from "../../frontend/components/ConfirmDeleteModal";
 import InventoryCard from '../../frontend/components/Inventory_card';
 import itemImg from '../../assets/Inventory_banana.png';
 
+import { pdf } from '@react-pdf/renderer';
+import SimpleDocument from './SimpleDocument';
+import JsBarcode from 'jsbarcode';
+
 function AddItem() {
+
+  //barcode generation_________________________________________
+  const barcodeValue = "SKU-25654342";
+
+  // Generate barcode as data URL
+  const generateBarcode = () => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      JsBarcode(canvas, barcodeValue, {
+        format: 'CODE128',
+        displayValue: true,
+        fontSize: 12,
+      });
+      resolve(canvas.toDataURL('image/png'));
+    });
+  };
+
+  // Generate PDF with multiple barcodes
+  const generatePdf = async (action) => {
+    try {
+      const barcodeDataUrl = await generateBarcode();
+      const instance = pdf(<SimpleDocument 
+        barcodeDataUrl={barcodeDataUrl} 
+        barcodeValue={barcodeValue} 
+      />);
+      
+      const blob = await instance.toBlob();
+      const url = URL.createObjectURL(blob);
+      
+      if (action === 'download') downloadPdf(url);
+      if (action === 'print') printPdf(url);
+      
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to generate PDF');
+    }
+  };
+
+  // Download PDF
+  const downloadPdf = (url) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'barcodes.pdf';
+    link.click();
+  };
+
+  // Print PDF
+  const printPdf = (url) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    iframe.onload = () => {
+      iframe.contentWindow?.print();
+    };
+    document.body.appendChild(iframe);
+  };
+  //______________________________________________________________
+
+
 
   // Example inventory dataa
 const [inventoryItems, setInventoryItems] = useState([
@@ -157,7 +221,7 @@ const [inventoryItems, setInventoryItems] = useState([
                 </div>
                 <div className="flex flex-col m-10">
                   <button className="px-4 py-2 mb-4 bg-[#4A4A4A] text-white text-sm hover:bg-gray-700 transition-colors">
-                    Upload a photo
+                    Upload a photos
                   </button>
                   <div className="grid grid-cols-2">
                     <p className="text-lg text-black">SKU :</p>
@@ -328,7 +392,9 @@ const [inventoryItems, setInventoryItems] = useState([
             {/* bottom bar(bottom) */}
             <div className="flex justify-between space-x-3 -mx-10 p-4 bg-[#C4C4C4]">
               <div className="flex flex-row items-center gap-3">
-                <button className="flex items-center px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors">
+                <button className="flex items-center px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
+                onClick={() => generatePdf('print')}
+                >
                   <Printer className="w-4 h-4 mr-4 " />
                     <p>Print Barcode</p>
                 </button>
@@ -369,7 +435,7 @@ const [inventoryItems, setInventoryItems] = useState([
             </button>
           </div>
 
-{/* Fixed category filter */}
+          {/* category filter */}
           <select
             value={category}
             onChange={handleCategoryChange} // Correct handler
@@ -381,7 +447,7 @@ const [inventoryItems, setInventoryItems] = useState([
             <option value="beverage">Beverage</option>
           </select>
         </nav>
-                  <div className="h-[45rem] overflow-y-scroll">
+        <div className="h-[45rem] overflow-y-scroll">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 p-10">
             {loading ? (
               // Loading spinner
@@ -398,12 +464,12 @@ const [inventoryItems, setInventoryItems] = useState([
               // Item cards
               filteredItems.map((item) => (
                 <Add_item_Card
-      key={item.id} 
-      item={item} 
-      onOpen={() => navigate(`/dashboard/inventory/edit-item/${item.id}`)} 
-      onRemove={handleRemoveClick} // Pass the handleRemoveClick function as a prop=han}
-      // Optionally add onRemove if you want to support removing items
-    />
+                  key={item.id} 
+                  item={item} 
+                  onOpen={() => navigate(`/dashboard/inventory/edit-item/${item.id}`)} 
+                  onRemove={handleRemoveClick} // Pass the handleRemoveClick function as a prop=han}
+                  // Optionally add onRemove if you want to support removing items
+                />
               ))
             )}
           </div>
