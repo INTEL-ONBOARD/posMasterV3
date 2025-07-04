@@ -16,6 +16,7 @@ import ToastProvider from './pages/toasts/ToastProvider.jsx';
 import Settings from './pages/settings/Settings.jsx';
 import Notification from './pages/notification/Notification.jsx';
 import SalesView from './pages/sales/SalesView.jsx';
+import InventoryConfig from './pages/inventory/InventoryConfig.jsx';
 
 function App() {
   const [currentView, setCurrentView] = useState('desktop1');
@@ -31,6 +32,7 @@ function App() {
           {/* <Route element={<ProtectedRoute />}> */}
           <Route path="dashboard" element={<Dashboard />} >
             <Route path="inventory/*" element={<Inventory />} />
+            <Route path="inventory-config" element={<InventoryConfig />} />
             <Route path="settings/*" element={<Settings />} />
             <Route path="notifications" element={<Notification />} />
             <Route path="sales" element={<SalesView />} />
