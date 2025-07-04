@@ -6,6 +6,8 @@ import SpinnerDot from "../../frontend/components/SpinnerDot";
 import bananaImg from "../../assets/Inventory_banana.png";
 import AddItem from "./AddItem";
 import NotFound from "../../assets/nonicons_not-found-16.png";
+import InventoryConfig from "./InventoryConfig";
+import InventoryReport from "./InventoryReport"; 
 
 function Inventory() {
   const navigate = useNavigate();
@@ -248,13 +250,13 @@ function Inventory() {
 
         {/* Inventory Config */}
         <div className={isVisible("inventory-config") + " p-6"}>
-          <h2 className="text-xl font-semibold">Inventory Configuration</h2>
+          <InventoryConfig />
           {/* …your config UI here… */}
         </div>
 
         {/* Inventory Report */}
         <div className={isVisible("inventory-report") + " p-6"}>
-          <h2 className="text-xl font-semibold">Inventory Reports</h2>
+          <InventoryReport />
           {/* …your report UI here… */}
         </div>
       </main>
