@@ -208,7 +208,7 @@ function Inventory() {
             </select>
           </nav>
           <div className="h-[45rem] overflow-y-scroll bg-transparent">
-            <div className="grid pr-20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[400px] ">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-10">
               {isSearching ? (
                 <div className="col-span-full flex flex-col items-center justify-center" style={{ minHeight: "60vh" }}>
                   <div className="flex flex-col items-center">
