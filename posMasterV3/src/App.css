@@ -49,3 +49,6 @@ input:focus {
   outline: none !important;
   box-shadow: none !important;
 }
+html, body, #root {
+  height: 100%;
+}
