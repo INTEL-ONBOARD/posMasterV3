@@ -256,7 +256,7 @@ function Inventory() {
 
         {/* Inventory Report */}
         <div className={isVisible("inventory-report") + " p-6"}>
-          <InventoryReport />
+          <InventoryReport inventoryItems={inventoryItems} />
           {/* …your report UI here… */}
         </div>
       </main>
