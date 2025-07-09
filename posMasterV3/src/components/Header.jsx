@@ -70,7 +70,7 @@ function ProfileDropdown() {
   )
 }
 
-function Header() {
+function Header({ activeSection }) {
   return (
     <nav className="fixed top-0 z-50 w-full bg-white border-b border-gray-200">
       <div className="px-3 py-3 lg:px-5 lg:pl-3">
@@ -80,7 +80,7 @@ function Header() {
               <h1 className='text-2xl font-bold text-[#3E3F43]'>POS Master.3</h1>
               <h2>Version 2.3EF</h2>
             </Link>
-            <BreadCrumb />
+            <BreadCrumb activeSection={activeSection} />
           </div>
           <div className="flex items-center">
             <ProfileDropdown />

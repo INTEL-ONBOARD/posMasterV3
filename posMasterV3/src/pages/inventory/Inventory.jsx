@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import InventorySidebar from "./Inventory_sidebar";
 import InventoryCard from "../../frontend/components/Inventory_card";
@@ -9,9 +9,13 @@ import NotFound from "../../assets/nonicons_not-found-16.png";
 import InventoryConfig from "./InventoryConfig";
 import InventoryReport from "./InventoryReport"; 
 
+
 function Inventory() {
   const navigate = useNavigate();
+  
   const [activeSection, setActiveSection] = useState("view-inventory");
+
+ 
 
   // Example inventory data
   const [inventoryItems, setInventoryItems] = useState([
@@ -157,6 +161,7 @@ function Inventory() {
       (searchCategory === "All" || item.category === searchCategory) &&
       item.name.toLowerCase().includes(search.toLowerCase())
   );
+ 
 
   // helper function to toggle Tailwind visibility between sections
   const isVisible = (section) =>
@@ -172,8 +177,10 @@ function Inventory() {
         onConfigClick={() => setActiveSection("inventory-config")}
         onCReportClick={() => setActiveSection("inventory-report")}
       />
+      
 
       <main className="flex-1 bg-[#F3F3F3] relative">
+        
         {/* View Inventory */}
         <div className={isVisible("view-inventory")}>
           <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4">
