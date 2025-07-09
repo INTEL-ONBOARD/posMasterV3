@@ -8,14 +8,23 @@ import AddItem from "./AddItem";
 import NotFound from "../../assets/nonicons_not-found-16.png";
 import InventoryConfig from "./InventoryConfig";
 import InventoryReport from "./InventoryReport"; 
-
+import { useOutletContext } from "react-router-dom";
 
 function Inventory() {
   const navigate = useNavigate();
-  
-  const [activeSection, setActiveSection] = useState("view-inventory");
+  const { setActiveSection } = useOutletContext();
 
- 
+  const [activeSection, setLocalActiveSection] = useState("view-inventory");
+
+  // Update parent's activeSection whenever local activeSection changes
+  useEffect(() => {
+    setActiveSection(activeSection);
+  }, [activeSection, setActiveSection]);
+
+   const handleSectionChange = (section) => {
+    setLocalActiveSection(section);
+    setActiveSection(section);
+  };
 
   // Example inventory data
   const [inventoryItems, setInventoryItems] = useState([
@@ -170,12 +179,12 @@ function Inventory() {
   return (
     <div id="inv-background" className="flex h-screen bg-[#EBEBEB] -ml-12">
       {/* sidebar (left) */}
-      <InventorySidebar
+     <InventorySidebar
         activeSection={activeSection}
-        onViewInvClick={() => setActiveSection("view-inventory")}
-        onAddItemClick={() => setActiveSection("add-item")}
-        onConfigClick={() => setActiveSection("inventory-config")}
-        onCReportClick={() => setActiveSection("inventory-report")}
+        onViewInvClick={() => handleSectionChange("view-inventory")}
+        onAddItemClick={() => handleSectionChange("add-item")}
+        onConfigClick={() => handleSectionChange("inventory-config")}
+        onCReportClick={() => handleSectionChange("inventory-report")}
       />
       
 
