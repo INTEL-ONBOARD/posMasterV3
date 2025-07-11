@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import InventorySidebar from "./Inventory_sidebar";
 import InventoryCard from "../../frontend/components/Inventory_card";
@@ -8,10 +8,23 @@ import AddItem from "./AddItem.jsx";
 import NotFound from "../../assets/nonicons_not-found-16.png";
 import InventoryConfig from "./InventoryConfig";
 import InventoryReport from "./InventoryReport"; 
+import { useOutletContext } from "react-router-dom";
 
 function Inventory() {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState("view-inventory");
+  const { setActiveSection } = useOutletContext();
+
+  const [activeSection, setLocalActiveSection] = useState("view-inventory");
+
+  // Update parent's activeSection whenever local activeSection changes
+  useEffect(() => {
+    setActiveSection(activeSection);
+  }, [activeSection, setActiveSection]);
+
+   const handleSectionChange = (section) => {
+    setLocalActiveSection(section);
+    setActiveSection(section);
+  };
 
   // Example inventory data
   const [inventoryItems, setInventoryItems] = useState([
@@ -157,6 +170,7 @@ function Inventory() {
       (searchCategory === "All" || item.category === searchCategory) &&
       item.name.toLowerCase().includes(search.toLowerCase())
   );
+ 
 
   // helper function to toggle Tailwind visibility between sections
   const isVisible = (section) =>
@@ -165,15 +179,17 @@ function Inventory() {
   return (
     <div id="inv-background" className="flex h-screen bg-[#EBEBEB] -ml-12">
       {/* sidebar (left) */}
-      <InventorySidebar
+     <InventorySidebar
         activeSection={activeSection}
-        onViewInvClick={() => setActiveSection("view-inventory")}
-        onAddItemClick={() => setActiveSection("add-item")}
-        onConfigClick={() => setActiveSection("inventory-config")}
-        onCReportClick={() => setActiveSection("inventory-report")}
+        onViewInvClick={() => handleSectionChange("view-inventory")}
+        onAddItemClick={() => handleSectionChange("add-item")}
+        onConfigClick={() => handleSectionChange("inventory-config")}
+        onCReportClick={() => handleSectionChange("inventory-report")}
       />
+      
 
       <main className="flex-1 bg-[#F3F3F3] relative">
+        
         {/* View Inventory */}
         <div className={isVisible("view-inventory")}>
           <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4">
@@ -256,7 +272,7 @@ function Inventory() {
 
         {/* Inventory Report */}
         <div className={isVisible("inventory-report") + " p-6"}>
-          <InventoryReport />
+          <InventoryReport inventoryItems={inventoryItems} />
           {/* …your report UI here… */}
         </div>
       </main>
