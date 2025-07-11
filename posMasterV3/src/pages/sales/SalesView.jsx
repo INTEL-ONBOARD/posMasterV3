@@ -4,6 +4,7 @@ import SalesSidebar from "./Sales_sidebar";
 import bananaImg from "../../assets/Inventory_banana.png";
 import Inventory_card from "../../frontend/components/Inventory_card";
 import barcodeImg from "../../assets/barcode.png";
+import OffersDiscountView from "./OffersDiscountView";
 
 export default function SalesView() {
   const { setActiveSection } = useOutletContext();
@@ -630,10 +631,10 @@ export default function SalesView() {
         </div>
 
         <div className={isVisible("offers-discount")}>
-          <div className="p-8">
-            <h2 className="text-2xl font-bold mb-4">Offers and Discount View</h2>
-            <p>Offers and discount content will go here...</p>
-          </div>
+          <OffersDiscountView/>
+            
+          
+          
         </div>
 
         <div className={isVisible("sales-config")}>
