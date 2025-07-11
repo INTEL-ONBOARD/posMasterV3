@@ -18,6 +18,8 @@
     "flowbite": "^3.1.2",
     "jsbarcode": "^3.12.1",
     "lucide-react": "^0.515.0",
+    "pdf-to-printer": "^5.6.0",
+    "print-js": "^1.6.0",
     "react": "^19.1.0",
     "react-barcode": "^1.6.1",
     "react-dom": "^19.1.0",

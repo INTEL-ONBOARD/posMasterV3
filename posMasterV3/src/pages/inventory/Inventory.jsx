@@ -4,7 +4,7 @@ import InventorySidebar from "./Inventory_sidebar";
 import InventoryCard from "../../frontend/components/Inventory_card";
 import SpinnerDot from "../../frontend/components/SpinnerDot";
 import bananaImg from "../../assets/Inventory_banana.png";
-import AddItem from "./AddItem";
+import AddItem from "./AddItem.jsx";
 import NotFound from "../../assets/nonicons_not-found-16.png";
 import InventoryConfig from "./InventoryConfig";
 import InventoryReport from "./InventoryReport"; 
@@ -16,7 +16,7 @@ function Inventory() {
 
   const [activeSection, setLocalActiveSection] = useState("view-inventory");
 
-  // Update parent's activeSection whenever local activeSection changes
+  // Update parent's activeSection whenever local activeSection changess
   useEffect(() => {
     setActiveSection(activeSection);
   }, [activeSection, setActiveSection]);
