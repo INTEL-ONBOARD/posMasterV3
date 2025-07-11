@@ -9,6 +9,7 @@ import itemImg from '../../assets/Inventory_banana.png';
 import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
 import JsBarcode from 'jsbarcode';
+import printJS from 'print-js';
 
 function AddItem() {
 
@@ -40,7 +41,7 @@ function AddItem() {
       const blob = await instance.toBlob();
       const url = URL.createObjectURL(blob);
       
-      if (action === 'download') downloadPdf(url);
+      //if (action === 'download') downloadPdf(url);
       if (action === 'print') printPdf(url);
       
       setTimeout(() => URL.revokeObjectURL(url), 60000);
@@ -60,14 +61,17 @@ function AddItem() {
 
   // Print PDF
   const printPdf = (url) => {
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = url;
-    iframe.onload = () => {
-      iframe.contentWindow?.print();
-    };
-    document.body.appendChild(iframe);
+    window.electronAPI.send('print-silent');
+    // const iframe = document.createElement('iframe');
+    // iframe.style.display = 'none';
+    // iframe.src = url;
+    // iframe.onload = () => {
+    //   iframe.contentWindow?.print();
+      
+    // };
+    // document.body.appendChild(iframe);
   };
+
   //______________________________________________________________
 
 
