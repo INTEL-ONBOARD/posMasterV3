@@ -19,6 +19,7 @@ import Notification from "./notification/Notification.jsx";
 
 function Dashboard() {
   const [hoveredCard, setHoveredCard] = useState(null);
+   const [activeSection, setActiveSection] = useState(null);
   const toast = useContext(ToastContext);
   const navigate = useNavigate();
 
@@ -45,11 +46,11 @@ function Dashboard() {
   return (
     <>
       <div className="mb-20">
-      <Header/>
+       <Header activeSection={activeSection} />
       </div>
       <Sidebar/>
       <div className="ml-44">
-      <Outlet/>
+     <Outlet context={{ setActiveSection }} />
       </div>
     </>
   );
