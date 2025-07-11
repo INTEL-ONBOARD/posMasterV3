@@ -16,7 +16,7 @@ function Inventory() {
 
   const [activeSection, setLocalActiveSection] = useState("view-inventory");
 
-  // Update parent's activeSection whenever local activeSection changes
+  // Update parent's activeSection whenever local activeSection changess
   useEffect(() => {
     setActiveSection(activeSection);
   }, [activeSection, setActiveSection]);
