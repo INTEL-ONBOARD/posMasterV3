@@ -29,48 +29,76 @@ function AddItem() {
     });
   };
 
-  // Generate PDF with multiple barcodes
-  const generatePdf = async (action) => {
-    try {
-      const barcodeDataUrl = await generateBarcode();
-      const instance = pdf(<SimpleDocument 
-        barcodeDataUrl={barcodeDataUrl} 
-        barcodeValue={barcodeValue} 
-      />);
+  // // Generate PDF with multiple barcodes
+  // const generatePdf = async (action) => {
+  //   try {
+  //     const barcodeDataUrl = await generateBarcode();
+  //     const instance = pdf(<SimpleDocument 
+  //       barcodeDataUrl={barcodeDataUrl} 
+  //       barcodeValue={barcodeValue} 
+  //     />);
       
-      const blob = await instance.toBlob();
-      const url = URL.createObjectURL(blob);
+  //     const blob = await instance.toBlob();
+  //     const url = URL.createObjectURL(blob);
       
-      //if (action === 'download') downloadPdf(url);
-      if (action === 'print') printPdf(url);
+  //     //if (action === 'download') downloadPdf(url);
+  //     if (action === 'print') printPdf(url);
       
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to generate PDF');
-    }
-  };
+  //     setTimeout(() => URL.revokeObjectURL(url), 60000);
+  //   } catch (error) {
+  //     console.error('Error:', error);
+  //     alert('Failed to generate PDF');
+  //   }
+  // };
+
+  // // Print PDF
+  // const printPdf = (url) => {
+  //   const iframe = document.createElement('iframe');
+  //   iframe.style.display = 'none';
+  //   iframe.src = url;
+  //   iframe.onload = () => {
+  //       iframe.contentWindow?.print();
+      
+  //     };
+  //     document.body.appendChild(iframe);
+  //     //about to pass the pdf and to be implemented later
+  //     //window.electronAPI.send('print-silent');
+  // };
 
   // Download PDF
-  const downloadPdf = (url) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'barcodes.pdf';
-    link.click();
-  };
+  // const downloadPdf = (url) => {
+  //   const link = document.createElement('a');
+  //   link.href = url;
+  //   link.download = 'barcodes.pdf';
+  //   link.click();
+  // };
 
-  // Print PDF
-  const printPdf = (url) => {
-    window.electronAPI.send('print-silent');
-    // const iframe = document.createElement('iframe');
-    // iframe.style.display = 'none';
-    // iframe.src = url;
-    // iframe.onload = () => {
-    //   iframe.contentWindow?.print();
-      
-    // };
-    // document.body.appendChild(iframe);
-  };
+const generatePdf = async (action) => {
+  try {
+    const barcodeDataUrl = await generateBarcode();
+    const instance = pdf(<SimpleDocument 
+      barcodeDataUrl={barcodeDataUrl} 
+      barcodeValue={barcodeValue} 
+    />);
+    
+    const blob = await instance.toBlob();
+    
+    if (action === 'print') {
+      // Convert Blob to ArrayBuffer for IPC
+      const arrayBuffer = await blob.arrayBuffer();
+      window.electronAPI.sendPrintSilent(arrayBuffer);
+    } else if (action === 'download') {
+      const url = URL.createObjectURL(blob);
+      downloadPdf(url);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+    
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to generate PDF');
+  }
+};
+
 
   //______________________________________________________________
 
