@@ -52,6 +52,13 @@ function Dashboard() {
       <div className="ml-44">
      <Outlet context={{ setActiveSection }} />
       </div>
+      {/* bottom bar(planned to acccess this by id or something idk) */}
+      <div className="absolute bottom-0 left-0 right-0 bg-blue-800 text-white py-2">
+        <div className="flex items-center gap-1 justify-start ml-5">
+          <SpinnerDot />
+          <span className="text-sm font-medium">Loading...</span>
+        </div>
+      </div>
     </>
   );
 }
