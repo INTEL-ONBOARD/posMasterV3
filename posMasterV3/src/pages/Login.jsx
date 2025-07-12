@@ -81,7 +81,7 @@ function Login() {
                   onChange={handleInputChange}
                   className="w-full h-[38px] pl-10 pr-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-[#949494]"
                   style={{ backgroundColor: "#F8F8F8" }}
-                  placeholder="myemail@example.com"
+                  placeholder="Enter your registered email address or username"
                   required
                 />
               </div>
@@ -108,7 +108,7 @@ function Login() {
                   onChange={handleInputChange}
                   className="w-full h-[38px] pl-10 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400"
                   style={{ backgroundColor: "#F8F8F8" }}
-                  placeholder="••••••••••••••••"
+                  placeholder="Enter your password here"
                   required
                 />
                 <button
@@ -152,7 +152,7 @@ function Login() {
           </div>
         </div>
 
-        <div className="mt-6 text-center">
+        <div className="absolute bottom-0 mb-10 text-center">
           <p className="text-xs "style={{ color: "#D3D3D3" }}>
             Copyright © 2025 SLTC ® | VER.2025E.001R
           </p>

@@ -277,12 +277,7 @@ function Inventory() {
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-blue-800 text-white py-2">
-        <div className="flex items-center gap-1 justify-start ml-5">
-          <SpinnerDot />
-          <span className="text-sm font-medium">Loading...</span>
-        </div>
-      </div>
+
     </div>
   );
 }

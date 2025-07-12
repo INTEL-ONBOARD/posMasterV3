@@ -13,6 +13,9 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
+    titleBarStyle: 'hidden', //view edit and other shiiiiiiiiiiiiiiiiii
+    titleBarOverlay: true,   // Window minimize close buttons
+    //fullscreen: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       nodeIntegration: false,
