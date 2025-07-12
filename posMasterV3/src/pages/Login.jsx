@@ -1,72 +1,101 @@
-import React, { useState,useContext } from "react";
+import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
-//barcode generate and printing imports
-import Barcode from 'react-barcode';
-import { useReactToPrint } from 'react-to-print';
+import { motion } from "framer-motion";
 import ToastContext from "./toasts/ToastService";
+
+
+const containerVariants = {
+  hidden: { opacity: 0, scale: 0.95, filter: "blur(4px)" },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: { duration: 1.0, ease: "easeOut" },
+  },
+};
+
+const cardVariants = {
+  hidden: { y: 60, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: { type: "spring", stiffness: 50, damping: 18 },
+  },
+};
+
+const staggerContainer = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.2,
+    },
+  },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.8 } },
+};
 
 function Login() {
   const navigate = useNavigate();
-   const toast = useContext(ToastContext); 
+  const toast = useContext(ToastContext);
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate login process
     setTimeout(() => {
       setIsLoading(false);
-      // Handle login logic here
-       toast.open("Logged in successfully!");
+      toast.open("Logged in successfully!");
       navigate("/dashboard");
-    }, 2000);
+    }, 1500);
   };
 
   return (
-    <div className="fixed inset-0 min-h-screen bg-white overflow-hidden flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl p-8">
-          <div className="text-center mb-8">
+    <motion.div
+      className="fixed inset-0 min-h-screen bg-white overflow-hidden flex items-center justify-center p-4"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div className="w-full max-w-md" variants={cardVariants} initial="hidden" animate="visible">
+        <motion.div
+          className="bg-white rounded-2xl p-8"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+        >
+          {/* Title */}
+          <motion.div className="text-center mb-8" variants={fadeUp}>
             <h1 className="text-3xl font-bold">
-              <span className="font-bold" style={{ color: "#00489A" }}>
-                POS
-              </span>
+              <span className="font-bold text-[#00489A]">POS</span>
               <span className="text-gray-900"> MASTER</span>
               <span className="text-gray-700">.3</span>
             </h1>
-          </div>
+          </motion.div>
 
-          <div className="text-center mb-8">
-            <p className=" text-sm leading-relaxed" style={{ color: "#C8C8C8" }}>
-              Welcome back! Please enter your credentials to access your account
-              and access your dashboard, personalized settings, and Extreme
-              features.
+          {/* Subtitle */}
+          <motion.div className="text-center mb-8" variants={fadeUp}>
+            <p className="text-sm leading-relaxed text-[#C8C8C8]">
+              Welcome back! Enter your credentials to continue to your dashboard.
             </p>
-          </div>
+          </motion.div>
 
-          <form onSubmit={handleSubmit} className="space-y-6 w-full">
-            {/* Email */}
-            <div className="space-y-2">
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium"
-                style={{ color: "#D3D3D3" }}
-              >
+          {/* Login Form */}
+          <motion.form onSubmit={handleSubmit} className="space-y-6 w-full" variants={staggerContainer}>
+            {/* Email Field */}
+            <motion.div className="space-y-2" variants={fadeUp}>
+              <label htmlFor="email" className="block text-sm font-medium text-[#D3D3D3]">
                 Email or Username
               </label>
               <div className="relative">
@@ -79,21 +108,17 @@ function Login() {
                   type="text"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full h-[38px] pl-10 pr-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-[#949494]"
+                  className="w-full h-[38px] pl-10 pr-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 text-gray-900 placeholder-[#949494]"
                   style={{ backgroundColor: "#F8F8F8" }}
-                  placeholder="Enter your registered email address or username"
+                  placeholder="Enter your email or username"
                   required
                 />
               </div>
-            </div>
+            </motion.div>
 
-            {/* Password */}
-            <div className="space-y-2">
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium"
-                style={{ color: "#D3D3D3" }}
-              >
+            {/* Password Field */}
+            <motion.div className="space-y-2" variants={fadeUp}>
+              <label htmlFor="password" className="block text-sm font-medium text-[#D3D3D3]">
                 Password
               </label>
               <div className="relative">
@@ -106,9 +131,9 @@ function Login() {
                   type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full h-[38px] pl-10 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-400"
+                  className="w-full h-[38px] pl-10 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-400"
                   style={{ backgroundColor: "#F8F8F8" }}
-                  placeholder="Enter your password here"
+                  placeholder="Enter your password"
                   required
                 />
                 <button
@@ -123,14 +148,18 @@ function Login() {
                   )}
                 </button>
               </div>
-            </div>
+            </motion.div>
 
             {/* Login Button */}
-            <button
+            <motion.button
               type="submit"
               disabled={isLoading}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 180 }}
               style={{ backgroundColor: "#00489A" }}
-              className="w-full h-[38px] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00489A] focus:border-transparent transition-all duration-200 text-white font-semibold flex items-center justify-center"
+              className="w-full h-[38px] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00489A] transition duration-200 text-white font-semibold flex items-center justify-center"
+              variants={fadeUp}
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
@@ -140,25 +169,34 @@ function Login() {
               ) : (
                 "Login"
               )}
-            </button>
-          </form>
+            </motion.button>
+          </motion.form>
 
-          <div className="mt-8 text-center">
-            <p className="text-sm  mb-2"style={{ color: "#D3D3D3" }}>Trouble in login?</p>
-            <button className=" text-sm font-medium hover:underline transition-colors"
-            style={{ color: "#555555" }}>
+          {/* Support Section */}
+          <motion.div className="mt-8 text-center" variants={fadeUp}>
+            <p className="text-sm mb-2 text-[#D3D3D3]">Trouble in login?</p>
+            <button
+              className="text-sm font-medium hover:underline transition-colors"
+              style={{ color: "#555555" }}
+            >
               Contact our Support team
             </button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
-        <div className="absolute bottom-0 mb-10 text-center">
-          <p className="text-xs "style={{ color: "#D3D3D3" }}>
-            Copyright © 2025 SLTC ® | VER.2025E.001R
+        {/* Footer */}
+        <motion.div
+          className="mt-6 text-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.6, duration: 0.7 }}
+        >
+          <p className="text-xs text-[#D3D3D3]">
+            © 2025 SLTC ® | VER.2025E.001R
           </p>
-        </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </motion.div>
   );
 }
 
