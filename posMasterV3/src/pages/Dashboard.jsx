@@ -16,11 +16,10 @@ import Dashboard_manageUsers from "../assets/Dashboard_manageUsers.png";
 import Header from "../components/Header.jsx";
 import Sidebar from "../components/Sidebar.jsx";
 import Notification from "./notification/Notification.jsx";
-import { motion } from "framer-motion";
 
 function Dashboard() {
   const [hoveredCard, setHoveredCard] = useState(null);
-  const [activeSection, setActiveSection] = useState(null);
+   const [activeSection, setActiveSection] = useState(null);
   const toast = useContext(ToastContext);
   const navigate = useNavigate();
 
@@ -34,7 +33,7 @@ function Dashboard() {
     if (componentName === "inventory") {
       navigate("/dashboard/inventory");
     }
-
+    
     // Add other click logic as needed
   };
 
@@ -44,29 +43,38 @@ function Dashboard() {
       ? "blur-sm transition-all duration-300"
       : "transition-all duration-300";
 
-  return (
-    <>
-      <div className="mb-20">
-        <Header activeSection={activeSection} />
-      </div>
-      <Sidebar />
-      <div className="ml-44">
+return (
+  <div className="min-h-screen flex flex-col">
+    {/* Header - fixed at top */}
+    <header className="fixed top-0 left-0 right-0 z-50">
+      <Header activeSection={activeSection} />
+    </header>
+
+    {/* Main content area */}
+    <div className="flex flex-1 mt-16"> {/* mt-16 accounts for header height */}
+      {/* Sidebar - fixed left */}
+      <aside className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-44 z-40">
+        <Sidebar />
+      </aside>
+
+      {/* Main content - with sidebar offset */}
+      <main className="flex-1 ml-44 pt-4 pb-16"> {/* pb-16 accounts for footer height */}
         <Outlet context={{ setActiveSection }} />
+      </main>
+    </div>
+
+    {/* Footer - fixed at bottom */}
+    <footer 
+      id="bottom-bar"
+      className="fixed bottom-0 left-0 right-0 bg-blue-800 text-white py-2 z-50"
+    >
+      <div className="flex items-center gap-1 justify-start ml-5">
+        <SpinnerDot />
+        <span className="text-sm font-medium">Loading...</span>
       </div>
-      {/* bottom bar(planned to acccess this by id or something idk) */}
-      <motion.div
-        initial={{ y: 40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut", delay: 0.4 }}
-        className="absolute bottom-0 left-0 right-0 bg-blue-800 text-white py-2"
-      >
-        <div className="flex items-center gap-1 justify-start ml-5">
-          <SpinnerDot />
-          <span className="text-sm font-medium">Loading...</span>
-        </div>
-      </motion.div>
-    </>
-  );
+    </footer>
+  </div>
+);
 }
 
 export default Dashboard;
