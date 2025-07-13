@@ -492,7 +492,7 @@ const [inventoryItems, setInventoryItems] = useState([
             </div>
 
             {/* bottom bar(bottom) */}
-            <div className="flex justify-between space-x-3 -mx-10 mt-4 p-4 bg-[#C4C4C4]">
+            <div className="flex justify-between space-x-3 -mx-10 mt-4 p-4">
               <div className="flex flex-row items-center gap-3">
                 <button className="flex items-center px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
                 onClick={() => generatePdf('print')}
@@ -520,11 +520,11 @@ const [inventoryItems, setInventoryItems] = useState([
           </div>
 
         {/* item list(right)*/}
-        <div className="w-2/3 h-[calc(100vh-16rem)] bg-[#EBEBEB]">
+        <div className="w-2/3 h-[calc(100vh-1rem)] bg-[#EBEBEB]">
         {/* search panel */}
         <nav className="w-full flex flex-row justify-between py-8 px-10 h-[7rem] bg-white gap-6">
           {/* search textbox and search button */}
-<div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-2 border-b-[#EDEDED] h-14">
+<div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-2 border-blue-400">
             <input
               type="text"
               value={search}
@@ -549,7 +549,7 @@ const [inventoryItems, setInventoryItems] = useState([
             <option value="beverage">Beverage</option>
           </select>
         </nav>
-        <div className="h-[45rem] overflow-y-scroll">
+        <div className="h-[calc(100vh-14rem)] overflow-y-scroll">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 p-10">
             {loading ? (
               // Loading spinner

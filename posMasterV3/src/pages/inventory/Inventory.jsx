@@ -188,7 +188,7 @@ function Inventory() {
       />
       
 
-      <main className="flex-1 bg-[#F3F3F3] relative">
+      <main className="flex-1 bg-[#F3F3F3] h-[calc(100vh-6rem)] relative">
         
         {/* View Inventory */}
         <div className={isVisible("view-inventory")}>
@@ -225,10 +225,10 @@ function Inventory() {
               <option value="list">List</option>
             </select>
           </nav>
-          <div className="h-[45rem] overflow-y-scroll bg-transparent">
+          <div className="h-[calc(100vh-13rem)] overflow-y-scroll bg-transparent">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-10">
               {isSearching ? (
-                <div className="col-span-full flex flex-col items-center justify-center" style={{ minHeight: "60vh" }}>
+                <div className="col-span-full flex flex-col items-center justify-center">
                   <div className="flex flex-col items-center">
                     {/* Custom spinner */}
                     <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
