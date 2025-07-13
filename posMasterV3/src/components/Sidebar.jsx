@@ -41,7 +41,7 @@ function Sidebar() {
   return (
     <aside
       id="logo-sidebar"
-      className="fixed top-0 bottom-0 h-screen pt-20 transition-transform -translate-x-full bg-white border-r sm:translate-x-0"
+      className="fixed top-0 bottom-0 h-screen pt-20 bg-white border-r"
       aria-label="Sidebar"
     >
       <div className="h-full overflow-hidden bg-white">
