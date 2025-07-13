@@ -148,6 +148,76 @@ const [inventoryItems, setInventoryItems] = useState([
     uom: "pcs",
     image: itemImg,
   },
+    {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
+    {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
+    {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
+    {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
+    {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
   // Add more items as needed
 ]);
 
@@ -240,7 +310,7 @@ const [inventoryItems, setInventoryItems] = useState([
 
       <div className="flex flex-row">
         {/* item form (left)*/}
-          <div className="bg-white w-1/3 h-[55rem] p-10 flex flex-col justify-between">
+          <div className="bg-white w-1/3 h-[calc(100vh-6rem)] p-10 flex flex-col justify-between">
 
             {/* image upload and form(top) */}
             <div className="flex flex-col justify-end gap-6 h-[45rem]">
@@ -252,10 +322,10 @@ const [inventoryItems, setInventoryItems] = useState([
                   </div>
                 </div>
                 <div className="flex flex-col m-10">
-                  <button className="px-4 py-2 mb-4 bg-[#4A4A4A] text-white text-sm hover:bg-gray-700 transition-colors">
+                  <button className="px-4 py-2 mb-4 bg-[#BDBDBD] text-white text-sm hover:bg-gray-700 transition-colors">
                     Upload a photos
                   </button>
-                  <div className="grid grid-cols-2">
+                  <div className="grid grid-cols-2 md:grd-cols-1">
                     <p className="text-lg text-black">SKU :</p>
                     <p className="text-lg text-[#A7A7A7]">{formUpdateData.sku}</p>
                     <p className="text-lg text-black">BARCODE :</p>
@@ -422,7 +492,7 @@ const [inventoryItems, setInventoryItems] = useState([
             </div>
 
             {/* bottom bar(bottom) */}
-            <div className="flex justify-between space-x-3 -mx-10 p-4 bg-[#C4C4C4]">
+            <div className="flex justify-between space-x-3 -mx-10 mt-4 p-4 bg-[#C4C4C4]">
               <div className="flex flex-row items-center gap-3">
                 <button className="flex items-center px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
                 onClick={() => generatePdf('print')}
@@ -450,7 +520,7 @@ const [inventoryItems, setInventoryItems] = useState([
           </div>
 
         {/* item list(right)*/}
-        <div className="w-2/3 h-[40rem] bg-[#EBEBEB]">
+        <div className="w-2/3 h-[calc(100vh-16rem)] bg-[#EBEBEB]">
         {/* search panel */}
         <nav className="w-full flex flex-row justify-between py-8 px-10 h-[7rem] bg-white gap-6">
           {/* search textbox and search button */}
