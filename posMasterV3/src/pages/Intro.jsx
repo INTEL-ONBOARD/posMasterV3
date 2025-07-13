@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
 function Intro() {
   const navigate = useNavigate();
@@ -12,40 +13,63 @@ function Intro() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen  flex items-center justify-center p-4">
-      <div className="w-full max-w-md p-8">
+    <motion.div
+      className="min-h-screen flex items-center justify-center p-4"
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 1 }}
+    >
+      <div className="w-full max-w-md p-8 relative">
         {/* Logo/Title */}
-        <div className="text-center mb-16">
+        <motion.div
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.8 }}
+        >
           <h1 className="text-2xl font-bold">
-             <span className="font-bold" style={{ color: "#00489A" }}>POS</span>
+            <span className="font-bold text-[#00489A]">POS</span>
             <span className="text-gray-900"> MASTER</span>
             <span className="text-gray-700">.3</span>
           </h1>
-        </div>
+        </motion.div>
 
         {/* Loading Spinner */}
-        <div className="flex justify-center mb-16">
+        <motion.div
+          className="flex justify-center mb-16"
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.5, duration: 0.6, type: "spring", stiffness: 100 }}
+        >
           <div className="relative">
             <div className="w-8 h-8 border-2 border-gray-200 rounded-full"></div>
             <div className="absolute top-0 left-0 w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Loading Text */}
-        <div className="text-center">
-          <p className="text-gray-500 text-sm">
-            Please Wait...
-          </p>
-        </div>
+        <motion.div
+          className="text-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2, duration: 0.5 }}
+        >
+          <p className="text-gray-500 text-sm">Please Wait...</p>
+        </motion.div>
 
-        {/* Additional Info Footer */}
-        <div className="w-full absolute bottom-4 left-0 text-center">
+        {/* Footer */}
+        <motion.div
+          className="w-full absolute bottom-4 left-0 text-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 2.2, duration: 0.6 }}
+        >
           <p className="text-xs text-gray-400">
             © 2025 POS Master. All rights reserved.
           </p>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
