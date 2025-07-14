@@ -2,9 +2,9 @@ import React, { useState } from "react";
 
 export default function OffersDiscountView() {
   const [selectedView, setSelectedView] = useState("View");
-  const [selectedItem, setSelectedItem] = useState("Item");
-  const [selectedPackage, setSelectedPackage] = useState("Package");
-  const [selectedPriceRange, setSelectedPriceRange] = useState("Price range");
+  const [itemInput, setItemInput] = useState("");
+  const [packageInput, setPackageInput] = useState("");
+  const [priceRangeInput, setPriceRangeInput] = useState("");
 
   // Sample discount data
   const [discounts] = useState([
@@ -15,68 +15,53 @@ export default function OffersDiscountView() {
       type: "Package",
       amount: 30,
       unit: "%",
-      status: "Available"
+      status: "Available",
     },
     {
       id: 2,
-      code: "XLR9590565", 
+      code: "XLR9590565",
       name: "Biscuit Discount",
       type: "Item",
       amount: 1,
       unit: "Rs off",
-      status: "Disabled"
+      status: "Disabled",
     },
     {
       id: 3,
       code: "XLR9590565",
-      name: "Senior Discount", 
+      name: "Senior Discount",
       type: "Price Range",
       amount: 200,
       unit: "%",
-      status: "Disabled"
+      status: "Disabled",
     },
     {
       id: 4,
       code: "XLR9590565",
       name: "Student bonus",
-      type: "Price Range", 
+      type: "Price Range",
       amount: 3.5,
       unit: "Rs off",
-      status: "Available"
-    }
+      status: "Available",
+    },
   ]);
 
   const getStatusColor = (status) => {
     return status === "Available" ? "text-green-600" : "text-red-600";
   };
 
-  const getTypeColor = (type) => {
-    switch(type) {
-      case "Package": return "bg-blue-100 text-blue-800";
-      case "Item": return "bg-green-100 text-green-800"; 
-      case "Price Range": return "bg-purple-100 text-purple-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
   return (
     <div className="flex h-screen bg-[#EBEBEB]">
       {/* Left Sidebar */}
       <div className="w-80 bg-white border-r flex flex-col">
-        {/* Header */}
-        <div className="p-6 border-b">
-         
-        </div>
-
         {/* Filter Options */}
-        <div className="flex-1 p-6 space-y-6">
+        <div className="flex-1 p-6 space-y-4">
           {/* View Filter */}
-          <div>
-            
-            <select 
+         <div>
+            <select
               value={selectedView}
               onChange={(e) => setSelectedView(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
             >
               <option value="View">View</option>
               <option value="All">All</option>
@@ -85,51 +70,37 @@ export default function OffersDiscountView() {
             </select>
           </div>
 
-          {/* Item Filter */}
+          {/* Item Input */}
           <div>
-            
-            <select 
-              value={selectedItem}
-              onChange={(e) => setSelectedItem(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="Item">Item</option>
-              <option value="All Items">All Items</option>
-              <option value="Biscuits">Biscuits</option>
-              <option value="Beverages">Beverages</option>
-              <option value="Fruits">Fruits</option>
-            </select>
+            <input
+              type="text"
+              value={itemInput}
+              onChange={(e) => setItemInput(e.target.value)}
+              placeholder="Item"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
           </div>
 
-          {/* Package Filter */}
-          <div>
-            
-            <select 
-              value={selectedPackage}
-              onChange={(e) => setSelectedPackage(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="Package">Package</option>
-              <option value="Christmas Package">Christmas Package</option>
-              <option value="Holiday Package">Holiday Package</option>
-              <option value="Student Package">Student Package</option>
-            </select>
+          {/* Package Input */}
+          <div >
+            <input
+              type="text"
+              value={packageInput}
+              onChange={(e) => setPackageInput(e.target.value)}
+              placeholder="Package"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
           </div>
 
-          {/* Price Range Filter */}
-          <div>
-           
-            <select 
-              value={selectedPriceRange}
-              onChange={(e) => setSelectedPriceRange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="Price range">Price range</option>
-              <option value="0-100">Rs. 0 - 100</option>
-              <option value="100-500">Rs. 100 - 500</option>
-              <option value="500-1000">Rs. 500 - 1000</option>
-              <option value="1000+">Rs. 1000+</option>
-            </select>
+          {/* Price Range Input */}
+          <div >
+            <input
+              type="text"
+              value={priceRangeInput}
+              onChange={(e) => setPriceRangeInput(e.target.value)}
+              placeholder="Price Range"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
           </div>
         </div>
       </div>
@@ -138,7 +109,9 @@ export default function OffersDiscountView() {
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="bg-white border-b px-6 py-4">
-          <h1 className="text-2xl font-bold text-gray-800">Offers & Discounts</h1>
+          <h1 className="text-2xl font-bold text-gray-800">
+            Offers & Discounts
+          </h1>
         </div>
 
         {/* Table Container */}
@@ -148,32 +121,52 @@ export default function OffersDiscountView() {
               <thead className="bg-gray-600 text-white sticky top-0">
                 <tr>
                   <th className="px-6 py-3 text-left text-sm font-medium">#</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium">Discount code</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium">Name</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium">Discount Type</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium">Discount Amount</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium">Status</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium">
+                    Discount code
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-medium">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-medium">
+                    Discount Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-medium">
+                    Discount Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-medium">
+                    Status
+                  </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white">
                 {discounts.map((discount, index) => (
-                  <tr 
+                  <tr
                     key={discount.id}
-                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    className={`border-b border-gray-200 hover:bg-blue-50 transition-colors cursor-pointer ${
+                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                    }`}
                   >
-                    <td className="px-6 py-4 text-sm text-gray-700">#{index + 1}</td>
-                    <td className="px-6 py-4 text-sm text-gray-700">{discount.code}</td>
-                    <td className="px-6 py-4 text-sm text-gray-700 font-medium">{discount.name}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(discount.type)}`}>
-                        {discount.type}
-                      </span>
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      #{index + 1}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      {discount.code}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700 font-medium">
+                      {discount.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700 font-medium">
+                      {discount.type}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 font-medium">
                       {discount.amount} ({discount.unit})
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`text-sm font-medium ${getStatusColor(discount.status)}`}>
+                      <span
+                        className={`text-sm font-medium ${getStatusColor(
+                          discount.status
+                        )}`}
+                      >
                         {discount.status}
                       </span>
                     </td>
