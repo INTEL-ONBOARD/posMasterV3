@@ -366,7 +366,7 @@ const [inventoryItems, setInventoryItems] = useState([
 
       <div className="flex flex-row">
         {/* item form (left)*/}
-          <div className="bg-white w-1/3 h-[calc(100vh-6rem)] p-10 flex flex-col justify-between">
+          <div className="bg-white w-1/3 h-[calc(100vh-6rem)] p-10 z-10 flex flex-col justify-between">
 
             {/* image upload and form(top) */}
             <div className="flex flex-col justify-end gap-6 h-[45rem]">
@@ -379,13 +379,13 @@ const [inventoryItems, setInventoryItems] = useState([
                 </div>
                 <div className="flex flex-col m-10">
                   <button className="px-4 py-2 mb-4 bg-[#BDBDBD] text-white text-sm hover:bg-gray-700 transition-colors">
-                    Upload a photos
+                    Upload a photo
                   </button>
                   <div className="grid grid-cols-2 md:grd-cols-1">
                     <p className="text-lg text-black">SKU :</p>
-                    <p className="text-lg text-[#A7A7A7]">{formUpdateData.sku}</p>
+                    <p className="w-max text-lg text-[#A7A7A7]">{formUpdateData.sku}</p>
                     <p className="text-lg text-black">BARCODE :</p>
-                    <p className="text-lg text-[#A7A7A7]">{formUpdateData.itemCode}</p>
+                    <p className="w-max text-lg text-[#A7A7A7]">{formUpdateData.itemCode}</p>
                   </div>
                 </div>   
               </div>
