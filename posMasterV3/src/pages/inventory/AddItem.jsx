@@ -29,48 +29,76 @@ function AddItem() {
     });
   };
 
-  // Generate PDF with multiple barcodes
-  const generatePdf = async (action) => {
-    try {
-      const barcodeDataUrl = await generateBarcode();
-      const instance = pdf(<SimpleDocument 
-        barcodeDataUrl={barcodeDataUrl} 
-        barcodeValue={barcodeValue} 
-      />);
+  // // Generate PDF with multiple barcodes
+  // const generatePdf = async (action) => {
+  //   try {
+  //     const barcodeDataUrl = await generateBarcode();
+  //     const instance = pdf(<SimpleDocument 
+  //       barcodeDataUrl={barcodeDataUrl} 
+  //       barcodeValue={barcodeValue} 
+  //     />);
       
-      const blob = await instance.toBlob();
-      const url = URL.createObjectURL(blob);
+  //     const blob = await instance.toBlob();
+  //     const url = URL.createObjectURL(blob);
       
-      //if (action === 'download') downloadPdf(url);
-      if (action === 'print') printPdf(url);
+  //     //if (action === 'download') downloadPdf(url);
+  //     if (action === 'print') printPdf(url);
       
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to generate PDF');
-    }
-  };
+  //     setTimeout(() => URL.revokeObjectURL(url), 60000);
+  //   } catch (error) {
+  //     console.error('Error:', error);
+  //     alert('Failed to generate PDF');
+  //   }
+  // };
+
+  // // Print PDF
+  // const printPdf = (url) => {
+  //   const iframe = document.createElement('iframe');
+  //   iframe.style.display = 'none';
+  //   iframe.src = url;
+  //   iframe.onload = () => {
+  //       iframe.contentWindow?.print();
+      
+  //     };
+  //     document.body.appendChild(iframe);
+  //     //about to pass the pdf and to be implemented later
+  //     //window.electronAPI.send('print-silent');
+  // };
 
   // Download PDF
-  const downloadPdf = (url) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'barcodes.pdf';
-    link.click();
-  };
+  // const downloadPdf = (url) => {
+  //   const link = document.createElement('a');
+  //   link.href = url;
+  //   link.download = 'barcodes.pdf';
+  //   link.click();
+  // };
 
-  // Print PDF
-  const printPdf = (url) => {
-    window.electronAPI.send('print-silent');
-    // const iframe = document.createElement('iframe');
-    // iframe.style.display = 'none';
-    // iframe.src = url;
-    // iframe.onload = () => {
-    //   iframe.contentWindow?.print();
-      
-    // };
-    // document.body.appendChild(iframe);
-  };
+const generatePdf = async (action) => {
+  try {
+    const barcodeDataUrl = await generateBarcode();
+    const instance = pdf(<SimpleDocument 
+      barcodeDataUrl={barcodeDataUrl} 
+      barcodeValue={barcodeValue} 
+    />);
+    
+    const blob = await instance.toBlob();
+    
+    if (action === 'print') {
+      // Convert Blob to ArrayBuffer for IPC
+      const arrayBuffer = await blob.arrayBuffer();
+      window.electronAPI.sendPrintSilent(arrayBuffer);
+    } else if (action === 'download') {
+      const url = URL.createObjectURL(blob);
+      downloadPdf(url);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+    
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to generate PDF');
+  }
+};
+
 
   //______________________________________________________________
 
@@ -107,6 +135,132 @@ const [inventoryItems, setInventoryItems] = useState([
     image: itemImg,
   },
   {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
+    {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
+    {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
+    {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
+    {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
+    {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
+      {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
+      {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
+      {
+    id: "3",
+    name: "Banana",
+    category: "fruit",
+    brand: "none",
+    itemCode: "3345456",
+    sku: "SKU-543833",
+    status: "available",
+    thresholdLimit: 10,
+    maxmiumCapacity: 100,
+    quantity: 20,
+    uom: "pcs",
+    image: itemImg,
+  },
+      {
     id: "3",
     name: "Banana",
     category: "fruit",
@@ -212,7 +366,7 @@ const [inventoryItems, setInventoryItems] = useState([
 
       <div className="flex flex-row">
         {/* item form (left)*/}
-          <div className="bg-white w-1/3 h-[55rem] p-10 flex flex-col justify-between">
+          <div className="bg-white w-1/3 h-[calc(100vh-6rem)] p-10 flex flex-col justify-between">
 
             {/* image upload and form(top) */}
             <div className="flex flex-col justify-end gap-6 h-[45rem]">
@@ -224,10 +378,10 @@ const [inventoryItems, setInventoryItems] = useState([
                   </div>
                 </div>
                 <div className="flex flex-col m-10">
-                  <button className="px-4 py-2 mb-4 bg-[#4A4A4A] text-white text-sm hover:bg-gray-700 transition-colors">
+                  <button className="px-4 py-2 mb-4 bg-[#BDBDBD] text-white text-sm hover:bg-gray-700 transition-colors">
                     Upload a photos
                   </button>
-                  <div className="grid grid-cols-2">
+                  <div className="grid grid-cols-2 md:grd-cols-1">
                     <p className="text-lg text-black">SKU :</p>
                     <p className="text-lg text-[#A7A7A7]">{formUpdateData.sku}</p>
                     <p className="text-lg text-black">BARCODE :</p>
@@ -394,7 +548,7 @@ const [inventoryItems, setInventoryItems] = useState([
             </div>
 
             {/* bottom bar(bottom) */}
-            <div className="flex justify-between space-x-3 -mx-10 p-4 bg-[#C4C4C4]">
+            <div className="flex justify-between space-x-3 -mx-10 mt-4 p-4">
               <div className="flex flex-row items-center gap-3">
                 <button className="flex items-center px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
                 onClick={() => generatePdf('print')}
@@ -422,11 +576,11 @@ const [inventoryItems, setInventoryItems] = useState([
           </div>
 
         {/* item list(right)*/}
-        <div className="w-2/3 h-[40rem] bg-[#EBEBEB]">
+        <div className="w-2/3 h-[calc(100vh-1rem)] bg-[#EBEBEB]">
         {/* search panel */}
         <nav className="w-full flex flex-row justify-between py-8 px-10 h-[7rem] bg-white gap-6">
           {/* search textbox and search button */}
-<div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-2 border-b-[#EDEDED] h-14">
+<div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-2 border-blue-400">
             <input
               type="text"
               value={search}
@@ -451,7 +605,7 @@ const [inventoryItems, setInventoryItems] = useState([
             <option value="beverage">Beverage</option>
           </select>
         </nav>
-        <div className="h-[45rem] overflow-y-scroll">
+        <div className="h-[calc(100vh-14rem)] overflow-y-scroll">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 p-10">
             {loading ? (
               // Loading spinner
