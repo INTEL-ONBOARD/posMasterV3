@@ -4,6 +4,8 @@ const fs = require('fs').promises; // Use promise-based fs API
 //const { pdf } = require("@react-pdf/renderer"); //
 //const { error } = require("console");
 //const pdf =  require('react-pdf'); // ES module compatible
+//for hot reload npm package
+//const electronReload = require('electron-reload')
 
 const printer = require("pdf-to-printer");
 
@@ -13,7 +15,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
-    titleBarStyle: 'hidden', //view edit and other shiiiiiiiiiiiiiiiiii
+    //titleBarStyle: 'hidden', //view edit and other shiiiiiiiiiiiiiiiiii
     titleBarOverlay: true,   // Window minimize close buttons
     //fullscreen: true,
     webPreferences: {
