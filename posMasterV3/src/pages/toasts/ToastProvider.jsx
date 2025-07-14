@@ -32,7 +32,7 @@ function ToastProvider({ children }) {
           <div
             key={id}
             className={`transition-all duration-500 ease-in-out transform ${
-              exiting[id] ? 'animate-slide-out-right' : 'animate-slide-in-left'
+              exiting[id] ? 'animate-slide-out-right' : 'animate-slide-in-right'
             }`}
           >
             <div

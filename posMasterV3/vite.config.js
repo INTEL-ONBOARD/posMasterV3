@@ -5,4 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: './',   // Add this line to make assets load relatively
   plugins: [react()],
+  // build: {
+  //   outDir: 'dist-react',
+  // },
 })
