@@ -5,7 +5,7 @@ export default function ConfirmDeleteModal({ open, item, onCancel, onConfirm }) 
   if (!open || !item) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+    <div className="fixed z-20 inset-0 flex items-center justify-center bg-black bg-opacity-40" style={{ left: '46%' }}>
       <div className="bg-white  shadow-lg p-8 w-[700px] max-w-full relative">
         {/* Modal Close icon */}
         <button

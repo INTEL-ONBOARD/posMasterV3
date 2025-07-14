@@ -10,7 +10,7 @@ export default function Add_item_Card({ item, onOpen, onRemove ,hideClose}) {
  {/* Only show close icon if hideClose is NOT true */}
       {!hideClose && (
         <button
-          className="absolute top-2 left-2 z-10 p-0.5 bg-black rounded-full hover:bg-gray-800 flex items-center justify-center"
+          className="absolute top-2 left-2 p-0.5 bg-black rounded-full hover:bg-gray-800 flex items-center justify-center"
           onClick={(e) => {
             e.stopPropagation();
             if (onRemove) onRemove(item.id);
