@@ -149,6 +149,50 @@ function Inventory() {
       stock: 25,
       image: bananaImg,
     },
+    {
+      id: "8",
+      name: "Chicken Breast",
+      barcode: "SKU-34681328",
+      category: "Meat",
+      price: "600.00",
+      unit: "KG",
+      sku: "SKU008",
+      stock: 30,
+      image: bananaImg,
+    },
+    {
+      id: "9",
+      name: "Cheese",
+      barcode: "SKU-34681329",
+      category: "Dairy",
+      price: "500.00",
+      unit: "KG",
+      sku: "SKU009",
+      stock: 25,
+      image: bananaImg,
+    },
+    {
+      id: "10",
+      name: "Parata",
+      barcode: "SKU-34681329",
+      category: "Dairy",
+      price: "500.00",
+      unit: "KG",
+      sku: "SKU009",
+      stock: 25,
+      image: bananaImg,
+    },
+    {
+      id: "11",
+      name: "Noodles",
+      barcode: "SKU-34681329",
+      category: "Dairy",
+      price: "500.00",
+      unit: "KG",
+      sku: "SKU009",
+      stock: 25,
+      image: bananaImg,
+    },
   ]);
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
@@ -188,7 +232,7 @@ function Inventory() {
       />
       
 
-      <main className="flex-1 bg-[#F3F3F3] relative">
+      <main className="flex-1 bg-[#F3F3F3] h-[calc(100vh-6rem)] relative">
         
         {/* View Inventory */}
         <div className={isVisible("view-inventory")}>
@@ -225,10 +269,10 @@ function Inventory() {
               <option value="list">List</option>
             </select>
           </nav>
-          <div className="h-[45rem] overflow-y-scroll bg-transparent">
+          <div className="h-[calc(100vh-13rem)] overflow-y-scroll bg-transparent">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-10">
               {isSearching ? (
-                <div className="col-span-full flex flex-col items-center justify-center" style={{ minHeight: "60vh" }}>
+                <div className="col-span-full flex flex-col items-center justify-center">
                   <div className="flex flex-col items-center">
                     {/* Custom spinner */}
                     <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
@@ -277,12 +321,7 @@ function Inventory() {
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-blue-800 text-white py-2">
-        <div className="flex items-center gap-1 justify-start ml-5">
-          <SpinnerDot />
-          <span className="text-sm font-medium">Loading...</span>
-        </div>
-      </div>
+
     </div>
   );
 }
