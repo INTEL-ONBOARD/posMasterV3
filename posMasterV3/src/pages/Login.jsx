@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 import ToastContext from "./toasts/ToastService";
+import { apiClient } from "../api/client";
 
 
 const containerVariants = {
@@ -53,12 +54,35 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    
+    try {
+      const response = await apiClient.post("api/users/login", {
+        email: formData.email,
+        password: formData.password
+      });
 
-    setTimeout(() => {
-      setIsLoading(false);
-      toast.open("Logged in successfully!");
-      navigate("/dashboard");
-    }, 1500);
+      if (response.data.status === "success") {
+        // Store user data in localStorage
+        localStorage.setItem("user", JSON.stringify(response.data.data));
+        navigate("/dashboard");
+      } else {
+        toast.open(`Login failed: ${response.data.message}`);
+      }
+    } catch (error) {
+      // Handle different error types
+      if (error.response) {
+        // Server responded with error status (4xx/5xx)
+        toast.open(`Login error: ${error.response.data.message || "Unknown server error"}`);
+      } else if (error.request) {
+        // No response received
+        toast.open("Network error: Please check your connection");
+      } else {
+        // Other errors
+        toast.open("Login error: Please try again");
+      }
+    } finally {
+      setIsLoading(false);  // Ensure loading state is reset
+    }
   };
 
   return (
