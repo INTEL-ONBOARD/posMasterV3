@@ -309,13 +309,13 @@ function Inventory() {
         </div>
 
         {/* Inventory Config */}
-        <div className={isVisible("inventory-config") + " p-6"}>
+        <div className={isVisible("inventory-config")}>
           <InventoryConfig />
           {/* …your config UI here… */}
         </div>
 
         {/* Inventory Report */}
-        <div className={isVisible("inventory-report") + " p-6"}>
+        <div className={isVisible("inventory-report")}>
           <InventoryReport inventoryItems={inventoryItems} />
           {/* …your report UI here… */}
         </div>

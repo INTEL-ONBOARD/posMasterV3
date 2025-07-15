@@ -104,7 +104,7 @@ const generatePdf = async (action) => {
 
 
 
-  // Example inventory dataa
+  // Example inventory data
 const [inventoryItems, setInventoryItems] = useState([
   {
     id: "1",
@@ -352,7 +352,9 @@ const [inventoryItems, setInventoryItems] = useState([
   };
 
   const handleConfirmDelete = () => {
-    setInventoryItems(items => items.filter(i => i.id !== selectedItem.id));
+
+    //tf is this
+    //setInventoryItems(items => items.filter(i => i.id !== selectedItem.id));
     setShowDeleteModal(false);
     setSelectedItem(null);
   };
@@ -640,6 +642,7 @@ const [inventoryItems, setInventoryItems] = useState([
         item={selectedItem}
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}
+        isSuccess={true}
       />
       </div>
   );
