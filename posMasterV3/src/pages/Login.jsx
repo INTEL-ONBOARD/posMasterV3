@@ -66,13 +66,14 @@ function Login() {
         localStorage.setItem("user", JSON.stringify(response.data.data));
         navigate("/dashboard");
       } else {
-        toast.open(`Login failed: ${response.data.message}`);
+        toast.open(`${response.data.message}`, 4000, 'Login Failed', 'warning');
       }
     } catch (error) {
       // Handle different error types
       if (error.response) {
         // Server responded with error status (4xx/5xx)
-        toast.open(`Login error: ${error.response.data.message || "Unknown server error"}`);
+        // toast.open(`Login error: ${error.response.data.message || "Unknown server error"}`);
+        toast.open(`${error.response.data.message}`, 4000, 'Login Error', 'error');
       } else if (error.request) {
         // No response received
         toast.open("Network error: Please check your connection");
@@ -225,3 +226,12 @@ function Login() {
 }
 
 export default Login;
+
+// Basic usage
+//open('Operation completed');
+
+// With custom title and status
+//open('File upload failed', 5000, 'Upload Error', 'error');
+
+// All parameters
+//open('Please check your inputs', 3000, 'Validation Warning', 'warning');
