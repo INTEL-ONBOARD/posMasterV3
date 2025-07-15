@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { apiClient } from "../../../api/client";
+import ToastContext from "../../toasts/ToastService";
 
 function CategoryConfig() {
+  const toast = useContext(ToastContext);
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({ 
     brand: "", 
