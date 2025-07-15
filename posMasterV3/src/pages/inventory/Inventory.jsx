@@ -150,7 +150,7 @@ function Inventory() {
       image: bananaImg,
     },
     {
-      id: "8",
+      id: "12",
       name: "Chicken Breast",
       barcode: "SKU-34681328",
       category: "Meat",
@@ -161,7 +161,7 @@ function Inventory() {
       image: bananaImg,
     },
     {
-      id: "9",
+      id: "13",
       name: "Cheese",
       barcode: "SKU-34681329",
       category: "Dairy",
@@ -172,7 +172,7 @@ function Inventory() {
       image: bananaImg,
     },
     {
-      id: "10",
+      id: "14",
       name: "Parata",
       barcode: "SKU-34681329",
       category: "Dairy",
@@ -183,7 +183,7 @@ function Inventory() {
       image: bananaImg,
     },
     {
-      id: "11",
+      id: "15",
       name: "Noodles",
       barcode: "SKU-34681329",
       category: "Dairy",

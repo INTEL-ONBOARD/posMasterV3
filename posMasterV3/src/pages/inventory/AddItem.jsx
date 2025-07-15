@@ -149,7 +149,7 @@ const [inventoryItems, setInventoryItems] = useState([
     image: itemImg,
   },
     {
-    id: "3",
+    id: "4",
     name: "Banana",
     category: "fruit",
     brand: "none",
@@ -163,7 +163,7 @@ const [inventoryItems, setInventoryItems] = useState([
     image: itemImg,
   },
     {
-    id: "3",
+    id: "5",
     name: "Banana",
     category: "fruit",
     brand: "none",
@@ -177,7 +177,7 @@ const [inventoryItems, setInventoryItems] = useState([
     image: itemImg,
   },
     {
-    id: "3",
+    id: "6",
     name: "Banana",
     category: "fruit",
     brand: "none",
@@ -191,7 +191,7 @@ const [inventoryItems, setInventoryItems] = useState([
     image: itemImg,
   },
     {
-    id: "3",
+    id: "7",
     name: "Banana",
     category: "fruit",
     brand: "none",
@@ -205,7 +205,7 @@ const [inventoryItems, setInventoryItems] = useState([
     image: itemImg,
   },
     {
-    id: "3",
+    id: "8",
     name: "Banana",
     category: "fruit",
     brand: "none",
@@ -219,7 +219,7 @@ const [inventoryItems, setInventoryItems] = useState([
     image: itemImg,
   },
       {
-    id: "3",
+    id: "9",
     name: "Banana",
     category: "fruit",
     brand: "none",
@@ -233,7 +233,7 @@ const [inventoryItems, setInventoryItems] = useState([
     image: itemImg,
   },
       {
-    id: "3",
+    id: "10",
     name: "Banana",
     category: "fruit",
     brand: "none",
@@ -247,7 +247,7 @@ const [inventoryItems, setInventoryItems] = useState([
     image: itemImg,
   },
       {
-    id: "3",
+    id: "11",
     name: "Banana",
     category: "fruit",
     brand: "none",
@@ -261,7 +261,7 @@ const [inventoryItems, setInventoryItems] = useState([
     image: itemImg,
   },
       {
-    id: "3",
+    id: "12",
     name: "Banana",
     category: "fruit",
     brand: "none",
