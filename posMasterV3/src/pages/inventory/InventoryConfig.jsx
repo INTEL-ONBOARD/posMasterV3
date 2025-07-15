@@ -79,33 +79,15 @@ export default function InventoryConfig() {
         </div>
       </div>
 
-      {/* Right panel with conditional visibility */}
+      {/* Right panel with corrected conditional rendering */}
       <div className="flex-1">
-        <div
-          className={` ${
-            selectedSection === "unit-of-meassurement"
-              ? "visible"
-              : "invisible"
-          }`}
-        >
+        <div className={selectedSection === "unit-of-meassurement" ? "h-full" : "hidden"}>
           <UnitOfMeassurement /> 
         </div>
-        <div
-          className={` ${
-            selectedSection === "category-config"
-              ? "visible"
-              : "invisible"
-          }`}
-        >
+        <div className={selectedSection === "category-config" ? "h-full" : "hidden"}>
           <CategoryConfig />
         </div>
-        <div
-          className={` ${
-            selectedSection === "branch-config"
-              ? "visible"
-              : "invisible"
-          }`}
-        >
+        <div className={selectedSection === "branch-config" ? "h-full" : "hidden"}>
           <BranchConfig />
         </div>
       </div>

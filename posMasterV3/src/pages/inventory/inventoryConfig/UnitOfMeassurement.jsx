@@ -49,9 +49,9 @@ function UnitOfMeassurement() {
 
       if (response.data.status === "success") {
         if (editingId) {
-        toast.open(`${response.data.message}`, 4000, 'New UOM updated', 'success');
+        toast.open(`${response.data.message}`, 4000, 'UOM updated', 'success');
       } else {
-        toast.open(`${response.data.message}`, 4000, 'UOM added', 'success');
+        toast.open(`${response.data.message}`, 4000, 'New UOM added', 'success');
       }
         fetchUoms(); // Refresh the list
         handleClear();
@@ -73,7 +73,7 @@ function UnitOfMeassurement() {
   const handleDelete = async (id, e) => {
     e.stopPropagation(); // Prevent row click event
     
-    if (window.confirm("Are you sure you want to delete this unit?")) {
+    // if (window.confirm("Are you sure you want to delete this unit?")) {
       try {
         const response = await apiClient.delete(`api/uoms/${id}`);
         if (response.data.status === "success") {
@@ -86,7 +86,7 @@ function UnitOfMeassurement() {
       } catch (error) {
         setError(error.response?.data?.message || 'Delete failed');
       }
-    }
+    // }
   };
 
   const handleRowClick = (unit) => {
