@@ -1,8 +1,14 @@
 import React from "react";
-import saleViewImg from "../../assets/Dashboard_sales.png";
-import transactionHistoryImg from "../../assets/Inventory_report.png";
-import inventoryViewImg from "../../assets/View_inventory.png";
-import offersDiscountImg from "../../assets/Inventory_settings.png";
+// import saleViewImg from "../../assets/Dashboard_sales.png";
+// import transactionHistoryImg from "../../assets/Inventory_report.png";
+// import inventoryViewImg from "../../assets/View_inventory.png";
+// import offersDiscountImg from "../../assets/Inventory_settings.png";
+// import salesConfigImg from "../../assets/Inventory_settings.png";
+//new image imports
+import saleViewImg from "../../assets/sale_sidebar_view.png";
+import transactionHistoryImg from "../../assets/sale_sidebar_trans_history.png";
+import inventoryViewImg from "../../assets/sale_sidebar_config.png";
+import offersDiscountImg from "../../assets/sale_sidebar_discounts.png";
 import salesConfigImg from "../../assets/Inventory_settings.png";
 
 function SalesSidebar({
