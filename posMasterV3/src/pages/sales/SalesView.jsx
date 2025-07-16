@@ -279,7 +279,7 @@ export default function SalesView() {
                   {/* Barcode Image and Search Bar - Parallel */}
                   <div className="flex flex-row items-center gap-4 mb-4">
                     {/* Back button */}
-                    
+
 
                     {/* Search Bar */}
                     {/* <div className="flex-1 flex gap-2">
@@ -318,42 +318,55 @@ export default function SalesView() {
                     </div> */}
                     <div className="w-full flex flex-col gap-3">
 
-                    <div className="flex-1 flex border-b border-[#EDEDED] h-12">
-                      <input
-                        type="text"
-                        value={scanCode}
-                        onChange={(e) => setScanCode(e.target.value)}
-                        placeholder="Search Your Items here"
-                        className="flex-1 px-3 py-2 bg-trans focus:outline-none"
-                      />
-                      <button className="px-10 py-2 bg-[#1A318C] text-white"
-                      onClick={handleScan}>
-                        Search
-                      </button>
-                    </div>
+                      <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
+                        <input
+                          type="text"
+                          value={scanCode}
+                          onChange={(e) => setScanCode(e.target.value)}
+                          placeholder="Search Your Items here"
+                          className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
+                        />
+                        <button
+                          className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
+                          onClick={handleScan}
+                        >
+                          <svg
+                            className="w-5 h-5 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                          </svg>
+                          Search
+                        </button>
+                      </div>
 
-                    <div className="flex flex-row gap-3">
+
+                      <div className="flex flex-row gap-3">
 
                         <label className="relative">
-                          <input 
-                            type="checkbox" 
-                            className="absolute opacity-0 w-0 h-0 peer" 
-                            name="category" 
+                          <input
+                            type="checkbox"
+                            className="absolute opacity-0 w-0 h-0 peer"
+                            name="category"
                             value="fruit"
                           />
                           <div className="py-2 px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500">
                             <span>Fruit</span>
                             <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
-                              <svg 
-                                xmlns="http://www.w3.org/2000/svg" 
-                                className="h-3 w-3" 
-                                viewBox="0 0 20 20" 
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-3 w-3"
+                                viewBox="0 0 20 20"
                                 fill="currentColor"
                               >
-                                <path 
-                                  fillRule="evenodd" 
-                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" 
-                                  clipRule="evenodd" 
+                                <path
+                                  fillRule="evenodd"
+                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                  clipRule="evenodd"
                                 />
                               </svg>
                             </span>
@@ -362,25 +375,25 @@ export default function SalesView() {
 
 
                         <label className="relative">
-                          <input 
-                            type="checkbox" 
-                            className="absolute opacity-0 w-0 h-0 peer" 
-                            name="category" 
+                          <input
+                            type="checkbox"
+                            className="absolute opacity-0 w-0 h-0 peer"
+                            name="category"
                             value="vegetable"
                           />
                           <div className="py-2 px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500">
                             <span>Vegetable</span>
                             <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
-                              <svg 
-                                xmlns="http://www.w3.org/2000/svg" 
-                                className="h-3 w-3" 
-                                viewBox="0 0 20 20" 
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-3 w-3"
+                                viewBox="0 0 20 20"
                                 fill="currentColor"
                               >
-                                <path 
-                                  fillRule="evenodd" 
-                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" 
-                                  clipRule="evenodd" 
+                                <path
+                                  fillRule="evenodd"
+                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                  clipRule="evenodd"
                                 />
                               </svg>
                             </span>
@@ -388,25 +401,25 @@ export default function SalesView() {
                         </label>
 
                         <label className="relative">
-                          <input 
-                            type="checkbox" 
-                            className="absolute opacity-0 w-0 h-0 peer" 
-                            name="category" 
+                          <input
+                            type="checkbox"
+                            className="absolute opacity-0 w-0 h-0 peer"
+                            name="category"
                             value="dairy"
                           />
                           <div className="py-2 px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500">
                             <span>Dairy</span>
                             <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
-                              <svg 
-                                xmlns="http://www.w3.org/2000/svg" 
-                                className="h-3 w-3" 
-                                viewBox="0 0 20 20" 
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-3 w-3"
+                                viewBox="0 0 20 20"
                                 fill="currentColor"
                               >
-                                <path 
-                                  fillRule="evenodd" 
-                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" 
-                                  clipRule="evenodd" 
+                                <path
+                                  fillRule="evenodd"
+                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                  clipRule="evenodd"
                                 />
                               </svg>
                             </span>
@@ -620,7 +633,7 @@ export default function SalesView() {
                       </div>
                     ) : (
                       // Items Display
-                      
+
                       <div className="grid sm:grid-cols-1 md:grid-cols-2">
                         {filteredItems.map((item) => (
                           <div key={item.id} className="transform scale-90">
@@ -632,7 +645,7 @@ export default function SalesView() {
                         ))}
                       </div>
                     )
-                    
+
                     }
                   </div>
                 )}
@@ -676,11 +689,10 @@ export default function SalesView() {
                       {scannedItems.map((item, index) => (
                         <tr
                           key={item.id}
-                          className={`border-b border-gray-200 hover:bg-blue-50 cursor-pointer transition-colors ${
-                            selectedTableItem?.id === item.id
+                          className={`border-b border-gray-200 hover:bg-blue-50 cursor-pointer transition-colors ${selectedTableItem?.id === item.id
                               ? "bg-blue-100"
                               : ""
-                          }`}
+                            }`}
                           onClick={() => handleTableRowClick(item)}
                         >
                           <td className="px-4 py-3 text-sm text-gray-700">
@@ -727,38 +739,38 @@ export default function SalesView() {
 
               {/* Payment Section */}
               <div className="bg-white">
-                  {/* Amounts */}
-              <div className="grid grid-cols-2 p-3">
-                <div className="p-2 bg-[#D9D9D9] text-base text-gray-500">Discount Amount</div>
-                <div className="p-2 bg-[#D9D9D9] text-xl font-normal text-gray-800 text-right">
-                  RS.{discountAmount.toFixed(2)}
+                {/* Amounts */}
+                <div className="grid grid-cols-2 p-3">
+                  <div className="p-2 bg-[#D9D9D9] text-base text-gray-500">Discount Amount</div>
+                  <div className="p-2 bg-[#D9D9D9] text-xl font-normal text-gray-800 text-right">
+                    RS.{discountAmount.toFixed(2)}
+                  </div>
+                  <div className="p-2 bg-[#F8F8F8] text-base text-gray-500">Change Amount</div>
+                  <div className="p-2 bg-[#F8F8F8] text-xl font-normal text-gray-800 text-right">
+                    RS.{changeAmount.toFixed(2)}
+                  </div>
+                  <div className="p-2 bg-[#5C5C5C] text-base text-gray-500">Total Amount</div>
+                  <div className="p-2 bg-[#5C5C5C] text-xl font-semibold text-white text-right">
+                    RS.{totalAmount.toFixed(2)}
+                  </div>
                 </div>
-                <div className="p-2 bg-[#F8F8F8] text-base text-gray-500">Change Amount</div>
-                <div className="p-2 bg-[#F8F8F8] text-xl font-normal text-gray-800 text-right">
-                  RS.{changeAmount.toFixed(2)}
+                {/* payment button controls*/}
+                <div className="flex flex-row justify-between px-3">
+                  <button className="px-4 py-3 mb-4 bg-[#727272] text-white text-sm hover:bg-gray-700 transition-colors flex items-center">
+                    <img src={clearBtnImg} alt="Clear" className="w-4 h-4 mr-2" />
+                    Clear
+                  </button>
+
+                  <button className="px-4 py-3 mb-4 bg-[#EB8928] text-white text-sm hover:bg-orange-500 transition-colors flex items-center">
+                    <img src={sidebarHoldOrderBtnImg} alt="Hold Order" className="w-4 h-4 mr-2" />
+                    Hold Order
+                  </button>
+
+                  <button className="px-4 py-3 mb-4 bg-[#1A318C] text-white text-sm hover:bg-blue-700 transition-colors flex items-center">
+                    <img src={sidebarPaymentBtnImg} alt="Proceed Payment" className="w-4 h-4 mr-2" />
+                    Proceed Payment
+                  </button>
                 </div>
-                <div className="p-2 bg-[#5C5C5C] text-base text-gray-500">Total Amount</div>
-                <div className="p-2 bg-[#5C5C5C] text-xl font-semibold text-white text-right">
-                  RS.{totalAmount.toFixed(2)}
-                </div>
-              </div>
-              {/* payment button controls*/}
-              <div className="flex flex-row justify-between px-3">
-                <button className="px-4 py-3 mb-4 bg-[#727272] text-white text-sm hover:bg-gray-700 transition-colors flex items-center">
-                  <img src={clearBtnImg} alt="Clear" className="w-4 h-4 mr-2" />
-                  Clear
-                </button>
-                
-                <button className="px-4 py-3 mb-4 bg-[#EB8928] text-white text-sm hover:bg-orange-500 transition-colors flex items-center">
-                  <img src={sidebarHoldOrderBtnImg} alt="Hold Order" className="w-4 h-4 mr-2" />
-                  Hold Order
-                </button>
-                
-                <button className="px-4 py-3 mb-4 bg-[#1A318C] text-white text-sm hover:bg-blue-700 transition-colors flex items-center">
-                  <img src={sidebarPaymentBtnImg} alt="Proceed Payment" className="w-4 h-4 mr-2" />
-                  Proceed Payment
-                </button>
-              </div>
               </div>
             </div>
           </div>

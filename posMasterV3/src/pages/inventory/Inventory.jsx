@@ -237,7 +237,7 @@ function Inventory() {
         {/* View Inventory */}
         <div className={isVisible("view-inventory")}>
           <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4">
-            <div className="flex-1 flex border-b border-[#EDEDED] h-12">
+            <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
               <input
                 type="text"
                 value={search}
@@ -247,11 +247,22 @@ function Inventory() {
               />
               <button
                 onClick={handleSearch}
-                className="px-10 py-2 bg-[#1A318C] text-white"
+                className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
               >
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                </svg>
                 Search
               </button>
             </div>
+
 
             <select
               value={searchCategory}
