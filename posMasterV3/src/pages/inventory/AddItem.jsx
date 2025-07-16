@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { apiClient } from "../../api/client";
 import { useNavigate } from "react-router-dom";
 import { X, Upload, Printer } from "lucide-react";
 import Add_item_Card from "../../frontend/components/Add_item_Card";
@@ -11,10 +11,6 @@ import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
 import JsBarcode from 'jsbarcode';
 
-// Create Axios instance with base URL
-const apiClient = axios.create({
-  baseURL: "https://posmasterv3-backend.onrender.com/",
-});
 
 function AddItem() {
   const navigate = useNavigate();
@@ -405,8 +401,8 @@ function AddItem() {
                 </label>
                 <input
                   type="text"
-                  name="itemCode"
-                  value={formData.itemCode}
+                  name="sku"
+                  value={formData.sku}
                   onChange={handleInputChange}
                   placeholder="Generate barcode"
                   className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
