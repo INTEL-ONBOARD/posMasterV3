@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { apiClient } from "../../api/client";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { X, Upload, Printer } from "lucide-react";
 import Add_item_Card from "../../frontend/components/Add_item_Card";
@@ -11,7 +11,10 @@ import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
 import JsBarcode from 'jsbarcode';
 
-
+// Create Axios instance with base URL
+const apiClient = axios.create({
+  baseURL: "https://posmasterv3-backend.onrender.com/",
+});
 
 function AddItem() {
   const navigate = useNavigate();
@@ -22,17 +25,60 @@ function AddItem() {
   const [category, setCategory] = useState("All");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  
+  // New state for dropdown options
+  const [uoms, setUoms] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loadingUoms, setLoadingUoms] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
+  // Fetch UOMs from API
+  useEffect(() => {
+    const fetchUoms = async () => {
+      try {
+        const response = await apiClient.get("api/uoms");
+        if (response.data.status === "success") {
+          setUoms(response.data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching UOMs:", error);
+      } finally {
+        setLoadingUoms(false);
+      }
+    };
+
+    fetchUoms();
+  }, []);
+
+  // Fetch Categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await apiClient.get("api/categories");
+        if (response.data.status === "success") {
+          setCategories(response.data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Fetch items from API
   useEffect(() => {
     const fetchItems = async () => {
       try {
         const response = await apiClient.get("api/items");
         if (response.data.status === "success") {
-          // Map API data to component's expected format instead of directly passing it
           const items = response.data.data.map(item => ({
             id: item._id,
             name: item.item_name,
-            category: item.category?.type || "Uncategorized",
+            categoryId: item.category_id,
+            categoryName: item.category?.type || "Uncategorized",
             brand: item.category?.brand || "No brand",
             itemCode: item.batch_code,
             sku: item.sku,
@@ -45,7 +91,8 @@ function AddItem() {
             maxmiumCapacity: item.maximum_capacity,
             price: item.unit_price,
             quantity: item.quantity,
-            uom: "pcs", // Default since API doesn't provide(for now)
+            uomId: item.uom_id,
+            uomName: uoms.find(u => u.id === item.uom_id)?.unit_name || "Unknown",
             image: item.item_image_url || itemImg
           }));
           setInventoryItems(items);
@@ -57,14 +104,17 @@ function AddItem() {
       }
     };
 
-    fetchItems();
-  }, []);
+    // Fetch items after UOMs are loaded to properly map uomName
+    if (!loadingUoms) {
+      fetchItems();
+    }
+  }, [loadingUoms]);
 
   // Form state
   const [formData, setformData] = useState({
     id: "",
     name: "",
-    category: "",
+    categoryId: "",
     brand: "",
     itemCode: "",
     sku: "",
@@ -73,7 +123,7 @@ function AddItem() {
     maxmiumCapacity: 0,
     price: 0,
     quantity: 0,
-    uom: "pcs",
+    uomId: "",
     image: itemImg,
   });
 
@@ -142,9 +192,9 @@ function AddItem() {
         quantity: Number(formData.quantity),
         threshold_limit: Number(formData.thresholdLimit),
         maximum_capacity: Number(formData.maxmiumCapacity),
-        uom_id: 11, // Needs proper mapping
-        category_id: 1, // Needs proper mapping
-        inventory_id: 1, // Needs proper mapping
+        uom_id: Number(formData.uomId),
+        category_id: Number(formData.categoryId),
+        inventory_id: 1, // Fixed value as requested
         item_image_url: formData.image || null,
         unit_price: parseFloat(formData.price),
         batch_code: formData.itemCode
@@ -157,8 +207,9 @@ function AddItem() {
         const newItem = {
           id: response.data.data._id,
           name: formData.name,
-          category: formData.category,
-          brand: formData.brand,
+          categoryId: formData.categoryId,
+          categoryName: categories.find(c => c.id === formData.categoryId)?.type || "Uncategorized",
+          brand: categories.find(c => c.id === formData.categoryId)?.brand || "No brand",
           itemCode: formData.itemCode,
           sku: formData.sku,
           status: "available",
@@ -166,7 +217,8 @@ function AddItem() {
           maxmiumCapacity: formData.maxmiumCapacity,
           price: formData.price,
           quantity: formData.quantity,
-          uom: formData.uom,
+          uomId: formData.uomId,
+          uomName: uoms.find(u => u.id === formData.uomId)?.unit_name || "Unknown",
           image: formData.image
         };
         
@@ -191,7 +243,7 @@ function AddItem() {
     setformData({
       id: selectedItem.id,
       name: selectedItem.name,
-      category: selectedItem.category,
+      categoryId: selectedItem.categoryId,
       brand: selectedItem.brand,
       sku: selectedItem.sku,
       itemCode: selectedItem.itemCode,
@@ -200,7 +252,7 @@ function AddItem() {
       maxmiumCapacity: selectedItem.maxmiumCapacity,
       price: selectedItem.price,
       quantity: selectedItem.quantity,
-      uom: selectedItem.uom,
+      uomId: selectedItem.uomId,
       image: selectedItem.image
     });
   };
@@ -213,17 +265,17 @@ function AddItem() {
   };
 
   const handleConfirmDelete = async () => {
-    // try {
-    //   await apiClient.delete(`api/items/${selectedItem.id}`);
-    //   setInventoryItems(items => items.filter(i => i.id !== selectedItem.id));
-    //   alert("Item deleted successfully");
-    // } catch (error) {
-    //   console.error("Delete error:", error);
-    //   alert("Failed to delete item");
-    // } finally {
-    //   setShowDeleteModal(false);
-    //   setSelectedItem(null);
-    // }
+    try {
+      await apiClient.delete(`api/items/${selectedItem.id}`);
+      setInventoryItems(items => items.filter(i => i.id !== selectedItem.id));
+      alert("Item deleted successfully");
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert("Failed to delete item");
+    } finally {
+      setShowDeleteModal(false);
+      setSelectedItem(null);
+    }
   };
 
   const handleCancelDelete = () => {
@@ -234,7 +286,7 @@ function AddItem() {
   // Filter items based on search and category
   const filteredItems = inventoryItems.filter(
     (item) =>
-      (category === "All" || item.category === category) &&
+      (category === "All" || item.categoryName === category) &&
       item.name.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -303,38 +355,48 @@ function AddItem() {
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
-                </label>
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="electronics">Electronics</option>
-                  <option value="fruit">Fruit</option>
-                  <option value="beverage">Beverage</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Brand
-                </label>
-                <select
-                  name="brand"
-                  value={formData.brand}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="wijaya">Wijaya</option>
-                  <option value="none">No brand</option>
-                  <option value="malibourn">Malibourn</option>
-                  <option value="munchee">Munchee</option>
-                </select>
-              </div>
+            {/* Category dropdown with API data */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <select
+                name="categoryId"
+                value={formData.categoryId}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={loadingCategories}
+              >
+                <option value="">Select a category</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.type} - {category.brand}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            {/* UOM dropdown with API data */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Unit of Measure (UOM)
+              </label>
+              <select
+                name="uomId"
+                value={formData.uomId}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={loadingUoms}
+              >
+                <option value="">Select a UOM</option>
+                {uoms.map(uom => (
+                  <option key={uom.id} value={uom.id}>
+                    {uom.unit_name} ({uom.symbol})
+                  </option>
+                ))}
+              </select>
+            </div>
+                </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -344,7 +406,7 @@ function AddItem() {
                 <input
                   type="text"
                   name="itemCode"
-                  value={formData.sku}
+                  value={formData.itemCode}
                   onChange={handleInputChange}
                   placeholder="Generate barcode"
                   className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -397,35 +459,18 @@ function AddItem() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quantity
-                </label>
-                <input
-                  type="number"
-                  name="quantity"
-                  value={formData.quantity}
-                  onChange={handleInputChange}
-                  placeholder="12"
-                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  UOM
-                </label>
-                <select
-                  name="uom"
-                  value={formData.uom}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="kg">KG</option>
-                  <option value="pcs">PCS</option>
-                  <option value="ltr">LTR</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Quantity
+              </label>
+              <input
+                type="number"
+                name="quantity"
+                value={formData.quantity}
+                onChange={handleInputChange}
+                placeholder="12"
+                className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
           </div>
         </div>
@@ -446,7 +491,7 @@ function AddItem() {
               onClick={() => setformData({
                 id: "",
                 name: "",
-                category: "",
+                categoryId: "",
                 brand: "",
                 itemCode: "",
                 sku: "",
@@ -455,7 +500,7 @@ function AddItem() {
                 maxmiumCapacity: 0,
                 price: 0,
                 quantity: 0,
-                uom: "pcs",
+                uomId: "",
                 image: itemImg,
               })}
               className="px-6 py-2 mr-4 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
@@ -495,14 +540,15 @@ function AddItem() {
             className="w-80 h-10 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="All">All Categories</option>
-            <option value="electronics">Electronics</option>
-            <option value="fruit">Fruit</option>
-            <option value="beverage">Beverage</option>
+            {Array.from(new Set(inventoryItems.map(item => item.categoryName)))
+              .map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
           </select>
         </nav>
         
         <div className="h-[calc(100vh-14rem)] overflow-y-scroll">
-          {isLoading ? (
+          {isLoading || loadingUoms || loadingCategories ? (
             <div className="flex justify-center items-center h-full">
               <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12"></div>
             </div>

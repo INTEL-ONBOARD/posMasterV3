@@ -163,6 +163,7 @@ function UnitOfMeassurement() {
             )}
           </button>
         </div>
+        <div className="max-h-[40rem] overflow-y-scroll">
         <table className="w-full border-collapse bg-[#F8F8F8]">
           <thead>
             <tr className="text-left text-gray-500 font-semibold">
@@ -196,6 +197,7 @@ function UnitOfMeassurement() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )
