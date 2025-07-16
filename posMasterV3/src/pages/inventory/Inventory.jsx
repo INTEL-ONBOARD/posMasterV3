@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import InventorySidebar from "./Inventory_sidebar";
 import InventoryCard from "../../frontend/components/Inventory_card";
@@ -7,7 +7,7 @@ import bananaImg from "../../assets/Inventory_banana.png";
 import AddItem from "./AddItem.jsx";
 import NotFound from "../../assets/nonicons_not-found-16.png";
 import InventoryConfig from "./InventoryConfig";
-import InventoryReport from "./InventoryReport"; 
+import InventoryReport from "./InventoryReport";
 import { useOutletContext } from "react-router-dom";
 
 function Inventory() {
@@ -21,7 +21,7 @@ function Inventory() {
     setActiveSection(activeSection);
   }, [activeSection, setActiveSection]);
 
-   const handleSectionChange = (section) => {
+  const handleSectionChange = (section) => {
     setLocalActiveSection(section);
     setActiveSection(section);
   };
@@ -214,7 +214,7 @@ function Inventory() {
       (searchCategory === "All" || item.category === searchCategory) &&
       item.name.toLowerCase().includes(search.toLowerCase())
   );
- 
+
 
   // helper function to toggle Tailwind visibility between sections
   const isVisible = (section) =>
@@ -223,32 +223,47 @@ function Inventory() {
   return (
     <div id="inv-background" className="flex h-screen bg-[#EBEBEB] -ml-12">
       {/* sidebar (left) */}
-     <InventorySidebar
+      <InventorySidebar
         activeSection={activeSection}
         onViewInvClick={() => handleSectionChange("view-inventory")}
         onAddItemClick={() => handleSectionChange("add-item")}
         onConfigClick={() => handleSectionChange("inventory-config")}
         onCReportClick={() => handleSectionChange("inventory-report")}
       />
-      
+
 
       <main className="flex-1 bg-[#F3F3F3] h-[calc(100vh-6rem)] relative">
-        
+
         {/* View Inventory */}
         <div className={isVisible("view-inventory")}>
           <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4">
-            <div className="flex-1 flex border-b border-[#EDEDED] h-12">
+            <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
               <input
                 type="text"
                 value={search}
                 onChange={handleSearch}
-                placeholder="Search your item here..."
-                className="flex-1 px-3 py-2 bg-white focus:outline-none"
+                placeholder="Search Your Items here"
+                className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
               />
-              <button className="px-10 py-2 bg-[#1A318C] text-white">
+              <button
+                onClick={handleSearch}
+                className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
+              >
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                </svg>
                 Search
               </button>
             </div>
+
+
             <select
               value={searchCategory}
               onChange={(e) => setSearchCategory(e.target.value)}

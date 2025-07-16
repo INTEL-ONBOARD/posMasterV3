@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { apiClient } from "../api/client";
 import Dashboard_inventory from "../assets/Dashboard_inventory.png";
 import Dashboard_logout from "../assets/Dashboard_logout.png";
 import Dashboard_settings from "../assets/Dashboard_settings.png";
@@ -37,6 +38,49 @@ function Sidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Logout function
+  const handleLogout = async () => {
+    if (isLoggingOut) return; 
+    
+    setIsLoggingOut(true);
+    
+    try {
+      const storedUserInfo = localStorage.getItem('user');
+      
+      if (storedUserInfo) {
+        const user = JSON.parse(storedUserInfo);
+        
+        const logoutData = {
+          email: user.email,
+          user_id: user._id
+        };
+        const response = await apiClient.post('/api/users/logout', logoutData);
+      
+        if (response.status === 200) {
+          console.log("Logout successful:", response.data);
+        } else {
+          console.error("Logout API call failed:", response.statusText);
+        }
+      }
+    } catch (error) {
+      console.error("Error during logout:", error.response?.data || error.message);
+    } finally {
+      localStorage.removeItem('userInfo');
+      localStorage.removeItem('token'); 
+      localStorage.removeItem('authToken'); 
+      
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('auth') || key.startsWith('user')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      setIsLoggingOut(false);
+      navigate("/login");
+    }
+  };
 
   return (
     <aside
@@ -52,7 +96,6 @@ function Sidebar() {
           animate="show"
         >
           {/* Sidebar Tiles */}
-
           {[
             {
               to: "notifications",
@@ -103,9 +146,10 @@ function Sidebar() {
           {/* Logout */}
           <motion.li variants={tileVariant}>
             <button
-              onClick={() => navigate("/login")}
+              onClick={handleLogout}
+              disabled={isLoggingOut}
               className={`${currentPath === "/dashboard/logout" ? "bg-[#EBEBEB] border-blue-500 relative" : ""
-                } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200 bg-transparent outline-none`}
+                } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200 bg-transparent outline-none ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}`}
               style={{ border: "none", background: "none" }}
             >
               <div className="relative flex flex-col items-center mb-2">
@@ -118,7 +162,9 @@ function Sidebar() {
                   </span>
                 )}
               </div>
-              <span className="text-sm font-medium text-center mt-1">Logout</span>
+              <span className="text-sm font-medium text-center mt-1">
+                {isLoggingOut ? "Logging out..." : "Logout"}
+              </span>
             </button>
           </motion.li>
         </motion.ul>

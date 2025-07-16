@@ -6,90 +6,65 @@ import BranchConfig from "./inventoryConfig/BranchConfig";
 export default function InventoryConfig() {
   const [selectedSection, setSelectedSection] = useState("unit-of-meassurement");
 
+  const sections = [
+    {
+      id: "unit-of-meassurement",
+      label: "Unit of Measurement",
+      component: <UnitOfMeassurement />,
+    },
+    {
+      id: "category-config",
+      label: "Category Configurations",
+      component: <CategoryConfig />,
+    },
+    {
+      id: "branch-config",
+      label: "Branch Configurations",
+      component: <BranchConfig />,
+    },
+  ];
+
   return (
     <div className="flex h-[calc(100vh-6rem)]">
-      {/* Left panel with menu items */}
+      {/* Left Panel with Dynamic Menu Items */}
       <div className="w-1/3 bg-white border-r flex flex-col">
         <div className="p-6">
-          <div className="mb-2 bg-[#F8F8F8] ">
-            <button
-              className="w-full text-left px-4 py-3 font-semibold text-gray-500 flex items-center justify-between"
-              onClick={() => setSelectedSection("unit-of-meassurement")}
-            >
-              Unit of Measurement
-              <span>
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div className="mb-2 bg-[#F8F8F8] ">
-            <button className="w-full text-left px-4 py-3 font-semibold text-gray-500 flex items-center justify-between"
-            onClick={() => setSelectedSection("category-config")}>
-              Category Configurations
-              <span>
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div className="mb-2 bg-[#F8F8F8] ">
-            <button className="w-full text-left px-4 py-3 font-semibold text-gray-500 flex items-center justify-between"
-            onClick={() => setSelectedSection("branch-config")}>
-              Branch Configurations
-              <span>
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </span>
-            </button>
-          </div>
+          {sections.map((section) => (
+            <div key={section.id} className="mb-2 bg-[#F8F8F8]">
+              <button
+                onClick={() => setSelectedSection(section.id)}
+                className={`w-full text-left px-4 py-3 font-semibold flex items-center justify-between ${
+                  selectedSection === section.id ? "text-blue-600" : "text-gray-500"
+                }`}
+              >
+                {section.label}
+                {selectedSection === section.id && (
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Right panel with corrected conditional rendering */}
+      {/* Right Panel */}
       <div className="flex-1">
-        <div className={selectedSection === "unit-of-meassurement" ? "h-full" : "hidden"}>
-          <UnitOfMeassurement /> 
-        </div>
-        <div className={selectedSection === "category-config" ? "h-full" : "hidden"}>
-          <CategoryConfig />
-        </div>
-        <div className={selectedSection === "branch-config" ? "h-full" : "hidden"}>
-          <BranchConfig />
-        </div>
+        {sections.map((section) => (
+          <div
+            key={section.id}
+            className={selectedSection === section.id ? "h-full" : "hidden"}
+          >
+            {section.component}
+          </div>
+        ))}
       </div>
     </div>
   );
