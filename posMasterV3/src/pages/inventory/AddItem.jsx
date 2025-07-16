@@ -11,7 +11,6 @@ import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
 import JsBarcode from 'jsbarcode';
 
-
 function AddItem() {
   const navigate = useNavigate();
   const [inventoryItems, setInventoryItems] = useState([]);
@@ -27,6 +26,12 @@ function AddItem() {
   const [categories, setCategories] = useState([]);
   const [loadingUoms, setLoadingUoms] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
+
+  // State for category/brand mapping
+  const [categoryMap, setCategoryMap] = useState({});
+  const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
+  const [brandOptions, setBrandOptions] = useState([]);
+  const [selectedCategoryType, setSelectedCategoryType] = useState("");
 
   // Fetch UOMs from API
   useEffect(() => {
@@ -46,13 +51,32 @@ function AddItem() {
     fetchUoms();
   }, []);
 
-  // Fetch Categories from API
+  // Fetch Categories from API and create mapping
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const response = await apiClient.get("api/categories");
         if (response.data.status === "success") {
-          setCategories(response.data.data);
+          const categoriesData = response.data.data;
+          setCategories(categoriesData);
+          
+          // Create mapping of category type to brands
+          const newCategoryMap = {};
+          const uniqueTypes = [];
+          
+          categoriesData.forEach(cat => {
+            if (!newCategoryMap[cat.type]) {
+              newCategoryMap[cat.type] = [];
+              uniqueTypes.push(cat.type);
+            }
+            newCategoryMap[cat.type].push({
+              id: cat.id,
+              brand: cat.brand
+            });
+          });
+          
+          setCategoryMap(newCategoryMap);
+          setUniqueCategoryTypes(uniqueTypes);
         }
       } catch (error) {
         console.error("Error fetching categories:", error);
@@ -63,6 +87,38 @@ function AddItem() {
 
     fetchCategories();
   }, []);
+
+  // Handle category type selection
+  const handleCategoryTypeChange = (e) => {
+    const type = e.target.value;
+    setSelectedCategoryType(type);
+    
+    // Reset brand selection when category type changes
+    setformData(prev => ({
+      ...prev,
+      brand: "",
+      categoryId: ""
+    }));
+    
+    // Set brand options for this category type
+    if (categoryMap[type]) {
+      setBrandOptions(categoryMap[type]);
+    } else {
+      setBrandOptions([]);
+    }
+  };
+
+  // Handle brand selection
+  const handleBrandChange = (e) => {
+    const brand = e.target.value;
+    const categoryId = e.target.options[e.target.selectedIndex].getAttribute('data-id');
+    
+    setformData(prev => ({
+      ...prev,
+      brand,
+      categoryId
+    }));
+  };
 
   // Fetch items from API
   useEffect(() => {
@@ -205,7 +261,7 @@ function AddItem() {
           name: formData.name,
           categoryId: formData.categoryId,
           categoryName: categories.find(c => c.id === formData.categoryId)?.type || "Uncategorized",
-          brand: categories.find(c => c.id === formData.categoryId)?.brand || "No brand",
+          brand: formData.brand,
           itemCode: formData.itemCode,
           sku: formData.sku,
           status: "available",
@@ -251,6 +307,13 @@ function AddItem() {
       uomId: selectedItem.uomId,
       image: selectedItem.image
     });
+    
+    // Set category type and brand options
+    const categoryType = selectedItem.categoryName;
+    setSelectedCategoryType(categoryType);
+    if (categoryMap[categoryType]) {
+      setBrandOptions(categoryMap[categoryType]);
+    }
   };
 
   // Delete item handlers
@@ -350,44 +413,45 @@ function AddItem() {
                 className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
+            
             <div className="grid grid-cols-2 gap-4">
-              {/* Category dropdown with API data */}
+              {/* Category Type Dropdown */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
+                  Category Type
                 </label>
                 <select
-                  name="categoryId"
-                  value={formData.categoryId}
-                  onChange={handleInputChange}
+                  value={selectedCategoryType}
+                  onChange={handleCategoryTypeChange}
                   className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={loadingCategories}
                 >
-                  <option value="">Select a category</option>
-                  {categories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.type} - {category.brand}
-                    </option>
+                  <option value="">Select a category type</option>
+                  {uniqueCategoryTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
               </div>
-
-              {/* UOM dropdown with API data */}
+              
+              {/* Brand Dropdown (dynamically populated) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Unit of Measure (UOM)
+                  Brand
                 </label>
                 <select
-                  name="uomId"
-                  value={formData.uomId}
-                  onChange={handleInputChange}
+                  value={formData.brand}
+                  onChange={handleBrandChange}
                   className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={loadingUoms}
+                  disabled={!selectedCategoryType}
                 >
-                  <option value="">Select a UOM</option>
-                  {uoms.map(uom => (
-                    <option key={uom.id} value={uom.id}>
-                      {uom.unit_name} ({uom.symbol})
+                  <option value="">Select a brand</option>
+                  {brandOptions.map(brand => (
+                    <option 
+                      key={brand.id} 
+                      value={brand.brand}
+                      data-id={brand.id}
+                    >
+                      {brand.brand}
                     </option>
                   ))}
                 </select>
@@ -454,19 +518,41 @@ function AddItem() {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Quantity
+                </label>
+                <input
+                  type="number"
+                  name="quantity"
+                  value={formData.quantity}
+                  onChange={handleInputChange}
+                  placeholder="12"
+                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Quantity
-              </label>
-              <input
-                type="number"
-                name="quantity"
-                value={formData.quantity}
-                onChange={handleInputChange}
-                placeholder="12"
-                className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+              {/* UOM dropdown with API data */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Unit of Measure (UOM)
+                </label>
+                <select
+                  name="uomId"
+                  value={formData.uomId}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={loadingUoms}
+                >
+                  <option value="">Select a UOM</option>
+                  {uoms.map(uom => (
+                    <option key={uom.id} value={uom.id}>
+                      {uom.unit_name} ({uom.symbol})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -484,21 +570,25 @@ function AddItem() {
           </div>
           <div>
             <button
-              onClick={() => setformData({
-                id: "",
-                name: "",
-                categoryId: "",
-                brand: "",
-                itemCode: "",
-                sku: "",
-                status: "available",
-                thresholdLimit: 0,
-                maxmiumCapacity: 0,
-                price: 0,
-                quantity: 0,
-                uomId: "",
-                image: itemImg,
-              })}
+              onClick={() => {
+                setformData({
+                  id: "",
+                  name: "",
+                  categoryId: "",
+                  brand: "",
+                  itemCode: "",
+                  sku: "",
+                  status: "available",
+                  thresholdLimit: 0,
+                  maxmiumCapacity: 0,
+                  price: 0,
+                  quantity: 0,
+                  uomId: "",
+                  image: itemImg,
+                });
+                setSelectedCategoryType("");
+                setBrandOptions([]);
+              }}
               className="px-6 py-2 mr-4 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
             >
               Clear
