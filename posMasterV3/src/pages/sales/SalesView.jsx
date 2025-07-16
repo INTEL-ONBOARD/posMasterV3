@@ -279,9 +279,7 @@ export default function SalesView() {
                   {/* Barcode Image and Search Bar - Parallel */}
                   <div className="flex flex-row items-center gap-4 mb-4">
                     {/* Back button */}
-                    <button className="p-6 text-white bg-black">
-                      Back
-                    </button>
+                    
 
                     {/* Search Bar */}
                     {/* <div className="flex-1 flex gap-2">
