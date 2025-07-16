@@ -517,24 +517,34 @@ function AddItem() {
       <div className="w-2/3 h-[calc(100vh-1rem)] bg-[#EBEBEB]">
         {/* Search panel */}
         <nav className="w-full flex flex-row justify-between py-8 px-10 h-[7rem] bg-white gap-6">
-          <div className="flex-1 flex border-b border-[#EDEDED] h-12">
-            <div className="flex-1 flex border-b border-[#EDEDED] h-12">
+          <div className="mb-2 bg-white w-full flex flex-col gap-2">
+            <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
               <input
                 type="text"
                 value={search}
                 onChange={handleSearch}
                 placeholder="Search Your Items here"
-                className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
+                className="flex-1 px-3 py-2 bg-transparent focus:outline-none placeholder:text-gray-300"
               />
               <button
                 onClick={handleSearch}
-                className="px-10 py-2 bg-[#1A318C] text-white"
+                className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
               >
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                </svg>
                 Search
               </button>
             </div>
-
           </div>
+
 
 
           <select
