@@ -5,7 +5,7 @@ function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const [exiting, setExiting] = useState({});
 
-  const open = (message = '', timeout = 5000, title = 'Success', status = 'success') => {
+  const open = (message = '', timeout = 5000, title = 'Success', status = 'info') => {
     const id = Date.now();
     setToasts((toasts) => [...toasts, { id, message, title, status }]);
     setTimeout(() => handleClose(id), timeout);
