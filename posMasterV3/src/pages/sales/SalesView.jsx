@@ -163,6 +163,7 @@ export default function SalesView() {
   const [selectedMember, setSelectedMember] = useState("Member - 3 months");
   const [selectedCredit, setSelectedCredit] = useState("3 months");
   const [cashAmount, setCashAmount] = useState("0.00");
+  const [salesMiddlepage, setSalesMiddlepage] = useState("defalut menu");
 
   const memberDropdownRef = useRef(null);
   const creditDropdownRef = useRef(null);
@@ -274,175 +275,6 @@ export default function SalesView() {
             {/* Item list section(left) */}
             <div className="bg-[#EBEBEB] border-r flex flex-col h-full">
               <div className="p-6 space-y-4 flex flex-col h-full">
-                {/* Scanner Section */}
-                <div className="bg-[#F8F8F8] p-4 flex-shrink-0">
-                  {/* Barcode Image and Search Bar - Parallel */}
-                  <div className="flex flex-row items-center gap-4 mb-4">
-                    {/* Back button */}
-
-
-                    {/* Search Bar */}
-                    {/* <div className="flex-1 flex gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          type="text"
-                          value={scanCode}
-                          onChange={(e) => setScanCode(e.target.value)}
-                          placeholder="Search Your Items here"
-                          className="w-full px-3 py-2 border focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
-                        />
-                        {isSearching && (
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={handleScan}
-                        className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded transition-colors"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                          />
-                        </svg>
-                      </button>
-                    </div> */}
-                    <div className="w-full flex flex-col gap-3">
-
-                      <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
-                        <input
-                          type="text"
-                          value={scanCode}
-                          onChange={(e) => setScanCode(e.target.value)}
-                          placeholder="Search Your Items here"
-                          className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
-                        />
-                        <button
-                          className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
-                          onClick={handleScan}
-                        >
-                          <svg
-                            className="w-5 h-5 mr-2"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
-                          </svg>
-                          Search
-                        </button>
-                      </div>
-
-
-                      <div className="flex flex-row gap-3">
-
-                        <label className="relative">
-                          <input
-                            type="checkbox"
-                            className="absolute opacity-0 w-0 h-0 peer"
-                            name="category"
-                            value="fruit"
-                          />
-                          <div className="py-2 px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500">
-                            <span>Fruit</span>
-                            <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-3 w-3"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            </span>
-                          </div>
-                        </label>
-
-
-                        <label className="relative">
-                          <input
-                            type="checkbox"
-                            className="absolute opacity-0 w-0 h-0 peer"
-                            name="category"
-                            value="vegetable"
-                          />
-                          <div className="py-2 px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500">
-                            <span>Vegetable</span>
-                            <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-3 w-3"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            </span>
-                          </div>
-                        </label>
-
-                        <label className="relative">
-                          <input
-                            type="checkbox"
-                            className="absolute opacity-0 w-0 h-0 peer"
-                            name="category"
-                            value="dairy"
-                          />
-                          <div className="py-2 px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500">
-                            <span>Dairy</span>
-                            <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-3 w-3"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            </span>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Search Results Info */}
-                  {scanCode.trim() && (
-                    <div className="text-sm w-full text-gray-600 mb-2">
-                      {isSearching ? (
-                        <span>Searching...</span>
-                      ) : (
-                        <span>
-                          Found {filteredItems.length} result(s) for "{scanCode}
-                          "
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
 
                 {/* Selected Table Item Display */}
                 {selectedTableItem && (
@@ -577,9 +409,185 @@ export default function SalesView() {
                   </div>
                 )}
 
+                {/* Sales middle default page*/}
+                {salesMiddlepage === "defalut menu" && (
+                  <div className="flex-1 overflow-y-scroll overflow-x-hidden flex flex-row items-start py-5 min-w-[57rem] gap-6">
+                    {/* Left Section */}
+                    <div className="w-1/3 h-full bg-gray-400 flex items-center justify-center rounded-xl shadow-md p-6">
+                      <p className="text-lg text-black">User Details here</p>
+                    </div>
+
+                    {/* Right Section */}
+                    <div className="w-full sm:w-2/3 lg:w-3/4 flex flex-col gap-6">
+                      {/* Inventory View Button */}
+                      <button
+                        onClick={() => setSalesMiddlepage("inventory view")}
+                        className="h-[250px] sm:h-[300px] w-full bg-gray-800 rounded-xl shadow-md flex items-center justify-center hover:bg-gray-700 transition p-4"
+                      >
+                        <p className="text-white text-lg">Inventory View</p>
+                      </button>
+
+                      {/* Discount View Button */}
+                      <button
+                        onClick={() => setSalesMiddlepage("discount view")}
+                        className="h-[250px] sm:h-[300px] w-full bg-gray-800 rounded-xl shadow-md flex items-center justify-center hover:bg-gray-700 transition p-4"
+                      >
+                        <p className="text-white text-lg">Discount View</p>
+                      </button>
+                    </div>
+                  </div>
+
+                )}
+
+                {/* Discount View Page */}
+                {salesMiddlepage === "discount view" && (
+                  <div className="flex w-full h-full bg-gray-100 p-6 gap-6">
+                    <div className="w-full bg-white rounded-xl shadow-md p-6">
+                      <h2 className="text-xl font-semibold mb-4">Discounts</h2>
+                      <p className="text-gray-600 mb-2">
+                        Discount view page here
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Inventory Cards - With Loading and No Results States */}
-                {!selectedTableItem && (
+                {!selectedTableItem && salesMiddlepage == "inventory view" && (
                   <div className="flex-1 overflow-y-scroll overflow-x-hidden flex flex-col items-center py-5 max-w-[57rem]">
+                    <div className="bg-[#F8F8F8] p-4 flex-shrink-0">
+                      {/* Barcode Image and Search Bar - Parallel */}
+                      <div className="flex flex-row items-center gap-4 mb-4">
+                        {/* Back button */}
+
+
+                        {/* Search Bar */}
+                        <div className="w-full flex flex-col gap-3">
+
+                          <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
+                            <input
+                              type="text"
+                              value={scanCode}
+                              onChange={(e) => setScanCode(e.target.value)}
+                              placeholder="Search Your Items here"
+                              className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
+                            />
+                            <button
+                              className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
+                              onClick={handleScan}
+                            >
+                              <svg
+                                className="w-5 h-5 mr-2"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                              </svg>
+                              Search
+                            </button>
+                          </div>
+
+
+                          <div className="flex flex-row gap-3">
+
+                            <label className="relative">
+                              <input
+                                type="checkbox"
+                                className="absolute opacity-0 w-0 h-0 peer"
+                                name="category"
+                                value="fruit"
+                              />
+                              <div className="py-2 px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500">
+                                <span>Fruit</span>
+                                <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-3 w-3"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                </span>
+                              </div>
+                            </label>
+
+
+                            <label className="relative">
+                              <input
+                                type="checkbox"
+                                className="absolute opacity-0 w-0 h-0 peer"
+                                name="category"
+                                value="vegetable"
+                              />
+                              <div className="py-2 px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500">
+                                <span>Vegetable</span>
+                                <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-3 w-3"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                </span>
+                              </div>
+                            </label>
+
+                            <label className="relative">
+                              <input
+                                type="checkbox"
+                                className="absolute opacity-0 w-0 h-0 peer"
+                                name="category"
+                                value="dairy"
+                              />
+                              <div className="py-2 px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500">
+                                <span>Dairy</span>
+                                <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-3 w-3"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                </span>
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Search Results Info */}
+                      {scanCode.trim() && (
+                        <div className="text-sm w-full text-gray-600 mb-2">
+                          {isSearching ? (
+                            <span>Searching...</span>
+                          ) : (
+                            <span>
+                              Found {filteredItems.length} result(s) for "{scanCode}
+                              "
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     {isSearching ? (
                       // Loading State
                       <div className="flex flex-col items-center justify-center h-full">
@@ -690,8 +698,8 @@ export default function SalesView() {
                         <tr
                           key={item.id}
                           className={`border-b border-gray-200 hover:bg-blue-50 cursor-pointer transition-colors ${selectedTableItem?.id === item.id
-                              ? "bg-blue-100"
-                              : ""
+                            ? "bg-blue-100"
+                            : ""
                             }`}
                           onClick={() => handleTableRowClick(item)}
                         >
