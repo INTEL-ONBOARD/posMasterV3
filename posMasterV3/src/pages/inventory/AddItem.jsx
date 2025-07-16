@@ -145,7 +145,7 @@ function AddItem() {
             quantity: item.quantity,
             uomId: item.uom_id,
             uomName: uoms.find(u => u.id === item.uom_id)?.unit_name || "Unknown",
-            image: item.item_image_url || itemImg
+            image: item.item_image_url
           }));
           setInventoryItems(items);
         }
@@ -162,6 +162,9 @@ function AddItem() {
     }
   }, [loadingUoms]);
 
+  // to switch between add and update api call via button switching
+  const [isEditModalOpen, setEditModalOpen] = useState();
+  
   // Form state
   const [formData, setformData] = useState({
     id: "",
@@ -591,7 +594,7 @@ function AddItem() {
               }}
               className="px-6 py-2 mr-4 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
             >
-              Clear
+              Clear All
             </button>
             <button
               onClick={createItem}
