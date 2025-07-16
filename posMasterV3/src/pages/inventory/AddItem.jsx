@@ -20,7 +20,7 @@ function AddItem() {
   const [category, setCategory] = useState("All");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  
+
   // New state for dropdown options
   const [uoms, setUoms] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -134,10 +134,10 @@ function AddItem() {
             brand: item.category?.brand || "No brand",
             itemCode: item.batch_code,
             sku: item.sku,
-            status: item.quantity <= 0 
-              ? "outOfStock" 
-              : item.quantity <= item.threshold_limit 
-                ? "lowStock" 
+            status: item.quantity <= 0
+              ? "outOfStock"
+              : item.quantity <= item.threshold_limit
+                ? "lowStock"
                 : "available",
             thresholdLimit: item.threshold_limit,
             maxmiumCapacity: item.maximum_capacity,
@@ -181,7 +181,7 @@ function AddItem() {
 
   // Barcode generation
   const barcodeValue = formData.itemCode || "SKU-000000";
-  
+
   const generateBarcode = () => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
@@ -197,11 +197,11 @@ function AddItem() {
   const generatePdf = async (action) => {
     try {
       const barcodeDataUrl = await generateBarcode();
-      const instance = pdf(<SimpleDocument 
-        barcodeDataUrl={barcodeDataUrl} 
-        barcodeValue={barcodeValue} 
+      const instance = pdf(<SimpleDocument
+        barcodeDataUrl={barcodeDataUrl}
+        barcodeValue={barcodeValue}
       />);
-      
+
       const blob = await instance.toBlob();
       if (action === 'print') {
         const arrayBuffer = await blob.arrayBuffer();
@@ -215,7 +215,7 @@ function AddItem() {
         a.click();
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 60000);
-      }   
+      }
     } catch (error) {
       console.error('Error:', error);
       alert('Failed to generate PDF');
@@ -253,7 +253,7 @@ function AddItem() {
       };
 
       const response = await apiClient.post("api/items/add", requestData);
-      
+
       if (response.data.status === "success") {
         // Add new item to local state
         const newItem = {
@@ -273,7 +273,7 @@ function AddItem() {
           uomName: uoms.find(u => u.id === formData.uomId)?.unit_name || "Unknown",
           image: formData.image
         };
-        
+
         setInventoryItems([...inventoryItems, newItem]);
         alert("Item created successfully!");
       } else {
@@ -358,9 +358,9 @@ function AddItem() {
           <div className="flex flex-row items-center max-h-[7rem]">
             <div className="w-48 h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center mb-4 hover:border-gray-400 transition-colors">
               {formData.image ? (
-                <img 
-                  src={formData.image} 
-                  alt="Item" 
+                <img
+                  src={formData.image}
+                  alt="Item"
                   className="w-full h-full object-contain"
                 />
               ) : (
@@ -382,7 +382,7 @@ function AddItem() {
                 <p className="text-lg text-black">BARCODE :</p>
                 <p className="w-max text-lg text-[#A7A7A7]">{formData.itemCode}</p>
               </div>
-            </div>   
+            </div>
           </div>
 
           {/* Item form block */}
@@ -472,7 +472,7 @@ function AddItem() {
                   className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Status
@@ -560,7 +560,7 @@ function AddItem() {
         {/* Bottom bar */}
         <div className="flex justify-between space-x-3 -mx-10 p-4">
           <div className="flex flex-row items-center gap-3">
-            <button 
+            <button
               className="flex items-center px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
               onClick={() => generatePdf('print')}
             >
@@ -607,18 +607,35 @@ function AddItem() {
       <div className="w-2/3 h-[calc(100vh-1rem)] bg-[#EBEBEB]">
         {/* Search panel */}
         <nav className="w-full flex flex-row justify-between py-8 px-10 h-[7rem] bg-white gap-6">
-          <div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-2 border-blue-400">
-            <input
-              type="text"
-              value={search}
-              onChange={handleSearch}
-              placeholder="Search your item here..."
-              className="px-3 py-2 w-full bg-white border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button className="px-10 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors">
-              Search
-            </button>
+          <div className="mb-2 bg-white w-full flex flex-col gap-2">
+            <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
+              <input
+                type="text"
+                value={search}
+                onChange={handleSearch}
+                placeholder="Search Your Items here"
+                className="flex-1 px-3 py-2 bg-transparent focus:outline-none placeholder:text-gray-300"
+              />
+              <button
+                onClick={handleSearch}
+                className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
+              >
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                </svg>
+                Search
+              </button>
+            </div>
           </div>
+
+
 
           <select
             value={category}
@@ -632,7 +649,7 @@ function AddItem() {
               ))}
           </select>
         </nav>
-        
+
         <div className="h-[calc(100vh-14rem)] overflow-y-scroll">
           {isLoading || loadingUoms || loadingCategories ? (
             <div className="flex justify-center items-center h-full">
@@ -652,9 +669,9 @@ function AddItem() {
               ) : (
                 filteredItems.map((item) => (
                   <Add_item_Card
-                    key={item.id} 
-                    item={item} 
-                    onOpen={() => loadItem(item)} 
+                    key={item.id}
+                    item={item}
+                    onOpen={() => loadItem(item)}
                     onRemove={handleRemoveClick}
                   />
                 ))
