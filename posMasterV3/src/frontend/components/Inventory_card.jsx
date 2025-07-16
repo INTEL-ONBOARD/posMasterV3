@@ -1,57 +1,48 @@
 import React from "react";
-import placeholderImg from "../../assets/card_placeholder_img.png";
+import barcodeImg from "../../assets/barcode.png";
 
-export default function Inventory_card({ item, onOpen, onRemove }) {
-  // Use placeholder if item.image is null or undefined
-  const imageSrc = item.image || placeholderImg;
-
+export default function InventoryCard({ item, onOpen }) {
   return (
-    <div 
-      className="bg-white max-w-65 max-h-50 border border-gray-200 p-4 cursor-pointer hover:shadow-md transition-shadow duration-200"
+    <div
+      className="flex w-[24rem] h-[12rem] bg-white border border-gray-300 overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-200"
       onClick={onOpen}
       role="button"
       tabIndex={0}
     >
-      <div className="flex flex-row bg-white justify-between">
-        <div className="flex flex-col items-center justify-center bg-white">
-          {/* Display image or placeholder */}
-          <img
-            src={imageSrc}
-            alt={item.name}
-            className="w-48 bg-white object-contain"
-          />
-
-          {/* SKU row */}
-          <div className="flex flex-row items-center mt-1">
-            {item.sku && (
-              <span className="flex flex-row items-center">
-                <p className="text-md text-black font-light mr-2">SKU:</p>
-                <p className="text-md text-[#A7A7A7] font-light">{item.sku}</p>
-              </span>
-            )}
-          </div>
+      {/* Left Section */}
+      <div className="flex flex-col justify-between p-4 pl-6 w-[75%]">
+        {/* Barcode and SKU */}
+        <div>
+          <img src={barcodeImg} alt="Barcode" className="w-[70px] object-contain" />
+          <p className="text-xs text-gray-400 -mt-2">SKU: {item.sku}</p>
         </div>
 
-        {/* Right column: name, category, price/unit, KG/G row */}
-        <div className="flex flex-col justify-between bg-white mr-8 h-full">
-          <div>
-            <h3 className="text-2xl text-black font-semibold mt-1">{item.name}</h3>
-            <h3 className="text-base font-semibold text-[#A7A7A7]">
+        {/* Product Info */}
+        <div>
+          <h2 className="text-3xl font-bold text-[#6C6C6C]">{item.name}</h2>
+
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs bg-gray-100 border px-2 py-0.5 rounded-sm text-[#A7A7A7]">
               {item.category}
-            </h3>
-            <p className="text-base text-black font-semibold">
-              Rs.{item.price}
-              <span className="text-sm">/{item.unit}</span>
-            </p>
+            </span>
+            <span className="text-sm font-medium text-gray-800">
+              {item.brand}
+            </span>
           </div>
 
-          {/* KG/G row aligned at the bottom */}
-          <div className="flex flex-row items-center gap-2 mt-11">
-            <p className="text-md text-gray-500">KG/G</p>
-            <p className="text-md text-gray-500">20KG</p>
-            <div className="w-4 h-4 bg-green-500 rounded-full mt-1"></div>
-          </div>
+          <p className="text-xl font-extrabold text-black mt-2">
+            Rs.{item.price}
+            <span className="text-sm font-semibold">({item.unit.toUpperCase()})</span>
+          </p>
         </div>
+      </div>
+
+      {/* Right Section */}
+      <div className="relative w-[25%] bg-teal-400">
+        {/* inventory status indicator circle */}
+        {/* Status Indicator Circle (positioned in-between) */}
+      <div className="absolute top-2 right-[72%] w-16 h-16 bg-green-500 rounded-full border-8 border-white "></div>
+    
       </div>
     </div>
   );
