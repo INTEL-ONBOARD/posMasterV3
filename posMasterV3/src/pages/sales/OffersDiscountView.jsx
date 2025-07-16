@@ -1,12 +1,34 @@
 import React, { useState } from "react";
+function ItemSection() {
+  return (
+    <div className="p-6">
+      <h2 className="text-xl font-bold mb-4">Item Discounts</h2>
+      <p>Item-related filter UI goes here...</p>
+    </div>
+  );
+}
+
+function PackageSection() {
+  return (
+    <div className="p-6">
+      <h2 className="text-xl font-bold mb-4">Package Discounts</h2>
+      <p>Package-related filter UI goes here...</p>
+    </div>
+  );
+}
+
+function PriceRangeSection() {
+  return (
+    <div className="p-6">
+      <h2 className="text-xl font-bold mb-4">Price Range Discounts</h2>
+      <p>Price range-related filter UI goes here...</p>
+    </div>
+  );
+}
 
 export default function OffersDiscountView() {
-  const [selectedView, setSelectedView] = useState("View");
-  const [itemInput, setItemInput] = useState("");
-  const [packageInput, setPackageInput] = useState("");
-  const [priceRangeInput, setPriceRangeInput] = useState("");
+  const [selectedSection, setSelectedSection] = useState("view");
 
-  // Sample discount data
   const [discounts] = useState([
     {
       id: 1,
@@ -46,145 +68,119 @@ export default function OffersDiscountView() {
     },
   ]);
 
-  const getStatusColor = (status) => {
-    return status === "Available" ? "text-green-600" : "text-red-600";
-  };
+  const getStatusColor = (status) =>
+    status === "Available" ? "text-green-600" : "text-red-600";
 
-  return (
-    <div className="flex h-screen bg-[#EBEBEB]">
-      {/* Left Sidebar */}
-      <div className="w-80 bg-white border-r flex flex-col">
-        {/* Filter Options */}
-        <div className="flex-1 p-6 space-y-4">
-          {/* View Filter */}
-         <div>
-            <select
-              value={selectedView}
-              onChange={(e) => setSelectedView(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            >
-              <option value="View">View</option>
-              <option value="All">All</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </div>
+  const ViewSection = () => (
+    <div className="flex flex-col h-full">
+      <div className="bg-white border-b px-6 py-4">
+        <h1 className="text-2xl font-bold text-gray-800">Offers & Discounts</h1>
+      </div>
 
-          {/* Item Input */}
-          <div>
-            <input
-              type="text"
-              value={itemInput}
-              onChange={(e) => setItemInput(e.target.value)}
-              placeholder="Item"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            />
-          </div>
-
-          {/* Package Input */}
-          <div >
-            <input
-              type="text"
-              value={packageInput}
-              onChange={(e) => setPackageInput(e.target.value)}
-              placeholder="Package"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            />
-          </div>
-
-          {/* Price Range Input */}
-          <div >
-            <input
-              type="text"
-              value={priceRangeInput}
-              onChange={(e) => setPriceRangeInput(e.target.value)}
-              placeholder="Price Range"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            />
-          </div>
+      {/* Table */}
+      <div className="flex-1 bg-white m-6 rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto h-full">
+          <table className="w-full">
+            <thead className="bg-gray-600 text-white sticky top-0">
+              <tr>
+                <th className="px-6 py-3 text-left text-sm font-medium">#</th>
+                <th className="px-6 py-3 text-left text-sm font-medium">Discount code</th>
+                <th className="px-6 py-3 text-left text-sm font-medium">Name</th>
+                <th className="px-6 py-3 text-left text-sm font-medium">Discount Type</th>
+                <th className="px-6 py-3 text-left text-sm font-medium">Discount Amount</th>
+                <th className="px-6 py-3 text-left text-sm font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
+              {discounts.map((discount, index) => (
+                <tr
+                  key={discount.id}
+                  className={`border-b hover:bg-blue-50 transition-colors cursor-pointer ${
+                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                  }`}
+                >
+                  <td className="px-6 py-4 text-sm">#{index + 1}</td>
+                  <td className="px-6 py-4 text-sm">{discount.code}</td>
+                  <td className="px-6 py-4 text-sm font-medium">{discount.name}</td>
+                  <td className="px-6 py-4 text-sm font-medium">{discount.type}</td>
+                  <td className="px-6 py-4 text-sm font-medium">
+                    {discount.amount} ({discount.unit})
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`text-sm font-medium ${getStatusColor(
+                        discount.status
+                      )}`}
+                    >
+                      {discount.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="bg-white border-b px-6 py-4">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Offers & Discounts
-          </h1>
-        </div>
+      {/* Buttons */}
+      <div className="bg-white border-t px-6 py-4 flex justify-end space-x-3">
+        <button className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+          Clear
+        </button>
+        <button className="px-6 py-2 bg-blue-900 text-white rounded hover:bg-blue-800">
+          Save
+        </button>
+      </div>
+    </div>
+  );
 
-        {/* Table Container */}
-        <div className="flex-1 bg-white m-6 rounded-lg shadow-sm overflow-hidden">
-          <div className="overflow-x-auto h-full">
-            <table className="w-full">
-              <thead className="bg-gray-600 text-white sticky top-0">
-                <tr>
-                  <th className="px-6 py-3 text-left text-sm font-medium">#</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium">
-                    Discount code
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium">
-                    Discount Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium">
-                    Discount Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-medium">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white">
-                {discounts.map((discount, index) => (
-                  <tr
-                    key={discount.id}
-                    className={`border-b border-gray-200 hover:bg-blue-50 transition-colors cursor-pointer ${
-                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                    }`}
-                  >
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      #{index + 1}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      {discount.code}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 font-medium">
-                      {discount.name}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 font-medium">
-                      {discount.type}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 font-medium">
-                      {discount.amount} ({discount.unit})
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`text-sm font-medium ${getStatusColor(
-                          discount.status
-                        )}`}
-                      >
-                        {discount.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+  return (
+    <div className="flex h-[calc(100vh-6rem)] bg-[#EBEBEB]">
+      {/* Left panel */}
+      <div className="w-1/3 bg-white border-r flex flex-col">
+        <div className="p-6">
+          {[
+            { id: "view", label: "View" },
+            { id: "item", label: "Item" },
+            { id: "package", label: "Package" },
+            { id: "price-range", label: "Price Range" },
+          ].map((section) => (
+            <div key={section.id} className="mb-2 bg-[#F8F8F8]">
+              <button
+                className={`w-full text-left px-4 py-3 font-semibold flex items-center justify-between ${
+                  selectedSection === section.id ? "text-blue-600" : "text-gray-500"
+                }`}
+                onClick={() => setSelectedSection(section.id)}
+              >
+                {section.label}
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          ))}
         </div>
+      </div>
 
-        {/* Action Buttons */}
-        <div className="bg-white border-t px-6 py-4 flex justify-end space-x-3">
-          <button className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors">
-            Clear
-          </button>
-          <button className="px-6 py-2 bg-blue-900 text-white rounded hover:bg-blue-800 transition-colors">
-            Save
-          </button>
+      {/* Right panel */}
+      <div className="flex-1">
+        <div className={selectedSection === "view" ? "block h-full" : "hidden"}>
+          <ViewSection />
+        </div>
+        <div className={selectedSection === "item" ? "block h-full" : "hidden"}>
+          <ItemSection />
+        </div>
+        <div className={selectedSection === "package" ? "block h-full" : "hidden"}>
+          <PackageSection />
+        </div>
+        <div className={selectedSection === "price-range" ? "block h-full" : "hidden"}>
+          <PriceRangeSection />
         </div>
       </div>
     </div>
