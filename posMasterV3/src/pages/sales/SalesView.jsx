@@ -1113,22 +1113,23 @@ export default function SalesView() {
                   </div>
                 </div>
                 {/* payment button controls*/}
-                <div className="flex flex-col sm:flex-row justify-between px-2 lg:px-3 gap-2 lg:gap-0">
-                  <button className="px-3 lg:px-4 py-2 lg:py-3 mb-2 lg:mb-4 bg-[#727272] text-white text-xs lg:text-sm hover:bg-gray-700 transition-colors flex items-center justify-center sm:justify-start sm:mr-2">
-                    <img src={clearBtnImg} alt="Clear" className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                <div className="flex flex-col sm:flex-row px-2 lg:px-3 gap-[10px]">
+                  <button className="flex-1 px-4 py-3 bg-[#727272] text-white text-sm hover:bg-gray-700 transition-all flex items-center justify-center">
+                    <img src={clearBtnImg} alt="Clear" className="w-4 h-4 mr-2" />
                     Clear
                   </button>
 
-                  <button className="px-3 lg:px-4 py-2 lg:py-3 mb-2 lg:mb-4 bg-[#EB8928] text-white text-xs lg:text-sm hover:bg-orange-500 transition-colors flex items-center justify-center sm:justify-start sm:mr-2">
-                    <img src={sidebarHoldOrderBtnImg} alt="Hold Order" className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                  <button className="flex-1 px-4 py-3 bg-[#EB8928] text-white text-sm hover:bg-orange-500 transition-all flex items-center justify-center">
+                    <img src={sidebarHoldOrderBtnImg} alt="Hold Order" className="w-4 h-4 mr-2" />
                     Hold Order
                   </button>
 
-                  <button className="px-3 lg:px-4 py-2 lg:py-3 mb-2 lg:mb-4 bg-[#1A318C] text-white text-xs lg:text-sm hover:bg-blue-700 transition-colors flex items-center justify-center sm:justify-start sm:mr-2">
-                    <img src={sidebarPaymentBtnImg} alt="Proceed Payment" className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                  <button className="flex-1 px-4 py-3 bg-[#1A318C] text-white text-sm hover:bg-blue-700 transition-all flex items-center justify-center">
+                    <img src={sidebarPaymentBtnImg} alt="Proceed Payment" className="w-4 h-4 mr-2" />
                     Proceed Payment
                   </button>
                 </div>
+
               </div>
             </div>
           </div>
