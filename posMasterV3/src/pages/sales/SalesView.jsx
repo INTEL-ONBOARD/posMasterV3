@@ -165,6 +165,13 @@ export default function SalesView() {
   const [cashAmount, setCashAmount] = useState("0.00");
   const [salesMiddlepage, setSalesMiddlepage] = useState("defalut menu");
 
+  const [isExpanded, setIsExpanded] = useState(false);
+  const handleToggle = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+
+
   const memberDropdownRef = useRef(null);
   const creditDropdownRef = useRef(null);
 
@@ -451,13 +458,21 @@ export default function SalesView() {
                   </div>
                 )}
 
+
                 {/* Inventory Cards - With Loading and No Results States */}
+
                 {!selectedTableItem && salesMiddlepage == "inventory view" && (
                   <div className="flex-1 overflow-y-scroll overflow-x-hidden flex flex-col items-center py-5 max-w-[57rem]">
-                    <div className="bg-[#F8F8F8] p-4 flex-shrink-0">
+                    <div className="bg-[#F8F8F8] p-4 flex-shrink-0 w-full max-w-2xl rounded-lg shadow-md mb-4 mr-6 ml-6">
                       {/* Barcode Image and Search Bar - Parallel */}
-                      <div className="flex flex-row items-center gap-4 mb-4">
+                      <div className="flex flex-row items-center gap-4 mb-4 ">
                         {/* Back button */}
+                        <button
+                          onClick={() => setSalesMiddlepage("defalut menu")}
+                          className="bg-black text-white px-6 py-4 flex items-center space-x-2 text-lg">
+                          <span className="text-2xl">&#x276E;</span>
+                          <span>Back</span>
+                        </button>
 
 
                         {/* Search Bar */}
@@ -668,10 +683,39 @@ export default function SalesView() {
                 style={{ height: "calc(100vh - 300px)" }}
               >
                 {/* member container */}
-                <div className="border-2 p-5 my-5 border-orange-500 bg-[#FFF5E9] h-[15rem]">
-                  <div className="flex flex-row justify-between">
-                    <span className="font-semibold ">Member 123456</span>
-                    <button className="px-6 bg-[#FFE0B4] border-2 border-orange-500 p-1 rounded-2xl">Change</button>
+                <div className="w-full max-w-full mx-auto mb-4 p-4 mb-0">
+                  {/* Main clickable container */}
+                  <div
+                    className="bg-orange-50 border-2 border-orange-400 rounded-lg p-4 cursor-pointer hover:bg-orange-100 transition-colors"
+                    onClick={handleToggle}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-800 font-medium text-lg">
+                        Member 3456
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-orange-200 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
+                          DISCOUNT
+                        </span>
+                        <svg
+                          className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Expanded content */}
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t border-orange-200">
+                        <div className="text-sm text-gray-600">
+                          More details should be added here
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 {/* item table */}
@@ -680,16 +724,13 @@ export default function SalesView() {
                     <thead className="bg-gray-700 text-white">
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-medium">
-                          #
-                        </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">
                           Item code
                         </th>
                         <th className="px-4 py-3 text-left text-sm font-medium">
-                          Unit price(Rs.)
+                          Unit count
                         </th>
                         <th className="px-4 py-3 text-left text-sm font-medium">
-                          Total(Rs.)
+                          Total
                         </th>
                       </tr>
                     </thead>
@@ -697,47 +738,41 @@ export default function SalesView() {
                       {scannedItems.map((item, index) => (
                         <tr
                           key={item.id}
-                          className={`border-b border-gray-200 hover:bg-blue-50 cursor-pointer transition-colors ${selectedTableItem?.id === item.id
-                            ? "bg-blue-100"
-                            : ""
-                            }`}
+                          className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors`}
                           onClick={() => handleTableRowClick(item)}
                         >
                           <td className="px-4 py-3 text-sm text-gray-700">
-                            #{index + 1}
+                            <div className="flex items-start">
+                              <div className="flex-shrink-0 mr-2 mt-1">
+                                {selectedTableItem?.id === item.id ? (
+                                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex-grow">
+                                <div className="text-gray-800 font-medium">
+                                  {index + 1} {item.code}
+                                </div>
+                                {selectedTableItem?.id === item.id && (
+                                  <div className="mt-1 text-gray-500 text-sm">
+                                    <div>{item.name || 'White Banana'}</div>
+                                    <div>Rs.{item.unitPrice.toFixed(2)}</div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-700">
-                            {item.code}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">
-                            Rs.{item.unitPrice.toFixed(2)}
+                            {item.quantity || 30}(pcs)
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-700">
                             {item.total.toFixed(2)}
                           </td>
-                          {/* <td className="px-4 py-3">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveItem(item.id);
-                              }}
-                              className="w-6 h-6 bg-red-500 rounded flex items-center justify-center hover:bg-red-600 transition-colors"
-                            >
-                              <svg
-                                className="w-3 h-3 text-white"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M6 18L18 6M6 6l12 12"
-                                />
-                              </svg>
-                            </button>
-                          </td> */}
                         </tr>
                       ))}
                     </tbody>
