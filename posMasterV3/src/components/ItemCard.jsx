@@ -9,11 +9,11 @@ export default function ItemCard({ item }) {
 
   return (
     <div
-      className="relative flex w-[24rem] h-[12rem] bg-white border border-gray-300 overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-200"
+      className="relative flex w-[24rem] h-[12rem] bg-white border border-gray-300 overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-200 transform transition-transform duration-300 ease-in-out hover:scale-105"
       tabIndex={0}
     >
       {/* Left Section */}
-      <div className="flex flex-col justify-between p-4 pl-6 w-[75%]">
+      <div className="flex flex-col justify-between p-4 pl-6 w-[75%] ">
         <div>
           <img src={barcodeImg} alt="Barcode" className="w-[70px] object-contain" />
           <p className="text-xs text-gray-400 -mt-2">SKU: {item.sku}</p>
