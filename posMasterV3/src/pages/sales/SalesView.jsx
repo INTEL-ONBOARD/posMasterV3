@@ -165,12 +165,44 @@ export default function SalesView() {
   const [cashAmount, setCashAmount] = useState("0.00");
   const [salesMiddlepage, setSalesMiddlepage] = useState("defalut menu");
 
+  const [searchTerm, setSearchTerm] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
-  const handleToggle = () => {
-    setIsExpanded(!isExpanded);
+  const [searchResults, setSearchResults] = useState([]);
+
+  // Members data should be provided here
+  const members = [];
+
+  const handleSearch = (value) => {
+    setSearchTerm(value);
+
+    if (value.trim() === '') {
+      setSearchResults([]);
+      return;
+    }
+
+    // Filter members based on search term
+    const filtered = members.filter(member =>
+      member.name.toLowerCase().includes(value.toLowerCase()) ||
+      member.memberId.includes(value) ||
+      member.phone.includes(value)
+    );
+
+    setSearchResults(filtered);
   };
 
+  const handleGuestClick = () => {
+    setSearchTerm('Guest');
+    setSearchResults([]);
+  };
 
+  const handleMemberSelect = (member) => {
+    setSearchTerm(`${member.name} (${member.memberId})`);
+    setSearchResults([]);
+  };
+
+  const toggleExpanded = () => {
+    setIsExpanded(!isExpanded);
+  };
 
   const memberDropdownRef = useRef(null);
   const creditDropdownRef = useRef(null);
@@ -276,12 +308,12 @@ export default function SalesView() {
       />
 
       {/* Main Content */}
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <div className={isVisible("sale-view")}>
-          <div className="flex h-[calc(100vh-6rem)] bg-[#EBEBEB] w-[calc(100vw-23rem)]">
+          <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)] bg-[#EBEBEB] w-full">
             {/* Item list section(left) */}
-            <div className="bg-[#EBEBEB] border-r flex flex-col h-full">
-              <div className="p-6 space-y-4 flex flex-col h-full">
+            <div className="bg-[#EBEBEB] border-r flex flex-col h-full w-full lg:flex-1">
+              <div className="p-3 lg:p-6 space-y-4 flex flex-col h-full">
 
                 {/* Selected Table Item Display */}
                 {selectedTableItem && (
@@ -418,18 +450,18 @@ export default function SalesView() {
 
                 {/* Sales middle default page*/}
                 {salesMiddlepage === "defalut menu" && (
-                  <div className="flex-1 overflow-y-scroll overflow-x-hidden flex flex-row items-start py-5 min-w-[57rem] gap-6">
+                  <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col lg:flex-row items-start py-5 w-full gap-4 lg:gap-6">
                     {/* Left Section */}
-                    <div className="w-1/3 h-full bg-gray-400 flex items-center justify-center rounded-xl shadow-md p-6">
+                    <div className="w-full lg:w-1/3 h-64 lg:h-full bg-gray-400 flex items-center justify-center rounded-xl shadow-md p-6">
                       <p className="text-lg text-black">User Details here</p>
                     </div>
 
                     {/* Right Section */}
-                    <div className="w-full sm:w-2/3 lg:w-3/4 flex flex-col gap-6">
+                    <div className="w-full lg:w-2/3 flex flex-col gap-4 lg:gap-6">
                       {/* Inventory View Button */}
                       <button
                         onClick={() => setSalesMiddlepage("inventory view")}
-                        className="h-[250px] sm:h-[300px] w-full bg-gray-800 rounded-xl shadow-md flex items-center justify-center hover:bg-gray-700 transition p-4"
+                        className="h-[200px] lg:h-[250px] xl:h-[300px] w-full bg-gray-800 rounded-xl shadow-md flex items-center justify-center hover:bg-gray-700 transition p-4"
                       >
                         <p className="text-white text-lg">Inventory View</p>
                       </button>
@@ -437,19 +469,18 @@ export default function SalesView() {
                       {/* Discount View Button */}
                       <button
                         onClick={() => setSalesMiddlepage("discount view")}
-                        className="h-[250px] sm:h-[300px] w-full bg-gray-800 rounded-xl shadow-md flex items-center justify-center hover:bg-gray-700 transition p-4"
+                        className="h-[200px] lg:h-[250px] xl:h-[300px] w-full bg-gray-800 rounded-xl shadow-md flex items-center justify-center hover:bg-gray-700 transition p-4"
                       >
                         <p className="text-white text-lg">Discount View</p>
                       </button>
                     </div>
                   </div>
-
                 )}
 
                 {/* Discount View Page */}
                 {salesMiddlepage === "discount view" && (
-                  <div className="flex w-full h-full bg-gray-100 p-6 gap-6">
-                    <div className="w-full bg-white rounded-xl shadow-md p-6">
+                  <div className="flex w-full h-full bg-gray-100 p-3 lg:p-6 gap-4 lg:gap-6">
+                    <div className="w-full bg-white rounded-xl shadow-md p-4 lg:p-6">
                       <h2 className="text-xl font-semibold mb-4">Discounts</h2>
                       <p className="text-gray-600 mb-2">
                         Discount view page here
@@ -458,40 +489,36 @@ export default function SalesView() {
                   </div>
                 )}
 
-
                 {/* Inventory Cards - With Loading and No Results States */}
-
                 {!selectedTableItem && salesMiddlepage == "inventory view" && (
-                  <div className="flex-1 overflow-y-scroll overflow-x-hidden flex flex-col items-center py-5 max-w-[57rem]">
-                    <div className="bg-[#F8F8F8] p-4 flex-shrink-0 w-full max-w-2xl rounded-lg shadow-md mb-4 mr-6 ml-6">
+                  <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col items-center py-5 w-full">
+                    <div className="bg-[#F8F8F8] p-3 lg:p-4 flex-shrink-0 w-full max-w-full lg:max-w-2xl rounded-lg shadow-md mb-4 mx-2 lg:mx-6">
                       {/* Barcode Image and Search Bar - Parallel */}
-                      <div className="flex flex-row items-center gap-4 mb-4 ">
+                      <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 mb-4">
                         {/* Back button */}
                         <button
                           onClick={() => setSalesMiddlepage("defalut menu")}
-                          className="bg-black text-white px-6 py-4 flex items-center space-x-2 text-lg">
-                          <span className="text-2xl">&#x276E;</span>
+                          className="bg-black text-white px-4 lg:px-6 py-3 lg:py-4 flex items-center justify-center space-x-2 text-base lg:text-lg">
+                          <span className="text-xl lg:text-2xl">&#x276E;</span>
                           <span>Back</span>
                         </button>
 
-
                         {/* Search Bar */}
                         <div className="w-full flex flex-col gap-3">
-
-                          <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
+                          <div className="flex-1 flex border-b border-[#EDEDED] h-10 lg:h-12 items-center">
                             <input
                               type="text"
                               value={scanCode}
                               onChange={(e) => setScanCode(e.target.value)}
                               placeholder="Search Your Items here"
-                              className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
+                              className="flex-1 px-2 lg:px-3 py-2 bg-transparent focus:outline-none text-sm lg:text-base"
                             />
                             <button
-                              className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
+                              className="flex items-center px-3 lg:px-4 py-2 bg-[#1A318C] text-white text-sm lg:text-base"
                               onClick={handleScan}
                             >
                               <svg
-                                className="w-5 h-5 mr-2"
+                                className="w-4 lg:w-5 h-4 lg:h-5 mr-1 lg:mr-2"
                                 fill="none"
                                 stroke="currentColor"
                                 strokeWidth="2"
@@ -504,9 +531,7 @@ export default function SalesView() {
                             </button>
                           </div>
 
-
-                          <div className="flex flex-row gap-3">
-
+                          <div className="flex flex-wrap gap-2 lg:gap-3">
                             <label className="relative">
                               <input
                                 type="checkbox"
@@ -514,12 +539,12 @@ export default function SalesView() {
                                 name="category"
                                 value="fruit"
                               />
-                              <div className="py-2 px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500">
+                              <div className="py-2 px-3 lg:px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500 text-sm lg:text-base">
                                 <span>Fruit</span>
-                                <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
+                                <span className="w-4 lg:w-5 h-4 lg:h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"
-                                    className="h-3 w-3"
+                                    className="h-2 lg:h-3 w-2 lg:w-3"
                                     viewBox="0 0 20 20"
                                     fill="currentColor"
                                   >
@@ -533,7 +558,6 @@ export default function SalesView() {
                               </div>
                             </label>
 
-
                             <label className="relative">
                               <input
                                 type="checkbox"
@@ -541,12 +565,12 @@ export default function SalesView() {
                                 name="category"
                                 value="vegetable"
                               />
-                              <div className="py-2 px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500">
+                              <div className="py-2 px-3 lg:px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500 text-sm lg:text-base">
                                 <span>Vegetable</span>
-                                <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
+                                <span className="w-4 lg:w-5 h-4 lg:h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"
-                                    className="h-3 w-3"
+                                    className="h-2 lg:h-3 w-2 lg:w-3"
                                     viewBox="0 0 20 20"
                                     fill="currentColor"
                                   >
@@ -567,12 +591,12 @@ export default function SalesView() {
                                 name="category"
                                 value="dairy"
                               />
-                              <div className="py-2 px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500">
+                              <div className="py-2 px-3 lg:px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500 text-sm lg:text-base">
                                 <span>Dairy</span>
-                                <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
+                                <span className="w-4 lg:w-5 h-4 lg:h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"
-                                    className="h-3 w-3"
+                                    className="h-2 lg:h-3 w-2 lg:w-3"
                                     viewBox="0 0 20 20"
                                     fill="currentColor"
                                   >
@@ -596,8 +620,7 @@ export default function SalesView() {
                             <span>Searching...</span>
                           ) : (
                             <span>
-                              Found {filteredItems.length} result(s) for "{scanCode}
-                              "
+                              Found {filteredItems.length} result(s) for "{scanCode}"
                             </span>
                           )}
                         </div>
@@ -655,11 +678,14 @@ export default function SalesView() {
                         )}
                       </div>
                     ) : (
+
                       // Items Display
 
-                      <div className="grid sm:grid-cols-1 md:grid-cols-2">
+// Items Display
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4 p-2 lg:p-4">
                         {filteredItems.map((item) => (
-                          <div key={item.id} className="transform scale-90">
+                          <div key={item.id} className="w-full">
                             <SalesItemCard
                               item={item}
                               onOpen={() => handleProductSelect(item)}
@@ -667,69 +693,105 @@ export default function SalesView() {
                           </div>
                         ))}
                       </div>
-                    )
-
-                    }
+                    )}
                   </div>
                 )}
               </div>
             </div>
 
+
             {/* item table section(right) */}
-            <div className="flex-1 p-3 flex w-[30rem] flex-col h-[calc(100vh-7rem)]">
+            <div className="flex-1 p-2 lg:p-3 flex w-full lg:w-[30rem] flex-col h-[calc(100vh-7rem)]">
               {/* Items Table - REDUCED HEIGHT */}
               <div
                 className="bg-white overflow-hidden"
                 style={{ height: "calc(100vh - 300px)" }}
               >
                 {/* member container */}
-                <div className="w-full max-w-full mx-auto mb-4 p-4 mb-0">
-                  {/* Main clickable container */}
-                  <div
-                    className="bg-orange-50 border-2 border-orange-400 rounded-lg p-4 cursor-pointer hover:bg-orange-100 transition-colors"
-                    onClick={handleToggle}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-800 font-medium text-lg">
-                        Member 3456
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="bg-orange-200 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
-                          DISCOUNT
-                        </span>
-                        <svg
-                          className={`w-5 h-5 text-gray-600 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
+                <div className="w-full relative p-auto">
+                  {/* Main search container */}
+                  <div className="w-full relative p-2 lg:p-4">
+                    {/* Main search container */}
+                    <div className="bg-orange-50 border-2 border-orange-400 rounded-lg overflow-hidden">
+                      <div className="p-2 lg:p-3">
+                        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
+                          {/* Search icon */}
+                          <svg className="w-6 h-6 lg:w-8 lg:h-8 text-orange-500 flex-shrink-0 self-center lg:self-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
 
-                    {/* Expanded content */}
-                    {isExpanded && (
-                      <div className="mt-4 pt-4 border-t border-orange-200">
-                        <div className="text-sm text-gray-600">
-                          More details should be added here
+                          {/* Search input with underline */}
+                          <div className="flex-1 relative">
+                            <input
+                              type="text"
+                              placeholder="Search Member here ....."
+                              value={searchTerm}
+                              onChange={(e) => handleSearch(e.target.value)}
+                              className="w-full bg-transparent text-orange-500 placeholder-orange-400 outline-none text-lg lg:text-xl font-medium pb-2"
+                            />
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-400"></div>
+                          </div>
+
+                          {/* Guest button and expand arrow container */}
+                          <div className="flex items-center gap-2 lg:gap-3">
+                            {/* Guest button */}
+                            <button
+                              onClick={handleGuestClick}
+                              className="bg-orange-200 text-orange-600 px-4 lg:px-6 py-2 lg:py-3 border-2 border-orange-400 text-base lg:text-lg font-medium hover:bg-orange-300 transition-colors"
+                            >
+                              Guest
+                            </button>
+
+                            {/* Expand arrow */}
+                            <button
+                              onClick={toggleExpanded}
+                              className="p-1 hover:bg-orange-200 rounded transition-colors"
+                            >
+                              <svg
+                                className={`w-5 h-5 lg:w-6 lg:h-6 text-orange-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                fill="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    )}
+
+                      {/* Search results */}
+                      {searchTerm && searchTerm !== 'Guest' && (
+                        <div className="border-t border-orange-200 bg-white p-2 lg:p-4">
+                          <div className="text-sm text-gray-600">
+                            Search results will appear here
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Expanded content */}
+                      {isExpanded && (
+                        <div className="border-t border-orange-200 bg-white p-2 lg:p-4">
+                          <div className="text-sm text-gray-600">
+                            More details should be added here
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
+
                 {/* item table */}
-                <div className="overflow-x-auto h-full">
-                  <table className="w-full">
+                <div className="overflow-x-auto h-full p-2 lg:p-4">
+                  <table className="w-full min-w-[500px]">
                     <thead className="bg-gray-700 text-white">
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium">
+                        <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
                           Item code
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">
+                        <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
                           Unit count
                         </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">
+                        <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
                           Total
                         </th>
                       </tr>
@@ -741,15 +803,15 @@ export default function SalesView() {
                           className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors`}
                           onClick={() => handleTableRowClick(item)}
                         >
-                          <td className="px-4 py-3 text-sm text-gray-700">
+                          <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
                             <div className="flex items-start">
-                              <div className="flex-shrink-0 mr-2 mt-1">
+                              <div className="flex-shrink-0 mr-1 lg:mr-2 mt-1">
                                 {selectedTableItem?.id === item.id ? (
-                                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-3 h-3 lg:w-4 lg:h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                   </svg>
                                 ) : (
-                                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-3 h-3 lg:w-4 lg:h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                   </svg>
                                 )}
@@ -759,7 +821,7 @@ export default function SalesView() {
                                   {index + 1} {item.code}
                                 </div>
                                 {selectedTableItem?.id === item.id && (
-                                  <div className="mt-1 text-gray-500 text-sm">
+                                  <div className="mt-1 text-gray-500 text-xs lg:text-sm">
                                     <div>{item.name || 'White Banana'}</div>
                                     <div>Rs.{item.unitPrice.toFixed(2)}</div>
                                   </div>
@@ -767,10 +829,10 @@ export default function SalesView() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">
+                          <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
                             {item.quantity || 30}(pcs)
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">
+                          <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
                             {item.total.toFixed(2)}
                           </td>
                         </tr>
@@ -783,34 +845,34 @@ export default function SalesView() {
               {/* Payment Section */}
               <div className="bg-white">
                 {/* Amounts */}
-                <div className="grid grid-cols-2 p-3">
-                  <div className="p-2 bg-[#D9D9D9] text-base text-gray-500">Discount Amount</div>
-                  <div className="p-2 bg-[#D9D9D9] text-xl font-normal text-gray-800 text-right">
+                <div className="grid grid-cols-2 p-2 lg:p-3">
+                  <div className="p-2 bg-[#D9D9D9] text-sm lg:text-base text-gray-500">Discount Amount</div>
+                  <div className="p-2 bg-[#D9D9D9] text-lg lg:text-xl font-normal text-gray-800 text-right">
                     RS.{discountAmount.toFixed(2)}
                   </div>
-                  <div className="p-2 bg-[#F8F8F8] text-base text-gray-500">Change Amount</div>
-                  <div className="p-2 bg-[#F8F8F8] text-xl font-normal text-gray-800 text-right">
+                  <div className="p-2 bg-[#F8F8F8] text-sm lg:text-base text-gray-500">Change Amount</div>
+                  <div className="p-2 bg-[#F8F8F8] text-lg lg:text-xl font-normal text-gray-800 text-right">
                     RS.{changeAmount.toFixed(2)}
                   </div>
-                  <div className="p-2 bg-[#5C5C5C] text-base text-gray-500">Total Amount</div>
-                  <div className="p-2 bg-[#5C5C5C] text-xl font-semibold text-white text-right">
+                  <div className="p-2 bg-[#5C5C5C] text-sm lg:text-base text-gray-500">Total Amount</div>
+                  <div className="p-2 bg-[#5C5C5C] text-lg lg:text-xl font-semibold text-white text-right">
                     RS.{totalAmount.toFixed(2)}
                   </div>
                 </div>
                 {/* payment button controls*/}
-                <div className="flex flex-row justify-between px-3">
-                  <button className="px-4 py-3 mb-4 bg-[#727272] text-white text-sm hover:bg-gray-700 transition-colors flex items-center">
-                    <img src={clearBtnImg} alt="Clear" className="w-4 h-4 mr-2" />
+                <div className="flex flex-col sm:flex-row justify-between px-2 lg:px-3 gap-2 lg:gap-0">
+                  <button className="px-3 lg:px-4 py-2 lg:py-3 mb-2 lg:mb-4 bg-[#727272] text-white text-xs lg:text-sm hover:bg-gray-700 transition-colors flex items-center justify-center sm:justify-start sm:mr-2">
+                    <img src={clearBtnImg} alt="Clear" className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
                     Clear
                   </button>
 
-                  <button className="px-4 py-3 mb-4 bg-[#EB8928] text-white text-sm hover:bg-orange-500 transition-colors flex items-center">
-                    <img src={sidebarHoldOrderBtnImg} alt="Hold Order" className="w-4 h-4 mr-2" />
+                  <button className="px-3 lg:px-4 py-2 lg:py-3 mb-2 lg:mb-4 bg-[#EB8928] text-white text-xs lg:text-sm hover:bg-orange-500 transition-colors flex items-center justify-center sm:justify-start sm:mr-2">
+                    <img src={sidebarHoldOrderBtnImg} alt="Hold Order" className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
                     Hold Order
                   </button>
 
-                  <button className="px-4 py-3 mb-4 bg-[#1A318C] text-white text-sm hover:bg-blue-700 transition-colors flex items-center">
-                    <img src={sidebarPaymentBtnImg} alt="Proceed Payment" className="w-4 h-4 mr-2" />
+                  <button className="px-3 lg:px-4 py-2 lg:py-3 mb-2 lg:mb-4 bg-[#1A318C] text-white text-xs lg:text-sm hover:bg-blue-700 transition-colors flex items-center justify-center sm:justify-start sm:mr-2">
+                    <img src={sidebarPaymentBtnImg} alt="Proceed Payment" className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
                     Proceed Payment
                   </button>
                 </div>
@@ -820,15 +882,15 @@ export default function SalesView() {
         </div>
 
         <div className={isVisible("transaction-history")}>
-          <div className="p-8">
-            <h2 className="text-2xl font-bold mb-4">Transaction History</h2>
+          <div className="p-4 lg:p-8">
+            <h2 className="text-xl lg:text-2xl font-bold mb-4">Transaction History</h2>
             <p>Transaction history content will go here...</p>
           </div>
         </div>
 
         <div className={isVisible("inventory-view")}>
-          <div className="p-8">
-            <h2 className="text-2xl font-bold mb-4">Inventory View</h2>
+          <div className="p-4 lg:p-8">
+            <h2 className="text-xl lg:text-2xl font-bold mb-4">Inventory View</h2>
             <p>Inventory view content will go here...</p>
           </div>
         </div>
@@ -838,8 +900,8 @@ export default function SalesView() {
         </div>
 
         <div className={isVisible("sales-config")}>
-          <div className="p-8">
-            <h2 className="text-2xl font-bold mb-4">Sales Configurations</h2>
+          <div className="p-4 lg:p-8">
+            <h2 className="text-xl lg:text-2xl font-bold mb-4">Sales Configurations</h2>
             <p>Sales configurations content will go here...</p>
           </div>
         </div>

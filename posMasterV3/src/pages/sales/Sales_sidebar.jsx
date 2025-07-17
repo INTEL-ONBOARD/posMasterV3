@@ -61,11 +61,10 @@ function SalesSidebar({
             <button
               key={item.id}
               onClick={item.onClick}
-              className={`w-60 h-40 flex flex-col items-center justify-center p-4 transition-all duration-200 ${
-                isActive
+              className={`w-60 h-40 flex flex-col border border-gray-100 items-center justify-center p-4 transition-all duration-200 ${isActive
                   ? 'border-blue-500 bg-[#EBEBEB] relative'
                   : 'bg-[#FAFAFA] border-gray-200 hover:border-gray-300'
-              }`}
+                }`}
             >
               {/* Image and arrow */}
               <div className="relative flex flex-col items-center mb-2">
