@@ -3,6 +3,7 @@ import { apiClient } from "../../api/client";
 import { useNavigate } from "react-router-dom";
 import { X, Upload, Printer } from "lucide-react";
 import Add_item_Card from "../../frontend/components/Add_item_Card";
+import AddItemCard from "../../components/AddItemCard.jsx";
 import bananaImg from '../../assets/Inventory_banana.png';
 import ConfirmDeleteModal from "../../frontend/components/ConfirmDeleteModal";
 import itemImg from '../../assets/Inventory_banana.png';
@@ -11,180 +12,212 @@ import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
 import JsBarcode from 'jsbarcode';
 
+
+
 function AddItem() {
   const navigate = useNavigate();
-  const [inventoryItems, setInventoryItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+const [inventoryItems, setInventoryItems] = useState([
+    {
+      _id: "6877751e6d4492e44dbb403b",
+      id: 19,
+      stock_trace: [1],
+      item_name: "test toothbrush",
+      item_image_url: "/src/assets/Inventory_banana.png",
+      batch_code: "bar237645TE1522",
+      sku: "bar237645",
+      quantity: 30,
+      threshold_limit: 20,
+      maximum_capacity: 40,
+      uom_id: 22,
+      category_id: 15,
+      inventory_id: 1,
+      unit_price: 110,
+      stock_update_datetime: "2025-07-16T09:47:10.682Z",
+      stock_created_datetime: "2025-07-16T09:47:10.682Z",
+      __v: 0,
+      uom: {
+        _id: "687720ad798018e0851599a0",
+        id: 22,
+        symbol: "pcs",
+        unit_name: "Piece",
+        __v: 0
+      },
+      category: {
+        _id: "68773ebf1edd62f9c8128b58",
+        id: 15,
+        brand: "Colgate",
+        type: "Oral Care",
+        __v: 0
+      },
+      inventory: null
+    },
+    {
+      _id: "687775746d4492e44dbb404f",
+      id: 22,
+      stock_trace: [1],
+      item_name: "test toothbrush2",
+      item_image_url: "/src/assets/Inventory_banana.png",
+      batch_code: "fubar237645TE1522",
+      sku: "fubar237645",
+      quantity: 30,
+      threshold_limit: 20,
+      maximum_capacity: 40,
+      uom_id: 22,
+      category_id: 15,
+      inventory_id: 1,
+      unit_price: 110,
+      stock_update_datetime: "2025-07-16T09:48:36.213Z",
+      stock_created_datetime: "2025-07-16T09:48:36.213Z",
+      __v: 0,
+      uom: {
+        _id: "687720ad798018e0851599a0",
+        id: 22,
+        symbol: "pcs",
+        unit_name: "Piece",
+        __v: 0
+      },
+      category: {
+        _id: "68773ebf1edd62f9c8128b58",
+        id: 15,
+        brand: "Colgate",
+        type: "Oral Care",
+        __v: 0
+      },
+      inventory: null
+    },
+  ]);
+
+    // State for category/brand mapping
+  const [loadingItemCategories, setLoadingItemCategories] = useState(false);
+  const [itemCategories, setItemCategories] = useState([
+    { id: 145, brand: "Close-Up",   type: "Oral Care" },
+    { id:  94, brand: "Clogard",    type: "Oral Care" },
+    { id:  15, brand: "Colgate",    type: "Oral Care" },
+    { id:  26, brand: "Pepsi",      type: "Beverages" },
+    { id:   7, brand: "Coca-Cola",  type: "Beverages" },
+  ]);
+
+
+  //to select the brand option from category
+  const [selectedCategoryType, setSelectedCategoryType] = useState("");
+  //filled when a category was selected from the category dropdown
+  const [brandOptions, setBrandOptions] = useState([]);
+  //in case for the category dropdown population
+  const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
+
+  useEffect(() => {
+    const types = Array.from(new Set(itemCategories.map(c => c.type)));
+    setUniqueCategoryTypes(types);
+  }, [itemCategories]);
+
+  // when category changes, compute brands for that category
+  useEffect(() => {
+    if (!selectedCategoryType) {
+      setBrandOptions([]);
+      return;
+    }
+    const brands = itemCategories
+      .filter(c => c.type === selectedCategoryType)
+      .map(c => c.brand);
+    setBrandOptions(brands);
+  }, [selectedCategoryType, itemCategories]);
+
+  const handleCategoryChange = e => {
+    const newType = e.target.value;
+    setSelectedCategoryType(newType);
+    setFormData(f => ({ ...f, categoryType: newType, brand: "" }));
+  };
+
+  const handleBrandChange = e => {
+    setFormData(f => ({ ...f, brand: e.target.value }));
+  };
+
+
+  const [isLoading, setIsLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const [searchCategory, setSearchCategory] = useState("All");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
 
-  // New state for dropdown options
-  const [uoms, setUoms] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loadingUoms, setLoadingUoms] = useState(true);
-  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [selectedItem, setSelectedItem] = useState({
+      _id: "687775746d4492e44dbb404f",
+      id: 22,
+      stock_trace: [1],
+      item_name: "test toothbrush2",
+      item_image_url: "/src/assets/Inventory_banana.png",
+      batch_code: "fubar237645TE1522",
+      sku: "fubar237645",
+      quantity: 30,
+      threshold_limit: 20,
+      maximum_capacity: 40,
+      uom_id: 22,
+      category_id: 15,
+      inventory_id: 1,
+      unit_price: 110,
+      stock_update_datetime: "2025-07-16T09:48:36.213Z",
+      stock_created_datetime: "2025-07-16T09:48:36.213Z",
+      __v: 0,
+      uom: {
+        _id: "687720ad798018e0851599a0",
+        id: 22,
+        symbol: "pcs",
+        unit_name: "Piece",
+        __v: 0
+      },
+      category: {
+        _id: "68773ebf1edd62f9c8128b58",
+        id: 15,
+        brand: "Colgate",
+        type: "Oral Care",
+        __v: 0
+      },
+      inventory: null
+    });
 
-  // State for category/brand mapping
-  const [categoryMap, setCategoryMap] = useState({});
-  const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
-  const [brandOptions, setBrandOptions] = useState([]);
-  const [selectedCategoryType, setSelectedCategoryType] = useState("");
 
-  // Fetch UOMs from API
-  useEffect(() => {
-    const fetchUoms = async () => {
-      try {
-        const response = await apiClient.get("api/uoms");
-        if (response.data.status === "success") {
-          setUoms(response.data.data);
-        }
-      } catch (error) {
-        console.error("Error fetching UOMs:", error);
-      } finally {
-        setLoadingUoms(false);
-      }
-    };
-
-    fetchUoms();
-  }, []);
-
-  // Fetch Categories from API and create mapping
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await apiClient.get("api/categories");
-        if (response.data.status === "success") {
-          const categoriesData = response.data.data;
-          setCategories(categoriesData);
-          
-          // Create mapping of category type to brands
-          const newCategoryMap = {};
-          const uniqueTypes = [];
-          
-          categoriesData.forEach(cat => {
-            if (!newCategoryMap[cat.type]) {
-              newCategoryMap[cat.type] = [];
-              uniqueTypes.push(cat.type);
-            }
-            newCategoryMap[cat.type].push({
-              id: cat.id,
-              brand: cat.brand
-            });
-          });
-          
-          setCategoryMap(newCategoryMap);
-          setUniqueCategoryTypes(uniqueTypes);
-        }
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      } finally {
-        setLoadingCategories(false);
-      }
-    };
-
-    fetchCategories();
-  }, []);
-
-  // Handle category type selection
-  const handleCategoryTypeChange = (e) => {
-    const type = e.target.value;
-    setSelectedCategoryType(type);
-    
-    // Reset brand selection when category type changes
-    setformData(prev => ({
-      ...prev,
-      brand: "",
-      categoryId: ""
-    }));
-    
-    // Set brand options for this category type
-    if (categoryMap[type]) {
-      setBrandOptions(categoryMap[type]);
-    } else {
-      setBrandOptions([]);
-    }
-  };
-
-  // Handle brand selection
-  const handleBrandChange = (e) => {
-    const brand = e.target.value;
-    const categoryId = e.target.options[e.target.selectedIndex].getAttribute('data-id');
-    
-    setformData(prev => ({
-      ...prev,
-      brand,
-      categoryId
-    }));
-  };
-
-  // Fetch items from API
-  useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        const response = await apiClient.get("api/items");
-        if (response.data.status === "success") {
-          const items = response.data.data.map(item => ({
-            id: item._id,
-            name: item.item_name,
-            categoryId: item.category_id,
-            categoryName: item.category?.type || "Uncategorized",
-            brand: item.category?.brand || "No brand",
-            itemCode: item.batch_code,
-            sku: item.sku,
-            status: item.quantity <= 0
-              ? "outOfStock"
-              : item.quantity <= item.threshold_limit
-                ? "lowStock"
-                : "available",
-            thresholdLimit: item.threshold_limit,
-            maxmiumCapacity: item.maximum_capacity,
-            price: item.unit_price,
-            quantity: item.quantity,
-            uomId: item.uom_id,
-            uomName: uoms.find(u => u.id === item.uom_id)?.unit_name || "Unknown",
-            image: item.item_image_url
-          }));
-          setInventoryItems(items);
-        }
-      } catch (error) {
-        console.error("Error fetching items:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    // Fetch items after UOMs are loaded to properly map uomName
-    if (!loadingUoms) {
-      fetchItems();
-    }
-  }, [loadingUoms]);
-
-  // to switch between add and update api call via button switching
-  const [isEditModalOpen, setEditModalOpen] = useState();
-  
   // Form state
   const [formData, setformData] = useState({
-    id: "",
-    name: "",
-    categoryId: "",
-    brand: "",
-    itemCode: "",
-    sku: "",
-    status: "available",
-    thresholdLimit: 0,
-    maxmiumCapacity: 0,
-    price: 0,
-    quantity: 0,
-    uomId: "",
-    image: itemImg,
-  });
+      _id: "687775746d4492e44dbb404f",
+      id: 22,
+      stock_trace: [1],
+      item_name: "test toothbrush2",
+      item_image_url: "/src/assets/Inventory_banana.png",
+      batch_code: "fubar237645TE1522",
+      sku: "fubar237645",
+      quantity: 30,
+      threshold_limit: 20,
+      maximum_capacity: 40,
+      uom_id: 22,
+      category_id: 15,
+      inventory_id: 1,
+      unit_price: 110,
+      stock_update_datetime: "2025-07-16T09:48:36.213Z",
+      stock_created_datetime: "2025-07-16T09:48:36.213Z",
+      __v: 0,
+      uom: {
+        _id: "687720ad798018e0851599a0",
+        id: 22,
+        symbol: "pcs",
+        unit_name: "Piece",
+        __v: 0
+      },
+      category: {
+        _id: "68773ebf1edd62f9c8128b58",
+        id: 15,
+        brand: "Colgate",
+        type: "Oral Care",
+        __v: 0
+      },
+      inventory: null,
+      categoryType: "",  // ← add this
+    brand: "",         // ← add this
+    });
+
+    
 
   // Barcode generation
-  const barcodeValue = formData.itemCode || "SKU-000000";
-
+  const barcodeValue = formData.batch_code || "SKU-000000";
+  
   const generateBarcode = () => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
@@ -200,11 +233,11 @@ function AddItem() {
   const generatePdf = async (action) => {
     try {
       const barcodeDataUrl = await generateBarcode();
-      const instance = pdf(<SimpleDocument
-        barcodeDataUrl={barcodeDataUrl}
-        barcodeValue={barcodeValue}
+      const instance = pdf(<SimpleDocument 
+        barcodeDataUrl={barcodeDataUrl} 
+        barcodeValue={barcodeValue} 
       />);
-
+      
       const blob = await instance.toBlob();
       if (action === 'print') {
         const arrayBuffer = await blob.arrayBuffer();
@@ -218,7 +251,7 @@ function AddItem() {
         a.click();
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 60000);
-      }
+      }   
     } catch (error) {
       console.error('Error:', error);
       alert('Failed to generate PDF');
@@ -233,90 +266,19 @@ function AddItem() {
   };
 
   // Category handler
-  const handleCategoryChange = (e) => {
-    setCategory(e.target.value);
+  const handleSearchCategoryChange = (e) => {
+    setSearchCategory(e.target.value);
   };
 
-  // Create new item
-  const createItem = async (e) => {
-    e.preventDefault();
-    try {
-      const requestData = {
-        sku: formData.sku,
-        item_name: formData.name,
-        quantity: Number(formData.quantity),
-        threshold_limit: Number(formData.thresholdLimit),
-        maximum_capacity: Number(formData.maxmiumCapacity),
-        uom_id: Number(formData.uomId),
-        category_id: Number(formData.categoryId),
-        inventory_id: 1, // Fixed value as requested
-        item_image_url: formData.image || null,
-        unit_price: parseFloat(formData.price),
-        batch_code: formData.itemCode
-      };
-
-      const response = await apiClient.post("api/items/add", requestData);
-
-      if (response.data.status === "success") {
-        // Add new item to local state
-        const newItem = {
-          id: response.data.data._id,
-          name: formData.name,
-          categoryId: formData.categoryId,
-          categoryName: categories.find(c => c.id === formData.categoryId)?.type || "Uncategorized",
-          brand: formData.brand,
-          itemCode: formData.itemCode,
-          sku: formData.sku,
-          status: "available",
-          thresholdLimit: formData.thresholdLimit,
-          maxmiumCapacity: formData.maxmiumCapacity,
-          price: formData.price,
-          quantity: formData.quantity,
-          uomId: formData.uomId,
-          uomName: uoms.find(u => u.id === formData.uomId)?.unit_name || "Unknown",
-          image: formData.image
-        };
-
-        setInventoryItems([...inventoryItems, newItem]);
-        alert("Item created successfully!");
-      } else {
-        alert(response.data.message || "Failed to create item");
-      }
-    } catch (err) {
-      console.error("Create item error:", err);
-      alert("Error creating item");
-    }
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setformData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Load item into form
+  // Load item object into form
   const loadItem = (selectedItem) => {
-    setformData({
-      id: selectedItem.id,
-      name: selectedItem.name,
-      categoryId: selectedItem.categoryId,
-      brand: selectedItem.brand,
-      sku: selectedItem.sku,
-      itemCode: selectedItem.itemCode,
-      status: selectedItem.status,
-      thresholdLimit: selectedItem.thresholdLimit,
-      maxmiumCapacity: selectedItem.maxmiumCapacity,
-      price: selectedItem.price,
-      quantity: selectedItem.quantity,
-      uomId: selectedItem.uomId,
-      image: selectedItem.image
-    });
-    
-    // Set category type and brand options
-    const categoryType = selectedItem.categoryName;
-    setSelectedCategoryType(categoryType);
-    if (categoryMap[categoryType]) {
-      setBrandOptions(categoryMap[categoryType]);
-    }
+    setformData(selectedItem);
   };
 
   // Delete item handlers
@@ -327,17 +289,7 @@ function AddItem() {
   };
 
   const handleConfirmDelete = async () => {
-    try {
-      await apiClient.delete(`api/items/${selectedItem.id}`);
-      setInventoryItems(items => items.filter(i => i.id !== selectedItem.id));
-      alert("Item deleted successfully");
-    } catch (error) {
-      console.error("Delete error:", error);
-      alert("Failed to delete item");
-    } finally {
-      setShowDeleteModal(false);
-      setSelectedItem(null);
-    }
+    //enter api later
   };
 
   const handleCancelDelete = () => {
@@ -348,8 +300,8 @@ function AddItem() {
   // Filter items based on search and category
   const filteredItems = inventoryItems.filter(
     (item) =>
-      (category === "All" || item.categoryName === category) &&
-      item.name.toLowerCase().includes(search.toLowerCase())
+      (searchCategory === "All" || item.category === searchCategory) &&
+      item.item_name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -360,10 +312,10 @@ function AddItem() {
           {/* Image uploading block */}
           <div className="flex flex-row items-center max-h-[7rem]">
             <div className="w-48 h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center mb-4 hover:border-gray-400 transition-colors">
-              {formData.image ? (
-                <img
-                  src={formData.image}
-                  alt="Item"
+              {formData.item_image_url ? (
+                <img 
+                  src={formData.item_image_url} 
+                  alt="Item" 
                   className="w-full h-full object-contain"
                 />
               ) : (
@@ -383,9 +335,9 @@ function AddItem() {
                 <p className="text-lg text-black">SKU :</p>
                 <p className="w-max text-lg text-[#A7A7A7]">{formData.sku}</p>
                 <p className="text-lg text-black">BARCODE :</p>
-                <p className="w-max text-lg text-[#A7A7A7]">{formData.itemCode}</p>
+                <p className="w-max text-lg text-[#A7A7A7]">{formData.batch_code}</p>
               </div>
-            </div>
+            </div>   
           </div>
 
           {/* Item form block */}
@@ -396,8 +348,8 @@ function AddItem() {
               </label>
               <input
                 type="text"
-                name="name"
-                value={formData.name}
+                name="item_name"
+                value={formData.item_name}
                 onChange={handleInputChange}
                 placeholder="Enter item name"
                 className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -409,55 +361,56 @@ function AddItem() {
               </label>
               <input
                 type="number"
-                name="price"
-                value={formData.price}
+                name="unit_price"
+                value={formData.unit_price}
                 onChange={handleInputChange}
                 placeholder="Enter item price"
                 className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            
             <div className="grid grid-cols-2 gap-4">
-              {/* Category Type Dropdown */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category Type
+                  Category
                 </label>
                 <select
-                  value={selectedCategoryType}
-                  onChange={handleCategoryTypeChange}
-                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={loadingCategories}
+                  // name="category"
+                  // value={formData.category}
+                  // onChange={handleInputChange}
+                  name="categoryType"
+                  value={formData.categoryType}
+                  onChange={handleCategoryChange}
+                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
                 >
-                  <option value="">Select a category type</option>
+                  <option value="">-- select category --</option>
                   {uniqueCategoryTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
+                    <option key={type} value={type}>
+                      {type}
+              </option>
+            ))}
+          </select>
               </div>
-              
-              {/* Brand Dropdown (dynamically populated) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Brand
                 </label>
-                <select
-                  value={formData.brand}
-                  onChange={handleBrandChange}
-                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={!selectedCategoryType}
-                >
-                  <option value="">Select a brand</option>
-                  {brandOptions.map(brand => (
-                    <option 
-                      key={brand.id} 
-                      value={brand.brand}
-                      data-id={brand.id}
-                    >
-                      {brand.brand}
-                    </option>
-                  ))}
-                </select>
+          <select
+            // name="brand"
+            // value={formData.brand}
+            // onChange={handleInputChange}
+            name="brand"
+            value={formData.brand}
+            onChange={handleBrandChange}
+            disabled={!brandOptions.length}
+            className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
+          >
+            <option value="">-- select brand --</option>
+            {brandOptions.map(brand => (
+              <option key={brand} value={brand}>
+                {brand}
+              </option>
+            ))}
+          </select>
               </div>
             </div>
 
@@ -475,8 +428,8 @@ function AddItem() {
                   className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-
-              <div>
+              {/* status is no need for now */}
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Status
                 </label>
@@ -490,9 +443,8 @@ function AddItem() {
                   <option value="available">Available</option>
                   <option value="outOfStock">Out of Stock</option>
                 </select>
-              </div>
+            </div> */}
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -500,8 +452,8 @@ function AddItem() {
                 </label>
                 <input
                   type="number"
-                  name="thresholdLimit"
-                  value={formData.thresholdLimit}
+                  name="threshold_limit"
+                  value={formData.threshold_limit}
                   onChange={handleInputChange}
                   placeholder="12"
                   className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -513,14 +465,15 @@ function AddItem() {
                 </label>
                 <input
                   type="number"
-                  name="maxmiumCapacity"
-                  value={formData.maxmiumCapacity}
+                  name="maximum_capacity"
+                  value={formData.maximum_capacity}
                   onChange={handleInputChange}
                   placeholder="12"
                   className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -535,35 +488,30 @@ function AddItem() {
                   className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-
-              {/* UOM dropdown with API data */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Unit of Measure (UOM)
+                  UOM
                 </label>
                 <select
-                  name="uomId"
-                  value={formData.uomId}
+                  name="uom"
+                  value={formData.uom.symbol}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={loadingUoms}
                 >
-                  <option value="">Select a UOM</option>
-                  {uoms.map(uom => (
-                    <option key={uom.id} value={uom.id}>
-                      {uom.unit_name} ({uom.symbol})
-                    </option>
-                  ))}
+                  <option value="kg">KG</option>
+                  <option value="pcs">PCS</option>
+                  <option value="ltr">LTR</option>
                 </select>
               </div>
             </div>
           </div>
         </div>
+        
 
         {/* Bottom bar */}
         <div className="flex justify-between space-x-3 -mx-10 p-4">
           <div className="flex flex-row items-center gap-3">
-            <button
+            <button 
               className="flex items-center px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
               onClick={() => generatePdf('print')}
             >
@@ -573,31 +521,29 @@ function AddItem() {
           </div>
           <div>
             <button
-              onClick={() => {
-                setformData({
-                  id: "",
-                  name: "",
-                  categoryId: "",
-                  brand: "",
-                  itemCode: "",
-                  sku: "",
-                  status: "available",
-                  thresholdLimit: 0,
-                  maxmiumCapacity: 0,
-                  price: 0,
-                  quantity: 0,
-                  uomId: "",
-                  image: itemImg,
-                });
-                setSelectedCategoryType("");
-                setBrandOptions([]);
-              }}
+              onClick={() => setformData({
+                id: "",
+                name: "",
+                category: "",
+                brand: "",
+                itemCode: "",
+                sku: "",
+                status: "available",
+                thresholdLimit: 0,
+                maxmiumCapacity: 0,
+                price: 0,
+                quantity: 0,
+                uom: "pcs",
+                image: itemImg,
+              })}
               className="px-6 py-2 mr-4 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
             >
-              Clear All
+              Clear
             </button>
             <button
-              onClick={createItem}
+              // onClick={
+              //   //createItem
+              // }
               className="px-6 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
             >
               Save
@@ -605,56 +551,39 @@ function AddItem() {
           </div>
         </div>
       </div>
+      
 
       {/* Item list (right) */}
       <div className="w-2/3 h-[calc(100vh-1rem)] bg-[#EBEBEB]">
         {/* Search panel */}
         <nav className="w-full flex flex-row justify-between py-8 px-10 h-[7rem] bg-white gap-6">
-          <div className="mb-2 bg-white w-full flex flex-col gap-2">
-            <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
-              <input
-                type="text"
-                value={search}
-                onChange={handleSearch}
-                placeholder="Search Your Items here"
-                className="flex-1 px-3 py-2 bg-transparent focus:outline-none placeholder:text-gray-300"
-              />
-              <button
-                onClick={handleSearch}
-                className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
-              >
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
-                </svg>
-                Search
-              </button>
-            </div>
+          <div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-2 border-blue-400">
+            <input
+              type="text"
+              value={search}
+              onChange={handleSearch}
+              placeholder="Search your item here..."
+              className="px-3 py-2 w-full bg-white border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <button className="px-10 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors">
+              Search
+            </button>
           </div>
 
-
-
           <select
-            value={category}
-            onChange={handleCategoryChange}
+            value={searchCategory}
+            onChange={handleSearchCategoryChange}
             className="w-80 h-10 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="All">All Categories</option>
-            {Array.from(new Set(inventoryItems.map(item => item.categoryName)))
-              .map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
+            <option value="electronics">Electronics</option>
+            <option value="fruit">Fruit</option>
+            <option value="beverage">Beverage</option>
           </select>
         </nav>
-
+        
         <div className="h-[calc(100vh-14rem)] overflow-y-scroll">
-          {isLoading || loadingUoms || loadingCategories ? (
+          {isLoading ? (
             <div className="flex justify-center items-center h-full">
               <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12"></div>
             </div>
@@ -671,10 +600,10 @@ function AddItem() {
                 </div>
               ) : (
                 filteredItems.map((item) => (
-                  <Add_item_Card
-                    key={item.id}
-                    item={item}
-                    onOpen={() => loadItem(item)}
+                  <AddItemCard
+                    key={item.id} 
+                    item={item} 
+                    onOpen={() => loadItem(item)} 
                     onRemove={handleRemoveClick}
                   />
                 ))
@@ -693,6 +622,7 @@ function AddItem() {
         isSuccess={true}
       />
     </div>
+    
   );
 }
 
