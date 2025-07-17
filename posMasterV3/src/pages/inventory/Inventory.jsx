@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import InventorySidebar from "./Inventory_sidebar";
-import InventoryCard from "../../frontend/components/Inventory_card";
+import ItemCard from "../../components/ItemCard.jsx";
 import SpinnerDot from "../../frontend/components/SpinnerDot";
 import bananaImg from "../../assets/Inventory_banana.png";
 import AddItem from "./AddItem.jsx";
@@ -305,12 +305,9 @@ function Inventory() {
                 </div>
               ) : (
                 filteredItems.map((item) => (
-                  <InventoryCard
+                  <ItemCard
                     key={item.id}
                     item={item}
-                    onOpen={() =>
-                      navigate(`/dashboard/inventory/edit-item/${item.id}`)
-                    }
                   />
                 ))
               )}

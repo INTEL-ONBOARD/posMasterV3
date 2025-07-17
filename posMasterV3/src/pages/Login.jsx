@@ -76,10 +76,10 @@ function Login() {
         toast.open(`${error.response.data.message}`, 4000, 'Login Error', 'error');
       } else if (error.request) {
         // No response received
-        toast.open("Network error: Please check your connection");
+        toast.open("Network error: Please check your connection", 4000, 'Login Failed', 'warning');
       } else {
         // Other errors
-        toast.open("Login error: Please try again");
+        toast.open("Login error: Please try again", 4000, 'Login Failed', 'warning');
       }
     } finally {
       setIsLoading(false);  // Ensure loading state is reset
