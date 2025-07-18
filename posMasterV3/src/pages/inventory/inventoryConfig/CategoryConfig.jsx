@@ -214,7 +214,7 @@ function CategoryConfig() {
         </div>
 
         {/* brands from a given category table */}
-        <div className="max-h-[12rem] mt-8 overflow-y-scroll">
+        <div className="max-h-[20rem] mt-8 overflow-y-scroll">
           <table className="w-full border-collapse bg-[#F8F8F8] min-w-[500px]">
             <thead className="bg-gray-700 text-white sticky top-0 z-10">
               <tr className="text-left font-medium text-xs lg:text-sm">
