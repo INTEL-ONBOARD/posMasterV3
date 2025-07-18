@@ -8,7 +8,7 @@ export default function AddItemCard({ item, onOpen, onRemove, hideClose }) {
 
   return (
     <div
-      className="relative flex w-[24rem] h-[12rem] bg-white border border-gray-300 overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-200"
+      className="relative flex w-[24rem] h-[12rem] bg-white border border-gray-300 overflow-hidden cursor-pointer hover:shadow-md transform transition-transform duration-300 ease-in-out hover:scale-105"
       onClick={onOpen}
       role="button"
       tabIndex={0}
@@ -58,9 +58,9 @@ export default function AddItemCard({ item, onOpen, onRemove, hideClose }) {
           className="w-full h-full object-cover"
         />
 
+      </div>
         {/* Status Indicator Circle (still overlaps at the same spot) */}
         <div className="absolute top-2 z-[1] right-[3.7rem] w-16 h-16 bg-green-500 rounded-full border-8 border-white" />
-      </div>
     </div>
   );
 }

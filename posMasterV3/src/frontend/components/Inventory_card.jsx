@@ -1,26 +1,27 @@
 import React from "react";
 import barcodeImg from "../../assets/barcode.png";
+import placeholderImg from "../../assets/card_placeholder_img.png";
 
 export default function InventoryCard({ item, onOpen }) {
+  // If you want a placeholder when item.image is missing, you could do:
+  // import placeholderImg from "../../assets/placeholder.png";
+  const imageSrc = item.image || placeholderImg;
+
   return (
     <div
-      className="flex w-[24rem] h-[12rem] bg-white border border-gray-300 overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-200"
+      className="relative flex w-[24rem] h-[12rem] bg-white border border-gray-300 overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-200"
       onClick={onOpen}
       role="button"
       tabIndex={0}
     >
       {/* Left Section */}
       <div className="flex flex-col justify-between p-4 pl-6 w-[75%]">
-        {/* Barcode and SKU */}
         <div>
           <img src={barcodeImg} alt="Barcode" className="w-[70px] object-contain" />
           <p className="text-xs text-gray-400 -mt-2">SKU: {item.sku}</p>
         </div>
-
-        {/* Product Info */}
         <div>
           <h2 className="text-3xl font-bold text-[#6C6C6C]">{item.name}</h2>
-
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs bg-gray-100 border px-2 py-0.5 rounded-sm text-[#A7A7A7]">
               {item.category}
@@ -29,7 +30,6 @@ export default function InventoryCard({ item, onOpen }) {
               {item.brand}
             </span>
           </div>
-
           <p className="text-xl font-extrabold text-black mt-2">
             Rs.{item.price}
             <span className="text-sm font-semibold">({item.unit.toUpperCase()})</span>
@@ -37,12 +37,16 @@ export default function InventoryCard({ item, onOpen }) {
         </div>
       </div>
 
-      {/* Right Section */}
-      <div className="relative w-[25%] bg-teal-400">
-        {/* inventory status indicator circle */}
-        {/* Status Indicator Circle (positioned in-between) */}
-      <div className="absolute top-2 right-[72%] w-16 h-16 bg-green-500 rounded-full border-8 border-white "></div>
-    
+      {/* Right Section now just an image that covers 100% of its area */}
+      <div className="relative w-[25%] overflow-hidden">
+        <img
+          src={imageSrc}
+          alt={item.name}
+          className="w-full h-full object-cover"
+        />
+
+        {/* Status Indicator Circle (still overlaps at the same spot) */}
+        <div className="absolute top-2 z-10 left-[-1.5rem] w-16 h-16 bg-green-500 rounded-full border-8 border-white" />
       </div>
     </div>
   );

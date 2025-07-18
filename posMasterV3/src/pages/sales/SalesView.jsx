@@ -543,7 +543,7 @@ export default function SalesView() {
         <div className={isVisible("sale-view")}>
           <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)] bg-[#EBEBEB] w-full">
             {/* Item list section(left) */}
-            <div className="bg-[#EBEBEB] border-r flex flex-col h-full w-full lg:flex-1">
+            <div className="bg-[#EBEBEB] border-r flex flex-col h-full lg:flex-1">
               <div className="p-3 lg:p-6 space-y-4 flex flex-col h-full">
 
                 {/* Selected Table Item Display */}
@@ -954,7 +954,7 @@ export default function SalesView() {
 
 
             {/* item table section(right) */}
-            <div className="flex-1 p-2 lg:p-3 flex w-full lg:w-[25rem] flex-col h-[calc(100vh-7rem)]">
+            <div className="p-2 lg:p-3 flex lg:max-w-[32rem] flex-col h-[calc(100vh-7rem)]">
               {/* Items Table - REDUCED HEIGHT */}
               <div
                 className="bg-white overflow-hidden"
