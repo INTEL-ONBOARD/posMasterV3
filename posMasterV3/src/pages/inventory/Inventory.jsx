@@ -236,7 +236,7 @@ function Inventory() {
 
         {/* View Inventory */}
         <div className={isVisible("view-inventory")}>
-          <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4">
+          <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4 ">
             <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
               <input
                 type="text"

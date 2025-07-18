@@ -6,6 +6,7 @@ import Inventory_card from "../../frontend/components/Inventory_card";
 import SalesItemCard from "../../components/SalesItemCard";
 import barcodeImg from "../../assets/barcode.png";
 import OffersDiscountView from "./OffersDiscountView";
+import { apiClient } from "../../api/client";
 
 //image imports
 import clearBtnImg from "../../assets/sales_clear.png";
@@ -64,85 +65,270 @@ export default function SalesView() {
   const [scanCode, setScanCode] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [filteredItems, setFilteredItems] = useState([]);
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
-  // Sample inventory items
-  const [inventoryItems] = useState([
-    {
-      id: 1,
-      name: "Banana",
-      category: "Fruits",
-      price: "340.00",
-      unit: "1KG",
-      sku: "SKY3486",
-      stock: "20 KG",
-      image: bananaImg,
-    },
-    {
-      id: 2,
-      name: "Banana",
-      category: "Fruits",
-      price: "340.00",
-      unit: "1KG",
-      sku: "SKY3486",
-      stock: "20 KG",
-      image: bananaImg,
-    },
-    {
-      id: 3,
-      name: "Orange",
-      category: "Fruits",
-      price: "380.00",
-      unit: "1KG",
-      sku: "ORG3488",
-      stock: "25 KG",
-      image: bananaImg,
-    },
-    {
-      id: 4,
-      name: "Mango",
-      category: "Fruits",
-      price: "520.00",
-      unit: "1KG",
-      sku: "MNG3489",
-      stock: "12 KG",
-      image: bananaImg,
-    },
-    {
-      id: 5,
-      name: "Grapes",
-      category: "Fruits",
-      price: "680.00",
-      unit: "1KG",
-      sku: "GRP3490",
-      stock: "8 KG",
-      image: bananaImg,
-    },
-  ]);
+  const searchInputRef = useRef(null);
+  const suggestionsRef = useRef(null);
+  const categoryDropdownRef = useRef(null);
 
-  // Initialize filtered items with all items
+  const [inventoryItems, setInventoryItems] = useState([]);
+
+  // Fetch inventory items from API
+  const fetchInventoryItems = async () => {
+    try {
+      setIsSearching(true);
+
+      const response = await apiClient.get('/api/items/extended');
+      const apiData = response.data;
+      console.log("Fetched inventory items:", apiData);
+
+      if (apiData && apiData.data && Array.isArray(apiData.data)) {
+        const transformedItems = apiData.data.map(item => ({
+          id: item.id,
+          name: item.item_name,
+          category: item.category?.type || "Uncategorized",
+          price: item.unit_price.toFixed(2),
+          unit: item.uom?.symbol || "pcs",
+          sku: item.sku,
+          stock: `${item.quantity} ${item.uom?.unit_name || "Units"}`,
+          image: item.item_image_url || bananaImg,
+          brand: item.category?.brand || "",
+          batchCode: item.batch_code
+        }));
+
+        setInventoryItems(transformedItems);
+        setFilteredItems(transformedItems);
+
+        const uniqueCategories = [];
+        const categoryMap = new Map();
+
+        apiData.data.forEach(item => {
+          if (item.category && item.category.type) {
+            const categoryKey = `${item.category.type}-${item.category.brand}`;
+            if (!categoryMap.has(categoryKey)) {
+              categoryMap.set(categoryKey, {
+                id: item.category.id,
+                type: item.category.type,
+                brand: item.category.brand || "Various",
+                _id: item.category._id
+              });
+            }
+          }
+        });
+
+        const categoriesArray = Array.from(categoryMap.values());
+        setCategories(categoriesArray);
+
+      } else {
+        console.error("Unexpected API response structure:", apiData);
+        setInventoryItems([]);
+        setFilteredItems([]);
+        setCategories([]);
+      }
+
+    } catch (error) {
+      console.error("Error fetching inventory items:", error);
+      setInventoryItems([]);
+      setFilteredItems([]);
+      setCategories([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Alternative: Fetch categories from separate API endpoint (if available)
+  const fetchCategories = async () => {
+    try {
+      // If you have a dedicated categories endpoint:
+      const response = await apiClient.get('/api/categories');
+      const categoriesData = response.data;
+
+      if (categoriesData && categoriesData.data && Array.isArray(categoriesData.data)) {
+        setCategories(categoriesData.data);
+      } else {
+        console.error("Unexpected categories API response structure:", categoriesData);
+        setCategories([]);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      // Fallback: categories will be derived from inventory items
+    }
+  };
+
+  // Updated useEffect to handle the flow properly
   useEffect(() => {
-    setFilteredItems(inventoryItems);
-  }, [inventoryItems]);
+    const loadData = async () => {
+      await fetchCategories();
+      await fetchInventoryItems();
+    };
 
-  // Search functionality
+    loadData();
+  }, []);
+
+  const sortCategoriesAlphabetically = (categories) => {
+    return categories.sort((a, b) => a.type.localeCompare(b.type));
+  };
+
+  // Alternative approach: Combined fetch function
+  // const fetchInventoryAndCategories = async () => {
+  //   try {
+  //     setIsSearching(true);
+
+  //     // Fetch inventory items
+  //     const inventoryResponse = await apiClient.get('/api/items/extended');
+  //     const inventoryData = inventoryResponse.data;
+
+  //     if (inventoryData && inventoryData.data && Array.isArray(inventoryData.data)) {
+  //       // Transform inventory items
+  //       const transformedItems = inventoryData.data.map(item => ({
+  //         id: item.id,
+  //         name: item.item_name,
+  //         category: item.category?.type || "Uncategorized",
+  //         price: item.unit_price.toFixed(2),
+  //         unit: item.uom?.symbol || "pcs",
+  //         sku: item.sku,
+  //         stock: `${item.quantity} ${item.uom?.unit_name || "Units"}`,
+  //         image: item.item_image_url || bananaImg,
+  //         brand: item.category?.brand || "",
+  //         batchCode: item.batch_code
+  //       }));
+
+  //       setInventoryItems(transformedItems);
+  //       setFilteredItems(transformedItems);
+
+  //       // Extract unique categories
+  //       const categoryMap = new Map();
+  //       inventoryData.data.forEach(item => {
+  //         if (item.category && item.category.type) {
+  //           const categoryKey = item.category.id || item.category._id;
+  //           if (!categoryMap.has(categoryKey)) {
+  //             categoryMap.set(categoryKey, {
+  //               id: item.category.id,
+  //               type: item.category.type,
+  //               brand: item.category.brand || "Various",
+  //               _id: item.category._id
+  //             });
+  //           }
+  //         }
+  //       });
+
+  //       setCategories(Array.from(categoryMap.values()));
+  //     }
+
+  //   } catch (error) {
+  //     console.error("Error fetching data:", error);
+  //     setInventoryItems([]);
+  //     setFilteredItems([]);
+  //     setCategories([]);
+  //   } finally {
+  //     setIsSearching(false);
+  //   }
+  // };
+
+  // Initialize data
+  useEffect(() => {
+    fetchInventoryItems();
+    fetchCategories();
+  }, []);
+
+  // Generate search suggestions
+  const generateSuggestions = (searchTerm) => {
+    if (!searchTerm.trim()) {
+      setSearchSuggestions([]);
+      return;
+    }
+
+    const suggestions = [];
+    const addedSuggestions = new Set();
+
+    inventoryItems.forEach(item => {
+      // Name suggestions
+      if (item.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+        const suggestion = {
+          type: 'name',
+          value: item.name,
+          label: item.name,
+          icon: ''
+        };
+        if (!addedSuggestions.has(suggestion.value)) {
+          suggestions.push(suggestion);
+          addedSuggestions.add(suggestion.value);
+        }
+      }
+
+      // SKU suggestions
+      if (item.sku.toLowerCase().includes(searchTerm.toLowerCase())) {
+        const suggestion = {
+          type: 'sku',
+          value: item.sku,
+          label: `${item.sku} - ${item.name}`,
+          icon: ''
+        };
+        if (!addedSuggestions.has(suggestion.value)) {
+          suggestions.push(suggestion);
+          addedSuggestions.add(suggestion.value);
+        }
+      }
+
+      // Category suggestions
+      if (item.category.toLowerCase().includes(searchTerm.toLowerCase())) {
+        const suggestion = {
+          type: 'category',
+          value: item.category,
+          label: item.category,
+          icon: ''
+        };
+        if (!addedSuggestions.has(suggestion.value)) {
+          suggestions.push(suggestion);
+          addedSuggestions.add(suggestion.value);
+        }
+      }
+    });
+
+    setSearchSuggestions(suggestions.slice(0, 5)); // Limit to 5 suggestions
+  };
+
+  // Search functionality with debounce
   useEffect(() => {
     const searchItems = async () => {
       if (!scanCode.trim()) {
-        setFilteredItems(inventoryItems);
+        let items = inventoryItems;
+
+        // Apply category filter if selected
+        if (selectedCategory) {
+          items = items.filter(item =>
+            item.category.toLowerCase() === selectedCategory.toLowerCase()
+          );
+        }
+
+        setFilteredItems(items);
+        setSearchSuggestions([]);
         return;
       }
 
       setIsSearching(true);
+      generateSuggestions(scanCode);
 
       // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
-      const filtered = inventoryItems.filter(
+      let filtered = inventoryItems.filter(
         (item) =>
           item.name.toLowerCase().includes(scanCode.toLowerCase()) ||
           item.sku.toLowerCase().includes(scanCode.toLowerCase()) ||
           item.category.toLowerCase().includes(scanCode.toLowerCase())
       );
+
+      // Apply category filter if selected
+      if (selectedCategory) {
+        filtered = filtered.filter(item =>
+          item.category.toLowerCase() === selectedCategory.toLowerCase()
+        );
+      }
 
       setFilteredItems(filtered);
       setIsSearching(false);
@@ -150,11 +336,55 @@ export default function SalesView() {
 
     const debounceTimer = setTimeout(searchItems, 300);
     return () => clearTimeout(debounceTimer);
-  }, [scanCode, inventoryItems]);
+  }, [scanCode, inventoryItems, selectedCategory]);
+
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion) => {
+    setScanCode(suggestion.value);
+    setShowSuggestions(false);
+    setSearchSuggestions([]);
+  };
+
+  // Handle category selection
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category);
+    setIsCategoryDropdownOpen(false);
+  };
+
+  // Handle search input focus
+  const handleSearchFocus = () => {
+    if (scanCode.trim()) {
+      generateSuggestions(scanCode);
+    }
+    setShowSuggestions(true);
+  };
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target) &&
+        !searchInputRef.current.contains(event.target)
+      ) {
+        setShowSuggestions(false);
+      }
+
+      if (
+        categoryDropdownRef.current &&
+        !categoryDropdownRef.current.contains(event.target)
+      ) {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleScan = () => {
     console.log("Scanning:", scanCode);
-    // Add barcode scanning logic here
+    setShowSuggestions(false);
   };
 
   // Payment dropdown states
@@ -286,6 +516,7 @@ export default function SalesView() {
     };
     setSelectedTableItem(displayItem);
   };
+
   const handleClearSelectedItem = () => {
     setSelectedTableItem(null);
   };
@@ -489,13 +720,11 @@ export default function SalesView() {
                   </div>
                 )}
 
-
-                {/* Inventory Cards - With Loading and No Results States */}
-
+                {/* Enhanced Inventory View with Auto-suggestions and Category Filter */}
                 {!selectedTableItem && salesMiddlepage == "inventory view" && (
                   <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col items-center py-5 w-full">
                     <div className="bg-[#F8F8F8] p-3 lg:p-4 flex-shrink-0 w-full max-w-full lg:max-w-2xl rounded-lg shadow-md mb-4 mx-2 lg:mx-6">
-                      {/* Barcode Image and Search Bar - Parallel */}
+                      {/* Back button and Search Bar */}
                       <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 mb-4">
                         {/* Back button */}
                         <button
@@ -505,13 +734,15 @@ export default function SalesView() {
                           <span>Back</span>
                         </button>
 
-                        {/* Search Bar */}
-                        <div className="w-full flex flex-col gap-3">
-                          <div className="flex-1 flex border-b border-[#EDEDED] h-10 lg:h-12 items-center">
+                        {/* Search Bar Container */}
+                        <div className="w-full flex flex-col gap-3 relative">
+                          <div className="flex-1 flex border-b border-[#EDEDED] h-10 lg:h-12 items-center relative">
                             <input
+                              ref={searchInputRef}
                               type="text"
                               value={scanCode}
                               onChange={(e) => setScanCode(e.target.value)}
+                              onFocus={handleSearchFocus}
                               placeholder="Search Your Items here"
                               className="flex-1 px-2 lg:px-3 py-2 bg-transparent focus:outline-none text-sm lg:text-base"
                             />
@@ -533,87 +764,108 @@ export default function SalesView() {
                             </button>
                           </div>
 
-                          <div className="flex flex-wrap gap-2 lg:gap-3">
-                            <label className="relative">
-                              <input
-                                type="checkbox"
-                                className="absolute opacity-0 w-0 h-0 peer"
-                                name="category"
-                                value="fruit"
-                              />
-                              <div className="py-2 px-3 lg:px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500 text-sm lg:text-base">
-                                <span>Fruit</span>
-                                <span className="w-4 lg:w-5 h-4 lg:h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-2 lg:h-3 w-2 lg:w-3"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                  >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
+                          {/* Search Suggestions Dropdown */}
+                          {showSuggestions && searchSuggestions.length > 0 && (
+                            <div
+                              ref={suggestionsRef}
+                              className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-48 overflow-y-auto"
+                            >
+                              {searchSuggestions.map((suggestion, index) => (
+                                <div
+                                  key={index}
+                                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2 text-sm"
+                                  onClick={() => handleSuggestionClick(suggestion)}
+                                >
+                                  <span className="text-lg">{suggestion.icon}</span>
+                                  <span>{suggestion.label}</span>
+                                  <span className="text-xs text-gray-500 ml-auto">
+                                    {suggestion.type}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {/* Category Dropdown */}
+                          <div className="flex flex-wrap gap-2 lg:gap-3 items-center">
+                            {/* Enhanced Category Dropdown with Alphabetical Sort */}
+                            <div className="relative" ref={categoryDropdownRef}>
+                              <button
+                                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                                className="py-2 px-3 lg:px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer hover:border-blue-500 text-sm lg:text-base rounded-md shadow-sm transition-colors"
+                              >
+                                <span className="text-gray-700">
+                                  {selectedCategory || "All Categories"}
                                 </span>
-                              </div>
-                            </label>
+                                <svg
+                                  className={`w-4 h-4 transform transition-transform ${isCategoryDropdownOpen ? "rotate-180" : ""
+                                    }`}
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  viewBox="0 0 24 24"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M19 9l-7 7-7-7"
+                                  />
+                                </svg>
+                              </button>
 
-                            <label className="relative">
-                              <input
-                                type="checkbox"
-                                className="absolute opacity-0 w-0 h-0 peer"
-                                name="category"
-                                value="vegetable"
-                              />
-                              <div className="py-2 px-3 lg:px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500 text-sm lg:text-base">
-                                <span>Vegetable</span>
-                                <span className="w-4 lg:w-5 h-4 lg:h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-2 lg:h-3 w-2 lg:w-3"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
+                              {isCategoryDropdownOpen && (
+                                <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                                  {/* All Categories Option */}
+                                  <div
+                                    className={`px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 font-medium ${!selectedCategory ? "bg-blue-50 text-blue-600" : "text-gray-700"
+                                      }`}
+                                    onClick={() => handleCategorySelect("")}
                                   >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                </span>
-                              </div>
-                            </label>
+                                    <div className="flex items-center gap-2">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                      </svg>
+                                      All Categories
+                                    </div>
+                                  </div>
 
-                            <label className="relative">
-                              <input
-                                type="checkbox"
-                                className="absolute opacity-0 w-0 h-0 peer"
-                                name="category"
-                                value="dairy"
-                              />
-                              <div className="py-2 px-3 lg:px-4 bg-white border-2 border-[#BDBDBD] flex items-center gap-2 cursor-pointer peer-checked:border-blue-500 text-sm lg:text-base">
-                                <span>Dairy</span>
-                                <span className="w-4 lg:w-5 h-4 lg:h-5 rounded-full bg-gray-200 flex items-center justify-center peer-checked:bg-blue-100 peer-checked:text-blue-500">
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-2 lg:h-3 w-2 lg:w-3"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                  >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                </span>
-                              </div>
-                            </label>
+                                  {/* Alphabetically Sorted Categories */}
+                                  {sortCategoriesAlphabetically(categories).map((category, index) => (
+                                    <div
+                                      key={category.id || index}
+                                      className={`px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm transition-colors ${selectedCategory === category.type ? "bg-blue-50 text-blue-600" : "text-gray-700"
+                                        }`}
+                                      onClick={() => handleCategorySelect(category.type)}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span>{category.type}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+
+                                  {/* Empty State */}
+                                  {categories.length === 0 && (
+                                    <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                                      No categories available
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Clear Category Filter Button (optional) */}
+                            {selectedCategory && (
+                              <button
+                                onClick={() => handleCategorySelect("")}
+                                className="px-3 py-2 text-xs bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
+                              >
+                                Clear Filter
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
+
 
                       {/* Search Results Info */}
                       {scanCode.trim() && (
@@ -702,7 +954,7 @@ export default function SalesView() {
 
 
             {/* item table section(right) */}
-            <div className="flex-1 p-2 lg:p-3 flex w-full lg:w-[30rem] flex-col h-[calc(100vh-7rem)]">
+            <div className="flex-1 p-2 lg:p-3 flex w-full lg:w-[25rem] flex-col h-[calc(100vh-7rem)]">
               {/* Items Table - REDUCED HEIGHT */}
               <div
                 className="bg-white overflow-hidden"
@@ -861,22 +1113,23 @@ export default function SalesView() {
                   </div>
                 </div>
                 {/* payment button controls*/}
-                <div className="flex flex-col sm:flex-row justify-between px-2 lg:px-3 gap-2 lg:gap-0">
-                  <button className="px-3 lg:px-4 py-2 lg:py-3 mb-2 lg:mb-4 bg-[#727272] text-white text-xs lg:text-sm hover:bg-gray-700 transition-colors flex items-center justify-center sm:justify-start sm:mr-2">
-                    <img src={clearBtnImg} alt="Clear" className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                <div className="flex flex-col sm:flex-row px-2 lg:px-3 gap-[10px]">
+                  <button className="flex-1 px-4 py-3 bg-[#727272] text-white text-sm hover:bg-gray-700 transition-all flex items-center justify-center">
+                    <img src={clearBtnImg} alt="Clear" className="w-4 h-4 mr-2" />
                     Clear
                   </button>
 
-                  <button className="px-3 lg:px-4 py-2 lg:py-3 mb-2 lg:mb-4 bg-[#EB8928] text-white text-xs lg:text-sm hover:bg-orange-500 transition-colors flex items-center justify-center sm:justify-start sm:mr-2">
-                    <img src={sidebarHoldOrderBtnImg} alt="Hold Order" className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                  <button className="flex-1 px-4 py-3 bg-[#EB8928] text-white text-sm hover:bg-orange-500 transition-all flex items-center justify-center">
+                    <img src={sidebarHoldOrderBtnImg} alt="Hold Order" className="w-4 h-4 mr-2" />
                     Hold Order
                   </button>
 
-                  <button className="px-3 lg:px-4 py-2 lg:py-3 mb-2 lg:mb-4 bg-[#1A318C] text-white text-xs lg:text-sm hover:bg-blue-700 transition-colors flex items-center justify-center sm:justify-start sm:mr-2">
-                    <img src={sidebarPaymentBtnImg} alt="Proceed Payment" className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                  <button className="flex-1 px-4 py-3 bg-[#1A318C] text-white text-sm hover:bg-blue-700 transition-all flex items-center justify-center">
+                    <img src={sidebarPaymentBtnImg} alt="Proceed Payment" className="w-4 h-4 mr-2" />
                     Proceed Payment
                   </button>
                 </div>
+
               </div>
             </div>
           </div>
