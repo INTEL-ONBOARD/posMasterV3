@@ -1,20 +1,48 @@
 import { X } from "lucide-react";
 import Add_item_Card from "./Add_item_Card";
 import { useState, useEffect } from "react";
+import { apiClient } from "../../api/client";
 
-export default function ConfirmDeleteModal({ open, item, onCancel, onConfirm, isSuccess }) {
+
+export default function ConfirmDeleteModal({ open, item, onCancel }) {
   if (!open || !item) return null;
   
   const [status, setStatus] = useState(null); // 'success', 'fail', or null
 
-  const handleDeleteClick = () => {
+  const handleDeleteClick = async (selectedItemId) => {
+    console.info("starting item deletion")
     // Set status based on deletion result
-    if (isSuccess) {
-      setStatus('success');
-    //onConfirm();
-    } else {
+    // if (isSuccess) {
+    //   setStatus('success');
+    // } else {
+    //   setStatus('fail');
+    // }
+    
+      try {
+      const result = await apiClient.delete(`api/items/${selectedItemId}`);
+      //setDeleteResult(result);
+      
+      if (result.data.status === 'success') {
+        // Handle successful deletion (e.g., update UI, show notification)
+        console.log('Item deleted:', result.data);
+        setStatus('success');
+      } else {
+        // Handle API error
+        console.error('Delete failed:', result.message);
+        setStatus('fail');
+      }
+    } catch (error) {
+      // Handle unexpected errors
+      console.error("delete operation failed"+error.message)
+      // setDeleteResult({
+      //   message: 'An unexpected error occurred',
+      //   status: 'error',
+      //   data: null
+      // });
+      console.error('Unexpected error:', error);
       setStatus('fail');
-      //oncancel();
+    } finally {
+      //setIsDeleting(false);
     }
   };
 
@@ -60,7 +88,7 @@ export default function ConfirmDeleteModal({ open, item, onCancel, onConfirm, is
               </button>
               <button
                 className="px-6 py-2 bg-blue-900 text-white hover:bg-blue-800"
-                onClick={handleDeleteClick}
+                onClick={()=>handleDeleteClick(item.id)}
               >
                 Delete
               </button>
