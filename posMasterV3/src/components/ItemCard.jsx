@@ -9,7 +9,7 @@ export default function ItemCard({ item }) {
 
   return (
     <div
-      className="relative flex w-[24rem] h-[12rem] bg-white border border-gray-300 overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-200 transform transition-transform duration-300 ease-in-out hover:scale-105"
+      className="relative flex w-[24rem] h-[12rem] bg-white border border-gray-300 overflow-hidden cursor-pointer hover:shadow-md transform transition-transform duration-300 ease-in-out hover:scale-105"
       tabIndex={0}
     >
       {/* Left Section */}
