@@ -42,11 +42,9 @@ export default function ItemCard({ item }) {
           alt={item.name}
           className="w-full h-full object-cover"
         />
-
-
       </div>
               {/* Status Indicator Circle (still overlaps at the same spot) */}
-        <div className="absolute top-2 z-50 right-[3.7rem] w-16 h-16 bg-green-500 rounded-full border-8 border-white" />
+        <div className="absolute top-2 right-[3.7rem] w-16 h-16 bg-green-500 rounded-full border-8 border-white" />
     </div>
   );
 }

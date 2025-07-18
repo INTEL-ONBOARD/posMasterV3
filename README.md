@@ -56,4 +56,6 @@ posMasterV3/
   ├── postcss.config.js
 
 
-
+B1N4L
+TODO:
+[] clear add item form plain obj with empty/null afte a crud operation.

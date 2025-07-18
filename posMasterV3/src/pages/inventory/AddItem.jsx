@@ -12,10 +12,45 @@ import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
 import JsBarcode from 'jsbarcode';
 
-
-
 function AddItem() {
   const navigate = useNavigate();
+
+    // Fetch UOMs from API
+    useEffect(() => {
+      const fetchUoms = async () => {
+        try {
+          const response = await apiClient.get("api/uoms");
+          if (response.data.status === "success") {
+            setUoms(response.data.data);
+          }
+        } catch (error) {
+          console.error("Error fetching UOMs:", error);
+        } finally {
+          //setLoadingUoms(false);
+        }
+      };
+  
+      fetchUoms();
+    }, []);
+  
+    // Fetch Categories from API and create mapping
+    useEffect(() => {
+      const fetchCategories = async () => {
+        try {
+          const response = await apiClient.get("api/categories");
+          if (response.data.status === "success") {
+            setItemCategories(response.data.data);
+          }
+        } catch (error) {
+          console.error("Error fetching categories:", error);
+        } finally {
+          //setLoadingCategories(false);
+        }
+      };
+  
+      fetchCategories();
+    }, []);
+
 const [inventoryItems, setInventoryItems] = useState([
     {
       _id: "6877751e6d4492e44dbb403b",
@@ -87,6 +122,45 @@ const [inventoryItems, setInventoryItems] = useState([
     },
   ]);
 
+    const [uoms, setUoms] = useState([
+    {
+      _id: "687720ad798018e0851599a0",
+      id: 22,
+      symbol: "pcs",
+      unit_name: "Piece",
+      __v: 0
+    },
+    {
+      _id: "6877207b798018e085159998",
+      id: 20,
+      symbol: "L",
+      unit_name: "Liter",
+      __v: 0
+    },
+    {
+      _id: "687720a0798018e08515999c",
+      id: 21,
+      symbol: "mL",
+      unit_name: "Milliliter",
+      __v: 0
+    },
+  ]);
+
+  //holds the selected UOM id from the dropdown
+  const [formUOMData, setFormUOMData] = useState(null);
+
+  // when user picks a UOM
+ const handleUOMChange = e => {
+   const uomId = Number(e.target.value);
+   setFormUOMData(uomId);
+   // optionally keep formData.uom_id in sync:
+   setformData(fd => ({
+     ...fd,
+     uom_id: uomId,
+     uom: uoms.find(u => u.id === uomId) || fd.uom
+   }));
+ };
+
     // State for category/brand mapping
   const [loadingItemCategories, setLoadingItemCategories] = useState(false);
   const [itemCategories, setItemCategories] = useState([
@@ -96,7 +170,6 @@ const [inventoryItems, setInventoryItems] = useState([
     { id:  26, brand: "Pepsi",      type: "Beverages" },
     { id:   7, brand: "Coca-Cola",  type: "Beverages" },
   ]);
-
 
   //to select the brand option from category
   const [selectedCategoryType, setSelectedCategoryType] = useState("");
@@ -125,11 +198,12 @@ const [inventoryItems, setInventoryItems] = useState([
   const handleCategoryChange = e => {
     const newType = e.target.value;
     setSelectedCategoryType(newType);
-    setFormData(f => ({ ...f, categoryType: newType, brand: "" }));
+    setFormCategoryData(f => ({ ...f, categoryType: newType, brand: "" }));
   };
 
   const handleBrandChange = e => {
-    setFormData(f => ({ ...f, brand: e.target.value }));
+    console.log("value changed: "+ e.target.value)
+    setFormCategoryData(f => ({ ...f, brand: e.target.value }));
   };
 
 
@@ -139,7 +213,7 @@ const [inventoryItems, setInventoryItems] = useState([
   const [searchCategory, setSearchCategory] = useState("All");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  const [selectedItem, setSelectedItem] = useState({
+  const [deletingItem, setDeletingItem] = useState({
       _id: "687775746d4492e44dbb404f",
       id: 22,
       stock_trace: [1],
@@ -209,11 +283,12 @@ const [inventoryItems, setInventoryItems] = useState([
         __v: 0
       },
       inventory: null,
-      categoryType: "",  // ← add this
-    brand: "",         // ← add this
     });
 
-    
+    const [formCategoryData, setFormCategoryData] = useState({
+      categoryType: "",
+      brand: "",
+    });
 
   // Barcode generation
   const barcodeValue = formData.batch_code || "SKU-000000";
@@ -276,25 +351,173 @@ const [inventoryItems, setInventoryItems] = useState([
     setformData(prev => ({ ...prev, [name]: value }));
   };
 
+
+    // Fetch items from API
+    useEffect(() => {
+      const fetchItems = async () => {
+        try {
+          const response = await apiClient.get("api/items/extended");
+          if (response.data.status === "success") {
+            setInventoryItems(response.data.data);
+          }
+        } catch (error) {
+          console.error("Error fetching items:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      // Fetch items after UOMs are loaded to properly map uomName
+      // if (!loadingUoms) {
+        fetchItems();
+      // }
+    //}, [loadingUoms]);
+    }, []);
+
+  // to switch between add and update api call via button switching
+  const [isUserEditting, setUserEditing] = useState(false);
+
+    // Create new item
+    const createItem = async (e) => {
+      e.preventDefault();
+      try {
+        const selectedCategory = itemCategories.find(c =>
+          c.type  === formCategoryData.categoryType &&
+          c.brand === formCategoryData.brand
+        );
+        const requestData = {
+          sku: formData.sku,
+          item_name: formData.item_name,
+          quantity: Number(formData.quantity),
+          threshold_limit: Number(formData.threshold_limit),
+          maximum_capacity: Number(formData.maximum_capacity),
+          uom_id:           formUOMData,
+          category_id:      selectedCategory?.id ?? null, // look up id
+          inventory_id: 1, // Fixed value
+          item_image_url: formData.item_image_url || null,
+          unit_price: parseFloat(formData.unit_price),
+          batch_code: formData.batch_code
+        };
+  
+        const response = await apiClient.post("api/items/add", requestData);
+  
+        if (response.data.status === "success") {
+          // Add new item to local state
+          alert("Item created successfully!");
+        } else {
+          alert(response.data.message || "Failed to create item");
+        }
+      } catch (err) {
+        console.error("Create item error:", err);
+        alert("Error creating item");
+      }
+    };
+
+      // Update item
+      const updateItem = async (e) => {
+        e.preventDefault();
+        try {
+          const selectedCategory = itemCategories.find(c =>
+                c.type  === formCategoryData.categoryType &&
+                c.brand === formCategoryData.brand
+              );
+          const requestData = {
+            sku: formData.sku,
+            item_name: formData.item_name,
+            quantity: Number(formData.quantity),
+            threshold_limit: Number(formData.threshold_limit),
+            maximum_capacity: Number(formData.maximum_capacity),
+            uom_id:           formUOMData,
+            category_id:      selectedCategory?.id ?? null, // look up id
+            inventory_id: 1, // Fixed value for now
+            item_image_url: formData.item_image_url || null,
+            unit_price: parseFloat(formData.unit_price),
+            batch_code: formData.batch_code
+          };
+    
+          const response = await apiClient.put(`api/items/${formData.id}`, requestData);
+    
+          if (response.data.status === "success") {
+
+            alert("Item created successfully!");
+          } else {
+            alert(response.data.message || "Failed to create item");
+          }
+        } catch (err) {
+          console.error("Create item error:", err);
+          alert("Error creating item");
+        }
+      };
+
   // Load item object into form
-  const loadItem = (selectedItem) => {
-    setformData(selectedItem);
-  };
+ const loadItem = (item) => {
+  //to enable edit button and disable the create button
+  setUserEditing(true);
+   setformData(item);
+   // 2. extract its category & brand:
+   const { type, brand } = item.category;
+   // 3a. set the category‐dropdown state (this also fires your useEffect to populate brandOptions)
+   setSelectedCategoryType(type);
+   // 3b. explicitly set the form’s dropdown values:
+   setFormCategoryData({
+     categoryType: type,
+     brand,
+   });
+   //set unit of measure in the dropdown
+   // 3. pre‐select the UOM dropdown
+   setFormUOMData(item.uom.id);
+   // and keep formData.uom_id correct:
+   setformData(fd => ({ ...fd, uom_id: item.uom.id, uom: item.uom }));
+ };
+
 
   // Delete item handlers
   const handleRemoveClick = (itemId) => {
     const item = inventoryItems.find(i => i.id === itemId);
-    setSelectedItem(item);
+    setDeletingItem(item);
     setShowDeleteModal(true);
   };
 
   const handleConfirmDelete = async () => {
+    
     //enter api later
+  // try {
+  //     await apiClient.delete(`api/items/${selectedItem.id}`);
+  //     alert("Item deleted successfully");
+  //   } catch (error) {
+  //     console.error("Delete error:", error);
+  //     alert("Failed to delete item");
+  //   } finally {
+  //     //setShowDeleteModal(false);
+  //   }
+
+  // try {
+  //     const result = await apiClient.delete(`/items/${itemId}`);
+  //     setDeleteResult(result);
+      
+  //     if (result.status === 'success') {
+  //       // Handle successful deletion (e.g., update UI, show notification)
+  //       console.log('Item deleted:', result.data);
+  //     } else {
+  //       // Handle API error
+  //       console.error('Delete failed:', result.message);
+  //     }
+  //   } catch (error) {
+  //     // Handle unexpected errors
+  //     console.error("delete operation failed"+error.message)
+  //     // setDeleteResult({
+  //     //   message: 'An unexpected error occurred',
+  //     //   status: 'error',
+  //     //   data: null
+  //     // });
+  //     console.error('Unexpected error:', error);
+  //   } finally {
+  //     //setIsDeleting(false);
+  //   }
   };
 
   const handleCancelDelete = () => {
     setShowDeleteModal(false);
-    setSelectedItem(null);
+    setDeletingItem(null);
   };
 
   // Filter items based on search and category
@@ -378,7 +601,7 @@ const [inventoryItems, setInventoryItems] = useState([
                   // value={formData.category}
                   // onChange={handleInputChange}
                   name="categoryType"
-                  value={formData.categoryType}
+                  value={formCategoryData.categoryType}
                   onChange={handleCategoryChange}
                   className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
                 >
@@ -399,7 +622,7 @@ const [inventoryItems, setInventoryItems] = useState([
             // value={formData.brand}
             // onChange={handleInputChange}
             name="brand"
-            value={formData.brand}
+            value={formCategoryData.brand}
             onChange={handleBrandChange}
             disabled={!brandOptions.length}
             className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
@@ -428,22 +651,6 @@ const [inventoryItems, setInventoryItems] = useState([
                   className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              {/* status is no need for now */}
-              {/* <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="lowStock">Low Stock</option>
-                  <option value="available">Available</option>
-                  <option value="outOfStock">Out of Stock</option>
-                </select>
-            </div> */}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -494,13 +701,16 @@ const [inventoryItems, setInventoryItems] = useState([
                 </label>
                 <select
                   name="uom"
-                  value={formData.uom.symbol}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={formUOMData ?? ""}               // show the selected id
+                  onChange={handleUOMChange}              // hook up your new handler
+                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="kg">KG</option>
-                  <option value="pcs">PCS</option>
-                  <option value="ltr">LTR</option>
+                  <option value="">-- select unit --</option>
+                  {uoms.map(uom => (
+                    <option key={uom.id} value={uom.id}>
+                      {uom.unit_name} ({uom.symbol})
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -511,42 +721,42 @@ const [inventoryItems, setInventoryItems] = useState([
         {/* Bottom bar */}
         <div className="flex justify-between space-x-3 -mx-10 p-4">
           <div className="flex flex-row items-center gap-3">
-            <button 
-              className="flex items-center px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
-              onClick={() => generatePdf('print')}
-            >
-              <Printer className="w-4 h-4 mr-4 " />
-              <p>Print Barcode</p>
-            </button>
+
           </div>
           <div>
             <button
-              onClick={() => setformData({
-                id: "",
-                name: "",
-                category: "",
-                brand: "",
-                itemCode: "",
-                sku: "",
-                status: "available",
-                thresholdLimit: 0,
-                maxmiumCapacity: 0,
-                price: 0,
-                quantity: 0,
-                uom: "pcs",
-                image: itemImg,
-              })}
+              onClick={() => {
+                //clear the form data
+                setformData({
+                  // id: "",
+                  // name: "",
+                  // categoryId: "",
+                  // brand: "",
+                  // itemCode: "",
+                  // sku: "",
+                  // status: "available",
+                  // thresholdLimit: 0,
+                  // maxmiumCapacity: 0,
+                  // price: 0,
+                  // quantity: 0,
+                  // uomId: "",
+                  // image: itemImg,
+                });
+                setSelectedCategoryType("");
+                setBrandOptions([]);
+                //switch from update item button to add item button 
+                setUserEditing(false)
+              }}
               className="px-6 py-2 mr-4 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
             >
-              Clear
+              Cancel
             </button>
+            {/* switch between update and add button functions based on item card selection and clear form button click */}
             <button
-              // onClick={
-              //   //createItem
-              // }
+              onClick={isUserEditting ? updateItem : createItem}
               className="px-6 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
             >
-              Save
+              {isUserEditting ? 'Update' : 'Add Item'}
             </button>
           </div>
         </div>
@@ -604,7 +814,7 @@ const [inventoryItems, setInventoryItems] = useState([
                     key={item.id} 
                     item={item} 
                     onOpen={() => loadItem(item)} 
-                    onRemove={handleRemoveClick}
+                    onRemove={() => handleRemoveClick(item.id)}
                   />
                 ))
               )}
@@ -616,10 +826,8 @@ const [inventoryItems, setInventoryItems] = useState([
       {/* Delete confirmation modal */}
       <ConfirmDeleteModal
         open={showDeleteModal}
-        item={selectedItem}
+        item={deletingItem}
         onCancel={handleCancelDelete}
-        onConfirm={handleConfirmDelete}
-        isSuccess={true}
       />
     </div>
     
