@@ -5,9 +5,9 @@ import ToastContext from "../../toasts/ToastService";
 function CategoryConfig() {
   const toast = useContext(ToastContext);
   const [categories, setCategories] = useState([]);
-  const [formData, setFormData] = useState({ 
-    brand: "", 
-    type: "" 
+  const [formData, setFormData] = useState({
+    brand: "",
+    type: ""
   });
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
@@ -36,7 +36,7 @@ function CategoryConfig() {
 
     setIsPosting(true);
     setError(null);
-    
+
     try {
       let response;
       if (editingId) {
@@ -49,10 +49,10 @@ function CategoryConfig() {
 
       if (response.data.status === "success") {
         if (editingId) {
-        toast.open(`${response.data.message}`, 4000, 'Category updated', 'success');
-      } else {
-        toast.open(`${response.data.message}`, 4000, 'New Category added', 'success');
-      }
+          toast.open(`${response.data.message}`, 4000, 'Category updated', 'success');
+        } else {
+          toast.open(`${response.data.message}`, 4000, 'New Category added', 'success');
+        }
         fetchCategories(); // Refresh the list
         handleClear();
       } else {
@@ -60,9 +60,9 @@ function CategoryConfig() {
         toast.open(`${response.data.message}`, 4000, 'Category request error', 'error');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          "Network error, please try again";
+      const errorMessage = error.response?.data?.message ||
+        error.message ||
+        "Network error, please try again";
       setError(errorMessage);
       toast.open(`${errorMessage}`, 4000, 'Category operation error', 'error');
     } finally {
@@ -72,7 +72,7 @@ function CategoryConfig() {
 
   const handleDelete = async (id, e) => {
     e.stopPropagation(); // Prevent row click event
-    
+
     if (window.confirm("Are you sure you want to delete this category?")) {
       try {
         const response = await apiClient.delete(`api/categories/${id}`);
@@ -109,13 +109,13 @@ function CategoryConfig() {
     <div className="flex-1 h-[calc(100vh-6rem)] bg-white flex justify-between flex-col px-8 py-8">
       <div>
         <h2 className="text-2xl font-bold text-gray-400 mb-6">CATEGORY CONFIGURATION</h2>
-        
+
         {error && (
           <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">
             {error}
           </div>
         )}
-        
+
         <div className="flex gap-2 mb-4">
           <input
             type="text"
@@ -161,39 +161,39 @@ function CategoryConfig() {
           </button>
         </div>
         <div className="max-h-[40rem] overflow-y-scroll">
-        <table className="w-full border-collapse bg-[#F8F8F8]">
-          <thead>
-            <tr className="text-left text-gray-500 font-semibold">
-              <th className="px-4 py-2">ID</th>
-              <th className="px-4 py-2">BRAND</th>
-              <th className="px-4 py-2">TYPE</th>
-              <th className="px-4 py-2 w-16">ACTION</th>
-            </tr>
-          </thead>
-          <tbody>
-            {categories.map((category) => (
-              <tr 
-                key={category.id} 
-                className={`border-b border-gray-200 text-gray-700 cursor-pointer hover:bg-gray-100 ${editingId === category.id ? 'bg-blue-50' : ''}`}
-                onClick={() => handleRowClick(category)}
-              >
-                <td className="px-4 py-2">{category.id}</td>
-                <td className="px-4 py-2">{category.brand}</td>
-                <td className="px-4 py-2">{category.type}</td>
-                <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
-                  <button 
-                    className="text-red-500 hover:text-red-700"
-                    onClick={(e) => handleDelete(category.id, e)}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </td>
+          <table className="w-full border-collapse bg-[#F8F8F8] min-w-[500px]">
+            <thead className="bg-gray-700 text-white sticky top-0 z-10">
+              <tr className="text-left font-medium text-xs lg:text-sm">
+                <th className="px-4 py-2">ID</th>
+                <th className="px-4 py-2">BRAND</th>
+                <th className="px-4 py-2">TYPE</th>
+                <th className="px-4 py-2 w-16">ACTION</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {categories.map((category) => (
+                <tr
+                  key={category.id}
+                  className={`border-b border-gray-200 text-gray-700 cursor-pointer hover:bg-gray-100 ${editingId === category.id ? 'bg-blue-50' : ''}`}
+                  onClick={() => handleRowClick(category)}
+                >
+                  <td className="px-4 py-2">{category.id}</td>
+                  <td className="px-4 py-2">{category.brand}</td>
+                  <td className="px-4 py-2">{category.type}</td>
+                  <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className="text-red-500 hover:text-red-700"
+                      onClick={(e) => handleDelete(category.id, e)}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
