@@ -13,6 +13,10 @@ function CategoryConfig() {
   const [error, setError] = useState(null);
   const [editingId, setEditingId] = useState(null);
 
+  //to populate brand table by a selected category
+  const [selectedCategroy, setSelectedCategroy] = useState();
+  const [selectedBrands, setSelectedBrands] = useState([]);
+
   const fetchCategories = async () => {
     try {
       const response = await apiClient.get('api/categories/');
@@ -105,6 +109,18 @@ function CategoryConfig() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // GROUP BY type → count brands per type
+  const summary = categories.reduce((acc, { type }) => {
+    acc[type] = (acc[type] || 0) + 1;
+    return acc;
+  }, {});
+
+  const summaryRows = Object.entries(summary).map(([type, count], i) => ({
+    idx: i + 1,
+    type,
+    count,
+  }));
+
   return (
     <div className="flex-1 h-[calc(100vh-6rem)] bg-white flex justify-between flex-col px-8 py-8">
       <div>
@@ -160,13 +176,14 @@ function CategoryConfig() {
             )}
           </button>
         </div>
-        <div className="max-h-[40rem] overflow-y-scroll">
+        {/*full category table */}
+        <div className="max-h-[21rem] overflow-y-scroll">
           <table className="w-full border-collapse bg-[#F8F8F8] min-w-[500px]">
             <thead className="bg-gray-700 text-white sticky top-0 z-10">
               <tr className="text-left font-medium text-xs lg:text-sm">
                 <th className="px-4 py-2">ID</th>
+                <th className="px-4 py-2">CATEGOROY</th>
                 <th className="px-4 py-2">BRAND</th>
-                <th className="px-4 py-2">TYPE</th>
                 <th className="px-4 py-2 w-16">ACTION</th>
               </tr>
             </thead>
@@ -178,8 +195,8 @@ function CategoryConfig() {
                   onClick={() => handleRowClick(category)}
                 >
                   <td className="px-4 py-2">{category.id}</td>
-                  <td className="px-4 py-2">{category.brand}</td>
                   <td className="px-4 py-2">{category.type}</td>
+                  <td className="px-4 py-2">{category.brand}</td>
                   <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                     <button
                       className="text-red-500 hover:text-red-700"
@@ -192,6 +209,29 @@ function CategoryConfig() {
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* brands from a given category table */}
+        <div className="max-h-[12rem] mt-8 overflow-y-scroll">
+          <table className="w-full border-collapse bg-[#F8F8F8] min-w-[500px]">
+            <thead className="bg-gray-700 text-white sticky top-0 z-10">
+              <tr className="text-left font-medium text-xs lg:text-sm">
+                <th className="px-4 py-2">#</th>
+                <th className="px-4 py-2">CATEGORY NAME</th>
+                <th className="px-4 py-2">Num. OF BRANDS</th>
+                {/* <th className="px-4 py-2 w-16">ACTION</th> */}
+              </tr>
+            </thead>
+            <tbody>
+              {summaryRows.map(({ idx, type, count }) => (
+              <tr key={type} className="border-b hover:bg-gray-100">
+                <td className="px-4 py-2">{idx}</td>
+                <td className="px-4 py-2">{type}</td>
+                <td className="px-4 py-2">{count}</td>
+              </tr>
+            ))}
             </tbody>
           </table>
         </div>
