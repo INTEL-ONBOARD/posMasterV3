@@ -52,74 +52,74 @@ function AddItem() {
     }, []);
 
 const [inventoryItems, setInventoryItems] = useState([
-    {
-      _id: "6877751e6d4492e44dbb403b",
-      id: 19,
-      stock_trace: [1],
-      item_name: "test toothbrush",
-      item_image_url: "/src/assets/Inventory_banana.png",
-      batch_code: "bar237645TE1522",
-      sku: "bar237645",
-      quantity: 30,
-      threshold_limit: 20,
-      maximum_capacity: 40,
-      uom_id: 22,
-      category_id: 15,
-      inventory_id: 1,
-      unit_price: 110,
-      stock_update_datetime: "2025-07-16T09:47:10.682Z",
-      stock_created_datetime: "2025-07-16T09:47:10.682Z",
-      __v: 0,
-      uom: {
-        _id: "687720ad798018e0851599a0",
-        id: 22,
-        symbol: "pcs",
-        unit_name: "Piece",
-        __v: 0
-      },
-      category: {
-        _id: "68773ebf1edd62f9c8128b58",
-        id: 15,
-        brand: "Colgate",
-        type: "Oral Care",
-        __v: 0
-      },
-      inventory: null
-    },
-    {
-      _id: "687775746d4492e44dbb404f",
-      id: 22,
-      stock_trace: [1],
-      item_name: "test toothbrush2",
-      item_image_url: "/src/assets/Inventory_banana.png",
-      batch_code: "fubar237645TE1522",
-      sku: "fubar237645",
-      quantity: 30,
-      threshold_limit: 20,
-      maximum_capacity: 40,
-      uom_id: 22,
-      category_id: 15,
-      inventory_id: 1,
-      unit_price: 110,
-      stock_update_datetime: "2025-07-16T09:48:36.213Z",
-      stock_created_datetime: "2025-07-16T09:48:36.213Z",
-      __v: 0,
-      uom: {
-        _id: "687720ad798018e0851599a0",
-        id: 22,
-        symbol: "pcs",
-        unit_name: "Piece",
-        __v: 0
-      },
-      category: {
-        _id: "68773ebf1edd62f9c8128b58",
-        id: 15,
-        brand: "Colgate",
-        type: "Oral Care",
-        __v: 0
-      },
-      inventory: null
-    },
+    // {
+    //   _id: "6877751e6d4492e44dbb403b",
+    //   id: 19,
+    //   stock_trace: [1],
+    //   item_name: "test toothbrush",
+    //   item_image_url: "/src/assets/Inventory_banana.png",
+    //   batch_code: "bar237645TE1522",
+    //   sku: "bar237645",
+    //   quantity: 30,
+    //   threshold_limit: 20,
+    //   maximum_capacity: 40,
+    //   uom_id: 22,
+    //   category_id: 15,
+    //   inventory_id: 1,
+    //   unit_price: 110,
+    //   stock_update_datetime: "2025-07-16T09:47:10.682Z",
+    //   stock_created_datetime: "2025-07-16T09:47:10.682Z",
+    //   __v: 0,
+    //   uom: {
+    //     _id: "687720ad798018e0851599a0",
+    //     id: 22,
+    //     symbol: "pcs",
+    //     unit_name: "Piece",
+    //     __v: 0
+    //   },
+    //   category: {
+    //     _id: "68773ebf1edd62f9c8128b58",
+    //     id: 15,
+    //     brand: "Colgate",
+    //     type: "Oral Care",
+    //     __v: 0
+    //   },
+    //   inventory: null
+    // },
+    // {
+    //   _id: "687775746d4492e44dbb404f",
+    //   id: 22,
+    //   stock_trace: [1],
+    //   item_name: "test toothbrush2",
+    //   item_image_url: "/src/assets/Inventory_banana.png",
+    //   batch_code: "fubar237645TE1522",
+    //   sku: "fubar237645",
+    //   quantity: 30,
+    //   threshold_limit: 20,
+    //   maximum_capacity: 40,
+    //   uom_id: 22,
+    //   category_id: 15,
+    //   inventory_id: 1,
+    //   unit_price: 110,
+    //   stock_update_datetime: "2025-07-16T09:48:36.213Z",
+    //   stock_created_datetime: "2025-07-16T09:48:36.213Z",
+    //   __v: 0,
+    //   uom: {
+    //     _id: "687720ad798018e0851599a0",
+    //     id: 22,
+    //     symbol: "pcs",
+    //     unit_name: "Piece",
+    //     __v: 0
+    //   },
+    //   category: {
+    //     _id: "68773ebf1edd62f9c8128b58",
+    //     id: 15,
+    //     brand: "Colgate",
+    //     type: "Oral Care",
+    //     __v: 0
+    //   },
+    //   inventory: null
+    // },
   ]);
 
     const [uoms, setUoms] = useState([
@@ -251,35 +251,35 @@ const [inventoryItems, setInventoryItems] = useState([
 
   // Form state
   const [formData, setformData] = useState({
-      _id: "687775746d4492e44dbb404f",
-      id: 22,
-      stock_trace: [1],
-      item_name: "test toothbrush2",
-      item_image_url: "/src/assets/Inventory_banana.png",
-      batch_code: "fubar237645TE1522",
-      sku: "fubar237645",
-      quantity: 30,
-      threshold_limit: 20,
-      maximum_capacity: 40,
-      uom_id: 22,
-      category_id: 15,
+      _id: "",
+      id: 0,
+      stock_trace: [0],
+      item_name: "",
+      item_image_url: "",
+      batch_code: "",
+      sku: "",
+      quantity: 0,
+      threshold_limit: 0,
+      maximum_capacity: 0,
+      uom_id: 0,
+      category_id: 0,
       inventory_id: 1,
-      unit_price: 110,
-      stock_update_datetime: "2025-07-16T09:48:36.213Z",
-      stock_created_datetime: "2025-07-16T09:48:36.213Z",
+      unit_price: 0,
+      stock_update_datetime: "",
+      stock_created_datetime: "",
       __v: 0,
       uom: {
-        _id: "687720ad798018e0851599a0",
-        id: 22,
-        symbol: "pcs",
-        unit_name: "Piece",
+        _id: "",
+        id: 0,
+        symbol: "",
+        unit_name: "",
         __v: 0
       },
       category: {
-        _id: "68773ebf1edd62f9c8128b58",
+        _id: "",
         id: 15,
-        brand: "Colgate",
-        type: "Oral Care",
+        brand: "",
+        type: "",
         __v: 0
       },
       inventory: null,
@@ -475,44 +475,6 @@ const [inventoryItems, setInventoryItems] = useState([
     const item = inventoryItems.find(i => i.id === itemId);
     setDeletingItem(item);
     setShowDeleteModal(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    
-    //enter api later
-  // try {
-  //     await apiClient.delete(`api/items/${selectedItem.id}`);
-  //     alert("Item deleted successfully");
-  //   } catch (error) {
-  //     console.error("Delete error:", error);
-  //     alert("Failed to delete item");
-  //   } finally {
-  //     //setShowDeleteModal(false);
-  //   }
-
-  // try {
-  //     const result = await apiClient.delete(`/items/${itemId}`);
-  //     setDeleteResult(result);
-      
-  //     if (result.status === 'success') {
-  //       // Handle successful deletion (e.g., update UI, show notification)
-  //       console.log('Item deleted:', result.data);
-  //     } else {
-  //       // Handle API error
-  //       console.error('Delete failed:', result.message);
-  //     }
-  //   } catch (error) {
-  //     // Handle unexpected errors
-  //     console.error("delete operation failed"+error.message)
-  //     // setDeleteResult({
-  //     //   message: 'An unexpected error occurred',
-  //     //   status: 'error',
-  //     //   data: null
-  //     // });
-  //     console.error('Unexpected error:', error);
-  //   } finally {
-  //     //setIsDeleting(false);
-  //   }
   };
 
   const handleCancelDelete = () => {

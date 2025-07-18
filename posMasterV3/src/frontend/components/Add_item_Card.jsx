@@ -2,8 +2,8 @@ import React from "react";
 import placeholderImg from "../../assets/card_placeholder_img.png";
 
 export default function Add_item_Card({ item, onOpen, onRemove, hideClose }) {
-  // Use placeholder if item.image is null or undefined
-  const imageSrc = item.image || placeholderImg;
+  // Use placeholder if item.item_image_url is null or undefined
+  const imageSrc = item.item_image_url || placeholderImg;
 
   return (
     <div
@@ -13,27 +13,24 @@ export default function Add_item_Card({ item, onOpen, onRemove, hideClose }) {
       tabIndex={0}
     >
       {/* Close icon at top right */}
-      {/* Only show close icon if hideClose is NOT true */}
-      {!hideClose && (
-        <button
-          className="absolute top-2 left-2 p-0.5 bg-black rounded-full hover:bg-gray-800 flex items-center justify-center"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onRemove) onRemove(item.id);
-          }}
-          aria-label="Close"
-          type="button"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-          </svg>
-        </button>
-      )}
+      <button
+        className="absolute top-2 left-2 p-0.5 bg-black rounded-full hover:bg-gray-800 flex items-center justify-center"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (onRemove) onRemove(item.id);
+        }}
+        aria-label="Close"
+        type="button"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+        </svg>
+      </button>
 
       <div className="flex flex-row bg-white justify-between">
         <div className="flex flex-col items-center justify-center bg-white">
           {/* Display image or placeholder */}
-          <img src={imageSrc} alt={item.name} className="w-48 bg-white " />
+          <img src={imageSrc} alt={item.item_name} className="w-48 bg-white " />
 
           {/* SKU row */}
           <div className="flex flex-row items-center mt-1">
@@ -46,21 +43,23 @@ export default function Add_item_Card({ item, onOpen, onRemove, hideClose }) {
           </div>
         </div>
 
-        {/* Right column: name, category, price/unit, KG/G row */}
+        {/* Right column: name, category, price/unit, quantity row */}
         <div className="flex flex-col justify-between bg-white mr-8 h-full">
           <div>
-            <h3 className="text-2xl text-black font-semibold mt-1">{item.name}</h3>
-            <h3 className="text-base font-semibold text-[#A7A7A7]">{item.category}</h3>
+            <h3 className="text-2xl text-black font-semibold mt-1">{item.item_name}</h3>
+            <h3 className="text-base font-semibold text-[#A7A7A7]">
+              {item.category ? `${item.category.brand} - ${item.category.type}` : 'Unknown Category'}
+            </h3>
             <p className="text-base text-black font-semibold">
-              Rs.{item.price}
-              <span className="text-sm">/{item.unit}</span>
+              Rs.{item.unit_price}
+              <span className="text-sm">/{item.uom?.symbol || 'unit'}</span>
             </p>
           </div>
 
-          {/* KG/G row aligned at the bottom */}
+          {/* Quantity row aligned at the bottom */}
           <div className="flex flex-row items-center gap-2 mt-11">
-            <p className="text-md text-gray-500">KG/G</p>
-            <p className="text-md text-gray-500">20KG</p>
+            <p className="text-md text-gray-500">Quantity:</p>
+            <p className="text-md text-gray-500">{item.quantity} {item.uom?.symbol || 'units'}</p>
             <div className="w-4 h-4 bg-green-500 rounded-full mt-1"></div>
           </div>
         </div>
