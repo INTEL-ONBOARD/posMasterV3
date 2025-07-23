@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { apiClient } from "../../api/client";
 import { useNavigate } from "react-router-dom";
-import { X, Upload, Printer } from "lucide-react";
+import { X, Upload, Printer, ChevronDown, ChevronUp } from "lucide-react";
 import Add_item_Card from "../../frontend/components/Add_item_Card";
 import AddItemCard from "../../components/AddItemCard.jsx";
 import bananaImg from '../../assets/Inventory_banana.png';
 import ConfirmDeleteModal from "../../frontend/components/ConfirmDeleteModal";
 import itemImg from '../../assets/Inventory_banana.png';
+import barcodeImg from "../../assets/barcode.png";
 
 import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
@@ -214,7 +215,7 @@ const [inventoryItems, setInventoryItems] = useState([
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [deletingItem, setDeletingItem] = useState({
-      _id: "687775746d4492e44dbb404f",
+      _id: "",
       id: 22,
       stock_trace: [1],
       item_name: "test toothbrush2",
@@ -352,20 +353,20 @@ const [inventoryItems, setInventoryItems] = useState([
   };
 
 
+  const fetchItems = async () => {
+    try {
+      const response = await apiClient.get("api/items/extended");
+      if (response.data.status === "success") {
+            setInventoryItems(response.data.data);
+      }
+      } catch (error) {
+          console.error("Error fetching items:", error);
+      } finally {
+          setIsLoading(false);
+      }
+    };
     // Fetch items from API
     useEffect(() => {
-      const fetchItems = async () => {
-        try {
-          const response = await apiClient.get("api/items/extended");
-          if (response.data.status === "success") {
-            setInventoryItems(response.data.data);
-          }
-        } catch (error) {
-          console.error("Error fetching items:", error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
       // Fetch items after UOMs are loaded to properly map uomName
       // if (!loadingUoms) {
         fetchItems();
@@ -489,48 +490,84 @@ const [inventoryItems, setInventoryItems] = useState([
       item.item_name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const [openBasic, setOpenBasic] = useState(true);
+  const [openPrimary, setOpenPrimary] = useState(true);
+  const [openDetailed, setOpenDetailed] = useState(true);
   return (
     <div className="flex flex-row">
       {/* Item form (left) */}
-      <div className="bg-white w-1/3 h-[calc(100vh-6rem)] p-10 z-10 flex flex-col justify-between">
-        <div className="flex flex-col justify-end gap-6 h-[45rem]">
-          {/* Image uploading block */}
-          <div className="flex flex-row items-center max-h-[7rem]">
-            <div className="w-48 h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center mb-4 hover:border-gray-400 transition-colors">
-              {formData.item_image_url ? (
-                <img 
-                  src={formData.item_image_url} 
-                  alt="Item" 
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <>
-                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-2">
-                    <X className="w-6 h-6 text-red-500" />
-                  </div>
-                  <span className="text-gray-500">No image</span>
-                </>
-              )}
-            </div>
-            <div className="flex flex-col m-10">
-              <button className="px-4 py-2 mb-4 bg-[#BDBDBD] text-white text-sm hover:bg-gray-700 transition-colors">
-                Upload a photo
-              </button>
-              <div className="grid grid-cols-2 md:grd-cols-1">
-                <p className="text-lg text-black">SKU :</p>
-                <p className="w-max text-lg text-[#A7A7A7]">{formData.sku}</p>
-                <p className="text-lg text-black">BARCODE :</p>
-                <p className="w-max text-lg text-[#A7A7A7]">{formData.batch_code}</p>
-              </div>
-            </div>   
-          </div>
+      <div className="w-1/3 h-[calc(100vh-6rem)] p-5 z-10 flex flex-col justify-between">
+        <div className="flex flex-col h-[45rem] gap-3">
+ {/* ▼ Basic info block ▼ */}
+      <div className="border rounded bg-white">
+        <button
+          onClick={() => setOpenBasic(!openBasic)}
+          className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
+        >
+          <span>Barcode & SKU</span>
+          {openBasic ? <ChevronUp /> : <ChevronDown />}
+        </button>
+        {openBasic && (
+          <div className="bg-white border-2 border-black mx-4">
+          <div className="flex flex-row px-4 items-center max-h-[12rem]">
+  <div className="w-36 h-36 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center mb-4 hover:border-gray-400 transition-colors">
+    {formData.item_image_url ? (
+      <div>
+        <input
+          type="file"
+          id="imageUpload"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleImageUpload}
+        />
+        <label htmlFor="imageUpload" className="block w-full h-full cursor-pointer">
+          <img
+            src={formData.item_image_url}
+            alt="Item"
+            className="w-full h-full object-contain"
+          />
+        </label>
+      </div>
+    ) : (
+      <>
+        <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mb-2">
+          <X className="w-6 h-6 text-red-500" />
+        </div>
+        <span className="text-gray-500">No image</span>
+      </>
+    )}
+  </div>
+  {/* Vertical black line separator */}
+  <div className="w-0.5 bg-black self-stretch"></div>
+  <div className="flex flex-col m-10">
+    <div>
+      <img src={barcodeImg} alt="Barcode" className="w-[100px] object-contain" />
+      <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p>
+      <p className="text-sm font-semibold text-gray-800">BARCODE: {formData.batch_code}</p>
+    </div>
+  </div>
+</div>
+        </div>
+        )}
+      </div>
 
-          {/* Item form block */}
-          <div className="space-y-4 mb-7">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+{/* ▼ Primary description block ▼ */}
+      <div className="border rounded">
+        <button
+          onClick={() => setOpenPrimary(!openPrimary)}
+          className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
+        >
+          <span>Primary Description</span>
+          {openPrimary ? <ChevronUp /> : <ChevronDown />}
+        </button>
+        {openPrimary && (
+          <div className="px-4 bg h-[7rem] bg-white">
+          {/*primary description block  */}
+          <div className="">
+            <div className="pt-2">
+              {/* <label className="block text-sm font-medium text-gray-700 mb-1">
                 Name
-              </label>
+              </label> */}
               <input
                 type="text"
                 name="item_name"
@@ -540,24 +577,11 @@ const [inventoryItems, setInventoryItems] = useState([
                 className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Price
-              </label>
-              <input
-                type="number"
-                name="unit_price"
-                value={formData.unit_price}
-                onChange={handleInputChange}
-                placeholder="Enter item price"
-                className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 mt-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                {/* <label className="block text-sm font-medium text-gray-700 mb-1">
                   Category
-                </label>
+                </label> */}
                 <select
                   // name="category"
                   // value={formData.category}
@@ -576,9 +600,9 @@ const [inventoryItems, setInventoryItems] = useState([
           </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                {/* <label className="block text-sm font-medium text-gray-700 mb-1">
                   Brand
-                </label>
+                </label> */}
           <select
             // name="brand"
             // value={formData.brand}
@@ -598,11 +622,29 @@ const [inventoryItems, setInventoryItems] = useState([
           </select>
               </div>
             </div>
+          </div>
+          </div>
+        )}
+      </div>
 
+      
+      {/* ▼ Detailed description block ▼ */}
+      <div className="bg-white">
+        <button
+          onClick={() => setOpenDetailed(!openDetailed)}
+          className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+        >
+          <span>Detailed Description</span>
+          {openDetailed ? <ChevronUp /> : <ChevronDown />}
+        </button>
+        {openDetailed && (
+          <div className="px-4 bg-white">
+          {/* detailed description block */}
+          <div className="">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Item Barcode
+                  SKU
                 </label>
                 <input
                   type="text"
@@ -610,6 +652,19 @@ const [inventoryItems, setInventoryItems] = useState([
                   value={formData.sku}
                   onChange={handleInputChange}
                   placeholder="Generate barcode"
+                  className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Barcode
+                </label>
+                <input
+                  type="text"
+                  //name="sku"
+                  //value={formData.sku}
+                  // onChange={handleInputChange}
+                  placeholder="system genereated"
                   className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -676,16 +731,93 @@ const [inventoryItems, setInventoryItems] = useState([
                 </select>
               </div>
             </div>
+
+            {/* //newly added */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Stock Price (Rs.)
+                </label>
+                <input
+                  type="number"
+                  // name="unit_price"
+                  // value={formData.unit_price}
+                  // onChange={handleInputChange}
+                  placeholder="Enter item price"
+                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Retail Price (Rs.)
+              </label>
+              <input
+                type="number"
+                name="unit_price"
+                value={formData.unit_price}
+                onChange={handleInputChange}
+                placeholder="Enter item price"
+                className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Availability
+                </label>
+                <select
+                  name="availability"
+                  //value={formUOMData ?? ""}               // show the selected id
+                  //onChange={handleUOMChange}              // hook up your new handler
+                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- select availability --</option>
+                  <option value="">-- Available --</option>
+                  <option value="">-- Unavailable --</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Regiatered Inventory
+                </label>
+                <select
+                  name="inventory"
+                  // value={formUOMData ?? ""}               // show the selected id
+                  // onChange={handleUOMChange}              // hook up your new handler
+                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- select registered inventory --</option>
+                  <option value="">Alanvalley</option>
+                  <option value="">Morawawaka</option>
+                  <option value="">Other</option>
+                </select>
+              </div>
+            </div>
+
           </div>
+        </div>
+        )}
+      </div>
+
+
+
+
         </div>
         
 
         {/* Bottom bar */}
-        <div className="flex justify-between space-x-3 -mx-10 p-4">
-          <div className="flex flex-row items-center gap-3">
+        <div className="flex flex-row min-w-max justify-around">
 
-          </div>
-          <div>
+        <button 
+          className="flex items-center w-[12rem] h-10 px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
+          onClick={() => generatePdf('print')}
+        >
+          <Printer className="w-4 h-4 mr-4" />
+          <p>Print Barcode</p>
+        </button>
             <button
               onClick={() => {
                 //clear the form data
@@ -709,18 +841,18 @@ const [inventoryItems, setInventoryItems] = useState([
                 //switch from update item button to add item button 
                 setUserEditing(false)
               }}
-              className="px-6 py-2 mr-4 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
+              className="px-6 py-2 w-[6rem] h-10  border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
             >
               Cancel
             </button>
             {/* switch between update and add button functions based on item card selection and clear form button click */}
             <button
               onClick={isUserEditting ? updateItem : createItem}
-              className="px-6 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
+              className="px-6 py-2 h-10 w-[6rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
             >
               {isUserEditting ? 'Update' : 'Add Item'}
             </button>
-          </div>
+
         </div>
       </div>
       
@@ -737,7 +869,7 @@ const [inventoryItems, setInventoryItems] = useState([
               placeholder="Search your item here..."
               className="px-3 py-2 w-full bg-white border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            <button className="px-10 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors">
+            <button className="px-10 py-2 bg-[#00489A] text-white hover:bg-blue-900 transition-colors">
               Search
             </button>
           </div>
