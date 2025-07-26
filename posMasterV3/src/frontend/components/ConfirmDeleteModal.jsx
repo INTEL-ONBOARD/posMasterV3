@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import Add_item_Card from "./Add_item_Card";
 import { useState, useEffect } from "react";
 import { apiClient } from "../../api/client";
+import ItemCard from "../../components/ItemCard";
 
 
 export default function ConfirmDeleteModal({ open, item, onCancel, onSuccess }) {
@@ -25,7 +26,7 @@ export default function ConfirmDeleteModal({ open, item, onCancel, onSuccess }) 
       if (result.data.status === 'success') {
         // Handle successful deletion (e.g., update UI, show notification)
         console.log('Item deleted:', result.data);
-        onSuccess
+        onSuccess();
         setStatus('success');
 
       } else {
@@ -75,7 +76,7 @@ export default function ConfirmDeleteModal({ open, item, onCancel, onSuccess }) 
           // Main content (default view)
           <div>
             <div className="flex justify-center mb-8">
-              <Add_item_Card item={item} hideClose />
+              <ItemCard item={item} hideClose />
             </div>
             <h2 className="text-2xl font-semibold text-center mb-2">Confirm Delete?</h2>
             <p className="text-center text-gray-600 mb-8">

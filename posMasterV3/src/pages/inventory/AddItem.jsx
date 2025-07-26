@@ -140,7 +140,7 @@ const [inventoryItems, setInventoryItems] = useState([]);
     setFormCategoryData(f => ({ ...f, brand: e.target.value }));
   };
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
@@ -272,17 +272,17 @@ const [inventoryItems, setInventoryItems] = useState([]);
         if (response.data.status === "success") {
           // Add new item to local state
           //alert("Item created successfully!");
-          toast.open("Item created successfully", 4000, 'Success', 'success');
+          //toast.open("Item created successfully", 4000, 'Success', 'success');
           //clear data upon successful response
           clearUserInput();
         } else {
           //alert(response.data.message || "Failed to create item");
-          toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
+          //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
         }
       } catch (err) {
         console.error("Create item error:", err);
-        //alert("Error creating item");
-        toast.open("Create item operation faild. Please try again", 4000, 'Item creation Failed', 'error');
+        //alert("Error creating item"+err.message);
+        toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
       }
       finally{
         //repopulate items
@@ -405,7 +405,7 @@ const [inventoryItems, setInventoryItems] = useState([]);
           onClick={() => setOpenBasic(!openBasic)}
           className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
         >
-          <span>Barcode & SKU</span>
+          <span className="text-gray-600">Barcode & SKU</span>
           {openBasic ? <ChevronUp /> : <ChevronDown />}
         </button>
         {openBasic && (
@@ -458,7 +458,7 @@ const [inventoryItems, setInventoryItems] = useState([]);
           onClick={() => setOpenPrimary(!openPrimary)}
           className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
         >
-          <span>Primary Description</span>
+          <span className="text-gray-600">Primary Description</span>
           {openPrimary ? <ChevronUp /> : <ChevronDown />}
         </button>
         {openPrimary && (
@@ -535,11 +535,11 @@ const [inventoryItems, setInventoryItems] = useState([]);
           onClick={() => setOpenDetailed(!openDetailed)}
           className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
         >
-          <span>Detailed Description</span>
+          <span className="text-gray-600">Detailed Description</span>
           {openDetailed ? <ChevronUp /> : <ChevronDown />}
         </button>
         {openDetailed && (
-          <div className="px-4 bg-white">
+          <div className="px-4 bg-white pb-5">
           {/* detailed description block */}
           <div className="">
             <div className="grid grid-cols-2 gap-4">
