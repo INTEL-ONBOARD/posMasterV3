@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { apiClient } from "../../api/client";
 
 
-export default function ConfirmDeleteModal({ open, item, onCancel }) {
+export default function ConfirmDeleteModal({ open, item, onCancel, onSuccess }) {
   if (!open || !item) return null;
   
   const [status, setStatus] = useState(null); // 'success', 'fail', or null
@@ -25,7 +25,9 @@ export default function ConfirmDeleteModal({ open, item, onCancel }) {
       if (result.data.status === 'success') {
         // Handle successful deletion (e.g., update UI, show notification)
         console.log('Item deleted:', result.data);
+        onSuccess
         setStatus('success');
+
       } else {
         // Handle API error
         console.error('Delete failed:', result.message);
