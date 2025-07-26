@@ -1,9 +1,6 @@
-import React from 'react'
-import ToastContext from '../pages/toasts/ToastService';
+import { useContext } from 'react';
 
 export default function validateItem(item) {
-
-  const toast = useContext(ToastContext);
 
   const requiredFields = [
     'sku',
@@ -15,7 +12,8 @@ export default function validateItem(item) {
     'category_id',
     'inventory_id',
     'unit_price',
-    'batch_code',
+    //'batch_code',
+    //'item_image_url',
   ];
 
   for (const field of requiredFields) {
