@@ -2,7 +2,7 @@ import React from "react";
 import barcodeImg from "../assets/barcode.png";
 import placeholderImg from "../assets/card_placeholder_img.png";
 
-export default function AddItemCard({ item, onOpen, onRemove, hideClose }) {
+export default function AddItemCard({ item, onOpen, onRemove }) {
   // Use placeholder if item.item_image_url is null or undefined
   const imageSrc = item.item_image_url || placeholderImg;
 
