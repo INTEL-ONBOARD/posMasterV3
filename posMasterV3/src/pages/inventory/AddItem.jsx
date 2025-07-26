@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { apiClient } from "../../api/client";
 import { useNavigate } from "react-router-dom";
 import { X, Upload, Printer, ChevronDown, ChevronUp } from "lucide-react";
-import Add_item_Card from "../../frontend/components/Add_item_Card";
 import AddItemCard from "../../components/AddItemCard.jsx";
-import bananaImg from '../../assets/Inventory_banana.png';
 import ConfirmDeleteModal from "../../frontend/components/ConfirmDeleteModal";
-import itemImg from '../../assets/Inventory_banana.png';
 import barcodeImg from "../../assets/barcode.png";
+import validateItem from "../../util/validate.jsx";
+import ToastContext from "../toasts/ToastService.jsx";
+import Add_item_Card from "../../frontend/components/Add_item_Card";
+import bananaImg from '../../assets/Inventory_banana.png';
+import itemImg from '../../assets/Inventory_banana.png';
 
 import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
@@ -15,6 +17,7 @@ import JsBarcode from 'jsbarcode';
 
 function AddItem() {
   const navigate = useNavigate();
+  const toast = useContext(ToastContext);
 
     // Fetch UOMs from API
     useEffect(() => {
@@ -52,76 +55,7 @@ function AddItem() {
       fetchCategories();
     }, []);
 
-const [inventoryItems, setInventoryItems] = useState([
-    // {
-    //   _id: "6877751e6d4492e44dbb403b",
-    //   id: 19,
-    //   stock_trace: [1],
-    //   item_name: "test toothbrush",
-    //   item_image_url: "/src/assets/Inventory_banana.png",
-    //   batch_code: "bar237645TE1522",
-    //   sku: "bar237645",
-    //   quantity: 30,
-    //   threshold_limit: 20,
-    //   maximum_capacity: 40,
-    //   uom_id: 22,
-    //   category_id: 15,
-    //   inventory_id: 1,
-    //   unit_price: 110,
-    //   stock_update_datetime: "2025-07-16T09:47:10.682Z",
-    //   stock_created_datetime: "2025-07-16T09:47:10.682Z",
-    //   __v: 0,
-    //   uom: {
-    //     _id: "687720ad798018e0851599a0",
-    //     id: 22,
-    //     symbol: "pcs",
-    //     unit_name: "Piece",
-    //     __v: 0
-    //   },
-    //   category: {
-    //     _id: "68773ebf1edd62f9c8128b58",
-    //     id: 15,
-    //     brand: "Colgate",
-    //     type: "Oral Care",
-    //     __v: 0
-    //   },
-    //   inventory: null
-    // },
-    // {
-    //   _id: "687775746d4492e44dbb404f",
-    //   id: 22,
-    //   stock_trace: [1],
-    //   item_name: "test toothbrush2",
-    //   item_image_url: "/src/assets/Inventory_banana.png",
-    //   batch_code: "fubar237645TE1522",
-    //   sku: "fubar237645",
-    //   quantity: 30,
-    //   threshold_limit: 20,
-    //   maximum_capacity: 40,
-    //   uom_id: 22,
-    //   category_id: 15,
-    //   inventory_id: 1,
-    //   unit_price: 110,
-    //   stock_update_datetime: "2025-07-16T09:48:36.213Z",
-    //   stock_created_datetime: "2025-07-16T09:48:36.213Z",
-    //   __v: 0,
-    //   uom: {
-    //     _id: "687720ad798018e0851599a0",
-    //     id: 22,
-    //     symbol: "pcs",
-    //     unit_name: "Piece",
-    //     __v: 0
-    //   },
-    //   category: {
-    //     _id: "68773ebf1edd62f9c8128b58",
-    //     id: 15,
-    //     brand: "Colgate",
-    //     type: "Oral Care",
-    //     __v: 0
-    //   },
-    //   inventory: null
-    // },
-  ]);
+const [inventoryItems, setInventoryItems] = useState([]);
 
     const [uoms, setUoms] = useState([
     {
@@ -163,7 +97,6 @@ const [inventoryItems, setInventoryItems] = useState([
  };
 
     // State for category/brand mapping
-  const [loadingItemCategories, setLoadingItemCategories] = useState(false);
   const [itemCategories, setItemCategories] = useState([
     { id: 145, brand: "Close-Up",   type: "Oral Care" },
     { id:  94, brand: "Clogard",    type: "Oral Care" },
@@ -176,7 +109,7 @@ const [inventoryItems, setInventoryItems] = useState([
   const [selectedCategoryType, setSelectedCategoryType] = useState("");
   //filled when a category was selected from the category dropdown
   const [brandOptions, setBrandOptions] = useState([]);
-  //in case for the category dropdown population
+  //category dropdown population(search and item form)
   const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
 
   useEffect(() => {
@@ -207,84 +140,15 @@ const [inventoryItems, setInventoryItems] = useState([
     setFormCategoryData(f => ({ ...f, brand: e.target.value }));
   };
 
-
   const [isLoading, setIsLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  const [deletingItem, setDeletingItem] = useState({
-      _id: "",
-      id: 22,
-      stock_trace: [1],
-      item_name: "test toothbrush2",
-      item_image_url: "/src/assets/Inventory_banana.png",
-      batch_code: "fubar237645TE1522",
-      sku: "fubar237645",
-      quantity: 30,
-      threshold_limit: 20,
-      maximum_capacity: 40,
-      uom_id: 22,
-      category_id: 15,
-      inventory_id: 1,
-      unit_price: 110,
-      stock_update_datetime: "2025-07-16T09:48:36.213Z",
-      stock_created_datetime: "2025-07-16T09:48:36.213Z",
-      __v: 0,
-      uom: {
-        _id: "687720ad798018e0851599a0",
-        id: 22,
-        symbol: "pcs",
-        unit_name: "Piece",
-        __v: 0
-      },
-      category: {
-        _id: "68773ebf1edd62f9c8128b58",
-        id: 15,
-        brand: "Colgate",
-        type: "Oral Care",
-        __v: 0
-      },
-      inventory: null
-    });
-
-
   // Form state
-  const [formData, setformData] = useState({
-      _id: "",
-      id: 0,
-      stock_trace: [0],
-      item_name: "",
-      item_image_url: "",
-      batch_code: "",
-      sku: "",
-      quantity: 0,
-      threshold_limit: 0,
-      maximum_capacity: 0,
-      uom_id: 0,
-      category_id: 0,
-      inventory_id: 1,
-      unit_price: 0,
-      stock_update_datetime: "",
-      stock_created_datetime: "",
-      __v: 0,
-      uom: {
-        _id: "",
-        id: 0,
-        symbol: "",
-        unit_name: "",
-        __v: 0
-      },
-      category: {
-        _id: "",
-        id: 15,
-        brand: "",
-        type: "",
-        __v: 0
-      },
-      inventory: null,
-    });
+  const [formData, setformData] = useState(INITIAL_FORM_DATA);
+  const [deletingItem, setDeletingItem] = useState(INITIAL_FORM_DATA);
 
     const [formCategoryData, setFormCategoryData] = useState({
       categoryType: "",
@@ -330,7 +194,8 @@ const [inventoryItems, setInventoryItems] = useState([
       }   
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to generate PDF');
+      //alert('Failed to generate PDF');
+      toast.open("Failed to generate PDF", 4000, 'Pdf Failed', 'error');
     }
   };
 
@@ -398,18 +263,30 @@ const [inventoryItems, setInventoryItems] = useState([
           unit_price: parseFloat(formData.unit_price),
           batch_code: formData.batch_code
         };
+        if (!validateItem(requestData)) {
+          return;
+        }
   
         const response = await apiClient.post("api/items/add", requestData);
   
         if (response.data.status === "success") {
           // Add new item to local state
-          alert("Item created successfully!");
+          //alert("Item created successfully!");
+          toast.open("Item created successfully", 4000, 'Success', 'success');
+          //clear data upon successful response
+          clearUserInput();
         } else {
-          alert(response.data.message || "Failed to create item");
+          //alert(response.data.message || "Failed to create item");
+          toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
         }
       } catch (err) {
         console.error("Create item error:", err);
-        alert("Error creating item");
+        //alert("Error creating item");
+        toast.open("Create item operation faild. Please try again", 4000, 'Item creation Failed', 'error');
+      }
+      finally{
+        //repopulate items
+        fetchItems();
       }
     };
 
@@ -421,33 +298,57 @@ const [inventoryItems, setInventoryItems] = useState([
                 c.type  === formCategoryData.categoryType &&
                 c.brand === formCategoryData.brand
               );
-          const requestData = {
-            sku: formData.sku,
-            item_name: formData.item_name,
-            quantity: Number(formData.quantity),
-            threshold_limit: Number(formData.threshold_limit),
-            maximum_capacity: Number(formData.maximum_capacity),
-            uom_id:           formUOMData,
-            category_id:      selectedCategory?.id ?? null, // look up id
-            inventory_id: 1, // Fixed value for now
-            item_image_url: formData.item_image_url || null,
-            unit_price: parseFloat(formData.unit_price),
-            batch_code: formData.batch_code
-          };
+              const requestData = {
+                sku: formData.sku,
+                item_name: formData.item_name,
+                quantity: Number(formData.quantity),
+                threshold_limit: Number(formData.threshold_limit),
+                maximum_capacity: Number(formData.maximum_capacity),
+                uom_id:           formUOMData,
+                category_id:      selectedCategory?.id ?? null, // look up id
+                inventory_id: 1, // Fixed value for now
+                item_image_url: formData.item_image_url || null,
+                unit_price: parseFloat(formData.unit_price),
+                batch_code: formData.batch_code
+              };
     
           const response = await apiClient.put(`api/items/${formData.id}`, requestData);
     
           if (response.data.status === "success") {
-
-            alert("Item created successfully!");
+            //alert("Item created successfully!");
+            toast.open("Item updated successfully", 4000, 'Success', 'success');
+            //clear data upon successful response
+            clearUserInput();
+            setUserEditing(false);
           } else {
-            alert(response.data.message || "Failed to create item");
+            //alert(response.data.message || "Failed to update item");
+            toast.open("Failed to update the item, please try again", 4000, 'Request failed', 'error');
           }
         } catch (err) {
-          console.error("Create item error:", err);
-          alert("Error creating item");
+          console.error("Update item error:", err);
+          //alert("Error updating item");
+          toast.open("Update item operation faild. Please try again", 4000, 'Item update Failed', 'error');
+        }
+        finally{
+          //repopulate items
+          fetchItems();
         }
       };
+
+      //clear the form and related statee data(hrrngh)
+      const clearUserInput = () =>{
+        //alert("clearing user inputs")
+        setformData(INITIAL_FORM_DATA)
+        setSelectedCategoryType("");
+        setBrandOptions([]);
+        setFormCategoryData({
+          categoryType: "",
+          brand: "",
+        });
+        setFormUOMData(null);
+        //switch from update item button to add item button 
+        setUserEditing(false)
+      }
 
   // Load item object into form
  const loadItem = (item) => {
@@ -483,10 +384,10 @@ const [inventoryItems, setInventoryItems] = useState([
     setDeletingItem(null);
   };
 
-  // Filter items based on search and category
+  // Filter items based on search and category //fix here
   const filteredItems = inventoryItems.filter(
     (item) =>
-      (searchCategory === "All" || item.category === searchCategory) &&
+      (searchCategory === "All" || item.category.type === searchCategory) &&
       item.item_name.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -510,49 +411,49 @@ const [inventoryItems, setInventoryItems] = useState([
         {openBasic && (
           <div className="bg-white border-2 border-black mx-4">
           <div className="flex flex-row px-4 items-center max-h-[12rem]">
-  <div className="w-36 h-36 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center mb-4 hover:border-gray-400 transition-colors">
-    {formData.item_image_url ? (
-      <div>
-        <input
-          type="file"
-          id="imageUpload"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={handleImageUpload}
-        />
-        <label htmlFor="imageUpload" className="block w-full h-full cursor-pointer">
-          <img
-            src={formData.item_image_url}
-            alt="Item"
-            className="w-full h-full object-contain"
-          />
-        </label>
-      </div>
-    ) : (
-      <>
-        <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mb-2">
-          <X className="w-6 h-6 text-red-500" />
+          <div className="w-36 h-36 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center mb-4 hover:border-gray-400 transition-colors">
+            {formData.item_image_url ? (
+              <div>
+                <input
+                  type="file"
+                  id="imageUpload"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={handleImageUpload}
+                />
+                <label htmlFor="imageUpload" className="block w-full h-full cursor-pointer">
+                  <img
+                    src={formData.item_image_url}
+                    alt="Item"
+                    className="w-full h-full object-contain"
+                  />
+                </label>
+              </div>
+            ) : (
+              <>
+                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mb-2">
+                  <X className="w-6 h-6 text-red-500" />
+                </div>
+                <span className="text-gray-500">No image</span>
+              </>
+            )}
+          </div>
+          {/* Vertical black line separator */}
+          <div className="w-0.5 bg-black self-stretch"></div>
+          <div className="flex flex-col m-10">
+            <div>
+              <img src={barcodeImg} alt="Barcode" className="w-[100px] object-contain" />
+              <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p>
+              <p className="text-sm font-semibold text-gray-800">BARCODE: {formData.batch_code}</p>
+            </div>
+          </div>
         </div>
-        <span className="text-gray-500">No image</span>
-      </>
-    )}
-  </div>
-  {/* Vertical black line separator */}
-  <div className="w-0.5 bg-black self-stretch"></div>
-  <div className="flex flex-col m-10">
-    <div>
-      <img src={barcodeImg} alt="Barcode" className="w-[100px] object-contain" />
-      <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p>
-      <p className="text-sm font-semibold text-gray-800">BARCODE: {formData.batch_code}</p>
-    </div>
-  </div>
-</div>
         </div>
         )}
       </div>
 
 {/* ▼ Primary description block ▼ */}
-      <div className="border rounded">
+      <div className="border">
         <button
           onClick={() => setOpenPrimary(!openPrimary)}
           className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
@@ -595,8 +496,8 @@ const [inventoryItems, setInventoryItems] = useState([
                   {uniqueCategoryTypes.map(type => (
                     <option key={type} value={type}>
                       {type}
-              </option>
-            ))}
+                  </option>
+                  ))}
           </select>
               </div>
               <div>
@@ -679,7 +580,7 @@ const [inventoryItems, setInventoryItems] = useState([
                   name="threshold_limit"
                   value={formData.threshold_limit}
                   onChange={handleInputChange}
-                  placeholder="12"
+                  placeholder=""
                   className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -692,7 +593,7 @@ const [inventoryItems, setInventoryItems] = useState([
                   name="maximum_capacity"
                   value={formData.maximum_capacity}
                   onChange={handleInputChange}
-                  placeholder="12"
+                  placeholder=""
                   className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -708,7 +609,7 @@ const [inventoryItems, setInventoryItems] = useState([
                   name="quantity"
                   value={formData.quantity}
                   onChange={handleInputChange}
-                  placeholder="12"
+                  placeholder=""
                   className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -801,16 +702,10 @@ const [inventoryItems, setInventoryItems] = useState([
         </div>
         )}
       </div>
-
-
-
-
         </div>
         
-
         {/* Bottom bar */}
         <div className="flex flex-row min-w-max justify-around">
-
         <button 
           className="flex items-center w-[12rem] h-10 px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
           onClick={() => generatePdf('print')}
@@ -820,24 +715,7 @@ const [inventoryItems, setInventoryItems] = useState([
         </button>
             <button
               onClick={() => {
-                //clear the form data
-                setformData({
-                  // id: "",
-                  // name: "",
-                  // categoryId: "",
-                  // brand: "",
-                  // itemCode: "",
-                  // sku: "",
-                  // status: "available",
-                  // thresholdLimit: 0,
-                  // maxmiumCapacity: 0,
-                  // price: 0,
-                  // quantity: 0,
-                  // uomId: "",
-                  // image: itemImg,
-                });
-                setSelectedCategoryType("");
-                setBrandOptions([]);
+                clearUserInput();
                 //switch from update item button to add item button 
                 setUserEditing(false)
               }}
@@ -879,10 +757,17 @@ const [inventoryItems, setInventoryItems] = useState([
             onChange={handleSearchCategoryChange}
             className="w-80 h-10 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="All">All Categories</option>
+            {/* <option value="All">All Categories</option>
             <option value="electronics">Electronics</option>
             <option value="fruit">Fruit</option>
-            <option value="beverage">Beverage</option>
+            <option value="beverage">Beverage</option> */}
+            {/* //fix this */}
+            <option value="All">All Categories</option>
+            {uniqueCategoryTypes.map(type => (
+                    <option key={type} value={type}>
+                      {type}
+                  </option>
+                  ))}
           </select>
         </nav>
         
@@ -922,6 +807,7 @@ const [inventoryItems, setInventoryItems] = useState([
         open={showDeleteModal}
         item={deletingItem}
         onCancel={handleCancelDelete}
+        onSuccess={fetchItems}
       />
     </div>
     
@@ -929,3 +815,110 @@ const [inventoryItems, setInventoryItems] = useState([
 }
 
 export default AddItem;
+
+
+// 1️⃣ Define your “empty” form‐data once
+const INITIAL_FORM_DATA = {
+  _id: "",
+  id: 0,
+  stock_trace: [0],
+  item_name: "",
+  item_image_url: "",
+  batch_code: "",
+  sku: "",
+  quantity: 0,
+  threshold_limit: 0,
+  maximum_capacity: 0,
+  uom_id: 0,
+  category_id: 0,
+  inventory_id: 1,
+  unit_price: 0,
+  stock_update_datetime: "",
+  stock_created_datetime: "",
+  __v: 0,
+  uom: {
+    _id: "",
+    id: 0,
+    symbol: "",
+    unit_name: "",
+    __v: 0
+  },
+  category: {
+    _id: "",
+    id: 0,
+    brand: "",
+    type: "",
+    __v: 0
+  },
+  inventory: null
+};
+
+//inventory dummy data
+    // {
+    //   _id: "6877751e6d4492e44dbb403b",
+    //   id: 19,
+    //   stock_trace: [1],
+    //   item_name: "test toothbrush",
+    //   item_image_url: "/src/assets/Inventory_banana.png",
+    //   batch_code: "bar237645TE1522",
+    //   sku: "bar237645",
+    //   quantity: 30,
+    //   threshold_limit: 20,
+    //   maximum_capacity: 40,
+    //   uom_id: 22,
+    //   category_id: 15,
+    //   inventory_id: 1,
+    //   unit_price: 110,
+    //   stock_update_datetime: "2025-07-16T09:47:10.682Z",
+    //   stock_created_datetime: "2025-07-16T09:47:10.682Z",
+    //   __v: 0,
+    //   uom: {
+    //     _id: "687720ad798018e0851599a0",
+    //     id: 22,
+    //     symbol: "pcs",
+    //     unit_name: "Piece",
+    //     __v: 0
+    //   },
+    //   category: {
+    //     _id: "68773ebf1edd62f9c8128b58",
+    //     id: 15,
+    //     brand: "Colgate",
+    //     type: "Oral Care",
+    //     __v: 0
+    //   },
+    //   inventory: null
+    // },
+    // {
+    //   _id: "687775746d4492e44dbb404f",
+    //   id: 22,
+    //   stock_trace: [1],
+    //   item_name: "test toothbrush2",
+    //   item_image_url: "/src/assets/Inventory_banana.png",
+    //   batch_code: "fubar237645TE1522",
+    //   sku: "fubar237645",
+    //   quantity: 30,
+    //   threshold_limit: 20,
+    //   maximum_capacity: 40,
+    //   uom_id: 22,
+    //   category_id: 15,
+    //   inventory_id: 1,
+    //   unit_price: 110,
+    //   stock_update_datetime: "2025-07-16T09:48:36.213Z",
+    //   stock_created_datetime: "2025-07-16T09:48:36.213Z",
+    //   __v: 0,
+    //   uom: {
+    //     _id: "687720ad798018e0851599a0",
+    //     id: 22,
+    //     symbol: "pcs",
+    //     unit_name: "Piece",
+    //     __v: 0
+    //   },
+    //   category: {
+    //     _id: "68773ebf1edd62f9c8128b58",
+    //     id: 15,
+    //     brand: "Colgate",
+    //     type: "Oral Care",
+    //     __v: 0
+    //   },
+    //   inventory: null
+    // },

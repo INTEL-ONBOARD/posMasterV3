@@ -12,6 +12,7 @@ import { apiClient } from "../../api/client";
 import clearBtnImg from "../../assets/sales_clear.png";
 import sidebarHoldOrderBtnImg from "../../assets/sales_hold_order.png";
 import sidebarPaymentBtnImg from "../../assets/sales_proceed_payment.png";
+import profileImg from "../../assets/user_profile_image.png";
 
 export default function SalesView() {
   const { setActiveSection } = useOutletContext();
@@ -965,11 +966,11 @@ export default function SalesView() {
                   {/* Main search container */}
                   <div className="w-full relative p-2 lg:p-4">
                     {/* Main search container */}
-                    <div className="bg-orange-50 border-2 border-orange-400 rounded-lg overflow-hidden">
+                    <div className="bg-orange-50 border-2 border-blue-400 rounded-lg overflow-hidden">
                       <div className="p-2 lg:p-3">
                         <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
                           {/* Search icon */}
-                          <svg className="w-6 h-6 lg:w-8 lg:h-8 text-orange-500 flex-shrink-0 self-center lg:self-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                          <svg className="w-6 h-6 lg:w-8 lg:h-8 text-blue-500 flex-shrink-0 self-center lg:self-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
 
@@ -980,9 +981,9 @@ export default function SalesView() {
                               placeholder="Search Member here ....."
                               value={searchTerm}
                               onChange={(e) => handleSearch(e.target.value)}
-                              className="w-full bg-transparent text-orange-500 placeholder-orange-400 outline-none text-lg lg:text-xl font-medium pb-2"
+                              className="w-full bg-transparent text-blue-500 placeholder-blue-400 outline-none font-medium pb-2"
                             />
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-400"></div>
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400"></div>
                           </div>
 
                           {/* Guest button and expand arrow container */}
@@ -990,7 +991,7 @@ export default function SalesView() {
                             {/* Guest button */}
                             <button
                               onClick={handleGuestClick}
-                              className="bg-orange-200 text-orange-600 px-4 lg:px-6 py-2 lg:py-3 border-2 border-orange-400 text-base lg:text-lg font-medium hover:bg-orange-300 transition-colors"
+                              className="bg-blue-200 text-blue-600 px-3 border-2 border-blue-400 text-base lg:text-lg font-medium hover:bg-blue-300 transition-colors"
                             >
                               Guest
                             </button>
@@ -998,10 +999,10 @@ export default function SalesView() {
                             {/* Expand arrow */}
                             <button
                               onClick={toggleExpanded}
-                              className="p-1 hover:bg-orange-200 rounded transition-colors"
+                              className="p-1 hover:bg-blue-200 rounded transition-colors"
                             >
                               <svg
-                                className={`w-5 h-5 lg:w-6 lg:h-6 text-orange-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                className={`w-5 h-5 lg:w-6 lg:h-6 text-blue-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
                                 fill="currentColor"
                                 viewBox="0 0 24 24"
                               >
@@ -1014,16 +1015,61 @@ export default function SalesView() {
 
                       {/* Search results */}
                       {searchTerm && searchTerm !== 'Guest' && (
-                        <div className="border-t border-orange-200 bg-white p-2 lg:p-4">
-                          <div className="text-sm text-gray-600">
-                            Search results will appear here
+                        // member details card
+                        <div className="bg-[#EAF6FF] p-4 shadow-md w-full max-w-md flex flex-col text-black font-sans">
+
+                          {/* Member and Income Row */}
+                          <div className="flex justify-between items-start">
+                            {/* Profile section */}
+                            <div className="flex gap-3 w-3/5">
+                              {/* Avatar Placeholder */}
+                              <img src={profileImg} className="w-12 h-12 bg-gray-300 rounded-full" />
+                              <div>
+                                <h2 className="text-blue-800 font-bold">MR. Harischandra Silva</h2>
+                                <p className="text-md font-semibold">MEMBER: 2345</p>
+                                <p className="text-xs text-gray-600">PRE-MEMBER: 2345</p>
+                              </div>
+                            </div>
+
+                            {/* Income */}
+                            <div className="flex flex-col w-2/5 bg-green-300 text-center px-4 py-2">
+                              <p className="text-blue-900 font-bold text-lg">RS. 2,000</p>
+                              <p className="text-sm text-gray-800">INCOME</p>
+                            </div>
+                          </div>
+
+                          {/* Amount and Credit Row */}
+                          <div className="flex justify-between items-center">
+                            {/* Transaction info */}
+                            <div className="flex flex-col w-3/5">
+                              <p className="text-sm font-semibold text-black">Total Amount of the transaction</p>
+                              <p className="text-sm font-semibold text-black">2024-06-23</p>
+                              <p className="text-2xl font-bold text-black">Rs.2300.00</p>
+                            </div>
+
+                            {/* Credits */}
+                            <div className="bg-orange-300 text-center px-4 py-2 flex flex-col w-2/5">
+                              <p className="text-blue-900 font-bold text-lg">RS. 140</p>
+                              <p className="text-sm text-gray-800">CREDITS</p>
+                            </div>
+                          </div>
+
+                          {/* Buttons Row */}
+                          <div className="flex justify-between gap-3">
+                            <button className="flex-1 border border-black py-2 hover:bg-gray-100">
+                              See more ↗
+                            </button>
+                            <button className="flex-1 border border-black py-2 hover:bg-gray-100">
+                              Select ✔
+                            </button>
                           </div>
                         </div>
+
                       )}
 
                       {/* Expanded content */}
                       {isExpanded && (
-                        <div className="border-t border-orange-200 bg-white p-2 lg:p-4">
+                        <div className="border-t border-blue-200 bg-white p-2 lg:p-4">
                           <div className="text-sm text-gray-600">
                             More details should be added here
                           </div>
