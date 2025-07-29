@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import { apiClient } from "../../api/client";
 import { useNavigate } from "react-router-dom";
 import { X, Upload, Printer, ChevronDown, ChevronUp } from "lucide-react";
@@ -7,9 +7,6 @@ import ConfirmDeleteModal from "../../frontend/components/ConfirmDeleteModal";
 import barcodeImg from "../../assets/barcode.png";
 import validateItem from "../../util/validate.jsx";
 import ToastContext from "../toasts/ToastService.jsx";
-import Add_item_Card from "../../frontend/components/Add_item_Card";
-import bananaImg from '../../assets/Inventory_banana.png';
-import itemImg from '../../assets/Inventory_banana.png';
 
 import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
@@ -146,6 +143,7 @@ function AddItem() {
   const [searchCategory, setSearchCategory] = useState("All");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+
   // Form state
   const [formData, setformData] = useState(INITIAL_FORM_DATA);
   const [deletingItem, setDeletingItem] = useState(INITIAL_FORM_DATA);
@@ -244,6 +242,7 @@ function AddItem() {
 
   // Create new item
   const createItem = async (e) => {
+    setFormStatus("loading");
     e.preventDefault();
     try {
       const selectedCategory = itemCategories.find(c =>
@@ -264,6 +263,14 @@ function AddItem() {
         batch_code: formData.batch_code
       };
       if (!validateItem(requestData)) {
+        // on fail
+        setFormStatus("fail");
+        // after 4 seconds, flip back to the form
+        alert("validation failed")
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
         return;
       }
 
@@ -274,14 +281,32 @@ function AddItem() {
         //alert("Item created successfully!");
         //toast.open("Item created successfully", 4000, 'Success', 'success');
         //clear data upon successful response
+        setFormStatus("success");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
         clearUserInput();
       } else {
         //alert(response.data.message || "Failed to create item");
         //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
+        setFormStatus("fail");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
       }
     } catch (err) {
       console.error("Create item error:", err);
       //alert("Error creating item"+err.message);
+      setFormStatus("fail");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
       toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
     }
     finally {
@@ -292,6 +317,7 @@ function AddItem() {
 
   // Update item
   const updateItem = async (e) => {
+    setFormStatus("loading");
     e.preventDefault();
     try {
       const selectedCategory = itemCategories.find(c =>
@@ -316,16 +342,34 @@ function AddItem() {
 
       if (response.data.status === "success") {
         //alert("Item created successfully!");
+        setFormStatus("success");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
         toast.open("Item updated successfully", 4000, 'Success', 'success');
         //clear data upon successful response
         clearUserInput();
         setUserEditing(false);
       } else {
+        setFormStatus("fail");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
         //alert(response.data.message || "Failed to update item");
         toast.open("Failed to update the item, please try again", 4000, 'Request failed', 'error');
       }
     } catch (err) {
       console.error("Update item error:", err);
+      setFormStatus("fail");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
       //alert("Error updating item");
       toast.open("Update item operation faild. Please try again", 4000, 'Item update Failed', 'error');
     }
@@ -384,20 +428,32 @@ function AddItem() {
     setDeletingItem(null);
   };
 
-  // Filter items based on search and category //fix here
+  // Filter items based on search and category
   const filteredItems = inventoryItems.filter(
     (item) =>
       (searchCategory === "All" || item.category.type === searchCategory) &&
       item.item_name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const [openBasic, setOpenBasic] = useState(true);
+  const [openBasic, setOpenBasic] = useState(false);
   const [openPrimary, setOpenPrimary] = useState(true);
   const [openDetailed, setOpenDetailed] = useState(true);
+
+  const [formStatus, setFormStatus] = useState("form");   // possible values: "form" | "loading" | "success" | "fail"
+  // keep the timer ID so we can clear it if the component unmounts early
+  const timerRef = useRef(null);
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
   return (
     <div className="flex flex-row">
       {/* Item form (left) */}
-      <div className="w-1/3 h-[calc(100vh-6rem)] p-5 z-10 flex flex-col justify-between">
+      {formStatus === "form" ? (
+      <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-between">
         <div className="flex flex-col h-[45rem] gap-3">
           {/* ▼ Basic info block ▼ */}
           <div className="border rounded bg-white">
@@ -697,7 +753,7 @@ function AddItem() {
                           </svg> */}
                         </div>
                         <input
-                          type="datetime-local"
+                          type="date"
                           id="expiration-date"
                           className="bg-gray-50 border border-gray-300 text-gray-900 text-sm  focus:ring-blue-500 focus:border-blue-500 block w-full px-3 py-2"
                           placeholder="Select date and time"
@@ -728,21 +784,52 @@ function AddItem() {
               //switch from update item button to add item button 
               setUserEditing(false)
             }}
-            className="px-6 py-2 w-[6rem] h-10  border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
+            className="px-6 py-2 w-[8rem] h-10  border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
           >
             Cancel
           </button>
           {/* switch between update and add button functions based on item card selection and clear form button click */}
           <button
             onClick={isUserEditting ? updateItem : createItem}
-            className="px-6 py-2 h-10 w-[6rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
+            className="px-6 py-2 h-10 w-[8rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
           >
             {isUserEditting ? 'Update' : 'Add Item'}
           </button>
 
         </div>
       </div>
-
+      ) : formStatus === "loading" ? (
+        <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+          <div className="flex flex-col items-center justify-center">
+          <div className="animate-spin mb-3 rounded-full border-4 border-gray-300 border-t-[#1A318C] h-12 w-12"></div>
+          <h2>Please wait…</h2>
+          </div>
+        </div>
+      ) : formStatus === "success" ? (
+        <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+          <div className="flex flex-col items-center justify-center">
+          <svg width={80} height={80} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* green circle */}
+            <circle cx="12" cy="12" r="10" fill="#22C55E" />
+            {/* white check */}
+            <path d="M7 12l3 3 7-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <h2 className="font-semibold text-xl">Success!</h2>
+          </div>
+        </div>
+      ) : (
+        /* if it's none of the above, we treat it as "fail" */
+        <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+          <div className="flex flex-col items-center justify-center">
+          <svg width={80} height={80} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* red circle */}
+            <circle cx="12" cy="12" r="10" fill="#EF4444" />
+            {/* white “X” */}
+            <path d="M15 9l-6 6M9 9l6 6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+          <h2 className="font-semibold text-xl">Failed...</h2>
+          </div>
+        </div>
+      )}
 
       {/* Item list (right) */}
       <div className="w-2/3 h-[calc(100vh-1rem)] bg-[#EBEBEB]">
@@ -826,7 +913,7 @@ function AddItem() {
 export default AddItem;
 
 
-// 1️⃣ Define your “empty” form‐data once
+// Define your “empty” form‐data once
 const INITIAL_FORM_DATA = {
   _id: "",
   id: 0,

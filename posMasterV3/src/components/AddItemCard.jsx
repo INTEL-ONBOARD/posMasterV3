@@ -1,9 +1,18 @@
-import React from "react";
+import React, { useRef, useState, useEffect } from "react";
 import barcodeImg from "../assets/barcode.png";
 import placeholderImg from "../assets/card_placeholder_img.png";
 
 export default function AddItemCard({ item, onOpen, onRemove }) {
-  // Use placeholder if item.item_image_url is null or undefined
+  const nameRef = useRef(null);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useEffect(() => {
+    const el = nameRef.current;
+    if (!el) return;
+    // measure overflow on mount and whenever the name changes
+    setOverflowing(el.scrollWidth > el.clientWidth);
+  }, [item.item_name]);
+
   const imageSrc = item.item_image_url || placeholderImg;
 
   return (
@@ -20,7 +29,18 @@ export default function AddItemCard({ item, onOpen, onRemove }) {
           <p className="text-xs text-gray-400 -mt-2">SKU: {item.sku}</p>
         </div>
         <div>
-          <h2 className="text-3xl font-bold text-[#6C6C6C]">{item.item_name}</h2>
+          <div className="overflow-hidden max-w-[15rem]">
+            <h2
+              ref={nameRef}
+              className={
+                `text-3xl font-bold text-[#6C6C6C]  
+                whitespace-nowrap ` +
+                (overflowing ? "marquee" : "")
+              }
+            >
+              {item.item_name}
+            </h2>
+          </div>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs bg-gray-100 border px-2 py-0.5 rounded-sm text-[#A7A7A7]">
               {item.category?.type || 'Unknown'}
@@ -36,9 +56,8 @@ export default function AddItemCard({ item, onOpen, onRemove }) {
         </div>
       </div>
 
-      {/* Right Section now just an image that covers 100% of its area */}
+      {/* Right Section */}
       <div className="relative w-[25%] overflow-hidden">
-        {/* Close button */}
         <button
           className="absolute top-2 right-2 p-0.5 bg-black rounded-full hover:bg-gray-800 flex items-center justify-center"
           onClick={(e) => {
@@ -57,9 +76,8 @@ export default function AddItemCard({ item, onOpen, onRemove }) {
           alt={item.item_name}
           className="w-full h-full object-cover"
         />
-
       </div>
-        {/* Status Indicator Circle (still overlaps at the same spot) */}
+        {/* Status Indicator Circle */}
         <div className="absolute top-2 z-[1] right-[3.7rem] w-16 h-16 bg-green-500 rounded-full border-8 border-white" />
     </div>
   );
