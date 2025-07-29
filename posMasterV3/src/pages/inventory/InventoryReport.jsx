@@ -210,9 +210,9 @@ export default function InventoryReport() {
   };
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-red-400">
       {/* Left panel */}
-      <div className="w-72 bg-white border-r flex flex-col">
+      <div className="w-72 bg-white h-[calc(100vh-7rem)] border-r flex flex-col">
         <div className="p-6">
           <div className="mb-2 bg-[#F8F8F8] rounded">
             <button 
@@ -248,7 +248,7 @@ export default function InventoryReport() {
       </div>
 
       {/* Right panel - Added scroll like ViewInventory */}
-      <div className="h-[45rem] overflow-y-scroll bg-white p-8 rounded flex-1">
+      <div className="h-[calc(100vh-7rem)] bg-white p-8 rounded flex-1">
         <h2 className="text-2xl font-bold text-gray-400 mb-6">INVENTORY REPORTS</h2>
         
         {inventoryItems.length === 0 ? (
@@ -281,12 +281,13 @@ export default function InventoryReport() {
 
             {reportType === "basic" ? (
               /* Basic Report */
-              <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <h3 className="text-lg font-semibold mb-4">Basic Inventory Report</h3>
-                <div className="overflow-x-auto">
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <h3 className="text-lg font-semibold mb-4">Basic Inventory Report</h3>
+              <div className="overflow-x-auto">
+                <div className="inline-block min-w-full h-[30rem] overflow-y-auto">
                   <table className="w-full border-collapse bg-white rounded">
-                    <thead>
-                      <tr className="bg-gray-100">
+                    <thead className="sticky top-0 bg-gray-100">
+                      <tr>
                         <th className="border px-4 py-2 text-left">Item Name</th>
                         <th className="border px-4 py-2 text-left">Category</th>
                         <th className="border px-4 py-2 text-left">Stock</th>
@@ -314,13 +315,16 @@ export default function InventoryReport() {
                   </table>
                 </div>
               </div>
+            </div>
+
             ) : (
               /* Advanced Report */
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
                 <h3 className="text-lg font-semibold mb-4">Advanced Inventory Report</h3>
                 <div className="overflow-x-auto">
+                  <div className="inline-block min-w-full h-[30rem] overflow-y-auto">
                   <table className="w-full border-collapse bg-white rounded">
-                    <thead>
+                    <thead className="sticky top-0 bg-gray-100">
                       <tr className="bg-gray-100">
                         <th className="border px-4 py-2 text-left">SKU</th>
                         <th className="border px-4 py-2 text-left">Item Name</th>
@@ -353,6 +357,7 @@ export default function InventoryReport() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </div>
             )}

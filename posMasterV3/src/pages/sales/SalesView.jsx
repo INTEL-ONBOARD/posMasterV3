@@ -35,7 +35,7 @@ export default function SalesView() {
       unitPrice: 3200.0,
       quantity: 30,
       unit: "pcs",
-      total: 12300.0,
+      total: 11300.0,
     },
     {
       id: 2,
@@ -173,62 +173,6 @@ export default function SalesView() {
   const sortCategoriesAlphabetically = (categories) => {
     return categories.sort((a, b) => a.type.localeCompare(b.type));
   };
-
-  // Alternative approach: Combined fetch function
-  // const fetchInventoryAndCategories = async () => {
-  //   try {
-  //     setIsSearching(true);
-
-  //     // Fetch inventory items
-  //     const inventoryResponse = await apiClient.get('/api/items/extended');
-  //     const inventoryData = inventoryResponse.data;
-
-  //     if (inventoryData && inventoryData.data && Array.isArray(inventoryData.data)) {
-  //       // Transform inventory items
-  //       const transformedItems = inventoryData.data.map(item => ({
-  //         id: item.id,
-  //         name: item.item_name,
-  //         category: item.category?.type || "Uncategorized",
-  //         price: item.unit_price.toFixed(2),
-  //         unit: item.uom?.symbol || "pcs",
-  //         sku: item.sku,
-  //         stock: `${item.quantity} ${item.uom?.unit_name || "Units"}`,
-  //         image: item.item_image_url || bananaImg,
-  //         brand: item.category?.brand || "",
-  //         batchCode: item.batch_code
-  //       }));
-
-  //       setInventoryItems(transformedItems);
-  //       setFilteredItems(transformedItems);
-
-  //       // Extract unique categories
-  //       const categoryMap = new Map();
-  //       inventoryData.data.forEach(item => {
-  //         if (item.category && item.category.type) {
-  //           const categoryKey = item.category.id || item.category._id;
-  //           if (!categoryMap.has(categoryKey)) {
-  //             categoryMap.set(categoryKey, {
-  //               id: item.category.id,
-  //               type: item.category.type,
-  //               brand: item.category.brand || "Various",
-  //               _id: item.category._id
-  //             });
-  //           }
-  //         }
-  //       });
-
-  //       setCategories(Array.from(categoryMap.values()));
-  //     }
-
-  //   } catch (error) {
-  //     console.error("Error fetching data:", error);
-  //     setInventoryItems([]);
-  //     setFilteredItems([]);
-  //     setCategories([]);
-  //   } finally {
-  //     setIsSearching(false);
-  //   }
-  // };
 
   // Initialize data
   useEffect(() => {
@@ -1209,3 +1153,59 @@ export default function SalesView() {
     </div>
   );
 }
+
+  // Alternative approach: Combined fetch function
+  // const fetchInventoryAndCategories = async () => {
+  //   try {
+  //     setIsSearching(true);
+
+  //     // Fetch inventory items
+  //     const inventoryResponse = await apiClient.get('/api/items/extended');
+  //     const inventoryData = inventoryResponse.data;
+
+  //     if (inventoryData && inventoryData.data && Array.isArray(inventoryData.data)) {
+  //       // Transform inventory items
+  //       const transformedItems = inventoryData.data.map(item => ({
+  //         id: item.id,
+  //         name: item.item_name,
+  //         category: item.category?.type || "Uncategorized",
+  //         price: item.unit_price.toFixed(2),
+  //         unit: item.uom?.symbol || "pcs",
+  //         sku: item.sku,
+  //         stock: `${item.quantity} ${item.uom?.unit_name || "Units"}`,
+  //         image: item.item_image_url || bananaImg,
+  //         brand: item.category?.brand || "",
+  //         batchCode: item.batch_code
+  //       }));
+
+  //       setInventoryItems(transformedItems);
+  //       setFilteredItems(transformedItems);
+
+  //       // Extract unique categories
+  //       const categoryMap = new Map();
+  //       inventoryData.data.forEach(item => {
+  //         if (item.category && item.category.type) {
+  //           const categoryKey = item.category.id || item.category._id;
+  //           if (!categoryMap.has(categoryKey)) {
+  //             categoryMap.set(categoryKey, {
+  //               id: item.category.id,
+  //               type: item.category.type,
+  //               brand: item.category.brand || "Various",
+  //               _id: item.category._id
+  //             });
+  //           }
+  //         }
+  //       });
+
+  //       setCategories(Array.from(categoryMap.values()));
+  //     }
+
+  //   } catch (error) {
+  //     console.error("Error fetching data:", error);
+  //     setInventoryItems([]);
+  //     setFilteredItems([]);
+  //     setCategories([]);
+  //   } finally {
+  //     setIsSearching(false);
+  //   }
+  // };
