@@ -4,35 +4,101 @@ import bananaImg from "../../assets/Inventory_banana.png";
 export default function InventoryReport() {
   const [reportType, setReportType] = useState("basic");
   // Example inventory data
-  const [inventoryItems, setInventoryItems] = useState([
+const [inventoryItems, setInventoryItems] = useState([
+    
     {
-      id: "1",
-      name: "Banana",
-      barcode: "SKU-37847324",
-      category: "Fruit",
-      price: "340.00",
-      unit: "KG",
-      sku: "SKU001",
-      stock: 100,
-      image: bananaImg,
+        _id: "688978631309a2c8d1dd7c8f",
+        id: 56,
+        stock_trace: [1],
+        item_name: "plastic",
+        item_image_url: null,
+        batch_code: "SKU-384745833OR136422",
+        sku: "SKU-384745833",
+        quantity: 60,
+        threshold_limit: 30,
+        maximum_capacity: 110,
+        uom_id: 22,
+        category_id: 1364,
+        inventory_id: 1,
+        retail_price: 220,
+        stock_price: 110,
+        availability: false,
+        expired_datetime: null,
+        stock_update_datetime: "2025-07-30T01:42:16.000Z",
+        stock_created_datetime: "2025-07-30T01:41:55.000Z",
+        initiate_datetime: "2025-07-30T01:41:55.000Z",
+        __v: 0,
+        uom: {
+            _id: "687720ad798018e0851599a0",
+            id: 22,
+            symbol: "pcs",
+            unit_name: "Piece",
+            __v: 0
+        },
+        category: {
+            _id: "687fb2b7d9b1c944cfddf226",
+            id: 1364,
+            brand: "Battler",
+            type: "Tea",
+            __v: 0
+        },
+        inventory: null
     },
     {
-      id: "2",
-      name: "Apple",
-      barcode: "SKU-5837324",
-      category: "Fruit",
-      price: "420.00",
-      unit: "KG",
-      sku: "SKU002",
-      stock: 80,
-      image: bananaImg,
-    },
-  ]);
+        _id: "688979891309a2c8d1dd7ca8",
+        id: 57,
+        stock_trace: [1],
+        item_name: "orange",
+        item_image_url: null,
+        batch_code: "SKU-384747333OR74436",
+        sku: "SKU-384747333",
+        quantity: 18,
+        threshold_limit: 10,
+        maximum_capacity: 100,
+        uom_id: 36,
+        category_id: 744,
+        inventory_id: 1,
+        retail_price: 20,
+        stock_price: 10,
+        availability: false,
+        expired_datetime: "2025-08-01T00:00:00.000Z",
+        stock_update_datetime: "2025-07-30T01:47:49.000Z",
+        stock_created_datetime: "2025-07-30T01:46:49.000Z",
+        initiate_datetime: "2025-07-30T01:46:49.000Z",
+        __v: 0,
+        uom: {
+            _id: "68772164798018e0851599d8",
+            id: 36,
+            symbol: "ctn",
+            unit_name: "Carton",
+            __v: 0
+        },
+        category: {
+            _id: "687a62b5a969f7f5cf5ea31c",
+            id: 744,
+            brand: "Keells",
+            type: "Snacks",
+            __v: 0
+        },
+        inventory: null
+    }
+]);
+
+      // id: "1",
+      // name: "Banana",
+      // barcode: "SKU-37847324",
+      // category: "Fruit",
+      // price: "340.00",
+      // unit: "KG",
+      // sku: "SKU001",
+      // stock: 100,
+      // image: bananaImg,
+
   // Calculate summary statistics
   const totalItems = inventoryItems.length;
-  const totalValue = inventoryItems.reduce((sum, item) => sum + (parseFloat(item.price) * item.stock), 0);
-  const lowStockItems = inventoryItems.filter(item => item.stock < 20).length;
-  const categories = [...new Set(inventoryItems.map(item => item.category))];
+  const totalValue = inventoryItems.reduce((sum, item) => sum + (parseFloat(item.retail_price) * item.quantity), 0);
+  const lowStockItems = inventoryItems.filter(item => (item.quantity/item.threshold_limit*100) < item.threshold_limit).length;
+  const categories = [...new Set(inventoryItems.map(item => item.category.type))];
 
   const handlePrint = () => {
     window.print();
@@ -45,11 +111,11 @@ export default function InventoryReport() {
       headers.join(","),
       ...inventoryItems.map(item => [
         item.id,
-        item.name,
-        item.category,
-        item.price,
-        item.stock,
-        item.unit,
+        item.item_name,
+        item.category.type,
+        item.retail_price,
+        item.quantity,
+        item.uom.symbol,
         item.sku,
         (parseFloat(item.price) * item.stock).toFixed(2)
       ].join(","))
@@ -155,10 +221,10 @@ export default function InventoryReport() {
                     <tbody>
                       {inventoryItems.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50">
-                          <td className="border px-4 py-2">{item.name}</td>
-                          <td className="border px-4 py-2">{item.category}</td>
-                          <td className="border px-4 py-2">{item.stock} {item.unit}</td>
-                          <td className="border px-4 py-2">Rs.{item.price}</td>
+                          <td className="border px-4 py-2">{item.item_name}</td>
+                          <td className="border px-4 py-2">{item.category.type}</td>
+                          <td className="border px-4 py-2">{item.quantity} {item.unit}</td>
+                          <td className="border px-4 py-2">Rs.{item.retail_price}</td>
                           <td className="border px-4 py-2">
                             <span className={`px-2 py-1 rounded text-xs ${
                               item.stock < 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
@@ -197,12 +263,12 @@ export default function InventoryReport() {
                       {inventoryItems.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50">
                           <td className="border px-4 py-2 font-mono text-sm">{item.sku}</td>
-                          <td className="border px-4 py-2">{item.name}</td>
-                          <td className="border px-4 py-2">{item.category}</td>
-                          <td className="border px-4 py-2">{item.stock} {item.unit}</td>
-                          <td className="border px-4 py-2">Rs.{item.price}</td>
-                          <td className="border px-4 py-2">Rs.{(parseFloat(item.price) * item.stock).toFixed(2)}</td>
-                          <td className="border px-4 py-2 font-mono text-sm">{item.barcode}</td>
+                          <td className="border px-4 py-2">{item.item_name}</td>
+                          <td className="border px-4 py-2">{item.category.type}</td>
+                          <td className="border px-4 py-2">{item.quantity} {item.unit}</td>
+                          <td className="border px-4 py-2">Rs.{item.retail_price}</td>
+                          <td className="border px-4 py-2">Rs.{(parseFloat(item.retail_price) * item.quantity).toFixed(2)}</td>
+                          <td className="border px-4 py-2 font-mono text-sm">{item.sku}</td>
                           <td className="border px-4 py-2">
                             <span className={`px-2 py-1 rounded text-xs ${
                               item.stock < 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
