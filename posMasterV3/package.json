@@ -6,13 +6,29 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": {
-      "script": "vite build"
-    },
+    "build": "vite build",
+    "dist": "vite build && electron-builder",
     "lint": "eslint .",
     "preview": "vite preview",
     "electron": "electron .",
     "electron-dev": "vite build && electron ."
+  },
+  "build": {
+    "appId": "com.posmaster.app",
+    "productName": "POSMaster",
+    "files": [
+      "dist/**",
+      "electron.cjs",
+      "node_modules/**",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    }
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.3.0",
@@ -37,6 +53,7 @@
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.21",
     "electron": "^30.5.1",
+    "electron-builder": "^26.0.12",
     "eslint": "^9.25.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
