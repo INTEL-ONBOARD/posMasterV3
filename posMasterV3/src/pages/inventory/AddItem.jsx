@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { apiClient } from "../../api/client";
 import { useNavigate } from "react-router-dom";
-import { X, Upload, Printer, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Printer, ChevronDown, ChevronUp } from "lucide-react";
 import AddItemCard from "../../components/AddItemCard.jsx";
 import ConfirmDeleteModal from "../../frontend/components/ConfirmDeleteModal";
 import barcodeImg from "../../assets/barcode.png";
@@ -212,6 +212,7 @@ function AddItem() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    console.log(name +": "+ value);
     setformData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -259,8 +260,11 @@ function AddItem() {
         category_id: selectedCategory?.id ?? null, // look up id
         inventory_id: 1, // Fixed value
         item_image_url: formData.item_image_url || null,
-        unit_price: parseFloat(formData.unit_price),
-        batch_code: formData.batch_code
+        batch_code: formData.batch_code,
+        stock_price: parseFloat(formData.stock_price),
+        retail_price: parseFloat(formData.retail_price),
+        expired_datetime: formData.expired_datetime,
+        availability: formData.availability,
       };
       if (!validateItem(requestData)) {
         // on fail
@@ -334,8 +338,11 @@ function AddItem() {
         category_id: selectedCategory?.id ?? null, // look up id
         inventory_id: 1, // Fixed value for now
         item_image_url: formData.item_image_url || null,
-        unit_price: parseFloat(formData.unit_price),
-        batch_code: formData.batch_code
+        batch_code: formData.batch_code,
+        stock_price: parseFloat(formData.stock_price),
+        retail_price: parseFloat(formData.retail_price),
+        expired_datetime: formData.expired_datetime,
+        availability: formData.availability,
       };
 
       const response = await apiClient.put(`api/items/${formData.id}`, requestData);
@@ -421,6 +428,8 @@ function AddItem() {
     const item = inventoryItems.find(i => i.id === itemId);
     setDeletingItem(item);
     setShowDeleteModal(true);
+    //addditional fetch handling
+    
   };
 
   const handleCancelDelete = () => {
@@ -618,9 +627,11 @@ function AddItem() {
                       </label>
                       <input
                         type="text"
-                        //name="sku"
-                        //value={formData.sku}
-                        // onChange={handleInputChange}
+                        readOnly = {true}
+                        disabled = {true}
+                        name="batch_code"
+                        value={formData.batch_code}
+                        onChange={handleInputChange}
                         placeholder="system genereated"
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
@@ -629,7 +640,7 @@ function AddItem() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Threshold Limit
+                        Threshold Limit(%)
                       </label>
                       <input
                         type="number"
@@ -697,9 +708,9 @@ function AddItem() {
                       </label>
                       <input
                         type="number"
-                        // name="unit_price"
-                        // value={formData.unit_price}
-                        // onChange={handleInputChange}
+                        name="stock_price"
+                        value={formData.stock_price}
+                        onChange={handleInputChange}
                         placeholder="Enter item price"
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
@@ -711,8 +722,8 @@ function AddItem() {
                       </label>
                       <input
                         type="number"
-                        name="unit_price"
-                        value={formData.unit_price}
+                        name="retail_price"
+                        value={formData.retail_price}
                         onChange={handleInputChange}
                         placeholder="Enter item price"
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -727,13 +738,13 @@ function AddItem() {
                       </label>
                       <select
                         name="availability"
-                        //value={formUOMData ?? ""}               // show the selected id
-                        //onChange={handleUOMChange}              // hook up your new handler
+                        value={formData.availability}
+                        onChange={handleInputChange}
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">-- select availability --</option>
-                        <option value="">-- Available --</option>
-                        <option value="">-- Unavailable --</option>
+                        <option value={true}>Available</option>
+                        <option value={false}>Unavailable</option>
                       </select>
                     </div>
                     <div>
@@ -752,12 +763,30 @@ function AddItem() {
                             <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
                           </svg> */}
                         </div>
-                        <input
-                          type="date"
-                          id="expiration-date"
-                          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm  focus:ring-blue-500 focus:border-blue-500 block w-full px-3 py-2"
-                          placeholder="Select date and time"
-                        />
+                          <input
+                            type="date"
+                            id="expired_datetime"
+                            value={formData.expired_datetime ? formData.expired_datetime.split('T')[0] : ''}
+                            onChange={(e) => {
+                              const selectedDate = e.target.value;
+                              console.log("date input value: "+selectedDate);
+                              if (selectedDate) {
+                                // Format to UTC midnight: YYYY-MM-DDT00:00:00.000Z
+                                const utcMidnight = `${selectedDate}T00:00:00.000Z`;
+                                console.log("to formData:"+utcMidnight)
+                                setformData({
+                                  ...formData,
+                                  expired_datetime: utcMidnight
+                                });
+                              } else {
+                                // Clear the field if date is empty
+                                setformData({ ...formData, expired_datetime: null });
+                              }
+                            }}
+                            name="expired_datetime"
+                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full px-3 py-2"
+                            placeholder="Select date"
+                          />
                       </div>
                     </div>
 
@@ -928,7 +957,8 @@ const INITIAL_FORM_DATA = {
   uom_id: 0,
   category_id: 0,
   inventory_id: 1,
-  unit_price: 0,
+  stock_price: 0,
+  retail_price: 0,
   stock_update_datetime: "",
   stock_created_datetime: "",
   __v: 0,
@@ -946,7 +976,10 @@ const INITIAL_FORM_DATA = {
     type: "",
     __v: 0
   },
-  inventory: null
+  inventory: null,
+  expired_datetime: null,
+  initiate_datetime: "",
+  availability: true,
 };
 
 //inventory dummy data

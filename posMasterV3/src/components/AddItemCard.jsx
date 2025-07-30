@@ -9,9 +9,19 @@ export default function AddItemCard({ item, onOpen, onRemove }) {
   useEffect(() => {
     const el = nameRef.current;
     if (!el) return;
-    // measure overflow on mount and whenever the name changes
     setOverflowing(el.scrollWidth > el.clientWidth);
   }, [item.item_name]);
+
+  // compute filled % once per render
+  const percentFull = (item.quantity / item.maximum_capacity) * 100;
+  let statusColorClass;
+  if (percentFull <= item.threshold_limit) {
+    statusColorClass = "bg-red-500";
+  } else if (percentFull <= item.threshold_limit + 20) {
+    statusColorClass = "bg-yellow-500";
+  } else {
+    statusColorClass = "bg-green-500";
+  }
 
   const imageSrc = item.item_image_url || placeholderImg;
 
@@ -50,7 +60,7 @@ export default function AddItemCard({ item, onOpen, onRemove }) {
             </span>
           </div>
           <p className="text-xl font-extrabold text-black mt-2">
-            Rs.{item.unit_price}
+            Rs.{item.retail_price}
             <span className="text-sm font-semibold">{item.uom?.symbol || 'unit'}</span>
           </p>
         </div>
@@ -62,7 +72,7 @@ export default function AddItemCard({ item, onOpen, onRemove }) {
           className="absolute top-2 right-2 p-0.5 bg-black rounded-full hover:bg-gray-800 flex items-center justify-center"
           onClick={(e) => {
             e.stopPropagation();
-            if (onRemove) onRemove(item.id);
+            onRemove?.(item.id);
           }}
           aria-label="Close"
           type="button"
@@ -71,14 +81,16 @@ export default function AddItemCard({ item, onOpen, onRemove }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
           </svg>
         </button>
-        <img
-          src={imageSrc}
-          alt={item.item_name}
-          className="w-full h-full object-cover"
-        />
+        <img src={imageSrc} alt={item.item_name} className="w-full h-full object-cover" />
       </div>
-        {/* Status Indicator Circle */}
-        <div className="absolute top-2 z-[1] right-[3.7rem] w-16 h-16 bg-green-500 rounded-full border-8 border-white" />
+
+      {/* Status Indicator Circle */}
+      <div
+        className={
+          `absolute top-2 z-[1] right-[3.7rem] w-16 h-16 rounded-full border-8 border-white ` +
+          statusColorClass
+        }
+      />
     </div>
   );
 }
