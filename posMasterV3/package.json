@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": {
+      "script": "vite build"
+    },
     "lint": "eslint .",
     "preview": "vite preview",
     "electron": "electron .",
