@@ -15,9 +15,11 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
+    autoHideMenuBar: true,
     //titleBarStyle: 'hidden', //view edit and other shiiiiiiiiiiiiiiiiii
     titleBarOverlay: true,   // Window minimize close buttons
     //fullscreen: true,
+    icon: path.join(__dirname, "src", '../assets/app_logo/app_logo.ico'), // Ensure the icon path is correct
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       nodeIntegration: false,
@@ -31,34 +33,34 @@ function createWindow() {
 
 ipcMain.on("print-silent", async (event, arrayBuffer) => {
   console.log("Silent print started");
-  
+
   if (!arrayBuffer || !(arrayBuffer instanceof ArrayBuffer)) {
     console.error("Invalid print data received");
     return;
   }
 
   const tempFile = path.join(app.getPath("temp"), `print-${Date.now()}.pdf`);
-  
+
   try {
     // Convert ArrayBuffer to Node.js Buffer
     const pdfBuffer = Buffer.from(arrayBuffer);
-    
+
     await fs.writeFile(tempFile, pdfBuffer);
     console.log("PDF saved to", tempFile);
-    
+
     // Print using specialized module (most reliable)
     await printer.print(tempFile, { silent: true });
     console.log("Printed via pdf-to-printer");
-    
+
   } catch (error) {
     console.error("Silent print failed:", error.message);
-    
+
     // Fallback method using hidden window
     try {
       console.log("Attempting fallback printing");
       const printWindow = new BrowserWindow({ show: false });
       await printWindow.loadURL(`file://${tempFile}`);
-      
+
       await new Promise((resolve) => {
         printWindow.webContents.on("did-finish-load", () => {
           printWindow.webContents.print({
