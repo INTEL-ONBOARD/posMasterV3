@@ -15,6 +15,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
+    autoHideMenuBar: true,
     //titleBarStyle: 'hidden', //view edit and other shiiiiiiiiiiiiiiiiii
     titleBarOverlay: true,   // Window minimize close buttons
     //fullscreen: true,
