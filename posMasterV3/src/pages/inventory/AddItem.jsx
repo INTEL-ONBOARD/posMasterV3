@@ -645,6 +645,8 @@ function AddItem() {
                       <input
                         type="number"
                         name="threshold_limit"
+                        min={0}
+                        max={100}
                         value={formData.threshold_limit}
                         onChange={handleInputChange}
                         placeholder=""
