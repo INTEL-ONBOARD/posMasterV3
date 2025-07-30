@@ -11,7 +11,8 @@ export default function validateItem(item) {
     'uom_id',
     'category_id',
     'inventory_id',
-    'unit_price',
+    'retail_price',
+    'stock_price',
     //'batch_code',
     //'item_image_url',
   ];
@@ -31,17 +32,19 @@ export default function validateItem(item) {
 
     // check numbers are valid
     if (
-      ['quantity', 'threshold_limit', 'maximum_capacity', 'unit_price'].includes(field) &&
+      ['quantity', 'threshold_limit', 'maximum_capacity', 'stock_price', 'retail_price'].includes(field) &&
       (typeof val !== 'number' || isNaN(val))
     ) {
+      //alert("quantity and threshold validation falied");
       return false;
     }
 
     // check logical relationships
     if (
-      item.quantity      > item.maximum_capacity ||
-      item.threshold_limit > item.maximum_capacity
+      item.quantity      > item.maximum_capacity 
+      // || item.threshold_limit > item.maximum_capacity
     ) {
+      //alert("quantity and threshold validation falied");
       return false;
     }
   }

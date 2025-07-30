@@ -92,7 +92,7 @@ export default function SalesView() {
           id: item.id,
           name: item.item_name,
           category: item.category?.type || "Uncategorized",
-          price: item.unit_price.toFixed(2),
+          price: item.retail_price.toFixed(2),
           unit: item.uom?.symbol || "pcs",
           sku: item.sku,
           stock: `${item.quantity} ${item.uom?.unit_name || "Units"}`,
@@ -338,7 +338,8 @@ export default function SalesView() {
   const [selectedMember, setSelectedMember] = useState("Member - 3 months");
   const [selectedCredit, setSelectedCredit] = useState("3 months");
   const [cashAmount, setCashAmount] = useState("0.00");
-  const [salesMiddlepage, setSalesMiddlepage] = useState("defalut menu");
+  //about to be changed in the next update
+  const [salesMiddlepage, setSalesMiddlepage] = useState("inventory view");
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
@@ -624,60 +625,19 @@ export default function SalesView() {
                   </div>
                 )}
 
-                {/* Sales middle default page*/}
-                {salesMiddlepage === "defalut menu" && (
-                  <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col lg:flex-row items-start py-5 w-full gap-4 lg:gap-6">
-                    {/* Left Section */}
-                    <div className="w-full lg:w-1/3 h-64 lg:h-full bg-gray-400 flex items-center justify-center rounded-xl shadow-md p-6">
-                      <p className="text-lg text-black">User Details here</p>
-                    </div>
-
-                    {/* Right Section */}
-                    <div className="w-full lg:w-2/3 flex flex-col gap-4 lg:gap-6">
-                      {/* Inventory View Button */}
-                      <button
-                        onClick={() => setSalesMiddlepage("inventory view")}
-                        className="h-[200px] lg:h-[250px] xl:h-[300px] w-full bg-gray-800 rounded-xl shadow-md flex items-center justify-center hover:bg-gray-700 transition p-4"
-                      >
-                        <p className="text-white text-lg">Inventory View</p>
-                      </button>
-
-                      {/* Discount View Button */}
-                      <button
-                        onClick={() => setSalesMiddlepage("discount view")}
-                        className="h-[200px] lg:h-[250px] xl:h-[300px] w-full bg-gray-800 rounded-xl shadow-md flex items-center justify-center hover:bg-gray-700 transition p-4"
-                      >
-                        <p className="text-white text-lg">Discount View</p>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Discount View Page */}
-                {salesMiddlepage === "discount view" && (
-                  <div className="flex w-full h-full bg-gray-100 p-3 lg:p-6 gap-4 lg:gap-6">
-                    <div className="w-full bg-white rounded-xl shadow-md p-4 lg:p-6">
-                      <h2 className="text-xl font-semibold mb-4">Discounts</h2>
-                      <p className="text-gray-600 mb-2">
-                        Discount view page here
-                      </p>
-                    </div>
-                  </div>
-                )}
-
                 {/* Enhanced Inventory View with Auto-suggestions and Category Filter */}
                 {!selectedTableItem && salesMiddlepage == "inventory view" && (
-                  <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col items-center py-5 w-full">
-                    <div className="bg-[#F8F8F8] p-3 lg:p-4 flex-shrink-0 w-full max-w-full lg:max-w-2xl rounded-lg shadow-md mb-4 mx-2 lg:mx-6">
-                      {/* Back button and Search Bar */}
+                  <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col items-center">
+                    <div className="bg-[#F8F8F8] p-3 lg:p-4 flex-shrink-0 w-full max-w-full shadow-md mb-4">
+                      {/* Back button(removed for now) and Search Bar */}
                       <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 mb-4">
                         {/* Back button */}
-                        <button
+                        {/* <button
                           onClick={() => setSalesMiddlepage("defalut menu")}
                           className="bg-black text-white px-4 lg:px-6 py-3 lg:py-4 flex items-center justify-center space-x-2 text-base lg:text-lg">
                           <span className="text-xl lg:text-2xl">&#x276E;</span>
                           <span>Back</span>
-                        </button>
+                        </button> */}
 
                         {/* Search Bar Container */}
                         <div className="w-full flex flex-col gap-3 relative">
@@ -861,7 +821,7 @@ export default function SalesView() {
                         <p className="text-gray-400 text-center mb-4">
                           {scanCode.trim() ? (
                             <>
-                              No items match your search "
+                              No items matched your search "
                               <span className="font-medium">{scanCode}</span>"
                             </>
                           ) : (
@@ -910,7 +870,7 @@ export default function SalesView() {
                   {/* Main search container */}
                   <div className="w-full relative p-2 lg:p-4">
                     {/* Main search container */}
-                    <div className="bg-orange-50 border-2 border-blue-400 rounded-lg overflow-hidden">
+                    <div className="bg-[#E9F5FF] border-2 border-blue-400 rounded-lg overflow-hidden">
                       <div className="p-2 lg:p-3">
                         <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 lg:gap-3">
                           {/* Search icon */}
@@ -957,7 +917,10 @@ export default function SalesView() {
                         </div>
                       </div>
 
-                      {/* Search results */}
+                      {/* Expanded content */}
+                      {isExpanded && (
+                        <div className="">
+                          {/* Search results */}
                       {searchTerm && searchTerm !== 'Guest' && (
                         // member details card
                         <div className="bg-[#EAF6FF] p-4 shadow-md w-full max-w-md flex flex-col text-black font-sans">
@@ -1010,13 +973,6 @@ export default function SalesView() {
                         </div>
 
                       )}
-
-                      {/* Expanded content */}
-                      {isExpanded && (
-                        <div className="border-t border-blue-200 bg-white p-2 lg:p-4">
-                          <div className="text-sm text-gray-600">
-                            More details should be added here
-                          </div>
                         </div>
                       )}
                     </div>

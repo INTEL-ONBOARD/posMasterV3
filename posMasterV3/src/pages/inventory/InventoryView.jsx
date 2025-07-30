@@ -8,40 +8,40 @@ import { apiClient } from "../../api/client.jsx";
 
 function InventoryView() {
   const [inventoryItems, setInventoryItems] = useState([
-        {
-            _id: '688136391a56f324f917f98f',
-            id: 29,
-            stock_trace: [1],
-            item_name: 'dsds1',
-            item_image_url: null,
-            batch_code: '2424DS4521',
-            sku: '2424',
-            quantity: 11,
-            threshold_limit: 11,
-            maximum_capacity: 111,
-            uom_id: 21,
-            category_id: 45,
-            inventory_id: 1,
-            unit_price: 111,
-            stock_update_datetime: '2025-07-23T19:21:29.406Z',
-            stock_created_datetime: '2025-07-23T19:21:29.406Z',
-            __v: 0,
-            uom: {
-                _id: '687720a0798018e08515999c',
-                id: 21,
-                symbol: 'mL',
-                unit_name: 'Milliliter',
-                __v: 0
-            },
-            category: {
-                _id: '687740d91edd62f9c8128bd0',
-                id: 45,
-                brand: 'Axe',
-                type: 'Deodorants',
-                __v: 0
-            },
-            inventory: null
-        },
+        // {
+        //     _id: '688136391a56f324f917f98f',
+        //     id: 29,
+        //     stock_trace: [1],
+        //     item_name: 'dsds1',
+        //     item_image_url: null,
+        //     batch_code: '2424DS4521',
+        //     sku: '2424',
+        //     quantity: 11,
+        //     threshold_limit: 11,
+        //     maximum_capacity: 111,
+        //     uom_id: 21,
+        //     category_id: 45,
+        //     inventory_id: 1,
+        //     unit_price: 111,
+        //     stock_update_datetime: '2025-07-23T19:21:29.406Z',
+        //     stock_created_datetime: '2025-07-23T19:21:29.406Z',
+        //     __v: 0,
+        //     uom: {
+        //         _id: '687720a0798018e08515999c',
+        //         id: 21,
+        //         symbol: 'mL',
+        //         unit_name: 'Milliliter',
+        //         __v: 0
+        //     },
+        //     category: {
+        //         _id: '687740d91edd62f9c8128bd0',
+        //         id: 45,
+        //         brand: 'Axe',
+        //         type: 'Deodorants',
+        //         __v: 0
+        //     },
+        //     inventory: null
+        // },
         {
             _id: '688452ef1ddc1d25637c9a47',
             id: 31,
@@ -148,6 +148,7 @@ function InventoryView() {
     // Fetch Categories from API and create mapping
     useEffect(() => {
       const fetchCategories = async () => {
+        setIsSearching(true);
         try {
           const response = await apiClient.get("api/categories");
           if (response.data.status === "success") {
@@ -159,6 +160,7 @@ function InventoryView() {
           console.error("Error fetching categories:", error);
         } finally {
           //setLoadingCategories(false); //if more control over categories needed later, use this
+          setIsSearching(false);
         }
       };
   
@@ -248,7 +250,7 @@ function InventoryView() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-10">
               {isSearching ? (
                 <div className="col-span-full flex flex-col items-center justify-center">
-                  <div className="flex flex-col items-center">
+                  <div className="flex flex-col items-center mt-32">
                     {/* Custom spinner */}
                     <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
                     <span className="text-gray-700 text-xl mt-1">Please wait...</span>
