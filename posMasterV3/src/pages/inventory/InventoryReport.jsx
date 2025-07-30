@@ -27,149 +27,6 @@ export default function InventoryReport() {
       stock: 80,
       image: bananaImg,
     },
-    {
-      id: "3",
-      name: "Carrot",
-      barcode: "SKU-58394324",
-      category: "Vegetable",
-      price: "150.00",
-      unit: "KG",
-      sku: "SKU003",
-      stock: 60,
-      image: bananaImg,
-    },
-    {
-      id: "4",
-      name: "Milk",
-      barcode: "SKU-34681324",
-      category: "Dairy",
-      price: "200.00",
-      unit: "LTR",
-      sku: "SKU004",
-      stock: 50,
-      image: bananaImg,
-    },
-    {
-      id: "5",
-      name: "Bread",
-      barcode: "SKU-34681325",
-      category: "Bakery",
-      price: "100.00",
-      unit: "PCS",
-      sku: "SKU005",
-      stock: 120,
-      image: bananaImg,
-    },
-    {
-      id: "6",
-      name: "Eggs",
-      barcode: "SKU-34681326",
-      category: "Poultry",
-      price: "20.00",
-      unit: "PCS",
-      sku: "SKU006",
-      stock: 200,
-      image: bananaImg,
-    },
-    {
-      id: "7",
-      name: "Orange Juice",
-      barcode: "SKU-34681327",
-      category: "Beverage",
-      price: "250.00",
-      unit: "LTR",
-      sku: "SKU007",
-      stock: 40,
-      image: bananaImg,
-    },
-    {
-      id: "8",
-      name: "Chicken Breast",
-      barcode: "SKU-34681328",
-      category: "Meat",
-      price: "600.00",
-      unit: "KG",
-      sku: "SKU008",
-      stock: 30,
-      image: bananaImg,
-    },
-    {
-      id: "9",
-      name: "Cheese",
-      barcode: "SKU-34681329",
-      category: "Dairy",
-      price: "500.00",
-      unit: "KG",
-      sku: "SKU009",
-      stock: 25,
-      image: bananaImg,
-    },
-    {
-      id: "10",
-      name: "Parata",
-      barcode: "SKU-34681329",
-      category: "Dairy",
-      price: "500.00",
-      unit: "KG",
-      sku: "SKU009",
-      stock: 25,
-      image: bananaImg,
-    },
-    {
-      id: "11",
-      name: "Noodles",
-      barcode: "SKU-34681329",
-      category: "Dairy",
-      price: "500.00",
-      unit: "KG",
-      sku: "SKU009",
-      stock: 25,
-      image: bananaImg,
-    },
-    {
-      id: "12",
-      name: "Chicken Breast",
-      barcode: "SKU-34681328",
-      category: "Meat",
-      price: "600.00",
-      unit: "KG",
-      sku: "SKU008",
-      stock: 30,
-      image: bananaImg,
-    },
-    {
-      id: "13",
-      name: "Cheese",
-      barcode: "SKU-34681329",
-      category: "Dairy",
-      price: "500.00",
-      unit: "KG",
-      sku: "SKU009",
-      stock: 25,
-      image: bananaImg,
-    },
-    {
-      id: "14",
-      name: "Parata",
-      barcode: "SKU-34681329",
-      category: "Dairy",
-      price: "500.00",
-      unit: "KG",
-      sku: "SKU009",
-      stock: 25,
-      image: bananaImg,
-    },
-    {
-      id: "15",
-      name: "Noodles",
-      barcode: "SKU-34681329",
-      category: "Dairy",
-      price: "500.00",
-      unit: "KG",
-      sku: "SKU009",
-      stock: 25,
-      image: bananaImg,
-    },
   ]);
   // Calculate summary statistics
   const totalItems = inventoryItems.length;
@@ -229,21 +86,21 @@ export default function InventoryReport() {
               </span>
             </button>
           </div>
-          <div className="mb-2 bg-[#F8F8F8] rounded">
+          {/* <div className="mb-2 bg-[#F8F8F8] rounded">
             <button 
               onClick={() => setReportType("advanced")}
               className={`w-full text-left px-4 py-3 font-semibold flex items-center justify-between ${
                 reportType === "advanced" ? "text-blue-600 bg-blue-50" : "text-gray-500"
               }`}
             >
-              ADVANCE REPORT
+              ADVANCED REPORT
               <span>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               </span>
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
 
