@@ -471,6 +471,27 @@ export default function SalesView() {
   const isVisible = (section) =>
     activeSection === section ? "block" : "hidden";
 
+  const [selected, setSelected] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownValue, setDropdownValue] = useState('Cash');
+
+  const handleButtonClick = (value) => {
+    setSelected(value);
+  };
+
+  const handleDropdownToggle = () => {
+    setDropdownOpen(!dropdownOpen);
+  };
+
+  const handleDropdownSelect = (value) => {
+    setDropdownValue(value);
+    setDropdownOpen(false);
+  };
+
+  
+
+  
+
   return (
     <div className="flex h-screen bg-[#EBEBEB] -ml-12">
       <SalesSidebar
@@ -854,6 +875,67 @@ export default function SalesView() {
                     )}
                   </div>
                 )}
+
+
+
+                {/* Payment Confirmation Section */}
+                {selectedTableItem && salesMiddlepage == "payment confirmation" && (
+                <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      className={`border-2 border-black p-4 ${selected === '3 Months' ? 'bg-gray-400' : ''}`}
+                      onClick={() => handleButtonClick('3 Months')}
+                    >
+                      Member - 3 Months
+                    </button>
+                    <button
+                      className={`border-2 border-black p-4 ${selected === '6 Months' ? 'bg-gray-400' : ''}`}
+                      onClick={() => handleButtonClick('6 Months')}
+                    >
+                      Member - 6 Months
+                    </button>
+                    <button
+                      className={`border-2 border-black p-4 ${selected === '9 Months' ? 'bg-gray-400' : ''}`}
+                      onClick={() => handleButtonClick('9 Months')}
+                    >
+                      Member - 9 Months
+                    </button>
+                    <div className="relative">
+                      <button
+                        className={`border-2 border-black p-4 ${selected === 'dropdown' ? 'bg-gray-400' : ''}`}
+                        onClick={handleDropdownToggle}
+                      >
+                        {dropdownValue} ▼
+                      </button>
+                      {dropdownOpen && (
+                        <div className="absolute left-0 mt-1 border border-gray-300 bg-white shadow-lg">
+                          <button
+                            className="block w-full text-left p-2 hover:bg-gray-200"
+                            onClick={() => handleDropdownSelect('Cash')}
+                          >
+                            Cash
+                          </button>
+                          <button
+                            className="block w-full text-left p-2 hover:bg-gray-200"
+                            onClick={() => handleDropdownSelect('Credit')}
+                          >
+                            Credit
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <p>Confirm ?</p>
+                    <div className="flex space-x-4 mt-4">
+                      <button className="bg-red-500 text-white px-4 py-2 rounded">Cancel</button>
+                      <button className="bg-blue-500 text-white px-4 py-2 rounded">Done</button>
+                    </div>
+                  </div>
+                </div>)}
+
+
               </div>
             </div>
 
@@ -916,63 +998,64 @@ export default function SalesView() {
                           </div>
                         </div>
                       </div>
+                      
 
                       {/* Expanded content */}
                       {isExpanded && (
                         <div className="">
                           {/* Search results */}
-                      {searchTerm && searchTerm !== 'Guest' && (
-                        // member details card
-                        <div className="bg-[#EAF6FF] p-4 shadow-md w-full max-w-md flex flex-col text-black font-sans">
+                          {searchTerm && searchTerm !== 'Guest' && (
+                            // member details card
+                            <div className="bg-[#EAF6FF] p-4 shadow-md w-full max-w-md flex flex-col text-black font-sans">
 
-                          {/* Member and Income Row */}
-                          <div className="flex justify-between items-start">
-                            {/* Profile section */}
-                            <div className="flex gap-3 w-3/5">
-                              {/* Avatar Placeholder */}
-                              <img src={profileImg} className="w-12 h-12 bg-gray-300 rounded-full" />
-                              <div>
-                                <h2 className="text-blue-800 font-bold">MR. Harischandra Silva</h2>
-                                <p className="text-md font-semibold">MEMBER: 2345</p>
-                                <p className="text-xs text-gray-600">PRE-MEMBER: 2345</p>
+                              {/* Member and Income Row */}
+                              <div className="flex justify-between items-start">
+                                {/* Profile section */}
+                                <div className="flex gap-3 w-3/5">
+                                  {/* Avatar Placeholder */}
+                                  <img src={profileImg} className="w-12 h-12 bg-gray-300 rounded-full" />
+                                  <div>
+                                    <h2 className="text-blue-800 font-bold">MR. Harischandra Silva</h2>
+                                    <p className="text-md font-semibold">MEMBER: 2345</p>
+                                    <p className="text-xs text-gray-600">PRE-MEMBER: 2345</p>
+                                  </div>
+                                </div>
+
+                                {/* Income */}
+                                <div className="flex flex-col w-2/5 bg-green-300 text-center px-4 py-2">
+                                  <p className="text-blue-900 font-bold text-lg">RS. 2,000</p>
+                                  <p className="text-sm text-gray-800">INCOME</p>
+                                </div>
+                              </div>
+
+                              {/* Amount and Credit Row */}
+                              <div className="flex justify-between items-center">
+                                {/* Transaction info */}
+                                <div className="flex flex-col w-3/5">
+                                  <p className="text-sm font-semibold text-black">Total Amount of the transaction</p>
+                                  <p className="text-sm font-semibold text-black">2024-06-23</p>
+                                  <p className="text-2xl font-bold text-black">Rs.2300.00</p>
+                                </div>
+
+                                {/* Credits */}
+                                <div className="bg-orange-300 text-center px-4 py-2 flex flex-col w-2/5">
+                                  <p className="text-blue-900 font-bold text-lg">RS. 140</p>
+                                  <p className="text-sm text-gray-800">CREDITS</p>
+                                </div>
+                              </div>
+
+                              {/* Buttons Row */}
+                              <div className="flex justify-between gap-3">
+                                <button className="flex-1 border border-black py-2 hover:bg-gray-100">
+                                  See more ↗
+                                </button>
+                                <button className="flex-1 border border-black py-2 hover:bg-gray-100">
+                                  Select ✔
+                                </button>
                               </div>
                             </div>
 
-                            {/* Income */}
-                            <div className="flex flex-col w-2/5 bg-green-300 text-center px-4 py-2">
-                              <p className="text-blue-900 font-bold text-lg">RS. 2,000</p>
-                              <p className="text-sm text-gray-800">INCOME</p>
-                            </div>
-                          </div>
-
-                          {/* Amount and Credit Row */}
-                          <div className="flex justify-between items-center">
-                            {/* Transaction info */}
-                            <div className="flex flex-col w-3/5">
-                              <p className="text-sm font-semibold text-black">Total Amount of the transaction</p>
-                              <p className="text-sm font-semibold text-black">2024-06-23</p>
-                              <p className="text-2xl font-bold text-black">Rs.2300.00</p>
-                            </div>
-
-                            {/* Credits */}
-                            <div className="bg-orange-300 text-center px-4 py-2 flex flex-col w-2/5">
-                              <p className="text-blue-900 font-bold text-lg">RS. 140</p>
-                              <p className="text-sm text-gray-800">CREDITS</p>
-                            </div>
-                          </div>
-
-                          {/* Buttons Row */}
-                          <div className="flex justify-between gap-3">
-                            <button className="flex-1 border border-black py-2 hover:bg-gray-100">
-                              See more ↗
-                            </button>
-                            <button className="flex-1 border border-black py-2 hover:bg-gray-100">
-                              Select ✔
-                            </button>
-                          </div>
-                        </div>
-
-                      )}
+                          )}
                         </div>
                       )}
                     </div>
@@ -1110,58 +1193,58 @@ export default function SalesView() {
   );
 }
 
-  // Alternative approach: Combined fetch function
-  // const fetchInventoryAndCategories = async () => {
-  //   try {
-  //     setIsSearching(true);
+// Alternative approach: Combined fetch function
+// const fetchInventoryAndCategories = async () => {
+//   try {
+//     setIsSearching(true);
 
-  //     // Fetch inventory items
-  //     const inventoryResponse = await apiClient.get('/api/items/extended');
-  //     const inventoryData = inventoryResponse.data;
+//     // Fetch inventory items
+//     const inventoryResponse = await apiClient.get('/api/items/extended');
+//     const inventoryData = inventoryResponse.data;
 
-  //     if (inventoryData && inventoryData.data && Array.isArray(inventoryData.data)) {
-  //       // Transform inventory items
-  //       const transformedItems = inventoryData.data.map(item => ({
-  //         id: item.id,
-  //         name: item.item_name,
-  //         category: item.category?.type || "Uncategorized",
-  //         price: item.unit_price.toFixed(2),
-  //         unit: item.uom?.symbol || "pcs",
-  //         sku: item.sku,
-  //         stock: `${item.quantity} ${item.uom?.unit_name || "Units"}`,
-  //         image: item.item_image_url || bananaImg,
-  //         brand: item.category?.brand || "",
-  //         batchCode: item.batch_code
-  //       }));
+//     if (inventoryData && inventoryData.data && Array.isArray(inventoryData.data)) {
+//       // Transform inventory items
+//       const transformedItems = inventoryData.data.map(item => ({
+//         id: item.id,
+//         name: item.item_name,
+//         category: item.category?.type || "Uncategorized",
+//         price: item.unit_price.toFixed(2),
+//         unit: item.uom?.symbol || "pcs",
+//         sku: item.sku,
+//         stock: `${item.quantity} ${item.uom?.unit_name || "Units"}`,
+//         image: item.item_image_url || bananaImg,
+//         brand: item.category?.brand || "",
+//         batchCode: item.batch_code
+//       }));
 
-  //       setInventoryItems(transformedItems);
-  //       setFilteredItems(transformedItems);
+//       setInventoryItems(transformedItems);
+//       setFilteredItems(transformedItems);
 
-  //       // Extract unique categories
-  //       const categoryMap = new Map();
-  //       inventoryData.data.forEach(item => {
-  //         if (item.category && item.category.type) {
-  //           const categoryKey = item.category.id || item.category._id;
-  //           if (!categoryMap.has(categoryKey)) {
-  //             categoryMap.set(categoryKey, {
-  //               id: item.category.id,
-  //               type: item.category.type,
-  //               brand: item.category.brand || "Various",
-  //               _id: item.category._id
-  //             });
-  //           }
-  //         }
-  //       });
+//       // Extract unique categories
+//       const categoryMap = new Map();
+//       inventoryData.data.forEach(item => {
+//         if (item.category && item.category.type) {
+//           const categoryKey = item.category.id || item.category._id;
+//           if (!categoryMap.has(categoryKey)) {
+//             categoryMap.set(categoryKey, {
+//               id: item.category.id,
+//               type: item.category.type,
+//               brand: item.category.brand || "Various",
+//               _id: item.category._id
+//             });
+//           }
+//         }
+//       });
 
-  //       setCategories(Array.from(categoryMap.values()));
-  //     }
+//       setCategories(Array.from(categoryMap.values()));
+//     }
 
-  //   } catch (error) {
-  //     console.error("Error fetching data:", error);
-  //     setInventoryItems([]);
-  //     setFilteredItems([]);
-  //     setCategories([]);
-  //   } finally {
-  //     setIsSearching(false);
-  //   }
-  // };
+//   } catch (error) {
+//     console.error("Error fetching data:", error);
+//     setInventoryItems([]);
+//     setFilteredItems([]);
+//     setCategories([]);
+//   } finally {
+//     setIsSearching(false);
+//   }
+// };
