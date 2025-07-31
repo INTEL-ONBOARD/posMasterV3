@@ -427,13 +427,6 @@ export default function SalesView() {
     setScannedItems((items) => items.filter((item) => item.id !== id));
   };
 
-  const handleProceedPayment = () => {
-    console.log("Processing payment for:", totalAmount);
-    console.log("Credit period:", selectedCredit);
-    console.log("Membership:", selectedMember);
-    console.log("Cash amount:", cashAmount);
-  };
-
   const handleProductSelect = (item) => {
     console.log("Product selected:", item);
     // Add logic to add item to scanned items
@@ -465,32 +458,33 @@ export default function SalesView() {
 
   const handleClearSelectedItem = () => {
     setSelectedTableItem(null);
+    setSalesMiddlepage("inventory view");
   };
 
   // Helper function to check visibility
   const isVisible = (section) =>
     activeSection === section ? "block" : "hidden";
 
-  const [selected, setSelected] = useState(null);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [dropdownValue, setDropdownValue] = useState('Cash');
+  const [isMemberSectionOpen, setIsMemberSectionOpen] = useState(false);
+  const [isPaymentSectionOpen, setIsPaymentSectionOpen] = useState(false);
 
-  const handleButtonClick = (value) => {
-    setSelected(value);
+  const handleMemberSection = () => {
+    console.log("Processing payment for:", totalAmount);
+    // Close selected item and salesMiddlePage
+    setSelectedTableItem(null);
+    setSalesMiddlepage("");
+    // Open payment section
+    setIsMemberSectionOpen(true);
   };
 
-  const handleDropdownToggle = () => {
-    setDropdownOpen(!dropdownOpen);
+  const handleProceedPayment = () => {
+    console.log("Processing payment for:", totalAmount);
+    // Close selected item and salesMiddlePage
+    setSelectedTableItem(null);
+    setSalesMiddlepage("");
+    // Open payment section
+    setIsPaymentSectionOpen(true);
   };
-
-  const handleDropdownSelect = (value) => {
-    setDropdownValue(value);
-    setDropdownOpen(false);
-  };
-
-  
-
-  
 
   return (
     <div className="flex h-screen bg-[#EBEBEB] -ml-12">
@@ -876,67 +870,82 @@ export default function SalesView() {
                   </div>
                 )}
 
-
-
-                {/* Payment Confirmation Section */}
-                {selectedTableItem && salesMiddlepage == "payment confirmation" && (
-                <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      className={`border-2 border-black p-4 ${selected === '3 Months' ? 'bg-gray-400' : ''}`}
-                      onClick={() => handleButtonClick('3 Months')}
-                    >
-                      Member - 3 Months
-                    </button>
-                    <button
-                      className={`border-2 border-black p-4 ${selected === '6 Months' ? 'bg-gray-400' : ''}`}
-                      onClick={() => handleButtonClick('6 Months')}
-                    >
-                      Member - 6 Months
-                    </button>
-                    <button
-                      className={`border-2 border-black p-4 ${selected === '9 Months' ? 'bg-gray-400' : ''}`}
-                      onClick={() => handleButtonClick('9 Months')}
-                    >
-                      Member - 9 Months
-                    </button>
-                    <div className="relative">
+                {isPaymentSectionOpen && (
+                  <div className="bg-white border h-[45rem] border-gray-300 rounded-lg shadow-sm flex-shrink-0">
+                    {/* Header with close button */}
+                    <div className="flex items-center justify-between p-3 border-b border-gray-200">
+                      <h3 className="font-semibold text-gray-800 text-sm">
+                        Selected from Cart
+                      </h3>
                       <button
-                        className={`border-2 border-black p-4 ${selected === 'dropdown' ? 'bg-gray-400' : ''}`}
-                        onClick={handleDropdownToggle}
+                        //onClick={handleClearSelectedItem}
+                        className="text-gray-400 hover:text-gray-600 transition-colors"
                       >
-                        {dropdownValue} ▼
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
                       </button>
-                      {dropdownOpen && (
-                        <div className="absolute left-0 mt-1 border border-gray-300 bg-white shadow-lg">
-                          <button
-                            className="block w-full text-left p-2 hover:bg-gray-200"
-                            onClick={() => handleDropdownSelect('Cash')}
-                          >
-                            Cash
-                          </button>
-                          <button
-                            className="block w-full text-left p-2 hover:bg-gray-200"
-                            onClick={() => handleDropdownSelect('Credit')}
-                          >
-                            Credit
-                          </button>
-                        </div>
-                      )}
                     </div>
-                  </div>
 
-                  <div className="mt-6">
-                    <p>Confirm ?</p>
-                    <div className="flex space-x-4 mt-4">
-                      <button className="bg-red-500 text-white px-4 py-2 rounded">Cancel</button>
-                      <button className="bg-blue-500 text-white px-4 py-2 rounded">Done</button>
+
+
+
+
+
+                    {/* Available Discounts Section */}
+
+                  </div>
+                )}
+                {isMemberSectionOpen && (
+                  <div className="bg-white border h-[45rem] border-gray-300 rounded-lg shadow-sm flex-shrink-0">
+                    {/* Header with close button */}
+                    <div className="flex items-center justify-between p-3 border-b border-gray-200">
+                      <h3 className="font-semibold text-gray-800 text-sm">
+                        Selected from Cart
+                      </h3>
+                      <button
+                        //onClick={handleClearSelectedItem}
+                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
                     </div>
+
+
+
+
+
+
+                    {/* Available Discounts Section */}
+
                   </div>
-                </div>)}
-
-
+                )}
               </div>
+
+
+
             </div>
 
 
@@ -947,6 +956,9 @@ export default function SalesView() {
                 className="bg-white overflow-hidden"
                 style={{ height: "calc(100vh - 300px)" }}
               >
+
+
+
                 {/* member container */}
                 <div className="w-full relative p-auto">
                   {/* Main search container */}
@@ -998,7 +1010,6 @@ export default function SalesView() {
                           </div>
                         </div>
                       </div>
-                      
 
                       {/* Expanded content */}
                       {isExpanded && (
@@ -1046,8 +1057,10 @@ export default function SalesView() {
 
                               {/* Buttons Row */}
                               <div className="flex justify-between gap-3">
-                                <button className="flex-1 border border-black py-2 hover:bg-gray-100">
-                                  See more ↗
+                                <button className="flex-1 border border-black py-2 hover:bg-gray-100"
+                                  onClick={handleMemberSection}
+                                >
+                                  See more ↗️
                                 </button>
                                 <button className="flex-1 border border-black py-2 hover:bg-gray-100">
                                   Select ✔
@@ -1153,13 +1166,18 @@ export default function SalesView() {
                     Hold Order
                   </button>
 
-                  <button className="flex-1 px-4 py-3 bg-[#1A318C] text-white text-sm hover:bg-blue-700 transition-all flex items-center justify-center">
+                  <button
+                    onClick={handleProceedPayment}
+                    className="flex-1 px-4 py-3 bg-[#1A318C] text-white text-sm hover:bg-blue-700 transition-all flex items-center justify-center"
+                  >
                     <img src={sidebarPaymentBtnImg} alt="Proceed Payment" className="w-4 h-4 mr-2" />
                     Proceed Payment
                   </button>
                 </div>
 
               </div>
+
+
             </div>
           </div>
         </div>
