@@ -1,61 +1,9 @@
-# POS Master 3
+# AVOID LOGIN WITH npm run dev
 
-A modern Point of Sale (POS) interface built with **React**, **Vite**, and **Tailwind CSS**.
+when logging using **npm run dev** command, comment out these lines in **Login.jsx** or otherwise the user won't login correctly.
 
-## Features
-
-- Multiple desktop UI views for login, loading, and dashboard
-- Responsive design with Tailwind CSS
-- Modular React components
-- Example assets and icons
-
-## Getting Started
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) (v18 or newer recommended)
-- [npm](https://www.npmjs.com/) (comes with Node.js)
-
-### Installation
-
-1. Clone the repository:
-   git clone (https://github.com/INTEL-ONBOARD/posMasterV3.git)
-   cd posMasterV3/posMasterV3
-  
-
-2. Install dependencies:
-   npm install
+**from LINE:66 to LINE:8**
+        if (response.data.data.email && response.data.data.token) {
+          window.electronAPI.sendUserData(response.data.data.email, response.data.data._id);
+        }
  
-
-3. Start the development server:
-   npm run dev
- 
-
-4. Open [http://localhost:5173](http://localhost:5173) in your browser.
-
-### Build for Production
-npm run build
-
-
-### Preview Production Build
-npm run preview
-
-
-## Project Structure
-
-posMasterV3/
-  ├── public/
-  ├── src/
-  │   ├── frontend/components/
-  │   ├── assets/
-  │   ├── App.jsx
-  │   └── main.jsx
-  ├── index.html
-  ├── package.json
-  ├── tailwind.config.js
-  ├── postcss.config.js
-
-
-B1N4L
-TODO:
-[] clear add item form plain obj with empty/null afte a crud operation.
