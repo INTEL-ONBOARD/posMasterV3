@@ -66,7 +66,6 @@ function Login() {
         if (response.data.data.email && response.data.data.token) {
           window.electronAPI.sendUserData(response.data.data.email, response.data.data._id);
         }
-        window.electronAPI.sendUserData(response.data.data.email, response.data.data._id);
         //window.electronAPI.sendUserData("user@example.com", "token123");
         console.log("Renderer: sent user data");
         navigate("/dashboard");
