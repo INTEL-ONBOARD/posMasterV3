@@ -114,7 +114,7 @@ function BranchConfig() {
   };
 
   return (
-    <div className="flex-1 h-[calc(100vh-6rem)] bg-white flex justify-between flex-col px-8 py-8">
+    <div className="flex-1 h-[calc(100vh-2rem)] bg-white flex justify-between flex-col px-8 py-8">
       <div>
         <h2 className="text-2xl font-bold text-gray-400 mb-6">BRANCH CONFIGURATION</h2>
 

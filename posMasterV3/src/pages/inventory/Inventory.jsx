@@ -48,7 +48,7 @@ function Inventory() {
       />
 
 
-      <main className="flex-1 bg-[#F3F3F3] h-[calc(100vh-6rem)] relative">
+      <main className="flex-1 bg-[#F3F3F3] h-[calc(100vh-2rem)] relative">
 
         {/* View Inventory */}
         <div className={isVisible("view-inventory")}>
