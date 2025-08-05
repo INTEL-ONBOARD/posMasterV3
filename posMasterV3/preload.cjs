@@ -17,11 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   receive: (channel, func) => {
     ipcRenderer.on(channel, (event, ...args) => func(...args));
   },
+  sendUserData: (email, token) => ipcRenderer.send("store-user-data", { email, token }),
 
-  sendUserDataToMain: () => {
-    const user = localStorage.getItem('user');
-    if (user) {
-      ipcRenderer.send('store-user-data', JSON.parse(user));
-    }
-  }
+
 });

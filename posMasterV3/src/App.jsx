@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   HashRouter,
   Routes,
@@ -21,6 +21,23 @@ import InventoryConfig from './pages/inventory/InventoryConfig.jsx';
 function App() {
   const [currentView, setCurrentView] = useState('desktop1');
 
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const username = localStorage.getItem("username");
+      const token = localStorage.getItem("token");
+
+      if (username && token && window.electronAPI?.sendUserData) {
+        window.electronAPI.sendUserData(username, token);
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
   return (
     <ToastProvider>
       <HashRouter>
@@ -28,8 +45,6 @@ function App() {
           <Route index element={<Intro />} />
           <Route path="login" element={<Login />} />
 
-          {/* Private routing when needed (disabled for now) */}
-          {/* <Route element={<ProtectedRoute />}> */}
           <Route path="dashboard" element={<Dashboard />} >
             <Route path="inventory/*" element={<Inventory />} />
             <Route path="inventory-config" element={<InventoryConfig />} />
@@ -37,7 +52,6 @@ function App() {
             <Route path="notifications" element={<Notification />} />
             <Route path="sales" element={<SalesView />} />
           </Route>
-          {/* </Route> */}
 
           <Route path="*" element={<NotFound />} />
         </Routes>
