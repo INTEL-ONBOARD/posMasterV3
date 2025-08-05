@@ -909,102 +909,109 @@ const [selected, setSelected] = useState(null);
                 )}
 
                 {isPaymentSectionOpen && (
-                  <div className="bg-white border h-[45rem] border-gray-300 rounded-lg shadow-sm flex-shrink-0">
-                  {/* Header with close button */}
-                  <div className="flex items-center justify-between p-3 border-b border-gray-200">
-                    <h3 className="font-semibold text-gray-800 text-sm">
-                      Selected from Cart
-                    </h3>
-                    <button
-                      onClick={handleClosePaymentSection}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
+<div className="bg-white border h-[45rem] border-gray-300 rounded-lg shadow-sm flex-shrink-0">
+  {/* Header */}
+  <div className="flex items-center justify-between p-3 border-b border-gray-200">
+    <h3 className="font-semibold text-gray-800 text-sm">
+      Selected from Cart
+    </h3>
+    <button
+      onClick={handleClosePaymentSection}
+      className="text-gray-400 hover:text-gray-600 transition-colors"
+    >
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M6 18L18 6M6 6l12 12"
+        />
+      </svg>
+    </button>
+  </div>
 
-                  {/* Membership & payment option buttons */}
-                  <div className="grid grid-cols-2 gap-4 p-3">
-                    <button
-                      className={`border-2 border-black p-4 ${selected === '3 Months' ? 'bg-gray-400' : ''}`}
-                      onClick={() => handleButtonClick('3 Months')}
-                    >
-                      Member - 3 Months
-                    </button>
-                    <button
-                      className={`border-2 border-black p-4 ${selected === '6 Months' ? 'bg-gray-400' : ''}`}
-                      onClick={() => handleButtonClick('6 Months')}
-                    >
-                      Member - 6 Months
-                    </button>
-                    <button
-                      className={`border-2 border-black p-4 ${selected === '9 Months' ? 'bg-gray-400' : ''}`}
-                      onClick={() => handleButtonClick('9 Months')}
-                    >
-                      Member - 9 Months
-                    </button>
+  {/* Membership & payment option buttons */}
+  <div className="flex gap-4 p-3">
+    {/* Left column: member & dropdown */}
+    <div className="flex flex-col gap-2 w-1/2">
+      {['3 Months', '6 Months', '9 Months'].map((term) => (
+        <button
+          key={term}
+          onClick={() => handleButtonClick(term)}
+          className={`w-full border-2 border-black p-4 text-center ${
+            selected === term ? 'bg-gray-400' : ''
+          }`}
+        >
+          Member – {term}
+        </button>
+      ))}
 
-                    <div className="relative">
-                      <button
-                        className={`border-2 border-black p-4 ${dropdownOpen ? 'bg-gray-400' : ''}`}
-                        //onClick={handleDropdownToggle}
-                      >
-                        {dropdownValue} ▼
-                      </button>
-                      {dropdownOpen && (
-                        <div className="absolute left-0 mt-1 border border-gray-300 bg-white shadow-lg">
-                          <button
-                            className="block w-full text-left p-2 hover:bg-gray-200"
-                            onClick={() => handleDropdownSelect('Cash')}
-                          >
-                            Cash
-                          </button>
-                          <button
-                            className="block w-full text-left p-2 hover:bg-gray-200"
-                            onClick={() => handleDropdownSelect('Credit')}
-                          >
-                            Credit
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+      <div className="relative w-full">
+        <button
+          onClick={handleDropdownToggle}
+          className={`w-full border-2 border-black p-4 text-left flex justify-between items-center ${
+            dropdownOpen ? 'bg-gray-400' : ''
+          }`}
+        >
+          {dropdownValue}
+          <span className="ml-2">&darr;</span>
+        </button>
 
-                  {/* Footer confirmation */}
-                  <div className="mt-6 p-3">
-                    <p className="text-gray-700">Confirm?</p>
-                    <div className="flex space-x-4 mt-4">
-                      <button
-                        //onClick={handleCancel}
-                        className="bg-red-500 text-white px-4 py-2 rounded"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        //onClick={handleDone}
-                        className="bg-blue-500 text-white px-4 py-2 rounded"
-                      >
-                        Done
-                      </button>
-                    </div>
-                  </div>
-                </div>
+        {dropdownOpen && (
+          <div className="absolute inset-x-0 mt-1 border border-gray-300 bg-white shadow-lg">
+            {['Cash', 'Credit'].map((opt) => (
+              <button
+                key={opt}
+                onClick={() => handleDropdownSelect(opt)}
+                className="block w-full text-left p-4 hover:bg-gray-200"
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Right column: single Cash button */}
+    <div className="w-1/2 flex items-start">
+      <button
+        onClick={() => handleDropdownSelect('Cash')}
+        className="w-full border-2 border-black p-4 text-center h-[17rem]"
+      >
+        Cash
+      </button>
+    </div>
+  </div>
+
+  {/* Footer confirmation */}
+  <div className="mt-6 p-3 flex-col flex items-center">
+    <p className="text-gray-700 item-center justify-center">Confirm?</p>
+    <div className="flex space-x-4 mt-4 w-full items-center justify-center">
+      <button
+        className="bg-red-500 text-white px-4 py-2 rounded"
+      >
+        Cancel
+      </button>
+      <button
+        className="bg-blue-500 text-white px-4 py-2 rounded"
+      >
+        Done
+      </button>
+    </div>
+  </div>
+</div>
+
 
                 )}
                 {isMemberSectionOpen && (
                   <div className="bg-white border h-[45rem] border-gray-300 rounded-lg shadow-sm flex-shrink-0">
+                    <div>
                     {/* Header with close button */}
                     <div className="flex items-center justify-between p-3 border-b border-gray-200">
                       <h3 className="font-semibold text-gray-800 text-sm">
@@ -1028,15 +1035,116 @@ const [selected, setSelected] = useState(null);
                           />
                         </svg>
                       </button>
+                      
                     </div>
-
-
-
-
-
-
                       {/* Available Discounts Section */}
+</div>
+{/* dummy member table */}
+          <div className="flex flex-col items-center justify-center bg-white">
+          {/* Title */}
+          <h1 className="text-2xl font-bold text-black font-sans mb-6">
+            Last 6 Months Summary View
+          </h1>
 
+          {/* Table */}
+          <div className="w-full max-w-4xl bg-white border border-gray-300 rounded-lg shadow-md">
+            <table className="w-full table-auto">
+              <thead className="bg-gray-200">
+                <tr>
+                  <th className="px-4 py-2 text-center text-black font-sans">Type</th>
+                  <th className="px-4 py-2 text-center text-black font-sans">Feb 2025</th>
+                  <th className="px-4 py-2 text-center text-black font-sans">Mar 2025</th>
+                  <th className="px-4 py-2 text-center text-black font-sans">Apr 2025</th>
+                  <th className="px-4 py-2 text-center text-black font-sans">May 2025</th>
+                  <th className="px-4 py-2 text-center text-black font-sans">Jun 2025</th>
+                  <th className="px-4 py-2 text-center text-black font-sans">Jul 2025</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                <tr>
+                  <td className="px-4 py-2 text-center bg-gray-100 text-black font-sans">Normal Leaf(KG)</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-2 text-center bg-gray-100 text-black font-sans">Golden Leaf(KG)</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0</td>
+                </tr>
+                <tr>
+                  
+                  <td className="px-4 py-2 text-center bg-gray-100 text-black font-sans">Leaf Total(Rs)</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                </tr>
+                <tr>
+                <div className="h-6 bg-gray-100"></div>
+                </tr>
+                <tr>
+                  <td className="px-4 py-2 text-center bg-gray-100 text-black font-sans">POS Total</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                </tr>
+                <tr>
+                <div className="h-6 bg-gray-100"></div>
+                </tr>
+                <tr>
+                  <td className="px-4 py-2 text-center bg-gray-100 text-black font-sans">Total Addition</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-2 text-center bg-gray-100 text-black font-sans">Total Deductions</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-2 text-center bg-gray-100 text-black font-sans">Final Balance</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                  <td className="px-4 py-2 text-center text-black font-sans">0.00</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex justify-center mt-6 space-x-4">
+            <button className="px-6 py-2 bg-gray-500 decisionButton text-white font-sans rounded hover:bg-gray-600">
+              CANCEL
+            </button>
+            <button className="px-6 py-2 bg-blue-800 decisionButton text-white font-sans rounded hover:bg-blue-900">
+              DONE
+            </button>
+          </div>
+        </div>
                   </div>
                 )}
               </div>

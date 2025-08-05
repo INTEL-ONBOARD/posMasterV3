@@ -1,20 +1,20 @@
 import React, { useContext, useState } from "react";
+import ToastContext from "./toasts/ToastService.jsx";
+import SpinnerDot from "../frontend/components/SpinnerDot.jsx";
+import { Outlet, useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar.jsx";
 import Dashboard_inventory from "../assets/Dashboard_inventory.png";
 import Dashboard_logout from "../assets/Dashboard_logout.png";
 import Dashboard_settings from "../assets/Dashboard_settings.png";
 import Dashboard_viewmore from "../assets/Dashboard_viewmore.png";
 import Dashboard_notification from "../assets/Dashboard_notification.png";
 import Dashboard_Morawakle from "../assets/Dashboard_Morawakle.png";
-import ToastContext from "./toasts/ToastService.jsx";
 import DashboardCard from "../frontend/components/DashboardCard.jsx";
-import SpinnerDot from "../frontend/components/SpinnerDot.jsx";
-import { Outlet, useNavigate } from "react-router-dom";
 import Inventory from "./inventory/Inventory.jsx";
 import LoadingBar from "../frontend/components/LoadingBar.jsx";
 import Dashboard_card from "../assets/Dashboard_card.png";
 import Dashboard_manageUsers from "../assets/Dashboard_manageUsers.png";
 import Header from "../components/Header.jsx";
-import Sidebar from "../components/Sidebar.jsx";
 import Notification from "./notification/Notification.jsx";
 
 function Dashboard() {
@@ -46,19 +46,19 @@ function Dashboard() {
 return (
   <div className="min-h-screen flex flex-col">
     {/* Header - fixed at top */}
-    <header className="fixed top-0 left-0 right-0 z-50">
+    {/* <header className="fixed top-0 left-0 right-0 z-50">
       <Header activeSection={activeSection} />
-    </header>
+    </header> */}
 
-    {/* Main content area */}
-    <div className="flex flex-1 mt-16"> {/* mt-16 accounts for header height */}
+    {/* Main content area removed mt-16 for header removal */}
+    <div className="flex flex-1"> {/* mt-16 accounts for header height */}
       {/* Sidebar - fixed left */}
       <aside className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-44 z-40">
         <Sidebar />
       </aside>
 
       {/* Main content - with sidebar offset */}
-      <main className="flex-1 ml-44 pt-4 pb-16"> {/* pb-16 accounts for footer height */}
+      <main className="flex-1 ml-44 pb-16"> {/* pb-16 accounts for footer height */}
         <Outlet context={{ setActiveSection }} />
       </main>
     </div>

@@ -9,6 +9,9 @@ import InventoryConfig from "./InventoryConfig";
 import InventoryReport from "./InventoryReport";
 import { useOutletContext } from "react-router-dom";
 import InventoryView from "./InventoryView.jsx";
+import InventoryRestock from "./InventoryRestock.jsx";
+import SupplierReg from "./SupplierReg.jsx";
+import CheckHistory from "./CheckHistory.jsx";
 
 function Inventory() {
   const { setActiveSection } = useOutletContext();
@@ -35,6 +38,11 @@ function Inventory() {
         activeSection={activeSection}
         onViewInvClick={() => handleSectionChange("view-inventory")}
         onAddItemClick={() => handleSectionChange("add-item")}
+
+        onRestockClick={() => handleSectionChange("inventory-restock")}
+        onSupplierRegClick={() => handleSectionChange("supplier-reg")}
+        onCheckHistoryClick={() => handleSectionChange("check-history")}
+        
         onConfigClick={() => handleSectionChange("inventory-config")}
         onCReportClick={() => handleSectionChange("inventory-report")}
       />
@@ -44,11 +52,23 @@ function Inventory() {
 
         {/* View Inventory */}
         <div className={isVisible("view-inventory")}>
-              <InventoryView/>
+          <InventoryView/>
         </div>
         {/* Add Item */}
         <div className={isVisible("add-item")}>
           <AddItem />
+        </div>
+        {/* Inventory Restock */}
+        <div className={isVisible("inventory-restock")}>
+          <InventoryRestock />
+        </div>
+        {/* Supplier Reg */}
+        <div className={isVisible("supplier-reg")}>
+          <SupplierReg />
+        </div>
+        {/* Check History */}
+        <div className={isVisible("check-history")}>
+          <CheckHistory />
         </div>
 
         {/* Inventory Config */}
@@ -56,7 +76,6 @@ function Inventory() {
           <InventoryConfig />
           {/* …your config UI here… */}
         </div>
-
         {/* Inventory Report */}
         <div className={isVisible("inventory-report")}>
           <InventoryReport />
