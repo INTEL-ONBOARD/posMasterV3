@@ -54,7 +54,7 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
       const response = await apiClient.post("api/users/login", {
         email: formData.email,
@@ -64,6 +64,7 @@ function Login() {
       if (response.data.status === "success") {
         // Store user data in localStorage
         localStorage.setItem("user", JSON.stringify(response.data.data));
+        window.electronAPI.sendUserDataToMain();
         navigate("/dashboard");
       } else {
         toast.open(`${response.data.message}`, 4000, 'Login Failed', 'warning');

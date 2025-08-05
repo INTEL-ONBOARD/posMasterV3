@@ -16,5 +16,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendPrintSilent: (arrayBuffer) => ipcRenderer.send('print-silent', arrayBuffer),
   receive: (channel, func) => {
     ipcRenderer.on(channel, (event, ...args) => func(...args));
+  },
+
+  sendUserDataToMain: () => {
+    const user = localStorage.getItem('user');
+    if (user) {
+      ipcRenderer.send('store-user-data', JSON.parse(user));
+    }
   }
 });
