@@ -479,6 +479,7 @@ const [selected, setSelected] = useState(null);
   const handleClearSelectedItem = () => {
     setSelectedTableItem(null);
     setSalesMiddlepage("inventory view");
+    setSalesMiddlepage("inventory view");
   };
 
   // Helper function to check visibility
@@ -1220,45 +1221,45 @@ const [selected, setSelected] = useState(null);
                       {isExpanded && (
                         <div className="">
                           {/* Search results */}
-                      {searchTerm && searchTerm !== 'Guest' && (
-                        // member details card
-                        <div className="bg-[#EAF6FF] p-4 shadow-md w-full max-w-md flex flex-col text-black font-sans">
+                          {searchTerm && searchTerm !== 'Guest' && (
+                            // member details card
+                            <div className="bg-[#EAF6FF] p-4 shadow-md w-full max-w-md flex flex-col text-black font-sans">
 
-                          {/* Member and Income Row */}
-                          <div className="flex justify-between items-start">
-                            {/* Profile section */}
-                            <div className="flex gap-3 w-3/5">
-                              {/* Avatar Placeholder */}
-                              <img src={profileImg} className="w-12 h-12 bg-gray-300 rounded-full" />
-                              <div>
-                                <h2 className="text-blue-800 font-bold">MR. Harischandra Silva</h2>
-                                <p className="text-md font-semibold">MEMBER: 2345</p>
-                                <p className="text-xs text-gray-600">PRE-MEMBER: 2345</p>
+                              {/* Member and Income Row */}
+                              <div className="flex justify-between items-start">
+                                {/* Profile section */}
+                                <div className="flex gap-3 w-3/5">
+                                  {/* Avatar Placeholder */}
+                                  <img src={profileImg} className="w-12 h-12 bg-gray-300 rounded-full" />
+                                  <div>
+                                    <h2 className="text-blue-800 font-bold">MR. Harischandra Silva</h2>
+                                    <p className="text-md font-semibold">MEMBER: 2345</p>
+                                    <p className="text-xs text-gray-600">PRE-MEMBER: 2345</p>
+                                  </div>
+                                </div>
+
+                                {/* Income */}
+                                <div className="flex flex-col w-2/5 bg-green-300 text-center px-4 py-2">
+                                  <p className="text-blue-900 font-bold text-lg">RS. 2,000</p>
+                                  <p className="text-sm text-gray-800">INCOME</p>
+                                </div>
                               </div>
-                            </div>
 
-                            {/* Income */}
-                            <div className="flex flex-col w-2/5 bg-green-300 text-center px-4 py-2">
-                              <p className="text-blue-900 font-bold text-lg">RS. 2,000</p>
-                              <p className="text-sm text-gray-800">INCOME</p>
-                            </div>
-                          </div>
+                              {/* Amount and Credit Row */}
+                              <div className="flex justify-between items-center">
+                                {/* Transaction info */}
+                                <div className="flex flex-col w-3/5">
+                                  <p className="text-sm font-semibold text-black">Total Amount of the transaction</p>
+                                  <p className="text-sm font-semibold text-black">2024-06-23</p>
+                                  <p className="text-2xl font-bold text-black">Rs.2300.00</p>
+                                </div>
 
-                          {/* Amount and Credit Row */}
-                          <div className="flex justify-between items-center">
-                            {/* Transaction info */}
-                            <div className="flex flex-col w-3/5">
-                              <p className="text-sm font-semibold text-black">Total Amount of the transaction</p>
-                              <p className="text-sm font-semibold text-black">2024-06-23</p>
-                              <p className="text-2xl font-bold text-black">Rs.2300.00</p>
-                            </div>
-
-                            {/* Credits */}
-                            <div className="bg-orange-300 text-center px-4 py-2 flex flex-col w-2/5">
-                              <p className="text-blue-900 font-bold text-lg">RS. 140</p>
-                              <p className="text-sm text-gray-800">CREDITS</p>
-                            </div>
-                          </div>
+                                {/* Credits */}
+                                <div className="bg-orange-300 text-center px-4 py-2 flex flex-col w-2/5">
+                                  <p className="text-blue-900 font-bold text-lg">RS. 140</p>
+                                  <p className="text-sm text-gray-800">CREDITS</p>
+                                </div>
+                              </div>
 
                           {/* Buttons Row */}
                           <div className="flex justify-between gap-3">
@@ -1273,7 +1274,7 @@ const [selected, setSelected] = useState(null);
                           </div>
                         </div>
 
-                      )}
+                          )}
                         </div>
                       )}
                     </div>
@@ -1383,6 +1384,8 @@ const [selected, setSelected] = useState(null);
               </div>
 
 
+
+
             </div>
           </div>
         </div>
@@ -1416,58 +1419,58 @@ const [selected, setSelected] = useState(null);
   );
 }
 
-  // Alternative approach: Combined fetch function
-  // const fetchInventoryAndCategories = async () => {
-  //   try {
-  //     setIsSearching(true);
+// Alternative approach: Combined fetch function
+// const fetchInventoryAndCategories = async () => {
+//   try {
+//     setIsSearching(true);
 
-  //     // Fetch inventory items
-  //     const inventoryResponse = await apiClient.get('/api/items/extended');
-  //     const inventoryData = inventoryResponse.data;
+//     // Fetch inventory items
+//     const inventoryResponse = await apiClient.get('/api/items/extended');
+//     const inventoryData = inventoryResponse.data;
 
-  //     if (inventoryData && inventoryData.data && Array.isArray(inventoryData.data)) {
-  //       // Transform inventory items
-  //       const transformedItems = inventoryData.data.map(item => ({
-  //         id: item.id,
-  //         name: item.item_name,
-  //         category: item.category?.type || "Uncategorized",
-  //         price: item.unit_price.toFixed(2),
-  //         unit: item.uom?.symbol || "pcs",
-  //         sku: item.sku,
-  //         stock: `${item.quantity} ${item.uom?.unit_name || "Units"}`,
-  //         image: item.item_image_url || bananaImg,
-  //         brand: item.category?.brand || "",
-  //         batchCode: item.batch_code
-  //       }));
+//     if (inventoryData && inventoryData.data && Array.isArray(inventoryData.data)) {
+//       // Transform inventory items
+//       const transformedItems = inventoryData.data.map(item => ({
+//         id: item.id,
+//         name: item.item_name,
+//         category: item.category?.type || "Uncategorized",
+//         price: item.unit_price.toFixed(2),
+//         unit: item.uom?.symbol || "pcs",
+//         sku: item.sku,
+//         stock: `${item.quantity} ${item.uom?.unit_name || "Units"}`,
+//         image: item.item_image_url || bananaImg,
+//         brand: item.category?.brand || "",
+//         batchCode: item.batch_code
+//       }));
 
-  //       setInventoryItems(transformedItems);
-  //       setFilteredItems(transformedItems);
+//       setInventoryItems(transformedItems);
+//       setFilteredItems(transformedItems);
 
-  //       // Extract unique categories
-  //       const categoryMap = new Map();
-  //       inventoryData.data.forEach(item => {
-  //         if (item.category && item.category.type) {
-  //           const categoryKey = item.category.id || item.category._id;
-  //           if (!categoryMap.has(categoryKey)) {
-  //             categoryMap.set(categoryKey, {
-  //               id: item.category.id,
-  //               type: item.category.type,
-  //               brand: item.category.brand || "Various",
-  //               _id: item.category._id
-  //             });
-  //           }
-  //         }
-  //       });
+//       // Extract unique categories
+//       const categoryMap = new Map();
+//       inventoryData.data.forEach(item => {
+//         if (item.category && item.category.type) {
+//           const categoryKey = item.category.id || item.category._id;
+//           if (!categoryMap.has(categoryKey)) {
+//             categoryMap.set(categoryKey, {
+//               id: item.category.id,
+//               type: item.category.type,
+//               brand: item.category.brand || "Various",
+//               _id: item.category._id
+//             });
+//           }
+//         }
+//       });
 
-  //       setCategories(Array.from(categoryMap.values()));
-  //     }
+//       setCategories(Array.from(categoryMap.values()));
+//     }
 
-  //   } catch (error) {
-  //     console.error("Error fetching data:", error);
-  //     setInventoryItems([]);
-  //     setFilteredItems([]);
-  //     setCategories([]);
-  //   } finally {
-  //     setIsSearching(false);
-  //   }
-  // };
+//   } catch (error) {
+//     console.error("Error fetching data:", error);
+//     setInventoryItems([]);
+//     setFilteredItems([]);
+//     setCategories([]);
+//   } finally {
+//     setIsSearching(false);
+//   }
+// };
