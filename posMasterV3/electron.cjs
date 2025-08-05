@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
+const axios = require('axios');
 const fs = require('fs').promises; // Use promise-based fs API
 //const { pdf } = require("@react-pdf/renderer"); //
 //const { error } = require("console");
@@ -10,16 +11,16 @@ const fs = require('fs').promises; // Use promise-based fs API
 const printer = require("pdf-to-printer");
 
 let mainWindow;
+let storedUser = null;
+let isQuitting = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
     autoHideMenuBar: true,
-    //titleBarStyle: 'hidden', //view edit and other shiiiiiiiiiiiiiiiiii
-    titleBarOverlay: true,   // Window minimize close buttons
-    //fullscreen: true,
-    icon: path.join(__dirname, "src", '../assets/app_logo/app_logo.ico'), // Ensure the icon path is correct
+    titleBarOverlay: true,
+    icon: path.join(__dirname, "src", '../assets/app_logo/app_logo.ico'),
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       nodeIntegration: false,
@@ -29,7 +30,31 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
   mainWindow.webContents.openDevTools();
+
+  mainWindow.on("close", async (event) => {
+    if (isQuitting) return;
+
+    event.preventDefault(); 
+
+    console.log("Window close triggered, handling logout...");
+
+    if (storedUser) {
+      try {
+        await axios.post("https://posmasterv3-backend.onrender.com/api/users/logout", {
+          email: storedUser.email,
+          user_id: storedUser._id,
+        });
+        console.log("Logout successful");
+      } catch (error) {
+        console.error("Logout failed:", error.message);
+      }
+    }
+
+    isQuitting = true;
+    app.quit(); 
+  });
 }
+
 
 ipcMain.on("print-silent", async (event, arrayBuffer) => {
   console.log("Silent print started");
@@ -98,6 +123,32 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+
+app.on("before-quit", async (event) => {
+  if (isQuitting) return;
+  event.preventDefault();
+  isQuitting = true;
+
+  console.log("App is quitting, calling logout API...");
+
+  if (storedUser) {
+    try {
+      await axios.post("https://posmasterv3-backend.onrender.com/api/users/logout", {
+        email: storedUser.email,
+        user_id: storedUser._id,
+      });
+
+      console.log("Logout API call successful");
+    } catch (error) {
+      console.error("Logout API call failed:", error.message);
+    }
+  } else {
+    console.warn("No user data to logout");
+  }
+
+  app.quit();
 });
 
 // Quit when all windows are closed, except on macOS
