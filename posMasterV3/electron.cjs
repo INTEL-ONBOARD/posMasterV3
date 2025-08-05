@@ -15,9 +15,16 @@ let storedUser = null;
 let isQuitting = false;
 
 
-ipcMain.on("store-user-data", (event, userData) => {
-  console.log("User data received in main process:", userData);
+// ipcMain.on("store-user-data", (event, userData) => {
+//   console.log("User data received in main process:", userData);
+//   storedUser = userData;
+// });
+
+
+ipcMain.handle('store-user-data', async (event, userData) => {
   storedUser = userData;
+  console.log('User data stored:', userData);
+  return { success: true };
 });
 
 function createWindow() {
@@ -44,11 +51,11 @@ function createWindow() {
     event.preventDefault();
     console.log("Window close triggered, handling logout...");
 
-    if (storedUser && storedUser.email && storedUser.token) {
+    if (storedUser && storedUser.email && storedUser._id) {
       try {
         await axios.post("https://posmasterv3-backend.onrender.com/api/users/logout", {
           email: storedUser.email,
-          user_id: storedUser.token,
+          user_id: storedUser._id,
         });
         console.log("Logout successful");
       } catch (error) {

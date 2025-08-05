@@ -17,7 +17,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   receive: (channel, func) => {
     ipcRenderer.on(channel, (event, ...args) => func(...args));
   },
-  sendUserData: (email, token) => ipcRenderer.send("store-user-data", { email, token }),
+  // sendUserData: (email, token) => {
+  //   console.log("preload: sending user data", { email, token }); // <-- debug log here
+  //   ipcRenderer.send("store-user-data", { email, token });
+  // },
+
+  sendUserData: (email, _id) => ipcRenderer.invoke('store-user-data', { email, _id }),
 
 
 });
