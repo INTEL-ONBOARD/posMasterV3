@@ -25,7 +25,7 @@ export default function InventoryConfig() {
   ];
 
   return (
-    <div className="flex h-[calc(100vh-6rem)]">
+    <div className="flex h-[calc(100vh-2rem)]">
       {/* Left Panel with Dynamic Menu Items */}
       <div className="w-1/3 bg-white border-r flex flex-col">
         <div className="p-6">
