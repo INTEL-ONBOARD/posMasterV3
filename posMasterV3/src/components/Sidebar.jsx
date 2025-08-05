@@ -83,9 +83,10 @@ function Sidebar() {
   };
 
   return (
+    // removet pt-20 for header removal
     <aside
       id="logo-sidebar"
-      className="fixed top-0 bottom-0 h-screen pt-20 bg-white border-r"
+      className="fixed top-0 bottom-0 h-screen bg-white border-r"
       aria-label="Sidebar"
     >
       <div className="h-full overflow-hidden bg-white">
