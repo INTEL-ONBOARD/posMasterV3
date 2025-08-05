@@ -20,6 +20,7 @@
       "dist/**",
       "electron.cjs",
       "node_modules/**",
+      "!node_modules/fsevents",
       "package.json"
     ],
     "directories": {
