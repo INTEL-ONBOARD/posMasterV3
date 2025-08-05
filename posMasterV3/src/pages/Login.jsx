@@ -63,8 +63,9 @@ function Login() {
 
       if (response.data.status === "success") {
         // Store user data in localStorage
-        localStorage.setItem("user", JSON.stringify(response.data.data));
-        window.electronAPI.sendUserDataToMain();
+        if (response.data.data.email && response.data.data.token) {
+          window.electronAPI.sendUserData(response.data.data.email, response.data.data.token);
+        }
         navigate("/dashboard");
       } else {
         toast.open(`${response.data.message}`, 4000, 'Login Failed', 'warning');

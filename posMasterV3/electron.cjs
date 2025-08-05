@@ -14,6 +14,12 @@ let mainWindow;
 let storedUser = null;
 let isQuitting = false;
 
+
+ipcMain.on("store-user-data", (event, userData) => {
+  console.log("User data received in main process:", userData);
+  storedUser = userData;
+});
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1024,
@@ -31,29 +37,53 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
   mainWindow.webContents.openDevTools();
 
+
   mainWindow.on("close", async (event) => {
     if (isQuitting) return;
 
-    event.preventDefault(); 
-
+    event.preventDefault();
     console.log("Window close triggered, handling logout...");
 
-    if (storedUser) {
+    if (storedUser && storedUser.email && storedUser.token) {
       try {
         await axios.post("https://posmasterv3-backend.onrender.com/api/users/logout", {
           email: storedUser.email,
-          user_id: storedUser._id,
+          user_id: storedUser.token,
         });
         console.log("Logout successful");
       } catch (error) {
         console.error("Logout failed:", error.message);
       }
+    } else {
+      console.warn("No user data to logout");
     }
 
     isQuitting = true;
-    app.quit(); 
+    app.quit(); // only call quit AFTER logout
   });
+
+
 }
+
+// ipcMain.on("store-user-data", async (event, { username, token }) => {
+//   if (isQuitting) return;
+
+//   console.log("Received user data for logout:", { username, token });
+
+//   try {
+//     await axios.post("https://posmasterv3-backend.onrender.com/api/users/logout", {
+//       username,
+//       token,
+//     });
+//     console.log("Logout successful from store-user-data event");
+//   } catch (error) {
+//     console.error("Logout failed from store-user-data event:", error.message);
+//   }
+
+//   isQuitting = true;
+//   app.quit();
+// });
+
 
 
 ipcMain.on("print-silent", async (event, arrayBuffer) => {
@@ -126,30 +156,6 @@ app.whenReady().then(() => {
 });
 
 
-app.on("before-quit", async (event) => {
-  if (isQuitting) return;
-  event.preventDefault();
-  isQuitting = true;
-
-  console.log("App is quitting, calling logout API...");
-
-  if (storedUser) {
-    try {
-      await axios.post("https://posmasterv3-backend.onrender.com/api/users/logout", {
-        email: storedUser.email,
-        user_id: storedUser._id,
-      });
-
-      console.log("Logout API call successful");
-    } catch (error) {
-      console.error("Logout API call failed:", error.message);
-    }
-  } else {
-    console.warn("No user data to logout");
-  }
-
-  app.quit();
-});
 
 // Quit when all windows are closed, except on macOS
 app.on("window-all-closed", () => {
