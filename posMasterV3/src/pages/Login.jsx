@@ -64,8 +64,11 @@ function Login() {
       if (response.data.status === "success") {
         // Store user data in localStorage
         if (response.data.data.email && response.data.data.token) {
-          window.electronAPI.sendUserData(response.data.data.email, response.data.data.token);
+          window.electronAPI.sendUserData(response.data.data.email, response.data.data._id);
         }
+        window.electronAPI.sendUserData(response.data.data.email, response.data.data._id);
+        //window.electronAPI.sendUserData("user@example.com", "token123");
+        console.log("Renderer: sent user data");
         navigate("/dashboard");
       } else {
         toast.open(`${response.data.message}`, 4000, 'Login Failed', 'warning');
