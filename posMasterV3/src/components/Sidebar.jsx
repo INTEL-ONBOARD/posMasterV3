@@ -78,7 +78,7 @@ function Sidebar() {
       });
       
       setIsLoggingOut(false);
-      navigate("/login");
+      navigate("/");
     }
   };
 
