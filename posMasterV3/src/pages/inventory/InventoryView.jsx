@@ -235,31 +235,6 @@ function InventoryView() {
               Search
             </button>
           </div>
-
-          {/* Category Filter */}
-          <select
-            value={searchCategory}
-            onChange={(e) => setSearchCategory(e.target.value)}
-            className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
-          >
-            <option value="All">All Categories</option>
-            {uniqueCategoryTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-
-          {/* View Mode */}
-          <select
-            value={viewMode}
-            onChange={(e) => setViewMode(e.target.value)}
-            className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
-          >
-            <option value="grid">View mode</option>
-            <option value="grid">Grid</option>
-            <option value="list">List</option>
-          </select>
         </nav>
 
         {/* Items Grid */}
