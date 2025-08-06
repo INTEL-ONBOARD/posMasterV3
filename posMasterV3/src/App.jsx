@@ -18,6 +18,7 @@ import Notification from './pages/notification/Notification.jsx';
 import SalesView from './pages/sales/SalesView.jsx';
 import InventoryConfig from './pages/inventory/InventoryConfig.jsx';
 
+
 function App() {
   const [currentView, setCurrentView] = useState('desktop1');
 
