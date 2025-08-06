@@ -28,7 +28,7 @@ function Dashboard() {
       toast.open("You have new notifications!");
     }
     if (componentName === "logout") {
-      navigate("/login");
+      navigate("/");
     }
     if (componentName === "inventory") {
       navigate("/dashboard/inventory");
