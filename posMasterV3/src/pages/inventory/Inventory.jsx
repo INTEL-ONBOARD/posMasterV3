@@ -40,7 +40,7 @@ function Inventory() {
         onAddItemClick={() => handleSectionChange("add-item")}
 
         onRestockClick={() => handleSectionChange("inventory-restock")}
-        onSupplierRegClick={() => handleSectionChange("supplier-reg")}
+        onSupplierRegClick={() => handleSectionChange("supplier-registration")}
         onCheckHistoryClick={() => handleSectionChange("check-history")}
         
         onConfigClick={() => handleSectionChange("inventory-config")}
