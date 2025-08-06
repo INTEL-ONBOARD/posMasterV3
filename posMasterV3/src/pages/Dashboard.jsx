@@ -19,7 +19,7 @@ import Notification from "./notification/Notification.jsx";
 
 function Dashboard() {
   const [hoveredCard, setHoveredCard] = useState(null);
-   const [activeSection, setActiveSection] = useState(null);
+  const [activeSection, setActiveSection] = useState(null);
   const toast = useContext(ToastContext);
   const navigate = useNavigate();
 
@@ -33,7 +33,7 @@ function Dashboard() {
     if (componentName === "inventory") {
       navigate("/dashboard/inventory");
     }
-    
+
     // Add other click logic as needed
   };
 
@@ -43,40 +43,41 @@ function Dashboard() {
       ? "blur-sm transition-all duration-300"
       : "transition-all duration-300";
 
-return (
-  <div className="min-h-screen flex flex-col">
-    {/* Header - fixed at top */}
-    {/* <header className="fixed top-0 left-0 right-0 z-50">
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Header - fixed at top */}
+      {/* <header className="fixed top-0 left-0 right-0 z-50">
       <Header activeSection={activeSection} />
     </header> */}
 
-    {/* Main content area removed mt-16 for header removal */}
-    <div className="flex flex-1"> {/* mt-16 accounts for header height */}
-      {/* Sidebar - fixed left */}
-      <aside className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-44 z-40">
+      {/* Main content area removed mt-16 for header removal */}
+      <div className="flex flex-1">
+        {" "}
+        {/* mt-16 accounts for header height */}
+        {/* Sidebar - fixed left */}
+        {/* <aside className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-44 z-40"> */}
         <Sidebar />
-      </aside>
-
-      {/* Main content - with sidebar offset */}
-      <main className="flex-1 ml-44 pb-16"> {/* pb-16 accounts for footer height */}
-        <Outlet context={{ setActiveSection }} />
-      </main>
-    </div>
-
-    {/* Footer - fixed at bottom */}
-    <footer 
-      id="bottom-bar"
-      className="fixed bottom-0 left-0 right-0 bg-blue-800 text-white py-2 z-50"
-    >
-      <div className="flex items-center gap-1 justify-start ml-5">
-        <SpinnerDot />
-        <span className="text-sm font-medium">Loading...</span>
+        {/* </aside> */}
+        {/* Main content - with sidebar offset */}
+        <main className="flex-1 ml-44 pb-16">
+          {" "}
+          {/* pb-16 accounts for footer height */}
+          <Outlet context={{ setActiveSection }} />
+        </main>
       </div>
-    </footer>
-  </div>
-);
+
+      {/* Footer - fixed at bottom */}
+      <footer
+        id="bottom-bar"
+        className="fixed bottom-0 left-0 right-0 bg-blue-800 text-white py-2 z-50"
+      >
+        <div className="flex items-center gap-1 justify-start ml-5">
+          <SpinnerDot />
+          <span className="text-sm font-medium">Loading...</span>
+        </div>
+      </footer>
+    </div>
+  );
 }
 
 export default Dashboard;
-
-

@@ -71,14 +71,20 @@ function InventorySidebar({
             <button
               key={item.id}
               onClick={item.onClick}
-              className={`w-28 h-28 border border-gray-100 flex flex-col items-center justify-center p-4 transition-all duration-200 ${isActive
-                  ? 'border-blue-500 bg-[#EBEBEB] relative'
-                  : 'bg-[#FAFAFA] border-gray-200 hover:border-gray-300'
-                }`}
+              className={`w-28 h-28 border border-gray-100 flex flex-col items-center justify-center p-4 transition-all duration-200 ${
+                isActive
+                  ? "border-blue-500 bg-[#EBEBEB] relative"
+                  : "bg-[#FAFAFA] border-gray-200 hover:border-gray-300"
+              }`}
             >
               {/* Image and arrow */}
               <div className="relative flex flex-col items-center mb-2">
-                <img src={item.icon} alt={item.label} className="w-12 h-12 object-contain" />
+                <img
+                  src={item.icon}
+                  alt={item.label}
+                  className="w-12 h-12 object-contain pointer-events-none"
+                />
+
                 {/* Arrow absolutely positioned to the right of the image, vertically centered */}
                 {/* {isActive && (
                   <span className="absolute right-[-40px] top-1/2 -translate-y-1/2">
@@ -90,8 +96,13 @@ function InventorySidebar({
               </div>
               {/* Label below image */}
               {/* <span className={`text-sm font-medium text-center mt-1 ${isActive ? 'text-black' : 'text-gray-700'}`}>
+              
                 {item.label}
               </span> */}
+              <span className={`text-sm font-medium text-center ${isActive ? 'text-black' : 'text-gray-700'}`}>
+                {item.label}
+              </span>
+
             </button>
           );
         })}
