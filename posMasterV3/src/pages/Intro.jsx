@@ -19,10 +19,10 @@ function Intro() {
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 1 }}
     >
-      <div className="w-full max-w-md p-8 relative">
+      <div className="flex-grow flex flex-col justify-center items-center w-full max-w-md p-8">
         {/* Logo/Title */}
         <motion.div
-          className="text-center mb-16"
+          className="text-center mb-2"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.8 }}
@@ -36,10 +36,15 @@ function Intro() {
 
         {/* Loading Spinner */}
         <motion.div
-          className="flex justify-center mb-16"
+          className="flex justify-center mb-2"
           initial={{ scale: 0.6, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.6, type: "spring", stiffness: 100 }}
+          transition={{
+            delay: 0.5,
+            duration: 0.6,
+            type: "spring",
+            stiffness: 100,
+          }}
         >
           <div className="relative">
             <div className="w-8 h-8 border-2 border-gray-200 rounded-full"></div>
@@ -57,7 +62,9 @@ function Intro() {
           <p className="text-gray-500 text-sm">Please Wait...</p>
         </motion.div>
 
-        {/* Footer */}
+        
+      </div>
+      {/* Footer */}
         <motion.div
           className="w-full absolute bottom-4 left-0 text-center"
           initial={{ opacity: 0, y: 10 }}
@@ -65,10 +72,9 @@ function Intro() {
           transition={{ delay: 2.2, duration: 0.6 }}
         >
           <p className="text-xs text-gray-400">
-            © 2025 POS Master. All rights reserved.
+            Copyright © 2025 SLTC ® | .{import.meta.env.VITE_VERSION_NUMBER}
           </p>
         </motion.div>
-      </div>
     </motion.div>
   );
 }

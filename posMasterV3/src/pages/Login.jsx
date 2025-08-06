@@ -97,7 +97,7 @@ function Login() {
       initial="hidden"
       animate="visible"
     >
-      <motion.div className="w-full max-w-md" variants={cardVariants} initial="hidden" animate="visible">
+      <motion.div className="w-full max-w-md h-full flex flex-col justify-between" variants={cardVariants} initial="hidden" animate="visible">
         <motion.div
           className="bg-white rounded-2xl p-8"
           variants={staggerContainer}
@@ -221,7 +221,7 @@ function Login() {
           transition={{ delay: 1.6, duration: 0.7 }}
         >
           <p className="text-xs text-[#D3D3D3]">
-            © 2025 SLTC ® | VER.2025E.001R
+           Copyright © 2025 SLTC ®  |  .{import.meta.env.VITE_VERSION_NUMBER}
           </p>
         </motion.div>
       </motion.div>
