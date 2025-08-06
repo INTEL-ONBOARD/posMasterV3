@@ -27,7 +27,7 @@ function Intro() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.8 }}
         >
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-3xl font-bold">
             <span className="font-bold text-[#00489A]">POS</span>
             <span className="text-gray-900"> MASTER</span>
             <span className="text-gray-700">.3</span>
