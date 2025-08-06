@@ -1,12 +1,34 @@
-import React from 'react'
+import React, { useState } from "react";
+import SettingsSidebar from "./SettingsSidebar";
+import UserSettings from "./UserSettings";
+import AppSettings from "./AppSettings";
 
 function Settings() {
+  const [activeSection, setActiveSection] = useState("user-settings");
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case "user-settings":
+        return <UserSettings />;
+      case "app-settings":
+        return <AppSettings />;
+      default:
+        return <div>Select a section</div>;
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center h-[80vh]">
-      <div className="text-3xl font-bold mb-4">Settings</div>
-      <div className="text-lg text-gray-600">THIS FEATURE WILL BE AVAILABLE IN THE NEXT UPDATE!</div>
+    <div className="flex h-screen m-0 p-0">
+      <SettingsSidebar
+        activeSection={activeSection}
+        onSaleViewClick={() => setActiveSection("user-settings")}
+        onTransactionHistoryClick={() => setActiveSection("app-settings")}
+      />
+      <div className="flex-1 overflow-y-auto bg-white p-0 m-0">
+        {renderContent()}
+      </div>
     </div>
-  )
+  );
 }
 
-export default Settings
+export default Settings;
