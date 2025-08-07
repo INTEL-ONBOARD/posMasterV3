@@ -98,12 +98,14 @@ function Login() {
       animate="visible"
     >
       <motion.div className="w-full max-w-md h-full flex flex-col justify-between" variants={cardVariants} initial="hidden" animate="visible">
+        {/* top section set by a margin(change this properly later)*/}
+        <div className="mt-32">
         <motion.div
           className="bg-white rounded-2xl p-8"
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
-        >
+          >
           {/* Title */}
           <motion.div className="text-center mb-8" variants={fadeUp}>
             <h1 className="text-3xl font-bold">
@@ -141,7 +143,7 @@ function Login() {
                   style={{ backgroundColor: "#F8F8F8" }}
                   placeholder="Enter your email or username"
                   required
-                />
+                  />
               </div>
             </motion.div>
 
@@ -164,7 +166,7 @@ function Login() {
                   style={{ backgroundColor: "#F8F8F8" }}
                   placeholder="Enter your password"
                   required
-                />
+                  />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
@@ -189,7 +191,7 @@ function Login() {
               style={{ backgroundColor: "#00489A" }}
               className="w-full h-[38px] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00489A] transition duration-200 text-white font-semibold flex items-center justify-center"
               variants={fadeUp}
-            >
+              >
               {isLoading ? (
                 <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
@@ -207,23 +209,26 @@ function Login() {
             <button
               className="text-sm font-medium hover:underline transition-colors"
               style={{ color: "#555555" }}
-            >
+              >
               Contact our Support team
             </button>
           </motion.div>
         </motion.div>
+        </div>
 
-        {/* Footer */}
+        {/*bottom Footer section*/}
         <motion.div
           className="mt-6 text-center"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.6, duration: 0.7 }}
-        >
+          >
           <p className="text-xs text-[#D3D3D3]">
            Copyright © 2025 SLTC ®  |  .{import.meta.env.VITE_VERSION_NUMBER}
           </p>
         </motion.div>
+
+
       </motion.div>
     </motion.div>
   );

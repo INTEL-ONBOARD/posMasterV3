@@ -99,9 +99,9 @@ function InventorySidebar({
               
                 {item.label}
               </span> */}
-              <span className={`text-sm font-medium text-center ${isActive ? 'text-black' : 'text-gray-700'}`}>
+              {/* <span className={`text-sm font-medium text-center ${isActive ? 'text-black' : 'text-gray-700'}`}>
                 {item.label}
-              </span>
+              </span> */}
 
             </button>
           );

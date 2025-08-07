@@ -23,7 +23,7 @@ function SettingsSidebar({
   ];
 
   return (
-    <aside className="min-w-[7rem] bg-[#F3F3F3] h-screen border-r border-gray-200 flex flex-col items-center py-4">
+    <aside className="min-w-[7rem] bg-[#F3F3F3] h-screen border-r border-gray-200 flex flex-col items-center">
       {sidebarItems.map((item) => {
         const isActive = activeSection === item.id;
         return (
@@ -42,7 +42,7 @@ function SettingsSidebar({
                 alt={item.label}
                 className="w-12 h-12 object-contain"
               />
-              {isActive && (
+              {/* {isActive && (
                 <span className="absolute right-[-30px] top-1/2 -translate-y-1/2">
                   <svg
                     className="w-6 h-6 text-black"
@@ -58,15 +58,15 @@ function SettingsSidebar({
                     />
                   </svg>
                 </span>
-              )}
+              )} */}
             </div>
-            <span
+            {/* <span
               className={`text-sm font-medium text-center mt-1 ${
                 isActive ? "text-black" : "text-gray-700"
               }`}
             >
               {item.label}
-            </span>
+            </span> */}
           </button>
         );
       })}
