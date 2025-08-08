@@ -286,7 +286,7 @@ function UserSettings() {
             <div className="space-y-4 w-3/5">
               {Object.entries(permissions).map(([key, value]) => (
                 <div key={key} className="flex items-center justify-between py-0">
-                  <span className="text-sm font-medium text-[18px] text-gray-300">
+                  <span className="text-sm font-bold text-[26px] text-gray-300">
                     {key.replace('Access', '').replace(/([A-Z])/g, ' $1').trim()} access
                   </span>
                   <label className="relative inline-flex items-center cursor-pointer">
