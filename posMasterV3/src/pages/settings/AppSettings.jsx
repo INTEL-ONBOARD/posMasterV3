@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Check, X } from 'lucide-react';
+import correctImage from '../../assets/Correct.png';
+import issueImage from '../../assets/issue.png';
 
 function AppSettings() {
   const [settings, setSettings] = useState({
@@ -7,22 +8,22 @@ function AppSettings() {
     notifications: true,
     cloudSync: false,
     tempSystem: false,
-    runOnStartup: false,
+    runOnStartup: true,
     maximizeWindow: true
   });
 
   const [paths, setPaths] = useState({
-    tempPath: "Default path here",
-    tempPath2: "Default path here",
-    outletSetup: "Default outlet Name"
+    tempPath: 'Default path here',
+    dbConfig: 'Default path here',
+    outletSetup: 'Default outlet Name'
   });
 
   const handleToggle = (key) => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handlePathChange = (key, value) => {
-    setPaths(prev => ({ ...prev, [key]: value }));
+    setPaths((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleReset = () => {
@@ -31,41 +32,44 @@ function AppSettings() {
       notifications: true,
       cloudSync: false,
       tempSystem: false,
-      runOnStartup: false,
+      runOnStartup: true,
       maximizeWindow: true
     });
     setPaths({
-      tempPath: "Default path here",
-      tempPath2: "Default path here",
-      outletSetup: "Default outlet Name"
+      tempPath: 'Default path here',
+      dbConfig: 'Default path here',
+      outletSetup: 'Default outlet Name'
     });
   };
 
   const handleClear = () => {
     setPaths({
-      tempPath: "",
-      tempPath2: "",
-      outletSetup: ""
+      tempPath: '',
+      dbConfig: '',
+      outletSetup: ''
     });
   };
 
   const handleSave = () => {
-    // Save logic here
     console.log('Settings saved:', { settings, paths });
   };
 
   return (
-    <div className="p-6 bg-white">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">APPLICATION SETTINGS</h2>
-        <p className="text-gray-600 leading-relaxed">
-          Customize how the app works for your usage preferences such as notifications, themes, language, and other general behaviors to tailor your experience to your needs. Your settings are saved automatically and can be updated anytime.
+    <div className="p-10 bg-white pb-32 pl-16">
+      {/* Heading */}
+      <div className="mt-4 mb-10 w-full">
+        <h2 className="text-[36px] font-bold leading-[32px] text-gray-400 mb-2">
+          APPLICATION SETTINGS
+        </h2>
+        <p className="text-[#525252] text-[14px] leading-relaxed w-full">
+          Customize how the app works for your usage preferences such as
+          notifications, themes, language, and other general behaviors to
+          tailor your experience to your needs.
         </p>
       </div>
 
-      {/* Settings Toggles */}
-      <div className="space-y-3 mb-8 max-w-2xl">
-        {/* Toggle Items */}
+      {/* Toggles */}
+      <div className="space-y-4 mb-8 max-w-lg">
         {[
           { label: 'Enable Automatic Logout', key: 'autoLogout' },
           { label: 'Enable Windows Built-in Notifications', key: 'notifications' },
@@ -74,66 +78,101 @@ function AppSettings() {
           { label: 'Allow app to run-on startup', key: 'runOnStartup' },
           { label: 'Allow app to start maximize window', key: 'maximizeWindow' }
         ].map(({ label, key }) => (
-          <div className="flex items-center py-1" key={key}>
-            <span className="text-sm font-medium text-gray-700 flex-1">{label}</span>
-            <label className="relative inline-flex items-center cursor-pointer ml-6">
+          <div key={key} className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-500">{label}</span>
+            <label
+              className="relative inline-block"
+              style={{ width: '36px', height: '20px' }}
+            >
               <input
                 type="checkbox"
-                className="sr-only peer"
                 checked={settings[key]}
                 onChange={() => handleToggle(key)}
+                className="opacity-0 w-0 h-0 peer"
               />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              <span
+                className="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full transition-colors duration-300 peer-checked:bg-[#00B050] bg-gray-400"
+                style={{ borderRadius: '34px' }}
+              >
+                <span
+                  className="absolute bg-white rounded-full transition-transform duration-300"
+                  style={{
+                    height: '14px',
+                    width: '14px',
+                    left: '3px',
+                    bottom: '3px',
+                    transform: settings[key] ? 'translateX(16px)' : 'translateX(0px)'
+                  }}
+                />
+              </span>
             </label>
           </div>
         ))}
       </div>
 
-      {/* Path Settings */}
-      <div className="space-y-4 mb-8 max-w-2xl">
+      {/* Paths */}
+      <div className="space-y-4 mb-8 max-w-lg">
         {[
           { label: 'Path for the temp files', key: 'tempPath', valid: true },
-          { label: 'Path for the temp files', key: 'tempPath2', valid: false },
-          { label: 'Default outlet Setup', key: 'outletSetup', valid: false }
-        ].map(({ label, key, valid }) => (
+          { label: 'Path for the db configuration file', key: 'dbConfig', valid: false },
+          { label: 'Default outlet Setup', key: 'outletSetup', valid: false, dropdown: true }
+        ].map(({ label, key, valid, dropdown }) => (
           <div key={key}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={paths[key]}
-                onChange={(e) => handlePathChange(key, e.target.value)}
-                className="flex-1 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            <label className="block text-sm font-medium text-gray-400 mb-1">{label}</label>
+            <div className="flex items-center">
+              {dropdown ? (
+                <select
+                  value={paths[key]}
+                  onChange={(e) => handlePathChange(key, e.target.value)}
+                  className="flex-1 bg-[#f8f8f8] border border-[#ebebeb] py-1 px-2 text-sm focus:outline-none"
+                >
+                  <option value="Default outlet Name">Default outlet Name</option>
+                  <option value="Outlet A">Outlet A</option>
+                  <option value="Outlet B">Outlet B</option>
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={paths[key]}
+                  onChange={(e) => handlePathChange(key, e.target.value)}
+                  className="flex-1 bg-[#f8f8f8] border border-[#ebebeb] py-1 px-2 text-sm focus:outline-none"
+                />
+              )}
+              {!dropdown && (
+                <button
+                  className="bg-[#c4c4c4] text-white text-xs px-3 py-[6px] ml-2"
+                  style={{ height: '32px' }}
+                >
+                  Select
+                </button>
+              )}
+              <img
+                src={valid ? correctImage : issueImage}
+                alt="Validation"
+                className="ml-2 w-4 h-4"
               />
-              <div className="flex items-center justify-center w-6 h-6">
-                {valid ? (
-                  <Check className="w-4 h-4 text-green-600" />
-                ) : (
-                  <X className="w-4 h-4 text-red-600" />
-                )}
-              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Action Buttons - Fixed at Bottom Right */}
-      <div className="fixed bottom-16 right-6 flex justify-end space-x-3 p-4 bg-white rounded-lg shadow-md z-10">
+      {/* Buttons */}
+      <div className="fixed bottom-16 right-6 flex justify-end space-x-3 p-4">
         <button
           onClick={handleReset}
-          className="px-6 py-2 bg-[#D01710] text-white rounded-md hover:bg-red-600 transition-colors"
+          className="w-[12rem] h-10 px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
         >
           Reset to Default
         </button>
         <button
           onClick={handleClear}
-          className="px-6 py-2 bg-[#727272] text-white rounded-md hover:bg-gray-700 transition-colors"
+          className="px-6 py-2 w-[8rem] h-10 bg-[#727272] text-white hover:bg-gray-700 transition-colors"
         >
           Clear
         </button>
         <button
           onClick={handleSave}
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-[#1A318C] transition-colors"
+          className="px-6 py-2 h-10 w-[8rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
         >
           Save
         </button>
