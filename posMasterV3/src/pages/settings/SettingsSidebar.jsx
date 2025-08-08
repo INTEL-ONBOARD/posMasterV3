@@ -1,6 +1,6 @@
 import React from "react";
-import saleViewImg from "../../assets/sale_sidebar_view.png";
-import transactionHistoryImg from "../../assets/sale_sidebar_trans_history.png";
+import saleViewImg from "../../assets/setting_user.png";
+import transactionHistoryImg from "../../assets/setting_app.png";
 
 function SettingsSidebar({
   activeSection,
