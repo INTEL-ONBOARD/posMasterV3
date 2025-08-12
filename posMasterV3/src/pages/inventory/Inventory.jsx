@@ -12,6 +12,7 @@ import InventoryView from "./InventoryView.jsx";
 import InventoryRestock from "./InventoryRestock.jsx";
 import SupplierReg from "./SupplierReg.jsx";
 import CheckHistory from "./CheckHistory.jsx";
+import DisposeItem from "./DisposeItem.jsx";
 
 function Inventory() {
   const { setActiveSection } = useOutletContext();
@@ -70,7 +71,10 @@ function Inventory() {
         <div className={isVisible("check-history")}>
           <CheckHistory />
         </div>
-
+        {/* Dispose Item */}
+        <div className={isVisible("dispose-item")}>
+          <DisposeItem />
+        </div>
         {/* Inventory Config */}
         <div className={isVisible("inventory-config")}>
           <InventoryConfig />
