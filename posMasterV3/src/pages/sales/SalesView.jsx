@@ -2,9 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import SalesSidebar from "./Sales_sidebar";
 import bananaImg from "../../assets/Inventory_banana.png";
-import Inventory_card from "../../frontend/components/Inventory_card";
 import SalesItemCard from "../../components/SalesItemCard";
-import barcodeImg from "../../assets/barcode.png";
 import OffersDiscountView from "./OffersDiscountView";
 import { apiClient } from "../../api/client";
 
@@ -17,17 +15,6 @@ import profileImg from "../../assets/user_profile_image.png";
 export default function SalesView() {
   const { setActiveSection } = useOutletContext();
   const [activeSection, setLocalActiveSection] = useState("sale-view");
-
-  // Update parent's activeSection whenever local activeSection changes
-  useEffect(() => {
-    setActiveSection(activeSection);
-  }, [activeSection, setActiveSection]);
-
-  const handleSectionChange = (section) => {
-    setLocalActiveSection(section);
-    setActiveSection(section);
-  };
-
 
   //payment 
 const [selected, setSelected] = useState(null);
@@ -45,7 +32,7 @@ const [selected, setSelected] = useState(null);
   const handleDropdownSelect = (value) => {
     setDropdownValue(value);
     setDropdownOpen(false);
-  };
+  };
 
 
   const [scannedItems, setScannedItems] = useState([
@@ -482,9 +469,6 @@ const [selected, setSelected] = useState(null);
     setSalesMiddlepage("inventory view");
   };
 
-  // Helper function to check visibility
-  const isVisible = (section) =>
-    activeSection === section ? "block" : "hidden";
 
   const [isMemberSectionOpen, setIsMemberSectionOpen] = useState(false);
   const [isPaymentSectionOpen, setIsPaymentSectionOpen] = useState(false);
@@ -526,21 +510,9 @@ const [selected, setSelected] = useState(null);
 };
 
   return (
-    <div className="flex h-screen bg-[#EBEBEB] -ml-12">
-      <SalesSidebar
-        activeSection={activeSection}
-        onSaleViewClick={() => handleSectionChange("sale-view")}
-        onTransactionHistoryClick={() =>
-          handleSectionChange("transaction-history")
-        }
-        onInventoryViewClick={() => handleSectionChange("inventory-view")}
-        onOffersDiscountClick={() => handleSectionChange("offers-discount")}
-        onSalesConfigClick={() => handleSectionChange("sales-config")}
-      />
+    <div className="flex h-screen bg-[#EBEBEB]">
 
       {/* Main Content */}
-      <div className="flex-1 min-w-0">
-        <div className={isVisible("sale-view")}>
           <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)] bg-[#EBEBEB] w-full">
             {/* Item list section(left) */}
             <div className="bg-[#EBEBEB] border-r flex flex-col h-full lg:flex-1">
@@ -1383,38 +1355,10 @@ const [selected, setSelected] = useState(null);
 
               </div>
 
-
-
-
             </div>
           </div>
-        </div>
 
-        <div className={isVisible("transaction-history")}>
-          <div className="p-4 lg:p-8">
-            <h2 className="text-xl lg:text-2xl font-bold mb-4">Transaction History</h2>
-            <p>Transaction history content will go here...</p>
-          </div>
-        </div>
 
-        <div className={isVisible("inventory view")}>
-          <div className="p-4 lg:p-8">
-            <h2 className="text-xl lg:text-2xl font-bold mb-4">Inventory View</h2>
-            <p>Inventory view content will go here...</p>
-          </div>
-        </div>
-
-        <div className={isVisible("offers-discount")}>
-          <OffersDiscountView />
-        </div>
-
-        <div className={isVisible("sales-config")}>
-          <div className="p-4 lg:p-8">
-            <h2 className="text-xl lg:text-2xl font-bold mb-4">Sales Configurations</h2>
-            <p>Sales configurations content will go here...</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

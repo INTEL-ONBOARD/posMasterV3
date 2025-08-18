@@ -32,7 +32,7 @@ function Inventory() {
     activeSection === section ? "block" : "hidden";
 
   return (
-    <div id="inv-background" className="flex h-screen bg-[#EBEBEB] -ml-12">
+    <div id="inv-background" className="flex h-screen bg-[#EBEBEB]">
       {/* sidebar (left) */}
       <InventorySidebar
         activeSection={activeSection}
@@ -63,7 +63,7 @@ function Inventory() {
           <InventoryRestock />
         </div>
         {/* Supplier Reg */}
-        <div className={isVisible("supplier-reg")}>
+        <div className={isVisible("supplier-registration")}>
           <SupplierReg />
         </div>
         {/* Check History */}

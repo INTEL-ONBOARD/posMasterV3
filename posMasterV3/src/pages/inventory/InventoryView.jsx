@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import InventorySidebar from "./Inventory_sidebar";
-import FilterSidebar from "../../components/FilterSidebar.jsx";
 import ItemCard from "../../components/ItemCard.jsx";
 import SpinnerDot from "../../frontend/components/SpinnerDot";
 import bananaImg from "../../assets/Inventory_banana.png";
@@ -123,7 +122,7 @@ function InventoryView() {
       } catch (error) {
           console.error("Error fetching items:", error);
       } finally {
-          setIsLoading(false);
+          //setIsLoading(false);
       }
     };
     // Fetch items from API
@@ -196,80 +195,88 @@ function InventoryView() {
   );
 
   return (
-    <div className="flex">
-      {/* Sidebar */}
-      <div className="w-64 h-screen bg-[#EBEBEB] border-r border-gray-200">
-        <FilterSidebar />
-      </div>
+        <div className="">
+          <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4 ">
+            <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
+              <input
+                type="text"
+                value={search}
+                onChange={handleSearch}
+                placeholder="Search Your Items here"
+                className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
+              />
+              <button
+                onClick={handleSearch}
+                className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
+              >
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                </svg>
+                Search
+              </button>
+            </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Top Nav */}
-        <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4">
-          <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
-            <input
-              type="text"
-              value={search}
-              onChange={handleSearch}
-              placeholder="Search Your Items here"
-              className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
-            />
-            <button
-              onClick={handleSearch}
-              className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
+
+            <select
+              value={searchCategory}
+              onChange={(e) => setSearchCategory(e.target.value)}
+              className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
             >
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"
-                />
-              </svg>
-              Search
-            </button>
-          </div>
-        </nav>
-
-        {/* Items Grid */}
-        <div className="h-[calc(100vh-13rem)] overflow-y-scroll bg-transparent">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-10">
-            {isSearching ? (
-              <div className="col-span-full flex flex-col items-center justify-center">
-                <div className="flex flex-col items-center mt-32">
-                  <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
-                  <span className="text-gray-700 text-xl mt-1">Please wait...</span>
+              <option value="All">All Categories</option>
+                {uniqueCategoryTypes.map(type => (
+                    <option key={type} value={type}>
+                      {type}
+                  </option>
+                  ))}
+            </select>
+            <select
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value)}
+              className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
+            >
+              <option value="grid">View mode</option>
+              <option value="grid">Grid</option>
+              <option value="list">List</option>
+            </select>
+          </nav>
+          <div className="h-[calc(100vh-13rem)] overflow-y-scroll bg-transparent">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-10">
+              {isSearching ? (
+                <div className="col-span-full flex flex-col items-center justify-center">
+                  <div className="flex flex-col items-center mt-32">
+                    {/* Custom spinner */}
+                    <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
+                    <span className="text-gray-700 text-xl mt-1">Please wait...</span>
+                  </div>
                 </div>
-              </div>
-            ) : filteredItems.length === 0 ? (
-              <div
-                className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg"
-                style={{ minHeight: "50vh" }}
-              >
-                <img
-                  src={NotFound}
-                  alt="No items found!"
-                  className="w-12 h-12 mb-2 opacity-70"
-                />
-                <span>No items found!</span>
-              </div>
-            ) : (
-              filteredItems.map((item) => (
-                <ItemCard key={item.id} item={item} />
-              ))
-            )}
+              ) : filteredItems.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg" style={{ minHeight: "50vh" }}>
+                  <img
+                    src={NotFound}
+                    alt="No items found!"
+                    className="w-12 h-12 mb-2 opacity-70"
+                  />
+                  <span>No items found!</span>
+                </div>
+              ) : (
+                filteredItems.map((item) => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                  />
+                ))
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-
+  )
 }
 
 export default InventoryView

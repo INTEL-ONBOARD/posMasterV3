@@ -59,7 +59,7 @@ function Dashboard() {
         <Sidebar />
         {/* </aside> */}
         {/* Main content - with sidebar offset */}
-        <main className="flex-1 ml-44 pb-16">
+        <main className="flex-1 ml-[128px] pb-16">
           {" "}
           {/* pb-16 accounts for footer height */}
           <Outlet context={{ setActiveSection }} />
