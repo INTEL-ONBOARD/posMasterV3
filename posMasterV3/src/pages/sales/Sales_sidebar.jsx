@@ -7,10 +7,10 @@ import React from "react";
 //new image imports
 import saleViewImg from "../../assets/sale_sidebar_view.png";
 import transactionHistoryImg from "../../assets/sale_sidebar_trans_history.png";
-import inventoryViewImg from "../../assets/sale_sidebar_config.png";
 import offersDiscountImg from "../../assets/sale_sidebar_discounts.png";
 import salesConfigImg from "../../assets/Inventory_settings.png";
-
+import inventoryReportImg from "../../assets/Inventory_report.png";
+import viewInventoryImg from "../../assets/sale_sidebar_view_inventory.png";
 function SalesSidebar({
   activeSection,
   onSaleViewClick,
@@ -35,7 +35,7 @@ function SalesSidebar({
     {
       id: "inventory-view",
       label: "Inventory View",
-      icon: inventoryViewImg,
+      icon: inventoryReportImg,
       onClick: onInventoryViewClick,
     },
     {
@@ -50,6 +50,12 @@ function SalesSidebar({
       icon: salesConfigImg,
       onClick: onSalesConfigClick,
     },
+    {
+      id: "sales-config",
+      label: "Sales Configurations",
+      icon: viewInventoryImg,
+      onClick: onSalesConfigClick,
+    },    
   ];
 
   return (

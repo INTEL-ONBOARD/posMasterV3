@@ -15,8 +15,9 @@ import Inventory from './pages/inventory/Inventory.jsx';
 import ToastProvider from './pages/toasts/ToastProvider.jsx';
 import Settings from './pages/settings/Settings.jsx';
 import Notification from './pages/notification/Notification.jsx';
-import SalesView from './pages/sales/SalesView.jsx';
+
 import InventoryConfig from './pages/inventory/InventoryConfig.jsx';
+import Sales from './pages/sales/Sales.jsx';
 
 
 function App() {
@@ -51,7 +52,7 @@ function App() {
             <Route path="inventory-config" element={<InventoryConfig />} />
             <Route path="settings/*" element={<Settings />} />
             <Route path="notifications" element={<Notification />} />
-            <Route path="sales" element={<SalesView />} />
+            <Route path="sales" element={<Sales />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

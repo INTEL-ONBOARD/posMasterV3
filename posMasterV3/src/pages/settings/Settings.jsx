@@ -18,7 +18,7 @@ function Settings() {
   };
 
   return (
-    <div className="flex h-screen bg-[#EBEBEB] -ml-12">
+    <div className="flex h-screen bg-[#EBEBEB]">
       <SettingsSidebar
         activeSection={activeSection}
         onSaleViewClick={() => setActiveSection("user-settings")}
