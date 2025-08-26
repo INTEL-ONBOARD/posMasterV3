@@ -65,3 +65,21 @@ function App() {
 }
 
 export default App;
+
+
+
+
+
+// import { useEffect, useState } from "react";
+// import ApiService from "./api/services/userService.jsx";
+// import UserDTO from "./templates/dtos/UserDTO.jsx";
+
+// export default function UserList() {
+//   const [users, setUsers] = useState(/** @type {UserDTO[]} */([]));
+
+//   useEffect(() => {
+//     ApiService.getUsers().then(setUsers).catch((err) => {
+//       console.error("Failed to fetch users", err);
+//     });
+//   }, []);
+
