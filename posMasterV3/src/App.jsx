@@ -18,6 +18,7 @@ import Notification from './pages/notification/Notification.jsx';
 
 import InventoryConfig from './pages/inventory/InventoryConfig.jsx';
 import Sales from './pages/sales/Sales.jsx';
+import Startup from './pages/Startup.jsx';
 
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
       <HashRouter>
         <Routes>
           <Route index element={<Intro />} />
+          <Route path="startup" element={<Startup />} />
           <Route path="login" element={<Login />} />
 
           <Route path="dashboard" element={<Dashboard />} >
