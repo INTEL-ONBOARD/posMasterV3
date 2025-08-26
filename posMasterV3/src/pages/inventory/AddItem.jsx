@@ -8,6 +8,7 @@ import barcodeImg from "../../assets/barcode.png";
 import validateItem from "../../util/validate.jsx";
 import ToastContext from "../toasts/ToastService.jsx";
 
+
 import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
 import JsBarcode from 'jsbarcode';
@@ -144,7 +145,7 @@ function AddItem() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
 
-  // Form state
+  // Form select
   const [formData, setformData] = useState(INITIAL_FORM_DATA);
   const [deletingItem, setDeletingItem] = useState(INITIAL_FORM_DATA);
 
@@ -458,11 +459,19 @@ function AddItem() {
       }
     };
   }, []);
+
+  //right filter section controls
+  const [openFilter, setOpenFilter] = useState(true);
+  const [openOrderBy, setOpenOrderBy] = useState(true);
+
+
   return (
     <div className="flex flex-row">
       {/* Item form (left) */}
       {formStatus === "form" ? (
-      <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-between">
+      // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-between">
+      // <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] overflow-y-scroll">
+            <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 z-10 flex flex-col justify-between overflow-y-scroll">
         <div className="flex flex-col h-[45rem] gap-3">
           {/* ▼ Basic info block ▼ */}
           <div className="border rounded bg-white">
@@ -527,13 +536,13 @@ function AddItem() {
               {openPrimary ? <ChevronUp /> : <ChevronDown />}
             </button>
             {openPrimary && (
-              <div className="px-4 bg h-[7rem] bg-white">
+              <div className="px-4 bg h-[17rem] bg-white">
                 {/*primary description block  */}
                 <div className="">
                   <div className="pt-2">
                     {/* <label className="block text-sm font-medium text-gray-700 mb-1">
-                Name
-              </label> */}
+                      Name
+                    </label> */}
                     <input
                       type="text"
                       name="item_name"
@@ -545,9 +554,9 @@ function AddItem() {
                   </div>
                   <div className="grid grid-cols-2 mt-2 gap-4">
                     <div>
-                      {/* <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                   Category
-                </label> */}
+                </label>
                       <select
                         // name="category"
                         // value={formData.category}
@@ -566,9 +575,9 @@ function AddItem() {
                       </select>
                     </div>
                     <div>
-                      {/* <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                   Brand
-                </label> */}
+                </label>
                       <select
                         // name="brand"
                         // value={formData.brand}
@@ -588,6 +597,37 @@ function AddItem() {
                       </select>
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 mt-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        SKU
+                      </label>
+                      <input
+                        type="text"
+                        name="sku"
+                        // value={formData.sku}
+                        // onChange={handleInputChange}
+                        placeholder="Generate barcode"
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Maximum Threshold
+                      </label>
+                      <input
+                        type="number"
+                        // readOnly = {true}
+                        // disabled = {true}
+                        // name="batch_code"
+                        // value={formData.batch_code}
+                        // onChange={handleInputChange}
+                        placeholder="system genereated"
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+
                 </div>
               </div>
             )}
@@ -803,7 +843,7 @@ function AddItem() {
         {/* Bottom bar */}
         <div className="flex flex-row min-w-max justify-around">
           <button
-            className="flex items-center w-[12rem] h-10 px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
+            className="flex items-center w-[10rem] h-10 px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
             onClick={() => generatePdf('print')}
           >
             <Printer className="w-4 h-4 mr-4" />
@@ -815,29 +855,32 @@ function AddItem() {
               //switch from update item button to add item button 
               setUserEditing(false)
             }}
-            className="px-6 py-2 w-[8rem] h-10  border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
+            className="px-6 py-2 w-[6rem] h-10  border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
           >
             Cancel
           </button>
           {/* switch between update and add button functions based on item card selection and clear form button click */}
           <button
             onClick={isUserEditting ? updateItem : createItem}
-            className="px-6 py-2 h-10 w-[8rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
+            className="px-6 py-2 h-10 w-[6rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
           >
-            {isUserEditting ? 'Update' : 'Add Item'}
+            {isUserEditting ? 'Update' : 'Create'}
           </button>
 
         </div>
       </div>
       ) : formStatus === "loading" ? (
-        <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+        // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+        // <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] overflow-y-scroll">
+        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 z-10 flex flex-col justify-around">
           <div className="flex flex-col items-center justify-center">
           <div className="animate-spin mb-3 rounded-full border-4 border-gray-300 border-t-[#1A318C] h-12 w-12"></div>
           <h2>Please wait…</h2>
           </div>
         </div>
       ) : formStatus === "success" ? (
-        <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+        // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 z-10 flex flex-col justify-around">
           <div className="flex flex-col items-center justify-center">
           <svg width={80} height={80} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             {/* green circle */}
@@ -849,7 +892,8 @@ function AddItem() {
         </div>
       ) : (
         /* if it's none of the above, we treat it as "fail" */
-        <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+        // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 z-10 flex flex-col justify-around">
           <div className="flex flex-col items-center justify-center">
           <svg width={80} height={80} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             {/* red circle */}
@@ -862,8 +906,9 @@ function AddItem() {
         </div>
       )}
 
-      {/* Item list (right) */}
-      <div className="w-2/3 h-[calc(100vh-1rem)] bg-[#EBEBEB]">
+      {/* Item list (mid) */}
+      <div className="w-[calc(57rem)] h-[calc(100vh-1rem)] bg-[#EBEBEB]">
+      
         {/* Search panel */}
         <nav className="w-full flex flex-row justify-between py-8 px-10 h-[7rem] bg-white gap-6">
           <div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-2 border-blue-400">
@@ -926,6 +971,126 @@ function AddItem() {
               )}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* filter section (right) */}
+      <div className="bg-white w-[calc(20rem)] h-[calc(100vh-2rem)]">
+        <div className="flex flex-col h-[45rem] gap-3">
+          {/* top block set */}
+          <div>
+          {/* ▼ search filters block ▼ */}
+          <div className="bg-white">
+            <button
+              onClick={() => setOpenFilter(!openFilter)}
+              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+            >
+              <span className="text-gray-400">SEARCH FILTERS</span>
+              {openFilter ? <ChevronUp /> : <ChevronDown />}
+            </button>
+            {openFilter && (
+              <div className="px-4 bg-white pb-5">
+                {/* detailed description block */}
+                <div className="">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Category
+                      </label>
+                      <select
+                        value={searchCategory}
+                        onChange={(e) => setSearchCategory(e.target.value)}
+                        className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
+                      >
+                        <option value="All">All Categories</option>
+                          {uniqueCategoryTypes.map(type => (
+                              <option key={type} value={type}>
+                                {type}
+                            </option>
+                            ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Stock Availability
+                      </label>
+                      <select
+                        name="uom"
+                        // value={formUOMData ?? ""}               // show the selected id
+                        // onChange={handleUOMChange}              // hook up your new handler
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Available</option>
+                        <option value="">Unavailable</option>
+                        {/* {uoms.map(uom => (
+                          <option key={uom.id} value={uom.id}>
+                            {uom.unit_name} ({uom.symbol})
+                          </option>
+                        ))} */}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Popularity
+                      </label>
+                      <select
+                        name="uom"
+                        // value={formUOMData ?? ""}               // show the selected id
+                        // onChange={handleUOMChange}              // hook up your new handler
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Default</option>
+                        {/* {uoms.map(uom => (
+                          <option key={uom.id} value={uom.id}>
+                            {uom.unit_name} ({uom.symbol})
+                          </option>
+                        ))} */}
+                      </select>
+                    </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ▼ order by block ▼ */}
+          <div className="bg-white">
+            <button
+              onClick={() => setOpenOrderBy(!openOrderBy)}
+              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+            >
+              <span className="text-gray-400">ORDER BY</span>
+              {openOrderBy ? <ChevronUp /> : <ChevronDown />}
+            </button>
+            {openOrderBy && (
+              <div className="px-4 bg-white pb-5">
+                {/* detailed description block */}
+                <div className="">
+                    <div>
+                      {/* <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Suppier
+                      </label> */}
+                      <select
+                        name="uom"
+                        // value={formUOMData ?? ""}               // show the selected id
+                        // onChange={handleUOMChange}              // hook up your new handler
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Default</option>
+                        {/* {uoms.map(uom => (
+                          <option key={uom.id} value={uom.id}>
+                            {uom.unit_name} ({uom.symbol})
+                          </option>
+                        ))} */}
+                      </select>
+                    </div>
+
+                </div>
+              </div>
+            )}
+          </div>
+          </div>
+
         </div>
       </div>
 

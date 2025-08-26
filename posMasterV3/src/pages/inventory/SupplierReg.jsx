@@ -10,7 +10,7 @@ function SupplierReg() {
     <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
       {/* form section (left) */}
       <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] overflow-y-scroll">
-        <div className="flex flex-col h-[45rem] gap-3">
+        <div className="flex flex-col h-[56rem] gap-3">
           {/* top block set */}
           <div>
           {/* ▼ supplier description block ▼ */}
@@ -174,10 +174,10 @@ function SupplierReg() {
 
         </div>
       </div>
-      {/* teble section (right) */}
+      {/* table section (right) */}
       <div className="bg-white w-[calc(77rem)] h-[calc(100vh-2rem)]">
         {/* search bar with dropdowns */}
-                  <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4 ">
+          <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4 ">
             <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
               <input
                 type="text"

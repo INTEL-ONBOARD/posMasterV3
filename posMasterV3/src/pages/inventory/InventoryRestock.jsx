@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
 import ItemCard from "../../components/ItemCard";
-import {ChevronDown, ChevronUp } from "lucide-react";
+import {ChevronDown, Printer, ChevronUp } from "lucide-react";
 import AddRegitemsImg from "../../assets/add_reg_items.png";
 
 import ReturnItemsImg from "../../assets/return_items.png";
@@ -209,7 +209,7 @@ function InventoryRestock() {
     <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
       {/* form section (left) */}
       <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] overflow-y-scroll">
-                <div className="flex flex-col h-[45rem] gap-3">
+          <div className="flex flex-col h-[56rem] gap-3">
           {/* ▼ item description block ▼ */}
           <div className="border rounded bg-white">
             <button
@@ -542,7 +542,36 @@ function InventoryRestock() {
             )}
           </div>
         </div>
+        {/* Bottom bar */}
+        <div className="flex flex-row justify-around">
+          {/* <button
+            className="flex items-center w-[10rem] h-10 px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
+            // onClick={() => generatePdf('print')}
+          >
+            <Printer className="w-4 h-4 mr-4" />
+            <p>Print Barcode</p>
+          </button> */}
+          <button
+            onClick={() => {
+              clearUserInput();
+              //switch from update item button to add item button 
+              setUserEditing(false)
+            }}
+            className="px-6 py-2 w-[10rem] h-10  border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
+          >
+            Cancel
+          </button>
+          {/* switch between update and add button functions based on item card selection and clear form button click */}
+          <button
+            // onClick={isUserEditting ? updateItem : createItem}
+            className="px-6 py-2 h-10 w-[10rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
+          >
+            {/* {isUserEditting ? 'Update' : 'Create'} */}Add Item
+          </button>
+
+        </div>
       </div>
+      
       {/* they don't pay me enough for this😞 */}
       {/* main transaction section (mid) */}
       <div className="bg-white w-[calc(45rem)] h-[calc(100vh-2rem)]">
