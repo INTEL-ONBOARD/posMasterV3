@@ -479,11 +479,11 @@ function AddItem() {
               onClick={() => setOpenBasic(!openBasic)}
               className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
             >
-              <span className="text-gray-600">Barcode & SKU</span>
+              <span className="text-gray-400">Barcode & SKU</span>
               {openBasic ? <ChevronUp /> : <ChevronDown />}
             </button>
             {openBasic && (
-              <div className="bg-white border-2 border-black mx-4">
+              <div className="bg-white mx-4">
                 <div className="flex flex-row px-4 items-center max-h-[12rem]">
                   <div className="w-36 h-36 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center mb-4 hover:border-gray-400 transition-colors">
                     {formData.item_image_url ? (
@@ -513,7 +513,7 @@ function AddItem() {
                     )}
                   </div>
                   {/* Vertical black line separator */}
-                  <div className="w-0.5 bg-black self-stretch"></div>
+                  {/* <div className="w-0.5 bg-black self-stretch"></div> */}
                   <div className="flex flex-col m-10">
                     <div>
                       <img src={barcodeImg} alt="Barcode" className="w-[100px] object-contain" />
@@ -532,17 +532,17 @@ function AddItem() {
               onClick={() => setOpenPrimary(!openPrimary)}
               className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
             >
-              <span className="text-gray-600">Primary Description</span>
+              <span className="text-gray-400">Primary Description</span>
               {openPrimary ? <ChevronUp /> : <ChevronDown />}
             </button>
             {openPrimary && (
-              <div className="px-4 bg h-[17rem] bg-white">
+              <div className="px-4 bg h-[20rem] bg-white">
                 {/*primary description block  */}
                 <div className="">
                   <div className="pt-2">
-                    {/* <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Name
-                    </label> */}
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Item Name
+                    </label>
                     <input
                       type="text"
                       name="item_name"
@@ -554,7 +554,7 @@ function AddItem() {
                   </div>
                   <div className="grid grid-cols-2 mt-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                   Category
                 </label>
                       <select
@@ -575,7 +575,7 @@ function AddItem() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                   Brand
                 </label>
                       <select
@@ -599,7 +599,7 @@ function AddItem() {
                   </div>
                   <div className="grid grid-cols-2 mt-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                         SKU
                       </label>
                       <input
@@ -612,7 +612,7 @@ function AddItem() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                         Maximum Threshold
                       </label>
                       <input
@@ -627,101 +627,7 @@ function AddItem() {
                       />
                     </div>
                   </div>
-
-                </div>
-              </div>
-            )}
-          </div>
-
-
-          {/* ▼ Detailed description block ▼ */}
-          <div className="bg-white">
-            <button
-              onClick={() => setOpenDetailed(!openDetailed)}
-              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
-            >
-              <span className="text-gray-600">Detailed Description</span>
-              {openDetailed ? <ChevronUp /> : <ChevronDown />}
-            </button>
-            {openDetailed && (
-              <div className="px-4 bg-white pb-5">
-                {/* detailed description block */}
-                <div className="">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        SKU
-                      </label>
-                      <input
-                        type="text"
-                        name="sku"
-                        value={formData.sku}
-                        onChange={handleInputChange}
-                        placeholder="Generate barcode"
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Barcode
-                      </label>
-                      <input
-                        type="text"
-                        readOnly = {true}
-                        disabled = {true}
-                        name="batch_code"
-                        value={formData.batch_code}
-                        onChange={handleInputChange}
-                        placeholder="system genereated"
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Threshold Limit(%)
-                      </label>
-                      <input
-                        type="number"
-                        name="threshold_limit"
-                        min={0}
-                        max={100}
-                        value={formData.threshold_limit}
-                        onChange={handleInputChange}
-                        placeholder=""
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Maximum Capacity
-                      </label>
-                      <input
-                        type="number"
-                        name="maximum_capacity"
-                        value={formData.maximum_capacity}
-                        onChange={handleInputChange}
-                        placeholder=""
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Quantity
-                      </label>
-                      <input
-                        type="number"
-                        name="quantity"
-                        value={formData.quantity}
-                        onChange={handleInputChange}
-                        placeholder=""
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         UOM
@@ -742,102 +648,12 @@ function AddItem() {
                     </div>
                   </div>
 
-                  {/* //newly added */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Stock Price (Rs.)
-                      </label>
-                      <input
-                        type="number"
-                        name="stock_price"
-                        value={formData.stock_price}
-                        onChange={handleInputChange}
-                        placeholder="Enter item price"
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Retail Price (Rs.)
-                      </label>
-                      <input
-                        type="number"
-                        name="retail_price"
-                        value={formData.retail_price}
-                        onChange={handleInputChange}
-                        placeholder="Enter item price"
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Availability
-                      </label>
-                      <select
-                        name="availability"
-                        value={formData.availability}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">-- select availability --</option>
-                        <option value={true}>Available</option>
-                        <option value={false}>Unavailable</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Expiration Date
-                      </label>
-                      <div className="relative max-w-sm">
-                        <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
-                          {/* <svg
-                            className="w-4 h-4 text-gray-500 dark:text-gray-400"
-                            aria-hidden="true"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
-                          </svg> */}
-                        </div>
-                          <input
-                            type="date"
-                            id="expired_datetime"
-                            value={formData.expired_datetime ? formData.expired_datetime.split('T')[0] : ''}
-                            onChange={(e) => {
-                              const selectedDate = e.target.value;
-                              console.log("date input value: "+selectedDate);
-                              if (selectedDate) {
-                                // Format to UTC midnight: YYYY-MM-DDT00:00:00.000Z
-                                const utcMidnight = `${selectedDate}T00:00:00.000Z`;
-                                console.log("to formData:"+utcMidnight)
-                                setformData({
-                                  ...formData,
-                                  expired_datetime: utcMidnight
-                                });
-                              } else {
-                                // Clear the field if date is empty
-                                setformData({ ...formData, expired_datetime: null });
-                              }
-                            }}
-                            name="expired_datetime"
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full px-3 py-2"
-                            placeholder="Select date"
-                          />
-                      </div>
-                    </div>
-
-                  </div>
-
                 </div>
               </div>
             )}
           </div>
+
+
         </div>
 
         {/* Bottom bar */}

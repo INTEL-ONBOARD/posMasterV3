@@ -7,6 +7,7 @@ import AddRegitemsImg from "../../assets/add_reg_items.png";
 import ReturnItemsImg from "../../assets/return_items.png";
 import DisposeItemsImg from "../../assets/dispose_items.png";
 import barcodeImg from "../../assets/barcode.png";
+import SalesItemCard from "../../components/SalesItemCard";
 
 function InventoryRestock() {
   // add item list
@@ -201,6 +202,8 @@ function InventoryRestock() {
     const [openItem, setOpenItem] = useState(false);
     const [openStock, setOpenStock] = useState(true);
     const [openSupplier, setOpenSupplier] = useState(true);
+    //replace with this
+    const [openFormBlock, setopenFormBlock] = useState('item'); //item || stock || supplier || 
 
   // right section controls
   const [rightActiveSection, setRightActiveSection] = useState("buttons"); // "buttons" | "dispose" | "add" | "return"
@@ -208,18 +211,27 @@ function InventoryRestock() {
   return (
     <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
       {/* form section (left) */}
-      <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] overflow-y-scroll">
+      <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)]">
           <div className="flex flex-col h-[56rem] gap-3">
           {/* ▼ item description block ▼ */}
           <div className="border rounded bg-white">
             <button
+              onClick={() => setopenFormBlock('item')}
+              className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
+            >
+              <span className="text-gray-400">ITEM DESCIRPTION</span>
+              {openFormBlock=='item' ? <ChevronUp /> : <ChevronDown />}
+            </button>
+            {(openFormBlock=='item') && (
+/* 
               onClick={() => setOpenItem(!openItem)}
               className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
             >
               <span className="text-gray-400">ITEM DESCIRPTION</span>
               {openItem ? <ChevronUp /> : <ChevronDown />}
             </button>
-            {openItem && (
+            {openItem && (*/
+              
               <div className="mx-4">
                 <div className="flex flex-row px-4 items-center max-h-[12rem]">
                   <div className="">
@@ -245,13 +257,15 @@ function InventoryRestock() {
           {/* ▼ stock description block ▼ */}
           <div className="border">
             <button
-              onClick={() => setOpenStock(!openStock)}
+              // onClick={() => setOpenStock(!openStock)}
+              openFormBlock
+              onClick={() => setopenFormBlock('stock')}
               className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
             >
               <span className="text-gray-400">STOCK DESCRIPTION</span>
-              {openStock ? <ChevronUp /> : <ChevronDown />}
+              {openFormBlock=='stock' ? <ChevronUp /> : <ChevronDown />}
             </button>
-            {openStock && (
+            {(openFormBlock == 'stock') && (
               <div className="px-4 bg h-[34rem] bg-white">
                 {/*stock description block  */}
                 <div className="flex flex-col gap-2">
@@ -346,7 +360,7 @@ function InventoryRestock() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                   <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                         Expiration Date
                       </label>
                       <div className="relative max-w-sm">
@@ -446,18 +460,20 @@ function InventoryRestock() {
           {/* ▼ supplier description block ▼ */}
           <div className="bg-white">
             <button
-              onClick={() => setOpenSupplier(!openSupplier)}
+              // onClick={() => setOpenSupplier(!openSupplier)}
+              onClick={() => setopenFormBlock('supplier')}
               className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
             >
               <span className="text-gray-400">SUPPLIER DESCRIPTION</span>
-              {openSupplier ? <ChevronUp /> : <ChevronDown />}
+              {(openFormBlock=='supplier') ? <ChevronUp /> : <ChevronDown />}
+              {/* {openSupplier ? <ChevronUp /> : <ChevronDown />} */}
             </button>
-            {openSupplier && (
+            {(openFormBlock=='supplier') && (
               <div className="px-4 bg-white pb-5">
                 {/* detailed description block */}
                 <div className="">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                         Suppier
                       </label>
                       <select
@@ -492,7 +508,7 @@ function InventoryRestock() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                         Bill No
                       </label>
                       <input
@@ -508,7 +524,7 @@ function InventoryRestock() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                         Payment Method
                       </label>
                       <select
@@ -523,7 +539,7 @@ function InventoryRestock() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                         Expenses (Rs.)
                       </label>
                       <input
@@ -541,6 +557,59 @@ function InventoryRestock() {
               </div>
             )}
           </div>
+
+          {/* ▼ return description block ▼ */}
+          <div className="bg-white">
+            <button
+              // onClick={() => setOpenSupplier(!openSupplier)}
+              onClick={() => setopenFormBlock('return')}
+              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+            >
+              <span className="text-gray-400">RETURN DESCRIPTION</span>
+              {(openFormBlock=='return') ? <ChevronUp /> : <ChevronDown />}
+              {/* {openSupplier ? <ChevronUp /> : <ChevronDown />} */}
+            </button>
+            {(openFormBlock=='return') && (
+              <div className="px-4 bg-white pb-5">
+                {/* detailed description block */}
+                <div className="">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Quantity
+                      </label>
+                      <input
+                        type="text"
+                        name="stock_price"
+                        // value={formData.stock_price}
+                        // onChange={handleInputChange}
+                        placeholder="Enter item price"
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                    <div className='mt-1'>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Description
+                      </label>
+                      <textarea
+                      value=""
+                      //onChange=
+                      placeholder="Enter details..."
+                      rows={3}
+                      className="w-full mt-2 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+
+                </div>
+              </div>
+            )}
+          </div>
+
+
+
+
+          
         </div>
         {/* Bottom bar */}
         <div className="flex flex-row justify-around">
@@ -584,7 +653,7 @@ function InventoryRestock() {
               <p className="text-2xl font-semibold">Ranathunga Pvt(Ltd)</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Prepared by
               </label>
               <select
@@ -599,7 +668,7 @@ function InventoryRestock() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-400 mb-1">
                 Authorized by
               </label>
               <select
@@ -975,7 +1044,7 @@ function InventoryRestock() {
                   </div>
                 ) : (
                   filteredItems.map((item) => (
-                    <ItemCard key={item.id ?? item._id} item={item} />
+                    <SalesItemCard key={item.id ?? item._id} item={item} />
                   ))
                 )}
               </div>
