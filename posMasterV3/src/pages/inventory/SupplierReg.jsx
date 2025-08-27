@@ -120,7 +120,7 @@ function SupplierReg() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Payment Account
+                        Payment Bank
                       </label>
                       <input
                         type="text"
@@ -131,8 +131,36 @@ function SupplierReg() {
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Bank Account No
+                      </label>
+                      <input
+                        type="text"
+                        name="branch"
+                        // value={formData.retail_price}
+                        // onChange={handleInputChange}
+                        placeholder="Enter item price"
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
 
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Payment Branch
+                      </label>
+                      <input
+                        type="text"
+                        name="branch"
+                        // value={formData.retail_price}
+                        // onChange={handleInputChange}
+                        placeholder="Enter item price"
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
 
                 </div>
               </div>
