@@ -8,7 +8,6 @@ import barcodeImg from "../../assets/barcode.png";
 import validateItem from "../../util/validate.jsx";
 import ToastContext from "../toasts/ToastService.jsx";
 
-
 import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
 import JsBarcode from 'jsbarcode';
@@ -142,6 +141,7 @@ function AddItem() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
+    const [searchAvailability, setSearchAvailability] = useState("All");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
 
@@ -198,16 +198,12 @@ function AddItem() {
     }
   };
 
+  //filteriings
   // Search handler
   const handleSearch = (e) => {
     setSearchLoading(true);
     setSearch(e.target.value);
     setTimeout(() => setSearchLoading(false), 600);
-  };
-
-  // Category handler
-  const handleSearchCategoryChange = (e) => {
-    setSearchCategory(e.target.value);
   };
 
 
@@ -220,7 +216,7 @@ function AddItem() {
 
   const fetchItems = async () => {
     try {
-      const response = await apiClient.get("api/items/extended");
+      const response = await apiClient.get("api/itemRegistry/extended");
       if (response.data.status === "success") {
         setInventoryItems(response.data.data);
       }
@@ -320,7 +316,154 @@ function AddItem() {
     }
   };
 
+    // Create new item
+  const registerItem = async (e) => {
+    setFormStatus("loading");
+    e.preventDefault();
+    try {
+      const selectedCategory = itemCategories.find(c =>
+        c.type === formCategoryData.categoryType &&
+        c.brand === formCategoryData.brand
+      );
+      const requestData = {
+        item_name: formData.item_name,
+        item_image_url: formData.item_image_url || null,
+        batch_code: formData.batch_code,
+        maximum_capacity: Number(formData.maximum_capacity),
+        uom_id: formUOMData,
+        category_id: selectedCategory?.id ?? null, // look up id
+        inventory_id: 1, // Fixed value
+        availability: formData.availability,
+        stock_trace: [101] // Fixed value
+      };
+  // "item_name": "Sample Item(3)",
+  // "item_image_url": null,
+  // "batch_code": "SI03",
+  // "maximum_capacity": 500,
+  // "uom_id": 1,
+  // "category_id": 2,
+  // "inventory_id": 3,
+  // "availability": true,
+  // "stock_trace": [101, 102]
+      // if (!validateItem(requestData)) {
+      //   // on fail
+      //   setFormStatus("fail");
+      //   // after 4 seconds, flip back to the form
+      //   alert("validation failed")
+      //   timerRef.current = window.setTimeout(() => {
+      //     setFormStatus("form");
+      //     timerRef.current = null;
+      //   }, 4000);
+      //   return;
+      // }
+      console.log("registering item: "+requestData);
+      const response = await apiClient.post("api/itemRegistry/add", requestData);
+
+      if (response.data.status === "success") {
+        // Add new item to local state
+        //alert("Item created successfully!");
+        //toast.open("Item created successfully", 4000, 'Success', 'success');
+        //clear data upon successful response
+        setFormStatus("success");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
+        clearUserInput();
+      } else {
+        //alert(response.data.message || "Failed to create item");
+        //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
+        setFormStatus("fail");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
+      }
+    } catch (err) {
+      console.error("Create item error:", err);
+      //alert("Error creating item"+err.message);
+      setFormStatus("fail");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
+      toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
+    }
+    finally {
+      //repopulate items
+      fetchItems();
+    }
+  };
+
   // Update item
+  // const updateItem = async (e) => {
+  //   setFormStatus("loading");
+  //   e.preventDefault();
+  //   try {
+  //     const selectedCategory = itemCategories.find(c =>
+  //       c.type === formCategoryData.categoryType &&
+  //       c.brand === formCategoryData.brand
+  //     );
+  //     const requestData = {
+  //       sku: formData.sku,
+  //       item_name: formData.item_name,
+  //       quantity: Number(formData.quantity),
+  //       threshold_limit: Number(formData.threshold_limit),
+  //       maximum_capacity: Number(formData.maximum_capacity),
+  //       uom_id: formUOMData,
+  //       category_id: selectedCategory?.id ?? null, // look up id
+  //       inventory_id: 1, // Fixed value for now
+  //       item_image_url: formData.item_image_url || null,
+  //       batch_code: formData.batch_code,
+  //       stock_price: parseFloat(formData.stock_price),
+  //       retail_price: parseFloat(formData.retail_price),
+  //       expired_datetime: formData.expired_datetime,
+  //       availability: formData.availability,
+  //     };
+
+  //     const response = await apiClient.put(`api/items/${formData.id}`, requestData);
+
+  //     if (response.data.status === "success") {
+  //       //alert("Item created successfully!");
+  //       setFormStatus("success");
+  //       // after 4 seconds, flip back to the form
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //       toast.open("Item updated successfully", 4000, 'Success', 'success');
+  //       //clear data upon successful response
+  //       clearUserInput();
+  //       setUserEditing(false);
+  //     } else {
+  //       setFormStatus("fail");
+  //       // after 4 seconds, flip back to the form
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //       //alert(response.data.message || "Failed to update item");
+  //       toast.open("Failed to update the item, please try again", 4000, 'Request failed', 'error');
+  //     }
+  //   } catch (err) {
+  //     console.error("Update item error:", err);
+  //     setFormStatus("fail");
+  //       // after 4 seconds, flip back to the form
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //     //alert("Error updating item");
+  //     toast.open("Update item operation faild. Please try again", 4000, 'Item update Failed', 'error');
+  //   }
+  //   finally {
+  //     //repopulate items
+  //     fetchItems();
+  //   }
+  // };
   const updateItem = async (e) => {
     setFormStatus("loading");
     e.preventDefault();
@@ -330,23 +473,18 @@ function AddItem() {
         c.brand === formCategoryData.brand
       );
       const requestData = {
-        sku: formData.sku,
         item_name: formData.item_name,
-        quantity: Number(formData.quantity),
-        threshold_limit: Number(formData.threshold_limit),
+        item_image_url: formData.item_image_url || null,
+        batch_code: formData.batch_code,
         maximum_capacity: Number(formData.maximum_capacity),
         uom_id: formUOMData,
         category_id: selectedCategory?.id ?? null, // look up id
-        inventory_id: 1, // Fixed value for now
-        item_image_url: formData.item_image_url || null,
-        batch_code: formData.batch_code,
-        stock_price: parseFloat(formData.stock_price),
-        retail_price: parseFloat(formData.retail_price),
-        expired_datetime: formData.expired_datetime,
+        inventory_id: 1, // Fixed value
         availability: formData.availability,
+        stock_trace: [101], // Fixed value
       };
 
-      const response = await apiClient.put(`api/items/${formData.id}`, requestData);
+      const response = await apiClient.put(`api/itemRegistry/${formData.id}`, requestData);
 
       if (response.data.status === "success") {
         //alert("Item created successfully!");
@@ -438,16 +576,38 @@ function AddItem() {
     setDeletingItem(null);
   };
 
-  // Filter items based on search and category
-  const filteredItems = inventoryItems.filter(
-    (item) =>
-      (searchCategory === "All" || item.category.type === searchCategory) &&
-      item.item_name.toLowerCase().includes(search.toLowerCase())
-  );
+//helper method for item availability filtering
+  const interpretAvailability = (item) => {
+    // handle boolean, string, numeric types defensively
+    const a = item?.availability;
+    if (typeof a === "boolean") return a;
+    if (typeof a === "string") return a.toLowerCase() === "true";
+    return Boolean(a); // numbers (1/0) or other truthy/falsy
+  };
+  
+  // Filter items based on search, category and availability
+const filteredItems = inventoryItems.filter((item) => {
+  // category match: either All or item.category.type equals selected
+  const matchesCategory =
+    searchCategory === "All" ||
+    (item?.category && item.category.type === searchCategory);
+
+  // availability match: All, Available (true), Unavailable (false)
+  const isAvailable = interpretAvailability(item);
+  const matchesAvailability =
+    searchAvailability === "All" ||
+    (searchAvailability === "Available" && isAvailable) ||
+    (searchAvailability === "Unavailable" && !isAvailable);
+
+  // text search match
+  const matchesSearch =
+    (item?.item_name || "").toLowerCase().includes((search || "").toLowerCase());
+
+  return matchesCategory && matchesAvailability && matchesSearch;
+});
 
   const [openBasic, setOpenBasic] = useState(false);
   const [openPrimary, setOpenPrimary] = useState(true);
-  const [openDetailed, setOpenDetailed] = useState(true);
 
   const [formStatus, setFormStatus] = useState("form");   // possible values: "form" | "loading" | "success" | "fail"
   // keep the timer ID so we can clear it if the component unmounts early
@@ -463,7 +623,6 @@ function AddItem() {
   //right filter section controls
   const [openFilter, setOpenFilter] = useState(true);
   const [openOrderBy, setOpenOrderBy] = useState(true);
-
 
   return (
     <div className="flex flex-row">
@@ -517,8 +676,8 @@ function AddItem() {
                   <div className="flex flex-col m-10">
                     <div>
                       <img src={barcodeImg} alt="Barcode" className="w-[100px] object-contain" />
-                      <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p>
-                      <p className="text-sm font-semibold text-gray-800">BARCODE: {formData.batch_code}</p>
+                      {/* <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p> */}
+                      <p className="text-sm font-semibold text-gray-800">BATCHCODE: {formData.batch_code}</p>
                     </div>
                   </div>
                 </div>
@@ -600,36 +759,34 @@ function AddItem() {
                   <div className="grid grid-cols-2 mt-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        SKU
+                        Batch Code
                       </label>
                       <input
                         type="text"
-                        name="sku"
-                        // value={formData.sku}
-                        // onChange={handleInputChange}
-                        placeholder="Generate barcode"
+                        name="batch_code"
+                        value={formData.batch_code}
+                        onChange={handleInputChange}
+                        //placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Maximum Threshold
+                        Maximum Capacity
                       </label>
                       <input
                         type="number"
-                        // readOnly = {true}
-                        // disabled = {true}
-                        // name="batch_code"
-                        // value={formData.batch_code}
-                        // onChange={handleInputChange}
-                        placeholder="system genereated"
+                        name="maximum_capacity"
+                        value={formData.maximum_capacity}
+                        onChange={handleInputChange}
+                        // placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                         UOM
                       </label>
                       <select
@@ -644,6 +801,22 @@ function AddItem() {
                             {uom.unit_name} ({uom.symbol})
                           </option>
                         ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Availability
+                      </label>
+                      <select
+                        name="availability"
+                        value={formData.availability}               // show the selected id
+                        onChange={handleInputChange}              // hook up your new handler
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option>-- select availability --</option>
+                          <option value={true}>Available</option>
+                          <option value={false}>Unavailable</option>
+
                       </select>
                     </div>
                   </div>
@@ -677,7 +850,7 @@ function AddItem() {
           </button>
           {/* switch between update and add button functions based on item card selection and clear form button click */}
           <button
-            onClick={isUserEditting ? updateItem : createItem}
+            onClick={isUserEditting ? updateItem : registerItem}
             className="px-6 py-2 h-10 w-[6rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
           >
             {isUserEditting ? 'Update' : 'Create'}
@@ -739,27 +912,9 @@ function AddItem() {
               Search
             </button>
           </div>
-
-          <select
-            value={searchCategory}
-            onChange={handleSearchCategoryChange}
-            className="w-80 h-10 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            {/* <option value="All">All Categories</option>
-            <option value="electronics">Electronics</option>
-            <option value="fruit">Fruit</option>
-            <option value="beverage">Beverage</option> */}
-            {/* //fix this */}
-            <option value="All">All Categories</option>
-            {uniqueCategoryTypes.map(type => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
         </nav>
 
-        <div className="h-[calc(100vh-14rem)] overflow-y-scroll">
+        <div className="h-[calc(100vh-8rem)] overflow-y-scroll">
           {isLoading ? (
             <div className="flex justify-center items-center h-full">
               <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12"></div>
@@ -815,7 +970,7 @@ function AddItem() {
                       <select
                         value={searchCategory}
                         onChange={(e) => setSearchCategory(e.target.value)}
-                        className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
+                        className="w-full h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
                       >
                         <option value="All">All Categories</option>
                           {uniqueCategoryTypes.map(type => (
@@ -826,27 +981,24 @@ function AddItem() {
                       </select>
                     </div>
 
+                    {/* fix availability here */}
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Stock Availability
+                        Item Availability
                       </label>
                       <select
-                        name="uom"
-                        // value={formUOMData ?? ""}               // show the selected id
-                        // onChange={handleUOMChange}              // hook up your new handler
+                        name="searchAvailability"
+                        value={searchAvailability}
+                        onChange={(e) => setSearchAvailability(e.target.value)}
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="">Available</option>
-                        <option value="">Unavailable</option>
-                        {/* {uoms.map(uom => (
-                          <option key={uom.id} value={uom.id}>
-                            {uom.unit_name} ({uom.symbol})
-                          </option>
-                        ))} */}
+                        <option value="All">All</option>
+                        <option value="Available">Available</option>
+                        <option value="Unavailable">Unavailable</option>
                       </select>
                     </div>
 
-                    <div>
+                    {/* <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
                         Popularity
                       </label>
@@ -857,13 +1009,9 @@ function AddItem() {
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">Default</option>
-                        {/* {uoms.map(uom => (
-                          <option key={uom.id} value={uom.id}>
-                            {uom.unit_name} ({uom.symbol})
-                          </option>
-                        ))} */}
+
                       </select>
-                    </div>
+                    </div> */}
                 </div>
               </div>
             )}
