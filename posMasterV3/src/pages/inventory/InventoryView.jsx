@@ -3,7 +3,7 @@ import InventorySidebar from "./Inventory_sidebar";
 import ItemCard from "../../components/ItemCard.jsx";
 import SpinnerDot from "../../frontend/components/SpinnerDot";
 import bananaImg from "../../assets/Inventory_banana.png";
-import NotFound from "../../assets/nonicons_not-found-16.png";
+import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import { apiClient } from "../../api/client.jsx";
 import {ChevronDown, ChevronUp } from "lucide-react";
 
@@ -246,7 +246,7 @@ function InventoryView() {
               ) : filteredItems.length === 0 ? (
                 <div className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg" style={{ minHeight: "50vh" }}>
                   <img
-                    src={NotFound}
+                    src={NotFoundImg}
                     alt="No items found!"
                     className="w-12 h-12 mb-2 opacity-70"
                   />

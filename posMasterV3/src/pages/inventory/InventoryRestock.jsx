@@ -4,6 +4,7 @@ import ItemCard from "../../components/ItemCard";
 import {ChevronDown, Printer, ChevronUp } from "lucide-react";
 import AddRegitemsImg from "../../assets/add_reg_items.png";
 
+import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import ReturnItemsImg from "../../assets/return_items.png";
 import DisposeItemsImg from "../../assets/dispose_items.png";
 import barcodeImg from "../../assets/barcode.png";
@@ -12,42 +13,6 @@ import SalesItemCard from "../../components/SalesItemCard";
 function InventoryRestock() {
   // add item list
   const [inventoryItems, setInventoryItems] = useState([
-    //change right section
-
-    // {
-    //     _id: '688136391a56f324f917f98f',
-    //     id: 29,
-    //     stock_trace: [1],
-    //     item_name: 'dsds1',
-    //     item_image_url: null,
-    //     batch_code: '2424DS4521',
-    //     sku: '2424',
-    //     quantity: 11,
-    //     threshold_limit: 11,
-    //     maximum_capacity: 111,
-    //     uom_id: 21,
-    //     category_id: 45,
-    //     inventory_id: 1,
-    //     unit_price: 111,
-    //     stock_update_datetime: '2025-07-23T19:21:29.406Z',
-    //     stock_created_datetime: '2025-07-23T19:21:29.406Z',
-    //     __v: 0,
-    //     uom: {
-    //         _id: '687720a0798018e08515999c',
-    //         id: 21,
-    //         symbol: 'mL',
-    //         unit_name: 'Milliliter',
-    //         __v: 0
-    //     },
-    //     category: {
-    //         _id: '687740d91edd62f9c8128bd0',
-    //         id: 45,
-    //         brand: 'Axe',
-    //         type: 'Deodorants',
-    //         __v: 0
-    //     },
-    //     inventory: null
-    // },
     {
       _id: "688452ef1ddc1d25637c9a47",
       id: 31,
@@ -199,9 +164,9 @@ function InventoryRestock() {
   );
 
   // left section controls
-    const [openItem, setOpenItem] = useState(false);
-    const [openStock, setOpenStock] = useState(true);
-    const [openSupplier, setOpenSupplier] = useState(true);
+    // const [openItem, setOpenItem] = useState(false);
+    // const [openStock, setOpenStock] = useState(true);
+    // const [openSupplier, setOpenSupplier] = useState(true);
     //replace with this
     const [openFormBlock, setopenFormBlock] = useState('item'); //item || stock || supplier || 
 
@@ -593,7 +558,7 @@ function InventoryRestock() {
                         Description
                       </label>
                       <textarea
-                      value=""
+                      //value=""
                       //onChange=
                       placeholder="Enter details..."
                       rows={3}
@@ -1033,9 +998,9 @@ function InventoryRestock() {
                     className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg"
                     style={{ minHeight: "50vh" }}
                   >
-                    {NotFound ? (
+                    {NotFoundImg ? (
                       <img
-                        src={NotFound}
+                        src={NotFoundImg}
                         alt="No items found!"
                         className="w-12 h-12 mb-2 opacity-70"
                       />
