@@ -86,7 +86,7 @@ function AddItem() {
     const uomId = Number(e.target.value);
     setFormUOMData(uomId);
     // optionally keep formData.uom_id in sync:
-    setformData(fd => ({
+    setFormData(fd => ({
       ...fd,
       uom_id: uomId,
       uom: uoms.find(u => u.id === uomId) || fd.uom
@@ -141,12 +141,12 @@ function AddItem() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
-    const [searchAvailability, setSearchAvailability] = useState("All");
+  const [searchAvailability, setSearchAvailability] = useState("All");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
 
   // Form select
-  const [formData, setformData] = useState(INITIAL_FORM_DATA);
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [deletingItem, setDeletingItem] = useState(INITIAL_FORM_DATA);
 
   const [formCategoryData, setFormCategoryData] = useState({
@@ -210,7 +210,7 @@ function AddItem() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     console.log(name +": "+ value);
-    setformData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
 
@@ -336,6 +336,29 @@ function AddItem() {
         availability: formData.availability,
         stock_trace: [101] // Fixed value
       };
+      console.log("registering item: "+requestData);
+      const response = await apiClient.post("api/itemRegistry/add", requestData);
+
+    // Create new item
+  const registerItem = async (e) => {
+    setFormStatus("loading");
+    e.preventDefault();
+    try {
+      const selectedCategory = itemCategories.find(c =>
+        c.type === formCategoryData.categoryType &&
+        c.brand === formCategoryData.brand
+      );
+      const requestData = {
+        item_name: formData.item_name,
+        item_image_url: formData.item_image_url || null,
+        batch_code: formData.batch_code,
+        maximum_capacity: Number(formData.maximum_capacity),
+        uom_id: formUOMData,
+        category_id: selectedCategory?.id ?? null, // look up id
+        inventory_id: 1, // Fixed value
+        availability: formData.availability,
+        stock_trace: [101] // Fixed value
+      };
   // "item_name": "Sample Item(3)",
   // "item_image_url": null,
   // "batch_code": "SI03",
@@ -359,6 +382,44 @@ function AddItem() {
       console.log("registering item: "+requestData);
       const response = await apiClient.post("api/itemRegistry/add", requestData);
 
+      if (response.data.status === "success") {
+        // Add new item to local state
+        //alert("Item created successfully!");
+        //toast.open("Item created successfully", 4000, 'Success', 'success');
+        //clear data upon successful response
+        setFormStatus("success");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
+        clearUserInput();
+      } else {
+        //alert(response.data.message || "Failed to create item");
+        //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
+        setFormStatus("fail");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
+      }
+    } catch (err) {
+      console.error("Create item error:", err);
+      //alert("Error creating item"+err.message);
+      setFormStatus("fail");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
+      toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
+    }
+    finally {
+      //repopulate items
+      fetchItems();
+    }
+  };
       if (response.data.status === "success") {
         // Add new item to local state
         //alert("Item created successfully!");
@@ -528,7 +589,7 @@ function AddItem() {
   //clear the form and related statee data(hrrngh)
   const clearUserInput = () => {
     //alert("clearing user inputs")
-    setformData(INITIAL_FORM_DATA)
+    setFormData(INITIAL_FORM_DATA)
     setSelectedCategoryType("");
     setBrandOptions([]);
     setFormCategoryData({
@@ -544,7 +605,7 @@ function AddItem() {
   const loadItem = (item) => {
     //to enable edit button and disable the create button
     setUserEditing(true);
-    setformData(item);
+    setFormData(item);
     // 2. extract its category & brand:
     const { type, brand } = item.category;
     // 3a. set the category‐dropdown state (this also fires your useEffect to populate brandOptions)
@@ -558,7 +619,7 @@ function AddItem() {
     // 3. pre‐select the UOM dropdown
     setFormUOMData(item.uom.id);
     // and keep formData.uom_id correct:
-    setformData(fd => ({ ...fd, uom_id: item.uom.id, uom: item.uom }));
+    setFormData(fd => ({ ...fd, uom_id: item.uom.id, uom: item.uom }));
   };
 
 
@@ -630,7 +691,7 @@ const filteredItems = inventoryItems.filter((item) => {
       {formStatus === "form" ? (
       // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-between">
       // <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] overflow-y-scroll">
-            <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 z-10 flex flex-col justify-between overflow-y-scroll">
+      <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 z-10 flex flex-col justify-between">
         <div className="flex flex-col h-[45rem] gap-3">
           {/* ▼ Basic info block ▼ */}
           <div className="border rounded bg-white">
@@ -1073,7 +1134,7 @@ const filteredItems = inventoryItems.filter((item) => {
 export default AddItem;
 
 
-// Define your “empty” form‐data once
+// uncompleted empty form‐data state(new api)
 const INITIAL_FORM_DATA = {
   _id: "",
   id: 0,
@@ -1081,17 +1142,12 @@ const INITIAL_FORM_DATA = {
   item_name: "",
   item_image_url: "",
   batch_code: "",
-  sku: "",
-  quantity: 0,
-  threshold_limit: 0,
   maximum_capacity: 0,
   uom_id: 0,
   category_id: 0,
   inventory_id: 1,
-  stock_price: 0,
-  retail_price: 0,
-  stock_update_datetime: "",
-  stock_created_datetime: "",
+  item_update_datetime: "",
+  item_created_datetime: "",
   __v: 0,
   uom: {
     _id: "",
@@ -1108,12 +1164,82 @@ const INITIAL_FORM_DATA = {
     __v: 0
   },
   inventory: null,
-  expired_datetime: null,
-  initiate_datetime: "",
-  availability: true,
+  availability: true
 };
+// {
+//       "_id": "68afba2b039b3743594090b3",
+//       "id": 5,
+//       "item_update_datetime": "2025-08-28T02:15:13.000Z",
+//       "item_created_datetime": "2025-08-28T02:08:43.000Z",
+//       "stock_trace": [
+//         101,
+//         102
+//       ],
+//       "item_name": "Sample Item",
+//       "item_image_url": null,
+//       "batch_code": "SI01sdw4w",
+//       "maximum_capacity": 500,
+//       "uom_id": 22,
+//       "category_id": 1364,
+//       "inventory_id": 1,
+//       "availability": true,
+//       "__v": 0,
+//       "uom": {
+//         "_id": "687720ad798018e0851599a0",
+//         "id": 22,
+//         "symbol": "pcs",
+//         "unit_name": "Piece",
+//         "__v": 0
+//       },
+//       "category": {
+//         "_id": "687fb2b7d9b1c944cfddf226",
+//         "id": 1364,
+//         "brand": "Battler",
+//         "type": "Tea",
+//         "__v": 0
+//       },
+//       "inventory": null
+//     }
+// const INITIAL_FORM_DATA = {
+//   _id: "",
+//   id: 0,
+//   stock_trace: [0],
+//   item_name: "",
+//   item_image_url: "",
+//   batch_code: "",
+//   sku: "",
+//   quantity: 0,
+//   threshold_limit: 0,
+//   maximum_capacity: 0,
+//   uom_id: 0,
+//   category_id: 0,
+//   inventory_id: 1,
+//   stock_price: 0,
+//   retail_price: 0,
+//   stock_update_datetime: "",
+//   stock_created_datetime: "",
+//   __v: 0,
+//   uom: {
+//     _id: "",
+//     id: 0,
+//     symbol: "",
+//     unit_name: "",
+//     __v: 0
+//   },
+//   category: {
+//     _id: "",
+//     id: 0,
+//     brand: "",
+//     type: "",
+//     __v: 0
+//   },
+//   inventory: null,
+//   expired_datetime: null,
+//   initiate_datetime: "",
+//   availability: true,
+// };
 
-//inventory dummy data
+//inventory dummy data (old api)
 // {
 //   _id: "6877751e6d4492e44dbb403b",
 //   id: 19,

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
-import ItemCard from "../../components/ItemCard";
 import {ChevronDown, Printer, ChevronUp } from "lucide-react";
 import AddRegitemsImg from "../../assets/add_reg_items.png";
 
@@ -11,172 +10,289 @@ import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
 
 function InventoryRestock() {
-  // add item list
-  const [inventoryItems, setInventoryItems] = useState([
-    {
-      _id: "688452ef1ddc1d25637c9a47",
-      id: 31,
-      stock_trace: [1],
-      item_name: "Water Bottle",
-      item_image_url: null,
-      batch_code: "SKU2263WA901",
-      sku: "SKU2263",
-      quantity: 50,
-      threshold_limit: 120,
-      maximum_capacity: 400,
-      uom_id: 22,
-      category_id: 90,
-      inventory_id: 1,
-      unit_price: 25.5,
-      stock_update_datetime: "2025-07-26T04:00:47.273Z",
-      stock_created_datetime: "2025-07-26T04:00:47.273Z",
-      __v: 0,
-      uom: {
-        _id: "687720ad798018e0851599a0",
-        id: 22,
-        symbol: "pcs",
-        unit_name: "Piece",
-        __v: 0,
-      },
-      category: {
-        _id: "68775a921edd62f9c8128e0d",
-        id: 90,
-        brand: "Reebok",
-        type: "Sportswear",
-        __v: 0,
-      },
-      inventory: null,
-    },
-    {
-      _id: "68845a0b8767fec474faa590",
-      id: 32,
-      stock_trace: [1],
-      item_name: "Mobile Data cable",
-      item_image_url: null,
-      batch_code: "SKU-32452DA15822",
-      sku: "SKU-32452",
-      quantity: 54,
-      threshold_limit: 40,
-      maximum_capacity: 60,
-      uom_id: 22,
-      category_id: 158,
-      inventory_id: 1,
-      unit_price: 155,
-      stock_update_datetime: "2025-07-26T04:31:07.861Z",
-      stock_created_datetime: "2025-07-26T04:31:07.861Z",
-      __v: 0,
-      uom: {
-        _id: "687720ad798018e0851599a0",
-        id: 22,
-        symbol: "pcs",
-        unit_name: "Piece",
-        __v: 0,
-      },
-      category: {
-        _id: "687765bb1edd62f9c8129017",
-        id: 158,
-        brand: "Hp",
-        type: "Computers",
-        __v: 0,
-      },
-      inventory: null,
-    },
-  ]);
+
+  // Fetch Categories from API and create mapping
+  const [suppliers, setSuppliers] = useState([]);
+  useEffect(() => {
+    // user list(to populate dropdowns)
+    const fetchSuppliers = async () => {
+      try {
+        const response = await apiClient.get("api/suppliers");
+        if (response.data.status === "success") {
+          console.log(response.data.data)
+          setSuppliers(response.data.data);
+          // console.log(response.data.data)
+        }
+      } catch (error) {
+        <response className="data message"></response>
+        console.error("Error fetching suppliers:", error);
+      } finally {
+        //setLoadingCategories(false);
+      }
+    };
+
+    fetchSuppliers();
+  }, []);
+
+  // Fetch Categories from API and create mapping
+  const [users, setUsers] = useState([]);
+  useEffect(() => {
+    // user list(to populate dropdowns)
+    const fetchUsers = async () => {
+      try {
+        const response = await apiClient.get("api/users");
+        if (response.data.status === "success") {
+          setUsers(response.data.data);
+          // console.log(response.data.data)
+        }
+      } catch (error) {
+        <response className="data message"></response>
+        console.error("Error fetching users:", error);
+      } finally {
+        //setLoadingCategories(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  // registered item list
+  const [inventoryItems, setInventoryItems] = useState([]);
   const fetchItems = async () => {
     try {
-      const response = await apiClient.get("api/items/extended");
+      const response = await apiClient.get("api/itemRegistry/extended");
       if (response.data.status === "success") {
         setInventoryItems(response.data.data);
       }
     } catch (error) {
       console.error("Error fetching items:", error);
     } finally {
-      //setIsLoading(false);
+      setIsLoading(false);
     }
   };
-
+  // Fetch items from API
   useEffect(() => {
-    // Fetch items after UOMs are loaded to properly map uomName
-    // if (!loadingUoms) {
     fetchItems();
-    // }
-    //}, [loadingUoms]);
   }, []);
-  // //if more control over categories needed later, use this State for category/brand mapping
-  //   const [itemCategories, setItemCategories] = useState([
-  //     { id: 145, brand: "Close-Up",   type: "Oral Care" },
-  //     { id:  94, brand: "Clogard",    type: "Oral Care" },
-  //     { id:  15, brand: "Colgate",    type: "Oral Care" },
-  //     { id:  26, brand: "Pepsi",      type: "Beverages" },
-  //     { id:   7, brand: "Coca-Cola",  type: "Beverages" },
-  //   ]);
 
-  //category dropdown population(search and item form)
-  const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
+
   // Fetch Categories from API and create mapping
   useEffect(() => {
     const fetchCategories = async () => {
-      setIsSearching(true);
       try {
         const response = await apiClient.get("api/categories");
         if (response.data.status === "success") {
-          //setItemCategories(response.data.data);
-          const types = Array.from(
-            new Set(response.data.data.map((c) => c.type))
-          );
-          setUniqueCategoryTypes(types);
+          setItemCategories(response.data.data);
         }
       } catch (error) {
         console.error("Error fetching categories:", error);
       } finally {
-        //setLoadingCategories(false); //if more control over categories needed later, use this
-        setIsSearching(false);
+        //setLoadingCategories(false);
       }
     };
 
     fetchCategories();
   }, []);
 
-  //if more control over categories needed later, use this
-  //   useEffect(() => {
-  //     const types = Array.from(new Set(itemCategories.map(c => c.type)));
-  //     setUniqueCategoryTypes(types);
-  //   }, [itemCategories]);
+  // State for category/brand mapping
+  const [itemCategories, setItemCategories] = useState([
+    { id: 145, brand: "Close-Up", type: "Oral Care" },
+    { id: 94, brand: "Clogard", type: "Oral Care" },
+    { id: 26, brand: "Pepsi", type: "Beverages" },
+    { id: 7, brand: "Coca-Cola", type: "Beverages" },
+  ]);
+  const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
 
+  useEffect(() => {
+    const types = Array.from(new Set(itemCategories.map(c => c.type)));
+    setUniqueCategoryTypes(types);
+  }, [itemCategories]);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
-  const [isSearching, setIsSearching] = useState(false);
+  const [searchAvailability, setSearchAvailability] = useState("All");
 
-  // search handler to set loading state:
-  const handleSearch = (e) => {
-    setIsSearching(true);
-    setSearch(e.target.value);
-    // Simulate async search (replace with your real async logic if needed)
-    setTimeout(() => {
-      setIsSearching(false);
-    }, 600); // 600ms delay for demo
+    // Category handler
+  const handleSearchCategoryChange = (e) => {
+    setSearchCategory(e.target.value);
   };
 
-  const filteredItems = inventoryItems.filter(
-    (item) =>
-      (searchCategory === "All" || item.category.type === searchCategory) &&
-      item.item_name.toLowerCase().includes(search.toLowerCase())
-  );
+  // Search handler
+  const handleSearch = (e) => {
+    setSearchLoading(true);
+    setSearch(e.target.value);
+    setTimeout(() => setSearchLoading(false), 600);
+  };
+
+//helper method for item availability filtering
+  const interpretAvailability = (item) => {
+    // handle boolean, string, numeric types defensively
+    const a = item?.availability;
+    if (typeof a === "boolean") return a;
+    if (typeof a === "string") return a.toLowerCase() === "true";
+    return Boolean(a); // numbers (1/0) or other truthy/falsy
+  };
+  
+  // Filter items based on search, category and availability
+const filteredItems = inventoryItems.filter((item) => {
+  // category match: either All or item.category.type equals selected
+  const matchesCategory =
+    searchCategory === "All" ||
+    (item?.category && item.category.type === searchCategory);
+
+  // availability match: All, Available (true), Unavailable (false)
+  const isAvailable = interpretAvailability(item);
+  const matchesAvailability =
+    searchAvailability === "All" ||
+    (searchAvailability === "Available" && isAvailable) ||
+    (searchAvailability === "Unavailable" && !isAvailable);
+
+  // text search match
+  const matchesSearch =
+    (item?.item_name || "").toLowerCase().includes((search || "").toLowerCase());
+
+  return matchesCategory && matchesAvailability && matchesSearch;
+});
+
 
   // left section controls
     // const [openItem, setOpenItem] = useState(false);
     // const [openStock, setOpenStock] = useState(true);
     // const [openSupplier, setOpenSupplier] = useState(true);
-    //replace with this
-    const [openFormBlock, setopenFormBlock] = useState('item'); //item || stock || supplier || 
+    //replaced with this
+  const [openFormBlock, setopenFormBlock] = useState('item'); //item || stock || supplier || 
 
   // right section controls
   const [rightActiveSection, setRightActiveSection] = useState("buttons"); // "buttons" | "dispose" | "add" | "return"
 
+
+  //mid section logic
+  const [selectedRegItem, setSelectedRegItem] = useState({});
+  const [selectedSupplier, setselectedSupplier] = useState({});
+  const [selectedStock, setselectedStock] = useState({});
+  const [selectedReturnItem, setselectedReturnItem] = useState({});
+
+  const [formDataRegItem, setFormDataRegItem] = useState({
+    _id: "",
+    id: 0,
+    stock_trace: [0],
+    item_name: "fdsaf",
+    item_image_url: "",
+    batch_code: "fdsaf",
+    maximum_capacity: 10,
+    uom_id: 10,
+    category_id: 10,
+    inventory_id: 11,
+    item_update_datetime: "2025-12-31T23:59:59",
+    item_created_datetime: "2025-12-31T23:59:59",
+    __v: 0,
+    uom: {
+      _id: "",
+      id: 0,
+      symbol: "",
+      unit_name: "",
+      __v: 0
+    },
+    category: {
+      _id: "",
+      id: 0,
+      brand: "",
+      type: "",
+      __v: 0
+    },
+    inventory: null,
+    availability: true
+  });
+  const [formDataStock, setFormDataStock] = useState({
+    sku: "skupsps",
+    quantity: 150,
+    threshold_limit: 20,
+    stock_price: 20.0,
+    retail_price: 35.0,
+    expired_datetime: "2025-12-31T23:59:59",
+    availability: true
+  });
+  const handleStockInputChange = (e) => {
+    const { name, value } = e.target;
+    console.log(name +": "+ value);
+    setFormStockData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const [formDataSupplier, setFormDataSupplier] = useState({
+      id: 0,
+      supplier_name: "",
+      type: "",
+      supplier_address: "",
+      status: false,
+      contact: "",
+
+      current_amount: 0,
+      previous_amount: 0,
+
+      invoice_no: 0,
+      bill_no: 0,
+
+      payment_method: "",
+      expenses: 0,
+
+      account_name: "",
+      account_nickName: "",
+      account_related_bank: "",
+      account_number: "",
+      account_related_branch: "",
+    });
+  const handleSupplierInputChange = (e) => {
+    const { name, value } = e.target;
+    console.log(name +": "+ value);
+    setFormDataSupplier(prev => ({ ...prev, [name]: value }));
+  };
+
+  const [formDataReturnItem, setFormDataReturnItem] = useState({
+    sku: "retret",
+    quantity: 150,
+    threshold_limit: 20,
+    stock_price: 20.0,
+    retail_price: 35.0,
+    expired_datetime: "2025-12-31T23:59:59",
+    availability: true
+  });
+  const handleReturnItemInputChange = (e) => {
+    const { name, value } = e.target;
+    console.log(name +": "+ value);
+    setFormDataReturnItem(prev => ({ ...prev, [name]: value }));
+  };
+
+  const [selectedItemList, setSelectedItemList] = useState([]);
+    // Load item object into selectd item list
+    const loadItem = (item) => {
+    //to enable edit button and disable the create button
+    // setUserEditing(true);
+    setFormData(item);
+    // 2. extract its category & brand:
+    const { type, brand } = item.category;
+    // 3a. set the category‐dropdown state (this also fires your useEffect to populate brandOptions)
+    setSelectedCategoryType(type);
+    // 3b. explicitly set the form’s dropdown values:
+    setFormCategoryData({
+      categoryType: type,
+      brand,
+    });
+    //set unit of measure in the dropdown
+    // 3. pre‐select the UOM dropdown
+    setFormUOMData(item.uom.id);
+    // and keep formData.uom_id correct:
+    setFormData(fd => ({ ...fd, uom_id: item.uom.id, uom: item.uom }));
+  };
+
+
+  
+
   return (
     <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
       {/* form section (left) */}
-      <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)]">
+      <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 z-10">
           <div className="flex flex-col h-[56rem] gap-3">
           {/* ▼ item description block ▼ */}
           <div className="border rounded bg-white">
@@ -207,11 +323,11 @@ function InventoryRestock() {
                   <div className="flex flex-col m-10">
                     <div className="grid grid-cols-2 gap-x-1 gap-y-1">
                           <p className="text-sm font-semibold text-gray-800">Name</p>
-                          <p className="text-sm text-gray-700">Soap</p>
+                          <p className="text-sm text-gray-700">{formDataRegItem.item_name}</p>
                           <p className="text-sm font-semibold text-gray-800">Category</p>
-                          <p className="text-sm text-gray-700">Sanitary</p>
+                          <p className="text-sm text-gray-700">{formDataRegItem?.category?.type}</p>
                           <p className="text-sm font-semibold text-gray-800">Current Qty</p>
-                          <p className="text-sm text-gray-700">100/1000(pcs)</p>
+                          <p className="text-sm text-gray-700">{formDataStock?.quantity}/{formDataRegItem?.maximum_capacity}({formDataRegItem?.uom?.symbol})</p>
                         </div>
                   </div>
                 </div>
@@ -237,14 +353,14 @@ function InventoryRestock() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Barcode
+                        Batch Code
                       </label>
                       <input
                         type="text"
                         name="sku"
-                        // value={formData.sku}
-                        // onChange={handleInputChange}
-                        placeholder="Generate barcode"
+                        value={formDataStock.sku}
+                        onChange={handleStockInputChange}
+                        placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -254,9 +370,9 @@ function InventoryRestock() {
                       </label>
                       <input
                         type="number"
-                        name="batch_code"
-                        // value={formData.batch_code}
-                        // onChange={handleInputChange}
+                        name="quantity"
+                        value={formDataStock.quantity}
+                        onChange={handleStockInputChange}
                         placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
@@ -269,9 +385,9 @@ function InventoryRestock() {
                       </label>
                       <input
                         type="text"
-                        name="sku"
-                        // value={formData.sku}
-                        // onChange={handleInputChange}
+                        name="threshold_limit"
+                        value={formDataStock.threshold_limit}
+                        onChange={handleStockInputChange}
                         placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
@@ -281,17 +397,14 @@ function InventoryRestock() {
                         Availability
                       </label>
                       <select
-                        // name="category"
-                        // value={formData.category}
-                        // onChange={handleInputChange}
-                        name="categoryType"
-                        // value={formCategoryData.categoryType}
-                        // onChange={handleCategoryChange}
+                        name="availability"
+                        value={formDataStock.availability}
+                        onChange={handleStockInputChange}
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
                       >
                         <option value="">-- select availability --</option>
-                        <option value="">Available</option>
-                        <option value="">Unavailable</option>
+                        <option value={true}>Available</option>
+                        <option value={false}>Unavailable</option>
                       </select>
                     </div>
                   </div>
@@ -302,9 +415,9 @@ function InventoryRestock() {
                       </label>
                       <input
                         type="number"
-                        name="sku"
-                        // value={formData.sku}
-                        // onChange={handleInputChange}
+                        name="stock_price"
+                        value={formDataStock.stock_price}
+                        onChange={handleStockInputChange}
                         placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
@@ -315,9 +428,9 @@ function InventoryRestock() {
                       </label>
                       <input
                         type="number"
-                        name="batch_code"
-                        // value={formData.batch_code}
-                        // onChange={handleInputChange}
+                        name="retail_price"
+                        value={formDataStock.retail_price}
+                        onChange={handleStockInputChange}
                         placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
@@ -343,23 +456,23 @@ function InventoryRestock() {
                           <input
                             type="date"
                             id="expired_datetime"
-                            // value={formData.expired_datetime ? formData.expired_datetime.split('T')[0] : ''}
-                            // onChange={(e) => {
-                            //   const selectedDate = e.target.value;
-                            //   console.log("date input value: "+selectedDate);
-                            //   if (selectedDate) {
-                            //     // Format to UTC midnight: YYYY-MM-DDT00:00:00.000Z
-                            //     const utcMidnight = `${selectedDate}T00:00:00.000Z`;
-                            //     console.log("to formData:"+utcMidnight)
-                            //     setformData({
-                            //       ...formData,
-                            //       expired_datetime: utcMidnight
-                            //     });
-                            //   } else {
-                            //     // Clear the field if date is empty
-                            //     setformData({ ...formData, expired_datetime: null });
-                            //   }
-                            // }}
+                            value={formDataStock.expired_datetime ? formDataStock.expired_datetime.split('T')[0] : ''}
+                            onChange={(e) => {
+                              const selectedDate = e.target.value;
+                              console.log("date input value: "+selectedDate);
+                              if (selectedDate) {
+                                // Format to UTC midnight: YYYY-MM-DDT00:00:00.000Z
+                                const utcMidnight = `${selectedDate}T00:00:00.000Z`;
+                                console.log("to formData:"+utcMidnight)
+                                setFormDataStock({
+                                  ...formDataStock,
+                                  expired_datetime: utcMidnight
+                                });
+                              } else {
+                                // Clear the field if date is empty
+                                setFormDataStock({ ...formDataStock, expired_datetime: null });
+                              }
+                            }}
                             name="expired_datetime"
                             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full px-3 py-2"
                             placeholder="Select date"
@@ -372,15 +485,15 @@ function InventoryRestock() {
                       </label>
                       <input
                         type="number"
-                        name="batch_code"
-                        // value={formData.batch_code}
-                        // onChange={handleInputChange}
+                        name="retail_price"
+                        value={formDataStock.retail_price}
+                        onChange={handleStockInputChange}
                         placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
-                  <p>Recent Batch Code Changes</p>
+                  {/* <p>Recent Batch Code Changes</p>
                   <div className="flex flex-col gap-3 overflow-y-scroll overflow-x-hidden h-[13rem] -mr-4">
                   <div className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
                     <div className="flex flex-col">
@@ -413,7 +526,7 @@ function InventoryRestock() {
                     </div>
                   </div>
 
-                  </div>
+                  </div> */}
 
 
                 </div>
@@ -442,21 +555,20 @@ function InventoryRestock() {
                         Suppier
                       </label>
                       <select
-                        name="uom"
-                        // value={formUOMData ?? ""}               // show the selected id
-                        // onChange={handleUOMChange}              // hook up your new handler
+                        name="supplier_name"
+                        value={formDataSupplier.supplier_name}
+                        onChange={handleSupplierInputChange}
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">-- select supplier --</option>
-                        {/* {uoms.map(uom => (
-                          <option key={uom.id} value={uom.id}>
-                            {uom.unit_name} ({uom.symbol})
-                          </option>
-                        ))} */}
+                    {suppliers.map(supplier => (
+                        <option key={supplier.id} value={supplier?.basic_info?.supplier_name}>
+                          {supplier?.basic_info?.supplier_name}
+                      </option>
+                      ))}
                       </select>
                     </div>
 
-                  {/* //newly added */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
@@ -464,10 +576,10 @@ function InventoryRestock() {
                       </label>
                       <input
                         type="text"
-                        name="stock_price"
-                        // value={formData.stock_price}
-                        // onChange={handleInputChange}
-                        placeholder="Enter item price"
+                        name="invoice_no"
+                        value={formDataSupplier.invoice_no}
+                        onChange={handleSupplierInputChange}
+                        placeholder=""
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -478,10 +590,10 @@ function InventoryRestock() {
                       </label>
                       <input
                         type="text"
-                        name="retail_price"
-                        // value={formData.retail_price}
-                        // onChange={handleInputChange}
-                        placeholder="Enter item price"
+                        name="bill_no"
+                        value={formDataSupplier.bill_no}
+                        onChange={handleSupplierInputChange}
+                        placeholder=""
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -493,14 +605,14 @@ function InventoryRestock() {
                         Payment Method
                       </label>
                       <select
-                        name="availability"
-                        // value={formData.availability}
-                        // onChange={handleInputChange}
+                        name="payment_method"
+                        value={formDataSupplier.payment_method}
+                        onChange={handleSupplierInputChange}
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">-- select payment method --</option>
-                        <option value={true}>Bank Check</option>
-                        <option value={false}>Cash</option>
+                        <option value="bank">Bank Check</option>
+                        <option value="cash">Cash</option>
                       </select>
                     </div>
                     <div>
@@ -509,9 +621,9 @@ function InventoryRestock() {
                       </label>
                       <input
                         type="number"
-                        name="retail_price"
-                        // value={formData.retail_price}
-                        // onChange={handleInputChange}
+                        name="expenses"
+                        value={formDataSupplier.expenses}
+                        onChange={handleSupplierInputChange}
                         placeholder="Enter item price"
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
@@ -545,9 +657,9 @@ function InventoryRestock() {
                       </label>
                       <input
                         type="text"
-                        name="stock_price"
-                        // value={formData.stock_price}
-                        // onChange={handleInputChange}
+                        name="quantity"
+                        // value={formDataReturnItem.}
+                        onChange={handleSupplierInputChange}
                         placeholder="Enter item price"
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
@@ -628,8 +740,11 @@ function InventoryRestock() {
                 className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">-- select employee --</option>
-                <option value="john">John</option>
-                <option value="doe">Doe</option>
+                    {users.map(user => (
+                        <option key={user._id} value={user.username}>
+                          {user.username}
+                      </option>
+                      ))}
               </select>
             </div>
             <div>
@@ -643,8 +758,11 @@ function InventoryRestock() {
                 className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">-- select employee --</option>
-                <option value="john">John</option>
-                <option value="doe">Doe</option>
+                    {users.map(user => (
+                        <option key={user._id} value={user.username}>
+                          {user.username}
+                      </option>
+                      ))}
               </select>
             </div>
           </div>
@@ -666,7 +784,7 @@ function InventoryRestock() {
                 // }}
                 className="px-6 py-2 w-[8rem] h-10  border bg-[#727272] border-gray-300 text-white hover:bg-gray-500 transition-colors"
               >
-                Clear
+                Clear All
               </button>
               <button
                 // onClick={() => {
@@ -930,7 +1048,7 @@ function InventoryRestock() {
                 <input
                   type="text"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={handleSearch}
                   placeholder="Search Your Items here"
                   className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
                 />
@@ -959,32 +1077,32 @@ function InventoryRestock() {
                 <select
                   value={searchCategory}
                   onChange={(e) => setSearchCategory(e.target.value)}
-                  className="w-[14rem] h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
+                  className="w-full h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
                 >
                   <option value="All">All Categories</option>
-                  {uniqueCategoryTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
+                    {uniqueCategoryTypes.map(type => (
+                        <option key={type} value={type}>
+                          {type}
+                      </option>
+                      ))}
                 </select>
 
-                <select
-                  /*value={stockFilter}
-                  onChange={(e) => setStockFilter(e.target.value)}*/
-                  className="w-[14rem] h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
-                >
-                  <option value="All">Stock Availability</option>
-                  <option value="All">All</option>
-                  <option value="Available">Available</option>
-                  <option value="Unavailable">Unavailable</option>
-                </select>
+                      <select
+                        name="searchAvailability"
+                        value={searchAvailability}
+                        onChange={(e) => setSearchAvailability(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="All">All Availabilities</option>
+                        <option value="Available">Available</option>
+                        <option value="Unavailable">Unavailable</option>
+                      </select>
               </div>
             </div>
 
-            <div className="h-[calc(100vh-13rem)] overflow-y-scroll bg-transparent">
+            <div className="h-[calc(100vh-9rem)] overflow-y-scroll bg-transparent">
               <div className="grid grid-cols-1 gap-6 p-10">
-                {isSearching ? (
+                {(isLoading || searchLoading) ? (
                   <div className="col-span-full flex flex-col items-center justify-center">
                     <div className="flex flex-col items-center mt-32">
                       <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
