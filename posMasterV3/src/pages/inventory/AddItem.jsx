@@ -248,7 +248,7 @@ function AddItem() {
         c.brand === formCategoryData.brand
       );
       const requestData = {
-        sku: formData.sku,
+        sku: formData.sku,  
         item_name: formData.item_name,
         quantity: Number(formData.quantity),
         threshold_limit: Number(formData.threshold_limit),
