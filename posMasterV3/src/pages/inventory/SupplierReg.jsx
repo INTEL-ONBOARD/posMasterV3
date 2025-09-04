@@ -731,7 +731,7 @@ const deleteSupplier = async () => {
         // actual data rows
         filteredSuppliers.map((supplier, index) => (
           <tr
-            key={supplier._id}
+            key={supplier.id}
             className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
             onClick={() => loadSupplier(supplier)}
           >
