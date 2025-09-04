@@ -266,8 +266,8 @@ function InventoryView() {
         </div>
 
       {/* filter section (right) */}
-      <div className="bg-white w-[calc(20rem)] h-[calc(100vh-2rem)]">
-        <div className="flex flex-col h-[45rem] gap-3">
+      <div className="bg-[#EBEBEB] w-[calc(20rem)] h-[calc(100vh-2rem)] p-1">
+        <div className="flex flex-col h-[calc(100vh-2rem)] gap-2">
           {/* top block set */}
           <div>
           {/* ▼ search filters block ▼ */}
@@ -290,7 +290,7 @@ function InventoryView() {
                       <select
                         value={searchCategory}
                         onChange={(e) => setSearchCategory(e.target.value)}
-                        className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
+                        className="w-full h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
                       >
                         <option value="All">All Categories</option>
                           {uniqueCategoryTypes.map(type => (
@@ -381,7 +381,8 @@ function InventoryView() {
             )}
           </div>
           </div>
-
+          {/* empty bottom block */}
+          <div className="bg-white h-full"></div>
         </div>
       </div>
         </div>

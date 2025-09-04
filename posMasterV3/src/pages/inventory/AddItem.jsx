@@ -1007,8 +1007,8 @@ const filteredItems = inventoryItems.filter((item) => {
       </div>
 
       {/* filter section (right) */}
-      <div className="bg-white w-[calc(20rem)] h-[calc(100vh-2rem)]">
-        <div className="flex flex-col h-[45rem] gap-3">
+      <div className="bg-[#EBEBEB] w-[calc(20rem)] h-[calc(100vh-2rem)] p-1">
+        <div className="flex flex-col h-[calc(100vh-2rem)] gap-2">
           {/* top block set */}
           <div>
           {/* ▼ search filters block ▼ */}
@@ -1115,7 +1115,8 @@ const filteredItems = inventoryItems.filter((item) => {
             )}
           </div>
           </div>
-
+          {/* empty bottom block */}
+          <div className="bg-white h-full"></div>
         </div>
       </div>
 

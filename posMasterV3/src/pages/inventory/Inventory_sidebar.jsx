@@ -18,48 +18,48 @@ function InventorySidebar({
   onCReportClick,
 }) {
   const sidebarItems = [
-    // {
-    //   id: "view-inventory",
-    //   label: "View Inventory",
-    //   icon: ViewInventoryImg,
-    //   onClick: onViewInvClick,
-    // },
+    {
+      id: "view-inventory",
+      label: "View Inventory",
+      icon: ViewInventoryImg,
+      onClick: onViewInvClick,
+    },
     {
       id: "add-item",
       label: "Add Item",
       icon: addItemImg,
       onClick: onAddItemClick,
     },
-    // {
-    //   id: "inventory-restock",
-    //   label: "Inventory Restock",
-    //   icon: restockImg,
-    //   onClick: onRestockClick,
-    // },
+    {
+      id: "inventory-restock",
+      label: "Inventory Restock",
+      icon: restockImg,
+      onClick: onRestockClick,
+    },
     {
       id: "supplier-registration",
       label: "Supplier Registration",
       icon: SupplierRegImg,
       onClick: onSupplierRegClick,
     },
-    // {
-    //   id: "check-history",
-    //   label: "Check History",
-    //   icon: checkHistoryImg,
-    //   onClick: onCheckHistoryClick,
-    // },
+    {
+      id: "check-history",
+      label: "Check History",
+      icon: checkHistoryImg,
+      onClick: onCheckHistoryClick,
+    },
     {
       id: "inventory-config",
       label: "Inventory Configurations",
       icon: configImg,
       onClick: onConfigClick,
     },
-    // {
-    //   id: "inventory-report",
-    //   label: "Inventory report",
-    //   icon: reportImg,
-    //   onClick: onCReportClick,
-    // },
+    {
+      id: "inventory-report",
+      label: "Inventory report",
+      icon: reportImg,
+      onClick: onCReportClick,
+    },
   ];
 
   return (

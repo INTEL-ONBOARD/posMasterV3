@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { apiClient } from "../../api/client";
 import {ChevronDown, Printer, ChevronUp } from "lucide-react";
 import AddRegitemsImg from "../../assets/add_reg_items.png";
@@ -163,16 +163,180 @@ const filteredItems = inventoryItems.filter((item) => {
     // const [openSupplier, setOpenSupplier] = useState(true);
     //replaced with this
   const [openFormBlock, setopenFormBlock] = useState('item'); //item || stock || supplier || 
-
   // right section controls
   const [rightActiveSection, setRightActiveSection] = useState("buttons"); // "buttons" | "dispose" | "add" | "return"
 
 
   //mid section logic
-  const [selectedRegItem, setSelectedRegItem] = useState({});
+  const [invoiceNo, setInvoiceNo] = useState({});
+
   const [selectedSupplier, setselectedSupplier] = useState({});
-  const [selectedStock, setselectedStock] = useState({});
+  const [selectedEmpPrep, setSelectedEmpPrep] = useState({});
+  const [selectedEmpAuth, setSeleselectedEmpAuth] = useState({});
+
+  //storing additional data from api just in case(form data is maintained seperately)
+  const [selectedRegItem, setSelectedRegItem] = useState({});
   const [selectedReturnItem, setselectedReturnItem] = useState({});
+
+  //item list for the mid section table
+  const [selectedStockItemList, setSelectedRegItemList] = useState([
+    {
+    _id: "",
+    id: 0,
+    stock_trace: [0],
+    item_name: "fdsaf",
+    item_image_url: "",
+    batch_code: "fdsaf",
+    maximum_capacity: 10,
+    uom_id: 10,
+    category_id: 10,
+    inventory_id: 11,
+    item_update_datetime: "2025-12-31T23:59:59",
+    item_created_datetime: "2025-12-31T23:59:59",
+    __v: 0,
+    // uom: {
+    //   _id: "",
+    //   id: 0,
+    //   symbol: "",
+    //   unit_name: "",
+    //   __v: 0
+    // },
+    // category: {
+    //   _id: "",
+    //   id: 0,
+    //   brand: "",
+    //   type: "",
+    //   __v: 0
+    // },
+    inventory: null,
+    // availability: true,
+
+        sku: "skupsps",
+    quantity: 3,
+    threshold_limit: 20,
+    stock_price: 20.0,
+    retail_price: 30.0,
+    expired_datetime: "2025-12-31T23:59:59",
+    availability: true,
+
+    uom_symbol: "pcs"
+  }
+  ]);
+
+  const [selectedReturnItemList, setSelectedReturnItemList] = useState([
+    {
+    _id: "",
+    id: 0,
+    stock_trace: [0],
+    item_name: "fdsaf return",
+    item_image_url: "",
+    batch_code: "fdsaf",
+    maximum_capacity: 10,
+    uom_id: 10,
+    category_id: 10,
+    inventory_id: 11,
+    item_update_datetime: "2025-12-31T23:59:59",
+    item_created_datetime: "2025-12-31T23:59:59",
+    __v: 0,
+    // uom: {
+    //   _id: "",
+    //   id: 0,
+    //   symbol: "",
+    //   unit_name: "",
+    //   __v: 0
+    // },
+    // category: {
+    //   _id: "",
+    //   id: 0,
+    //   brand: "",
+    //   type: "",
+    //   __v: 0
+    // },
+    inventory: null,
+    // availability: true
+
+    sku: "skupsps",
+    quantity: 150,
+    threshold_limit: 20,
+    stock_price: 20.0,
+    retail_price: 35.0,
+    expired_datetime: "2025-12-31T23:59:59",
+    availability: true,
+
+    uom_symbol: "pcs"
+  }
+  ]);
+
+  const addItemToList = () => {
+
+    //check if it already exists on the item list first
+
+    //verify if it's a return item, register item or a dispose item
+    
+    //if it doesn't exists and a register item, add it to the list(for now adding from form state but i can also add it from selectedRegItem just in case)
+    const newRegItem = {
+    _id: formDataRegItem._id,
+    id: formDataRegItem.id,
+    stock_trace: formDataRegItem.stock_trace,
+    item_name: formDataRegItem.item_name,
+    item_image_url: formDataRegItem.item_image_url,
+    batch_code: formDataRegItem.batch_code,
+    maximum_capacity: formDataRegItem.maximum_capacity,
+    uom_id: formDataRegItem.uom_id,
+    category_id: formDataRegItem.category_id,
+    inventory_id: formDataRegItem.inventory_id,
+    item_update_datetime: formDataRegItem.item_update_datetime,
+    item_created_datetime: formDataRegItem.item_created_datetime,
+    __v: formDataRegItem.__v,
+    // uom: {
+    //   _id: "",
+    //   id: 0,
+    //   symbol: "",
+    //   unit_name: "",
+    //   __v: 0
+    // },
+    // category: {
+    //   _id: "",
+    //   id: 0,
+    //   brand: "",
+    //   type: "",
+    //   __v: 0
+    // },
+    inventory: formDataRegItem.inventory,
+    // availability: true,
+
+    sku: formDataStock.sku,
+    quantity: formDataStock.quantity,
+    threshold_limit: formDataStock.threshold_limit,
+    stock_price: formDataStock.stock_price,
+    retail_price: formDataStock.retail_price,
+    expired_datetime: formDataStock.expired_datetime,
+    availability: formDataStock.availability,
+
+    uom_symbol: formDataStock.uom?.uom_symbol
+    }; 
+
+    //TODO: do a validation first
+    setSelectedRegItemList(prev => [...prev, newRegItem]);
+  } 
+  //removes item from list by id
+  const removeItemFromList = (id) => {
+    setSelectedRegItemList(prev => prev.filter(item => item.id !== id));
+  }
+
+  //totalValues
+  const { totalStock, totalRetail } = useMemo(() => {
+    return selectedStockItemList.reduce(
+      (acc, item) => {
+        const s = Number(item?.stock_total ?? 0);
+        const r = Number(item?.retail_total ?? 0);
+        acc.totalStock += Number.isFinite(s) ? s : 0;
+        acc.totalRetail += Number.isFinite(r) ? r : 0;
+        return acc;
+      },
+      { totalStock: 0, totalRetail: 0 }
+    );
+  }, [selectedStockItemList]);
 
   const [formDataRegItem, setFormDataRegItem] = useState({
     _id: "",
@@ -205,6 +369,7 @@ const filteredItems = inventoryItems.filter((item) => {
     inventory: null,
     availability: true
   });
+  //no input change for this for now(because of readonly in ui)
   const [formDataStock, setFormDataStock] = useState({
     sku: "skupsps",
     quantity: 150,
@@ -219,7 +384,6 @@ const filteredItems = inventoryItems.filter((item) => {
     console.log(name +": "+ value);
     setFormStockData(prev => ({ ...prev, [name]: value }));
   };
-
   const [formDataSupplier, setFormDataSupplier] = useState({
       id: 0,
       supplier_name: "",
@@ -248,7 +412,6 @@ const filteredItems = inventoryItems.filter((item) => {
     console.log(name +": "+ value);
     setFormDataSupplier(prev => ({ ...prev, [name]: value }));
   };
-
   const [formDataReturnItem, setFormDataReturnItem] = useState({
     sku: "retret",
     quantity: 150,
@@ -256,34 +419,109 @@ const filteredItems = inventoryItems.filter((item) => {
     stock_price: 20.0,
     retail_price: 35.0,
     expired_datetime: "2025-12-31T23:59:59",
-    availability: true
+    availability: true,
+
+    description: "returning item"
   });
   const handleReturnItemInputChange = (e) => {
     const { name, value } = e.target;
     console.log(name +": "+ value);
     setFormDataReturnItem(prev => ({ ...prev, [name]: value }));
   };
+  const [transactionData, setTransactionData] = useState({
+    supplierName: "supplier123",
+    preparedBy: "prep123",
+    authorizedBy: "auth123",
+    date: "2020",
+    
+    invoiceNo: "No1234",
+    description: "returning item",
 
-  const [selectedItemList, setSelectedItemList] = useState([]);
+    discount: 24,
+    cashAmount: 3000,
+    changeAmount: 200,
+    totalAmount: 20000,
+
+    discountAmount: 2000,
+    returnAmount: 2000,
+
+    previousAmount: 2000,
+    currentAmount: 6000
+  });
+  const handleTransactionDataInputChange = (e) => {
+    const { name, value } = e.target;
+    console.log(name +": "+ value);
+    setTransactionData(prev => ({ ...prev, [name]: value }));
+  };
+
     // Load item object into selectd item list
-    const loadItem = (item) => {
-    //to enable edit button and disable the create button
-    // setUserEditing(true);
-    setFormData(item);
-    // 2. extract its category & brand:
-    const { type, brand } = item.category;
-    // 3a. set the category‐dropdown state (this also fires your useEffect to populate brandOptions)
-    setSelectedCategoryType(type);
-    // 3b. explicitly set the form’s dropdown values:
-    setFormCategoryData({
-      categoryType: type,
-      brand,
-    });
-    //set unit of measure in the dropdown
-    // 3. pre‐select the UOM dropdown
-    setFormUOMData(item.uom.id);
-    // and keep formData.uom_id correct:
-    setFormData(fd => ({ ...fd, uom_id: item.uom.id, uom: item.uom }));
+    const loadItemtoForm = (item) => {
+      //load item basic details(loaded for all item types-reg, return...etc)
+      setFormDataRegItem({
+    _id: item._id,
+    id: item.id,
+    stock_trace: item.stock_trace,
+    item_name: item.item_name,
+    item_image_url: item.item_image_url,
+    batch_code: item.batch_code,
+    maximum_capacity: item.maximum_capacity,
+    uom_id: item.uom_id,
+    category_id: item.category_id,
+    inventory_id: item.inventory_id,
+    item_update_datetime: item.item_update_datetime,
+    item_created_datetime: item.item_created_datetime,
+    __v: item._v,
+    uom: {
+      _id: item.uom?._id,
+      id: item.uom?._id.id,
+      symbol: item.uom?.symbol,
+      unit_name: item.uom?.unit_name,
+      __v: item.uom?._v,
+    },
+    category: {
+      _id: item.category?._id,
+      id: item.category?.id,
+      brand: item.category?.brand,
+      type: item.category?.type,
+      __v: item.category?._v,
+    },
+    inventory: item.inventory,
+    availability: item.availability
+  });
+
+  // setFormDataStock({
+  //   sku: "skupsps",
+  //   quantity: 150,
+  //   threshold_limit: 20,
+  //   stock_price: 20.0,
+  //   retail_price: 35.0,
+  //   expired_datetime: "2025-12-31T23:59:59",
+  //   availability: true
+  // });
+      //load item into bucket just in case
+      setSelectedRegItem(item);
+      //load item into form blocks based on the type(register/return)
+
+
+
+
+
+      //**________________________________________________________________________________________________________________________________
+      // 2. extract its category & brand:
+      const { type, brand } = item.category;
+      // 3a. set the category‐dropdown state (this also fires your useEffect to populate brandOptions)
+      setSelectedCategoryType(type);
+      // 3b. explicitly set the form’s dropdown values:
+      setFormCategoryData({
+        categoryType: type,
+        brand,
+      });
+      //set unit of measure in the dropdown
+      // 3. pre‐select the UOM dropdown
+      setFormUOMData(item.uom.id);
+      // and keep formData.uom_id correct:
+      setFormData(fd => ({ ...fd, uom_id: item.uom.id, uom: item.uom }));
+      //**________________________________________________________________________________________________________________________________
   };
 
 
@@ -293,7 +531,8 @@ const filteredItems = inventoryItems.filter((item) => {
     <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
       {/* form section (left) */}
       <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 z-10">
-          <div className="flex flex-col h-[56rem] gap-3">
+        {/* 56 is the correct height */}
+          <div className="flex flex-col h-[46rem] gap-3">
           {/* ▼ item description block ▼ */}
           <div className="border rounded bg-white">
             <button
@@ -658,8 +897,8 @@ const filteredItems = inventoryItems.filter((item) => {
                       <input
                         type="text"
                         name="quantity"
-                        // value={formDataReturnItem.}
-                        onChange={handleSupplierInputChange}
+                        value={formDataReturnItem.quantity}
+                        onChange={handleReturnItemInputChange}
                         placeholder="Enter item price"
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
@@ -670,8 +909,9 @@ const filteredItems = inventoryItems.filter((item) => {
                         Description
                       </label>
                       <textarea
-                      //value=""
-                      //onChange=
+                        name="description"
+                        value={formDataReturnItem.description}
+                        onChange={handleReturnItemInputChange}
                       placeholder="Enter details..."
                       rows={3}
                       className="w-full mt-2 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -710,6 +950,7 @@ const filteredItems = inventoryItems.filter((item) => {
           {/* switch between update and add button functions based on item card selection and clear form button click */}
           <button
             // onClick={isUserEditting ? updateItem : createItem}
+            onClick={addItemToList}
             className="px-6 py-2 h-10 w-[10rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
           >
             {/* {isUserEditting ? 'Update' : 'Create'} */}Add Item
@@ -727,16 +968,16 @@ const filteredItems = inventoryItems.filter((item) => {
           <div className="flex flex-col w-2/3">
             <div>
               <p>Supplier:</p>
-              <p className="text-2xl font-semibold">Ranathunga Pvt(Ltd)</p>
+              <p className="text-2xl font-semibold">{transactionData.supplierName}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">
                 Prepared by
               </label>
               <select
-                //  name="availability"
-                // value={formData.availability}
-                // onChange={handleInputChange}
+                name="preparedBy"
+                value={transactionData.preparedBy}
+                onChange={handleTransactionDataInputChange}
                 className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">-- select employee --</option>
@@ -752,9 +993,9 @@ const filteredItems = inventoryItems.filter((item) => {
                 Authorized by
               </label>
               <select
-                //  name="availability"
-                // value={formData.availability}
-                // onChange={handleInputChange}
+                name="authorizedBy"
+                value={transactionData.authorizedBy}
+                onChange={handleTransactionDataInputChange}
                 className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">-- select employee --</option>
@@ -769,11 +1010,11 @@ const filteredItems = inventoryItems.filter((item) => {
           <div className="flex flex-col w-1/3">
             <div>
               <p>Date:</p>
-              <p className="text-2xl font-semibold">2023-02-02</p>
+              <p className="text-2xl font-semibold">{transactionData.date}</p>
             </div>
             <div>
               <p>Invoice No:</p>
-              <p className="text-2xl font-semibold">REPC2456XS</p>
+              <p className="text-2xl font-semibold">{transactionData.invoiceNo}</p>
             </div>
             <div className="mt-8 flex flex-row gap-4">
               <button
@@ -832,38 +1073,39 @@ const filteredItems = inventoryItems.filter((item) => {
               </tr>
             </thead>
             <tbody className="bg-white">
-
+              {
+                selectedStockItemList.map((item, index) => (
                 <tr
                   //key={item.id}
                   className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors`}
                   // onClick={() => handleTableRowClick(item)}
                 >
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {/* {index + 1} {item.code} */} 1
+                     {index + 1} {/*{item.code} */}
                   </td>
                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {/* {item.quantity || 30}(pcs) */}XLR9590565
+                    {item.sku}
                   </td>
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {/* {item.quantity || 30}(pcs) */}13
+                    {item.quantity} ({(item.uom_symbol)})
                   </td>
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {/* {item.total.toFixed(2)} */}12334.00
+                    {item.stock_price.toFixed(2)}
                   </td>
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {/* {item.total.toFixed(2)} */}12334.00
+                    {(item.stock_price*item.quantity).toFixed(2)}
                   </td>
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {/* {item.total.toFixed(2)} */}12334.00
+                    {item.retail_price.toFixed(2)}
                   </td>
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {/* {item.total.toFixed(2)} */}12334.00
+                    {(item.retail_price*item.quantity).toFixed(2)}
                   </td>
                   <td>
 
                   <button
                     type="button"
-                    //onClick={onClose}
+                    onClick={() => removeItemFromList(item.id)}
                     aria-label="Close notification"
                     className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
                     >
@@ -883,6 +1125,7 @@ const filteredItems = inventoryItems.filter((item) => {
                   </button>
                   </td>
                 </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -910,12 +1153,12 @@ const filteredItems = inventoryItems.filter((item) => {
                 <div className="flex-1">
                   <div className="mb-6">
                     <p className="text-sm text-gray-500">Discount Amount</p>
-                    <p className="text-xl font-semibold">fdsfdsfdsf</p>
+                    <p className="text-xl font-semibold">{transactionData.discountAmount}</p>
                   </div>
 
                   <div className="mt-6">
                     <p className="text-sm font-semibold text-gray-700">Previous Amount</p>
-                    <p className="text-3xl font-extrabold text-black">fdsfdff</p>
+                    <p className="text-3xl font-extrabold text-black">{transactionData.previousAmount}</p>
                   </div>
                 </div>
 
@@ -926,12 +1169,12 @@ const filteredItems = inventoryItems.filter((item) => {
                 <div className="flex-1 pl-6">
                   <div className="mb-6">
                     <p className="text-sm text-red-500">Return Amount</p>
-                    <p className="text-xl font-semibold text-red-500">3423424</p>
+                    <p className="text-xl font-semibold text-red-500">{transactionData.returnAmount}</p>
                   </div>
 
                   <div className="mt-6">
                     <p className="text-sm text-gray-500">Current Amount</p>
-                    <p className="text-xl font-semibold text-gray-700">324324324</p>
+                    <p className="text-xl font-semibold text-gray-700">{transactionData.currentAmount}</p>
                   </div>
                 </div>
               </div>
@@ -944,8 +1187,8 @@ const filteredItems = inventoryItems.filter((item) => {
                 <label className="block text-sm text-gray-400 mb-2">Cash Amount ( Rs. )</label>
                 <input
                   type="number"
-                  // value={cash}
-                  // onChange={(e) => setCash(Number(e.target.value))}
+                  value={transactionData.cashAmount}
+                  onChange={(e) => setTransactionData(Number(e.target.value))}
                   className="w-full px-3 py-3 bg-[#F8F8F8] border border-[#EBEBEB] text-right rounded"
                   placeholder="0.00"
                 />
@@ -954,13 +1197,13 @@ const filteredItems = inventoryItems.filter((item) => {
               {/* change amount */}
               <div className="mb-6">
                 <p className="text-sm text-gray-500">Change Amount</p>
-                <p className="text-lg font-semibold text-gray-800">41343432</p>
+                <p className="text-lg font-semibold text-gray-800">{transactionData.changeAmount}</p>
               </div>
 
               {/* total amount */}
               <div>
                 <p className="text-sm font-semibold text-gray-800">Total Amount</p>
-                <p className="text-4xl font-extrabold text-black">431434324</p>
+                <p className="text-4xl font-extrabold text-black">{totalStock}</p>
               </div>
             </div>
           </div>
@@ -1127,7 +1370,7 @@ const filteredItems = inventoryItems.filter((item) => {
                   </div>
                 ) : (
                   filteredItems.map((item) => (
-                    <SalesItemCard key={item.id ?? item._id} item={item} />
+                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={()=>loadItemtoForm(item)} />
                   ))
                 )}
               </div>
