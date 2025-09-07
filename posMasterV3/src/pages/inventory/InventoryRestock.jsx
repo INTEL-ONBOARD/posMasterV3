@@ -1209,7 +1209,7 @@ const filteredItems = inventoryItems.filter((item) => {
           </div>
         </div>
       </div>
-      <div className="bg-gray-300 border-yellow-300 w-[calc(32rem)] h-[calc(100vh-2rem)]">
+      <div className="bg-gray-300 w-[calc(32rem)] h-[calc(100vh-2rem)]">
         {/* BUTTONS BLOCK (default visible) */}
         {rightActiveSection === "buttons" && (
           <div className="flex flex-col flex-1 p-2 gap-1">
