@@ -52,7 +52,7 @@ function CategoryConfig() {
   // Filter categories based on search and category type
   const filteredCategories = categories.filter((category) => {
     const matchesSearch = category.brand.toLowerCase().includes(search.toLowerCase()) ||
-                         category.type.toLowerCase().includes(search.toLowerCase());
+      category.type.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = searchCategory === "All" || category.type === searchCategory;
     return matchesSearch && matchesCategory;
   });
@@ -160,8 +160,8 @@ function CategoryConfig() {
         )}
 
         {/* Search Panel - Imported from AddItem */}
-        <div className="w-full flex flex-row justify-between py-4 px-6 bg-gray-50 gap-6 mb-6 rounded-lg border">
-          <div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-2 border-blue-400">
+        <div className="w-full flex flex-row justify-between py-4 px-6 gap-6 mb-6">
+          <div className="w-full flex flex-row justify-between border-b-2 border-black-600 ">
             <input
               type="text"
               value={search}

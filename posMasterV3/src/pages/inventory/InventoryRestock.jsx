@@ -1122,31 +1122,31 @@ function InventoryRestock() {
 
         </div>
         {/* Bottom bar */}
-        <div className="flex flex-row justify-around">
+        <div className="flex flex-row w-full gap-2">
           {/* <button
-            className="flex items-center w-[10rem] h-10 px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
+            className="flex items-center flex-1 min-w-0 h-10 px-2 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors text-sm"
             // onClick={() => generatePdf('print')}
           >
-            <Printer className="w-4 h-4 mr-4" />
-            <p>Print Barcode</p>
+            <Printer className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="truncate">Print Barcode</span>
           </button> */}
           <button
             onClick={() => {
               clearUserInput();
-              //switch from update item button to add item button 
+              //switch from update item button to add item button
               setUserEditing(false)
             }}
-            className="px-6 py-2 w-[10rem] h-10  border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
+            className="flex-1 min-w-0 h-10 px-3 py-2 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors text-sm"
           >
-            Cancel
+            <span className="truncate">Cancel</span>
           </button>
           {/* switch between update and add button functions based on item card selection and clear form button click */}
           <button
             // onClick={isUserEditting ? updateItem : createItem}
             onClick={addItemToList}
-            className="px-6 py-2 h-10 w-[10rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
+            className="flex-1 min-w-0 h-10 px-3 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors text-sm"
           >
-            {/* {isUserEditting ? 'Update' : 'Create'} */}Add Item
+            <span className="truncate">Add Item</span>
           </button>
 
         </div>
