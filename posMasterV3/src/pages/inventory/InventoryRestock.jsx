@@ -175,9 +175,9 @@ const filteredItems = inventoryItems.filter((item) => {
       //alert(no);
       setInvoiceNo(no);
       setTransactionData((prev) => ({
-      ...prev, // Spread the previous state to preserve other attributes
-      invoiceNo: no // Update only the color attribute
-    }));
+        ...prev, // Spread the previous state to preserve other attributes
+        invoiceNo: no // Update only the color attribute
+      }));
   }, []);
 
 
@@ -205,34 +205,18 @@ const filteredItems = inventoryItems.filter((item) => {
     item_update_datetime: "2025-12-31T23:59:59",
     item_created_datetime: "2025-12-31T23:59:59",
     __v: 0,
-    // uom: {
-    //   _id: "",
-    //   id: 0,
-    //   symbol: "",
-    //   unit_name: "",
-    //   __v: 0
-    // },
-    // category: {
-    //   _id: "",
-    //   id: 0,
-    //   brand: "",
-    //   type: "",
-    //   __v: 0
-    // },
     inventory: null,
-    // availability: true,
-
-        sku: "skupsps",
+    sku: "skupsps",
     quantity: 3,
     threshold_limit: 20,
-    stock_price: 20.0,
-    retail_price: 30.0,
+    stock_price: 20,
+    retail_price: 30,
     expired_datetime: "2025-12-31T23:59:59",
     availability: true,
 
     uom_symbol: "pcs"
   },
-      {
+  {
     _id: "",
     id: 0,
     stock_trace: [0],
@@ -246,28 +230,12 @@ const filteredItems = inventoryItems.filter((item) => {
     item_update_datetime: "2025-12-31T23:59:59",
     item_created_datetime: "2025-12-31T23:59:59",
     __v: 0,
-    // uom: {
-    //   _id: "",
-    //   id: 0,
-    //   symbol: "",
-    //   unit_name: "",
-    //   __v: 0
-    // },
-    // category: {
-    //   _id: "",
-    //   id: 0,
-    //   brand: "",
-    //   type: "",
-    //   __v: 0
-    // },
     inventory: null,
-    // availability: true,
-
-        sku: "skupsps",
+    sku: "skupsps",
     quantity: 3,
     threshold_limit: 20,
-    stock_price: 20.0,
-    retail_price: 30.0,
+    stock_price: 20,
+    retail_price: 30,
     expired_datetime: "2025-12-31T23:59:59",
     availability: true,
 
@@ -310,8 +278,8 @@ const filteredItems = inventoryItems.filter((item) => {
     sku: "skupsps",
     quantity: 150,
     threshold_limit: 20,
-    stock_price: 20.0,
-    retail_price: 35.0,
+    stock_price: 20,
+    retail_price: 35,
     expired_datetime: "2025-12-31T23:59:59",
     availability: true,
 
@@ -377,7 +345,7 @@ const filteredItems = inventoryItems.filter((item) => {
 
     uom_symbol: formDataStock.uom?.uom_symbol
     }; 
-
+    console.log(newRegItem);
     //TODO: do a validation first
     setSelectedRegItemList(prev => [...prev, newRegItem]);
   } 
@@ -431,20 +399,20 @@ const filteredItems = inventoryItems.filter((item) => {
     inventory: null,
     availability: true
   });
-  //no input change for this for now(because of readonly in ui)
+
   const [formDataStock, setFormDataStock] = useState({
     sku: "skupsps",
-    quantity: 150,
+    quantity: 110,
     threshold_limit: 20,
-    stock_price: 20.0,
-    retail_price: 35.0,
+    stock_price: 20,
+    retail_price: 35,
     expired_datetime: "2025-12-31T23:59:59",
     availability: true
   });
   const handleStockInputChange = (e) => {
     const { name, value } = e.target;
     console.log(name +": "+ value);
-    setFormStockData(prev => ({ ...prev, [name]: value }));
+    setFormDataStock(prev => ({ ...prev, [name]: value }));
   };
   const [formDataSupplier, setFormDataSupplier] = useState({
       id: 0,
@@ -478,8 +446,8 @@ const filteredItems = inventoryItems.filter((item) => {
     sku: "retret",
     quantity: 150,
     threshold_limit: 20,
-    stock_price: 20.0,
-    retail_price: 35.0,
+    stock_price: 20,
+    retail_price: 35,
     expired_datetime: "2025-12-31T23:59:59",
     availability: true,
 
@@ -491,8 +459,11 @@ const filteredItems = inventoryItems.filter((item) => {
     setFormDataReturnItem(prev => ({ ...prev, [name]: value }));
   };
   const [transactionData, setTransactionData] = useState({
+    supplier_id: "",
     supplierName: "supplier123",
+    prep_id: "",
     preparedBy: "prep123",
+    auth_id: "",
     authorizedBy: "auth123",
     date: "2020",
     
@@ -618,6 +589,142 @@ useEffect(() => {
 }, []); // Empty dependency array to run once on mount
 
 
+
+  const registerTransaction = async (e) => {
+
+    
+    //create reg item list for req data
+    // Function to transform selected items to the required format
+    const transformToAddedItems = () => {
+      return selectedStockItemList.map(item => ({
+        sku: item.sku,
+        qty: item.quantity,
+        stock_price: item.stock_price,
+        retail_price: item.retail_price,
+        exp_date: item.expired_datetime,
+        batch_code: item.batch_code
+      }));
+    };
+    //create ret item list for ret data
+    const transformToReturnedItems = () => {
+      return selectedReturnItemList.map(item => ({
+        sku: item.sku,
+        batch_code: item.batch_code,
+        qty: item.quantity,
+        description: item.return_description
+      }));
+    };
+
+          //     {
+          //   sku: "SKU102",
+          //   batch_code: "BATCH456",
+          //   qty: 10,
+          //   description: "Damaged item"
+          // }
+
+    
+    //setFormStatus("loading");
+    //e.preventDefault();
+    try {
+      const requestData = {
+        sup_id: 1,
+        prep_agent_id: 2,
+        auth_agent_id: 3,
+        invoice_no: "fjkdslfksdf",
+        bill_no: "fkldfdfjkd",
+        payment_method: formDataSupplier.payment_method,
+        expenses: formDataSupplier.expenses,
+        
+        discount: 5.00,
+        current_amount: 100.00,
+        cash_amount: 95.00,
+        change_amount: 5.00,
+        total_amount: 105.00,
+        exe_level: "medium",
+
+        added_items: transformToAddedItems(), //contatins a list
+        return_items: transformToReturnedItems() //contains a list
+      };
+  //       const requestData = {
+  //   sup_id: 1,
+  //   prep_agent_id: 2,
+  //   auth_agent_id: 3,
+  //   invoice_no: "INdVd005",
+  //   bill_no: "BIdLLd005",
+  //   payment_method: "cash",
+  //   discount: 5.00,
+  //   expenses: 10.00,
+  //   current_amount: 100.00,
+  //   cash_amount: 95.00,
+  //   change_amount: 5.00,
+  //   total_amount: 105.00,
+  //   exe_level: "medium",
+  //   added_items: [
+  //     {
+  //       sku: "SKU101",
+  //       qty: 50,
+  //       stock_price: 1.50,
+  //       retail_price: 2.00,
+  //       exp_date: "2025-12-31T00:00:00.000Z",
+  //       batch_code: "BATCH123"
+  //     }
+  //   ],
+  //   return_items: [
+  //     {
+  //       sku: "SKU102",
+  //       batch_code: "BATCH456",
+  //       qty: 1,
+  //       description: "Damaged item"
+  //     }
+  //   ]
+  // };
+      console.log(requestData);
+      const response = await apiClient.post("api/restocks", requestData);
+
+      if (response.data.status === "success") {
+        // Add new item to local state
+        //alert("Item created successfully!");
+        //toast.open("Item created successfully", 4000, 'Success', 'success');
+        //clear data upon successful response
+        //setFormStatus("success");
+        console.log(response.data.data.message);
+        // after 4 seconds, flip back to the form
+        // timerRef.current = window.setTimeout(() => {
+        //   setFormStatus("form");
+        //   timerRef.current = null;
+        // }, 4000);
+        // clearUserInput();
+      } else {
+        console.log(response.data.data.message);
+        //alert(response.data.message || "Failed to create item");
+        //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
+        //setFormStatus("fail");
+
+        // after 4 seconds, flip back to the form
+        // timerRef.current = window.setTimeout(() => {
+        //   setFormStatus("form");
+        //   timerRef.current = null;
+        // }, 4000);
+      }
+    } catch (err) {
+      //console.log(response.data.data.message);
+      console.error("Create item error:", err);
+      console.error("Create item error:", err.message);
+      // //alert("Error creating item"+err.message);
+      // setFormStatus("fail");
+      //   // after 4 seconds, flip back to the form
+      //   timerRef.current = window.setTimeout(() => {
+      //     setFormStatus("form");
+      //     timerRef.current = null;
+      //   }, 4000);
+      // toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
+    }
+    finally {
+      //repopulate items
+      //fetchItems();
+    }
+  };
+
   
   return (
     <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
@@ -691,7 +798,7 @@ useEffect(() => {
                         name="sku"
                         value={formDataStock.sku}
                         onChange={handleStockInputChange}
-                        placeholder=""
+                        //placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -704,7 +811,7 @@ useEffect(() => {
                         name="quantity"
                         value={formDataStock.quantity}
                         onChange={handleStockInputChange}
-                        placeholder=""
+                        //placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -715,11 +822,11 @@ useEffect(() => {
                         Lower Threshold Rate(%)
                       </label>
                       <input
-                        type="text"
+                        type="number"
                         name="threshold_limit"
                         value={formDataStock.threshold_limit}
                         onChange={handleStockInputChange}
-                        placeholder=""
+                        //placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -749,7 +856,7 @@ useEffect(() => {
                         name="stock_price"
                         value={formDataStock.stock_price}
                         onChange={handleStockInputChange}
-                        placeholder=""
+                        //placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -762,7 +869,7 @@ useEffect(() => {
                         name="retail_price"
                         value={formDataStock.retail_price}
                         onChange={handleStockInputChange}
-                        placeholder=""
+                        //placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -1103,15 +1210,23 @@ useEffect(() => {
               <select
                 name="preparedBy"
                 value={transactionData.preparedBy}
-                onChange={handleTransactionDataInputChange}
+                onChange={(e) => {
+                  handleTransactionDataInputChange(e);
+                  const selectedUsername = e.target.value;
+                  const selectedUser = users.find(user => user.username === selectedUsername);
+                  if (selectedUser) {
+                    console.log(selectedUser._id)
+                    setTransactionData(prev => ({ ...prev, prep_id: selectedUser._id }));
+                  }
+                }}
                 className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">-- select employee --</option>
-                    {users.map(user => (
-                        <option key={user._id} value={user.username}>
-                          {user.username}
-                      </option>
-                      ))}
+                {users.map(user => (
+                  <option key={user._id} value={user.username}>
+                    {user.username}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -1121,15 +1236,22 @@ useEffect(() => {
               <select
                 name="authorizedBy"
                 value={transactionData.authorizedBy}
-                onChange={handleTransactionDataInputChange}
+                onChange={(e) => {
+                  handleTransactionDataInputChange(e);
+                  const selectedUsername = e.target.value;
+                  const selectedUser = users.find(user => user.username === selectedUsername);
+                  if (selectedUser) {
+                    setTransactionData(prev => ({ ...prev, auth_id: selectedUser._id }));
+                  }
+                }}
                 className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">-- select employee --</option>
-                    {users.map(user => (
-                        <option key={user._id} value={user.username}>
-                          {user.username}
-                      </option>
-                      ))}
+                {users.map(user => (
+                  <option key={user._id} value={user.username}>
+                    {user.username}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -1154,11 +1276,12 @@ useEffect(() => {
                 Clear All
               </button>
               <button
-                // onClick={() => {
-                //   clearUserInput();
-                //   //switch from update item button to add item button 
-                //   setUserEditing(false)
-                // }}
+                onClick={() => {
+                  registerTransaction();
+                  //clearUserInput();
+                  //switch from update item button to add item button 
+                  //setUserEditing(false)
+                }}
                 className="px-6 py-2 w-[8rem] h-10  border bg-[#2FBC34] border-gray-300 text-white hover:bg-green-500 transition-colors"
               >
                 Done
