@@ -8,6 +8,7 @@ import ReturnItemsImg from "../../assets/return_items.png";
 import DisposeItemsImg from "../../assets/dispose_items.png";
 import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
+import { generateUniqueString } from "../../util/generate";
 
 function InventoryRestock() {
 
@@ -114,10 +115,6 @@ function InventoryRestock() {
   const [searchCategory, setSearchCategory] = useState("All");
   const [searchAvailability, setSearchAvailability] = useState("All");
 
-    // Category handler
-  const handleSearchCategoryChange = (e) => {
-    setSearchCategory(e.target.value);
-  };
 
   // Search handler
   const handleSearch = (e) => {
@@ -135,23 +132,25 @@ function InventoryRestock() {
     return Boolean(a); // numbers (1/0) or other truthy/falsy
   };
   
-  // Filter items based on search, category and availability
+  // Filter items based on search item name, batch code, category and availability
 const filteredItems = inventoryItems.filter((item) => {
-  // category match: either All or item.category.type equals selected
+  // Category match: either "All" or item.category.type equals selected
   const matchesCategory =
     searchCategory === "All" ||
     (item?.category && item.category.type === searchCategory);
 
-  // availability match: All, Available (true), Unavailable (false)
+  // Availability match: "All", Available (true), Unavailable (false)
   const isAvailable = interpretAvailability(item);
   const matchesAvailability =
     searchAvailability === "All" ||
     (searchAvailability === "Available" && isAvailable) ||
     (searchAvailability === "Unavailable" && !isAvailable);
 
-  // text search match
+  // Item name or batch code text search match
+  const searchTerm = (search || "").toLowerCase();
   const matchesSearch =
-    (item?.item_name || "").toLowerCase().includes((search || "").toLowerCase());
+    (item?.item_name || "").toLowerCase().includes(searchTerm) ||
+    (item?.batch_code || "").toLowerCase().includes(searchTerm);
 
   return matchesCategory && matchesAvailability && matchesSearch;
 });
@@ -168,7 +167,19 @@ const filteredItems = inventoryItems.filter((item) => {
 
 
   //mid section logic
-  const [invoiceNo, setInvoiceNo] = useState({});
+
+  //set invoice
+  const [invoiceNo, setInvoiceNo] = useState("");
+    useEffect(() => {
+      const no = generateUniqueString();
+      //alert(no);
+      setInvoiceNo(no);
+      setTransactionData((prev) => ({
+      ...prev, // Spread the previous state to preserve other attributes
+      invoiceNo: no // Update only the color attribute
+    }));
+  }, []);
+
 
   const [selectedSupplier, setselectedSupplier] = useState({});
   const [selectedEmpPrep, setSelectedEmpPrep] = useState({});
@@ -181,6 +192,47 @@ const filteredItems = inventoryItems.filter((item) => {
   //item list for the mid section table
   const [selectedStockItemList, setSelectedRegItemList] = useState([
     {
+    _id: "",
+    id: 0,
+    stock_trace: [0],
+    item_name: "fdsaf",
+    item_image_url: "",
+    batch_code: "fdsaf",
+    maximum_capacity: 10,
+    uom_id: 10,
+    category_id: 10,
+    inventory_id: 11,
+    item_update_datetime: "2025-12-31T23:59:59",
+    item_created_datetime: "2025-12-31T23:59:59",
+    __v: 0,
+    // uom: {
+    //   _id: "",
+    //   id: 0,
+    //   symbol: "",
+    //   unit_name: "",
+    //   __v: 0
+    // },
+    // category: {
+    //   _id: "",
+    //   id: 0,
+    //   brand: "",
+    //   type: "",
+    //   __v: 0
+    // },
+    inventory: null,
+    // availability: true,
+
+        sku: "skupsps",
+    quantity: 3,
+    threshold_limit: 20,
+    stock_price: 20.0,
+    retail_price: 30.0,
+    expired_datetime: "2025-12-31T23:59:59",
+    availability: true,
+
+    uom_symbol: "pcs"
+  },
+      {
     _id: "",
     id: 0,
     stock_trace: [0],
@@ -263,9 +315,19 @@ const filteredItems = inventoryItems.filter((item) => {
     expired_datetime: "2025-12-31T23:59:59",
     availability: true,
 
-    uom_symbol: "pcs"
+    uom_symbol: "pcs",
+
+    return_description: "damaged goods"
   }
   ]);
+
+  //select table rows and load form sections
+  const selectRowStock = () => {
+
+  }
+  const selectRowReturn = () => {
+    
+  }
 
   const addItemToList = () => {
 
@@ -395,7 +457,7 @@ const filteredItems = inventoryItems.filter((item) => {
       current_amount: 0,
       previous_amount: 0,
 
-      invoice_no: 0,
+      invoice_no: invoiceNo,
       bill_no: 0,
 
       payment_method: "",
@@ -421,7 +483,7 @@ const filteredItems = inventoryItems.filter((item) => {
     expired_datetime: "2025-12-31T23:59:59",
     availability: true,
 
-    description: "returning item"
+    return_description: "returning item"
   });
   const handleReturnItemInputChange = (e) => {
     const { name, value } = e.target;
@@ -527,6 +589,36 @@ const filteredItems = inventoryItems.filter((item) => {
 
   
 
+
+
+// Method to set current date (reusable function)
+const setCurrentDateToExpired = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const currentDateStr = `${year}-${month}-${day}`;
+  
+  // Decide on format: end of day (like your initial) or start of day (like onChange)
+  // Using end of day for consistency with initial state
+  const endOfDayUTC = `${currentDateStr}T23:59:59.000Z`;
+  
+  setFormDataStock(prev => ({
+    ...prev,
+    expired_datetime: endOfDayUTC
+  }));
+};
+
+// useEffect to set current date on component mount
+useEffect(() => {
+  // Only set if not already set (e.g., for editing existing data)
+  // if (!formDataStock.expired_datetime) {
+    setCurrentDateToExpired();
+  // }
+}, []); // Empty dependency array to run once on mount
+
+
+  
   return (
     <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
       {/* form section (left) */}
@@ -700,9 +792,9 @@ const filteredItems = inventoryItems.filter((item) => {
                               const selectedDate = e.target.value;
                               console.log("date input value: "+selectedDate);
                               if (selectedDate) {
-                                // Format to UTC midnight: YYYY-MM-DDT00:00:00.000Z
+                                // Format to UTC midnight: YYYY-MM-DDT00:00:00.000Z (or change to T23:59:59.000Z for end of day)
                                 const utcMidnight = `${selectedDate}T00:00:00.000Z`;
-                                console.log("to formData:"+utcMidnight)
+                                console.log("to formData:" + utcMidnight)
                                 setFormDataStock({
                                   ...formDataStock,
                                   expired_datetime: utcMidnight
@@ -875,21 +967,20 @@ const filteredItems = inventoryItems.filter((item) => {
           </div>
 
           {/* ▼ return description block ▼ */}
+        {(rightActiveSection === "return") && (
           <div className="bg-white">
             <button
-              // onClick={() => setOpenSupplier(!openSupplier)}
               onClick={() => setopenFormBlock('return')}
               className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
             >
               <span className="text-gray-400">RETURN DESCRIPTION</span>
-              {(openFormBlock=='return') ? <ChevronUp /> : <ChevronDown />}
-              {/* {openSupplier ? <ChevronUp /> : <ChevronDown />} */}
+              {openFormBlock === 'return' ? <ChevronUp /> : <ChevronDown />}
             </button>
-            {(openFormBlock=='return') && (
+            {openFormBlock === 'return' && (
               <div className="px-4 bg-white pb-5">
                 {/* detailed description block */}
                 <div className="">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
                         Quantity
@@ -899,29 +990,64 @@ const filteredItems = inventoryItems.filter((item) => {
                         name="quantity"
                         value={formDataReturnItem.quantity}
                         onChange={handleReturnItemInputChange}
-                        placeholder="Enter item price"
+                        placeholder="Enter quantity"
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
-                    <div className='mt-1'>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Description
-                      </label>
-                      <textarea
-                        name="description"
-                        value={formDataReturnItem.description}
-                        onChange={handleReturnItemInputChange}
+                  <div className='mt-1'>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      name="description"
+                      value={formDataReturnItem.return_description}
+                      onChange={handleReturnItemInputChange}
                       placeholder="Enter details..."
                       rows={3}
                       className="w-full mt-2 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
+                    />
+                  </div>
                 </div>
+                <p className="text-gray-400 font-semibold">Select the batchcode</p>
+                  <div className="flex flex-col gap-3 overflow-y-scroll overflow-x-hidden h-[13rem] -mr-4">
+                  <div className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
+                    <div className="flex flex-col">
+                      <span className="text-md font-bold">SKU:</span>
+                      <span className="text-gray-600">SKU23453RE</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-gray-400 font-bold">60 units</span>
+                      <span className="text-gray-400">2025-04-04 Exp</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
+                    <div className="flex flex-col">
+                      <span className="text-md font-bold">SKU:</span>
+                      <span className="text-gray-600">SKU23453RE</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-gray-400 font-bold">60 units</span>
+                      <span className="text-gray-400">2025-04-04 Exp</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
+                    <div className="flex flex-col">
+                      <span className="text-md font-bold">SKU:</span>
+                      <span className="text-gray-600">SKU23453RE</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-gray-400 font-bold">60 units</span>
+                      <span className="text-gray-400">2025-04-04 Exp</span>
+                    </div>
+                  </div>
+
+                  </div>
               </div>
+
             )}
           </div>
+        )}
 
 
 
@@ -1043,91 +1169,148 @@ const filteredItems = inventoryItems.filter((item) => {
         </div>
         {/* table section*/}
         <div className="overflow-x-auto h-[28rem] p-2 lg:p-4">
-          <table className="w-full min-w-[500px]">
-            <thead className="bg-gray-700 text-[#848484]">
-              <tr>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                  #
-                </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                  Item code
-                </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                  Unit count
-                </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                  Stock Price
-                </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                  Stock Total
-                </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                  Retail Price
-                </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                  Retail Total
-                </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                  
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white">
-              {
-                selectedStockItemList.map((item, index) => (
-                <tr
-                  //key={item.id}
-                  className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors`}
-                  // onClick={() => handleTableRowClick(item)}
-                >
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                     {index + 1} {/*{item.code} */}
-                  </td>
-                 <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {item.sku}
-                  </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {item.quantity} ({(item.uom_symbol)})
-                  </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {item.stock_price.toFixed(2)}
-                  </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {(item.stock_price*item.quantity).toFixed(2)}
-                  </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {item.retail_price.toFixed(2)}
-                  </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {(item.retail_price*item.quantity).toFixed(2)}
-                  </td>
-                  <td>
+<table className="w-full min-w-[500px]">
+  <thead className="bg-gray-700 text-[#848484]">
+    <tr>
+      <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+        #
+      </th>
+      <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+        Item code
+      </th>
+      <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+        Unit count
+      </th>
+      <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+        Stock Price
+      </th>
+      <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+        Stock Total
+      </th>
+      <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+        Retail Price
+      </th>
+      <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+        Retail Total
+      </th>
+      <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+      </th>
+    </tr>
+  </thead>
+  <tbody className="bg-white">
+    {/* Map selectedStockItemList */}
+    {selectedStockItemList.map((item, index) => (
+      <tr
+        onClick={()=>{
+          //alert("reg i");
+          selectRowStock();
+        }}
+        key={item.id || generateUniqueString()} // Use the previously defined generateUniqueString
+        className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors`}
+      >
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {index + 1}
+        </td>
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {item.sku || generateUniqueString()}
+        </td>
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {item.quantity} ({item.uom_symbol})
+        </td>
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {item.stock_price.toFixed(2)}
+        </td>
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {(item.stock_price * item.quantity).toFixed(2)}
+        </td>
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {item.retail_price.toFixed(2)}
+        </td>
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {(item.retail_price * item.quantity).toFixed(2)}
+        </td>
+        <td>
+          <button
+            type="button"
+            onClick={() => removeItemFromList(item.id || generateUniqueString())}
+            aria-label="Close notification"
+            className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
+          >
+            <svg
+              className="w-4 h-4 text-white"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </td>
+      </tr>
+    ))}
 
-                  <button
-                    type="button"
-                    onClick={() => removeItemFromList(item.id)}
-                    aria-label="Close notification"
-                    className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
-                    >
-                    <svg
-                      className="w-4 h-4 text-white"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    {/* Map selectedReturnItemList */}
+    {selectedReturnItemList.map((item, index) => (
+      <tr
+        onClick={()=>{
+          //alert("ret i");
+          selectRowReturn();
+        }}
+        key={item.id || generateUniqueString()}
+        className={`border-b bg-red-100 border-gray-200 hover:bg-red-200 cursor-pointer transition-colors`}
+      >
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {selectedStockItemList.length + index + 1} {/* Continue numbering */}
+        </td>
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {item.sku || generateUniqueString()}
+        </td>
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {item.quantity} ({item.uom_symbol})
+        </td>
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {/* {item.stock_price.toFixed(2)} */}
+        </td>
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {/* {(item.stock_price * item.quantity).toFixed(2)} */}
+        </td>
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {/* {item.retail_price.toFixed(2)} */}
+        </td>
+        <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+          {/* {(item.retail_price * item.quantity).toFixed(2)} */}
+        </td>
+        <td>
+          <button
+            type="button"
+            onClick={() => removeItemFromList(item.id || generateUniqueString())}
+            aria-label="Close notification"
+            className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
+          >
+            <svg
+              className="w-4 h-4 text-white"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
         </div>
         {/* amount section */}
         <div className="bg-white mt-2 p-6 border-t-2 border-t-gray-400">
@@ -1255,7 +1438,7 @@ const filteredItems = inventoryItems.filter((item) => {
         )}
 
         {/* DISPOSE ITEMS BLOCK */}
-        {rightActiveSection === "dispose" && (
+        {/* {rightActiveSection === "dispose" && (
           <div className="p-4">
             <button
               onClick={() => setRightActiveSection("buttons")}
@@ -1270,13 +1453,12 @@ const filteredItems = inventoryItems.filter((item) => {
               <p className="text-sm text-gray-600">
                 This is the dispose items block. Add your UI here.
               </p>
-              {/* Example: list disposed items or a form */}
             </div>
           </div>
-        )}
+        )} */}
 
         {/* ADD REGISTERED ITEMS BLOCK */}
-        {rightActiveSection === "add" && (
+        {(rightActiveSection === "add" || rightActiveSection === "dispose" || rightActiveSection === "return") && (
           <div>
             <div className="w-full flex flex-col justify-between py-4 px-6 bg-white gap-6 mb-4">
               <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center gap-3">
@@ -1379,7 +1561,7 @@ const filteredItems = inventoryItems.filter((item) => {
         )}
 
         {/* RETURN ITEMS BLOCK */}
-        {rightActiveSection === "return" && (
+        {/* {rightActiveSection === "return" && (
           <div className="p-4">
             <button
               onClick={() => setRightActiveSection("buttons")}
@@ -1395,7 +1577,7 @@ const filteredItems = inventoryItems.filter((item) => {
               </p>
             </div>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
