@@ -16,6 +16,7 @@ function SalesSidebar({
   onSaleViewClick,
   onTransactionHistoryClick,
   onInventoryViewClick,
+  onSalesReportClick,
   onOffersDiscountClick,
   onSalesConfigClick,
 }) {
@@ -33,16 +34,16 @@ function SalesSidebar({
       onClick: onTransactionHistoryClick,
     },
     {
-      id: "inventory-view",
-      label: "Inventory View",
-      icon: inventoryReportImg,
+      id: "view-inventory",
+      label: "View Inventory",
+      icon: viewInventoryImg,
       onClick: onInventoryViewClick,
     },
     {
-      id: "offers-discount",
-      label: "Offers and Discount View",
-      icon: offersDiscountImg,
-      onClick: onOffersDiscountClick,
+      id: "sales-report",
+      label: "Sales Report",
+      icon: inventoryReportImg,
+      onClick: onSalesReportClick,
     },
     {
       id: "sales-config",
@@ -51,11 +52,11 @@ function SalesSidebar({
       onClick: onSalesConfigClick,
     },
     {
-      id: "sales-config",
-      label: "Sales Configurations",
-      icon: viewInventoryImg,
-      onClick: onSalesConfigClick,
-    },    
+      id: "offers-discount",
+      label: "Offers and Discount View",
+      icon: offersDiscountImg,
+      onClick: onOffersDiscountClick,
+    },
   ];
 
   return (
