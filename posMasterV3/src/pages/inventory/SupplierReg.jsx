@@ -145,7 +145,7 @@ const filteredSuppliers = supplierList.filter((supplier) => {
       supplier_name: "",
       type: "",
       supplier_address: "",
-      status: false,
+      status: true,
       contact: "",
 
       current_amount: 0,
@@ -191,6 +191,47 @@ const filteredSuppliers = supplierList.filter((supplier) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  //request data validation
+const isRequestDataValid = (requestData) => {
+  const { basic_info, financial_info, payment_info } = requestData;
+
+  // Check basic_info fields
+  if (
+    !basic_info.supplier_name?.trim() ||
+    !basic_info.contact?.trim() ||
+    !basic_info.type?.trim() ||
+    !basic_info.supplier_address?.trim() 
+    //||
+    //!basic_info.status?.trim()
+  ) {
+    console.log("basic info missing");
+    return false;
+  }
+
+  // Check financial_info fields
+  if (
+    //!basic_info.current_amount?.toString().trim() ||
+    !financial_info.previous_amount?.toString().trim()
+  ) {
+    console.log(basic_info.previous_amount);
+    console.log("financial info missing");
+    return false;
+  }
+
+  //Check payment_info fields
+  if (
+    !payment_info.account_number?.trim() ||
+    !payment_info.account_related_bank?.trim() ||
+    !payment_info.account_related_branch?.trim() ||
+    !payment_info.account_name?.trim() ||
+    !payment_info.account_nickName?.trim()
+  ) {
+    return false;
+  }
+
+  return true;
+};
+
   // Create new supplier
   const registerSupplier = async (e) => {
     setFormStatus("loading");
@@ -212,11 +253,19 @@ const filteredSuppliers = supplierList.filter((supplier) => {
           account_number: formData.account_number,
           account_related_bank: formData.account_related_bank,
           account_related_branch: formData.account_related_branch,
-          account_name: formData.account_name,
+          account_name: formData.supplier_name,
           account_nickName: formData.account_nickName
         }
       };
-      console.log("registering supplier: "+requestData);
+      
+      if (!isRequestDataValid(requestData)) {
+        //console.log('Validation failed: One or more fields are empty');
+        //toast.open("Please enter all fields", "Missing fields");
+        toast.open("Please enter all fields", 4000, 'Missing fields', 'error');
+        setFormStatus("form");
+        return; // Cancel API call
+      }
+      console.log(requestData);
       const response = await apiClient.post("api/suppliers/add", requestData);
 
       if (response.data.status === "success") {
@@ -251,10 +300,13 @@ const filteredSuppliers = supplierList.filter((supplier) => {
           timerRef.current = null;
         }, 4000);
       toast.open("Create Supplier operation failed", 4000, 'Item creation Failed', 'error');
+      console.log(err.message);
     }
     finally {
       //repopulate items
       fetchSupplierList();
+      isLoading(false);
+      setFormStatus("form");
     }
   };
 
@@ -284,7 +336,16 @@ const filteredSuppliers = supplierList.filter((supplier) => {
           account_nickName: formData.account_nickName
         }
       };
-      console.log("registering supplier: "+requestData);
+      if (!isRequestDataValid(requestData)) {
+        //console.log('Validation failed: One or more fields are empty');
+        //toast.open("Please enter all fields", "Missing fields");
+        toast.open("Please enter all fields", 4000, 'Missing fields', 'error');
+        setFormStatus("form");
+        return; // Cancel API call
+      }
+
+      console.log("updating supplier: "+requestData);
+      console.log(formData.id);
       const response = await apiClient.put(`api/suppliers/${formData.id}`, requestData);
 
       if (response.data.status === "success") {
@@ -310,6 +371,7 @@ const filteredSuppliers = supplierList.filter((supplier) => {
         }, 4000);
       }
     } catch (err) {
+      console.error("Update supplier error:", err.message);
       console.error("Update supplier error:", err);
       //alert("Error creating item"+err.message);
       setFormStatus("fail");
@@ -449,7 +511,7 @@ const deleteSupplier = async () => {
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="">-- select status --</option>
+                        {/* <option value={true}>-- select status --</option> */}
                         <option value={true}>Available</option>
                         <option value={false}>Unavailable</option>
                       </select>
@@ -470,7 +532,7 @@ const deleteSupplier = async () => {
                   </div>
 
                   <div className="mt-1 grid grid-cols-2 gap-4">
-                    <div>
+                    {/* <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
                         Current Amount (Rs.)
                       </label>
@@ -482,7 +544,7 @@ const deleteSupplier = async () => {
                         placeholder=""
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
-                    </div>
+                    </div> */}
 
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
@@ -582,7 +644,7 @@ const deleteSupplier = async () => {
             onClick={() => {
               clearUserInput();
               //switch from update supplier button to add supplier button 
-              deleteSupplier();
+              //deleteSupplier();
               setUserEditing(false)
             }}
             className="px-6 py-2 w-[8rem] h-10  border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
@@ -592,7 +654,7 @@ const deleteSupplier = async () => {
           {/* switch between update and add button functions based on item card selection and clear form button click */}
           <button
             onClick={isUserEditting ? updateSupplier : registerSupplier}
-            className="px-6 py-2 h-10 w-[12rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
+            className="px-6 py-2 h-10 w-[16rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
           >
             {isUserEditting ? 'Update Supplier' : 'Add Supplier'}
           </button>
