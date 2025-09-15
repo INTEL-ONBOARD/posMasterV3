@@ -3,6 +3,8 @@ import { useOutletContext } from "react-router-dom";
 import SalesSidebar from "./Sales_sidebar";
 import SalesView from "./SalesView";
 import OffersDiscountView from "./OffersDiscountView";
+import TransactionHistory from "./TransactionHistory";
+import ViewSaleInventory from "./ViewSaleInventory";
 
 export default function Sales() {
   const { setActiveSection } = useOutletContext();
@@ -27,11 +29,10 @@ return (
       <SalesSidebar
         activeSection={activeSection}
         onSaleViewClick={() => handleSectionChange("sale-view")}
-        onTransactionHistoryClick={() =>
-          handleSectionChange("transaction-history")
-        }
+        onTransactionHistoryClick={() =>handleSectionChange("transaction-history")}
         onInventoryViewClick={() => handleSectionChange("inventory-view")}
         onOffersDiscountClick={() => handleSectionChange("offers-discount")}
+        onSalesReportClick={() => handleSectionChange("sales-report")}
         onSalesConfigClick={() => handleSectionChange("sales-config")}
       />
 
@@ -42,19 +43,18 @@ return (
         </div>
 
         <div className={isVisible("transaction-history")}>
-          <div className="p-4 lg:p-8">
-            <h2 className="text-xl lg:text-2xl font-bold mb-4">Transaction History</h2>
-            <p>Transaction history content will go here...</p>
-          </div>
+          <TransactionHistory/>
         </div>
 
-        <div className={isVisible("inventory view")}>
+        <div className={isVisible("inventory-view")}>
+          <ViewSaleInventory/>
+        </div>
+        <div className={isVisible("sales-report")}>
           <div className="p-4 lg:p-8">
-            <h2 className="text-xl lg:text-2xl font-bold mb-4">Inventory View</h2>
-            <p>Inventory view content will go here...</p>
+            <h2 className="text-xl lg:text-2xl font-bold mb-4">Sales Reports</h2>
+            <p>Sales configurations content will go here...</p>
           </div>
         </div>
-
         <div className={isVisible("offers-discount")}>
           <OffersDiscountView />
         </div>
