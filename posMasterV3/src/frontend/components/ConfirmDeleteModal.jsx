@@ -20,7 +20,7 @@ export default function ConfirmDeleteModal({ open, item, onCancel, onSuccess }) 
     // }
     
       try {
-      const result = await apiClient.delete(`api/items/${selectedItemId}`);
+      const result = await apiClient.delete(`api/itemRegistry/${selectedItemId}`);
       //setDeleteResult(result);
       
       if (result.data.status === 'success') {
@@ -62,7 +62,7 @@ export default function ConfirmDeleteModal({ open, item, onCancel, onSuccess }) 
   }, [status]);
 
   return (
-    <div className="fixed z-20 inset-0 flex items-center justify-center bg-black bg-opacity-70" style={{ left: '46%' }}>
+    <div className="fixed z-20 inset-0 flex items-center justify-center bg-black bg-opacity-70" style={{ left: '12.5%' }}>
 
       <div className="bg-white shadow-lg p-8 w-[700px] max-w-full h-[420px] relative">
         <button
