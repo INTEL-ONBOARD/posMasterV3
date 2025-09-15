@@ -10,7 +10,7 @@ function NotificationCard({
     <div className="w-full notification-item">
       <div className="w-full bg-gray-50 border border-gray-200 px-4 py-4 flex items-center justify-between animate-fade-up hover-pop">
         <div className="flex-1 pr-4">
-          <p className="text-lg font-semibold text-gray-700 leading-tight">{title}</p>
+          <p className="text-base font-semibold text-gray-700 leading-tight">{title}</p>
           <p className="text-sm text-gray-400 mt-1 truncate">{description}</p>
         </div>
 
