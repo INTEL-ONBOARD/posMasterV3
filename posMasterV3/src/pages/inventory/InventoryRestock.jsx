@@ -12,6 +12,8 @@ import { generateUniqueString } from "../../util/generate";
 
 function InventoryRestock() {
 
+  // modal state: { open: boolean, type: 'success' | 'failed' | null }
+  const [modal, setModal] = useState({ open: false, type: null });
   // Fetch Categories from API and create mapping
   const [suppliers, setSuppliers] = useState([]);
   useEffect(() => {
@@ -168,8 +170,9 @@ function InventoryRestock() {
 
   //mid section logic
 
-  //set invoice
+  //set invoice for both mid form and left supplier block
   const [invoiceNo, setInvoiceNo] = useState("");
+  const [invoiceGenerate, setInvoiceGenerate] = useState(1);
   useEffect(() => {
     const no = generateUniqueString();
     //alert(no);
@@ -178,7 +181,11 @@ function InventoryRestock() {
       ...prev, // Spread the previous state to preserve other attributes
       invoiceNo: no // Update only the color attribute
     }));
-  }, []);
+    setFormDataSupplier((prev) => ({
+      ...prev, // Spread the previous state to preserve other attributes
+      invoice_no: no // Update only the color attribute
+    }));
+  }, [invoiceGenerate]);
 
 
   const [selectedSupplier, setselectedSupplier] = useState({});
@@ -191,102 +198,11 @@ function InventoryRestock() {
 
   //item list for the mid section table
   const [selectedStockItemList, setSelectedRegItemList] = useState([
-    {
-      _id: "",
-      id: 0,
-      stock_trace: [0],
-      item_name: "fdsaf",
-      item_image_url: "",
-      batch_code: "fdsaf",
-      maximum_capacity: 10,
-      uom_id: 10,
-      category_id: 10,
-      inventory_id: 11,
-      item_update_datetime: "2025-12-31T23:59:59",
-      item_created_datetime: "2025-12-31T23:59:59",
-      __v: 0,
-      inventory: null,
-      sku: "skupsps",
-      quantity: 3,
-      threshold_limit: 20,
-      stock_price: 20,
-      retail_price: 30,
-      expired_datetime: "2025-12-31T23:59:59",
-      availability: true,
 
-      uom_symbol: "pcs"
-    },
-    {
-      _id: "",
-      id: 0,
-      stock_trace: [0],
-      item_name: "fdsaf",
-      item_image_url: "",
-      batch_code: "fdsaf",
-      maximum_capacity: 10,
-      uom_id: 10,
-      category_id: 10,
-      inventory_id: 11,
-      item_update_datetime: "2025-12-31T23:59:59",
-      item_created_datetime: "2025-12-31T23:59:59",
-      __v: 0,
-      inventory: null,
-      sku: "skupsps",
-      quantity: 3,
-      threshold_limit: 20,
-      stock_price: 20,
-      retail_price: 30,
-      expired_datetime: "2025-12-31T23:59:59",
-      availability: true,
-
-      uom_symbol: "pcs"
-    }
   ]);
 
   const [selectedReturnItemList, setSelectedReturnItemList] = useState([
-    {
-      _id: "",
-      id: 0,
-      stock_trace: [0],
-      item_name: "fdsaf return",
-      item_image_url: "",
-      batch_code: "fdsaf",
-      maximum_capacity: 10,
-      uom_id: 10,
-      category_id: 10,
-      inventory_id: 11,
-      item_update_datetime: "2025-12-31T23:59:59",
-      item_created_datetime: "2025-12-31T23:59:59",
-      __v: 0,
-      // uom: {
-      //   _id: "",
-      //   id: 0,
-      //   symbol: "",
-      //   unit_name: "",
-      //   __v: 0
-      // },
-      // category: {
-      //   _id: "",
-      //   id: 0,
-      //   brand: "",
-      //   type: "",
-      //   __v: 0
-      // },
-      inventory: null,
-      // availability: true
 
-      sku: "skupsps",
-      quantity: 150,
-      threshold_limit: 20,
-      stock_price: 20,
-      retail_price: 35,
-      expired_datetime: "2025-12-31T23:59:59",
-      availability: true,
-
-      uom_symbol: "pcs",
-
-      return_description: "damaged goods"
-    }
   ]);
 
   //select table rows and load form sections
@@ -300,55 +216,79 @@ function InventoryRestock() {
   const addItemToList = () => {
 
     //check if it already exists on the item list first
+    // console.log(formDataRegItem.id);
+    // console.log(formDataRegItem._id);
+      if(rightActiveSection!="return"){
+      const newRegItem = {
+        _id: formDataRegItem._id,
+        id: formDataRegItem.id,
+        stock_trace: formDataRegItem.stock_trace,
+        item_name: formDataRegItem.item_name,
+        item_image_url: formDataRegItem.item_image_url,
+        maximum_capacity: formDataRegItem.maximum_capacity,
+        uom_id: formDataRegItem.uom_id,
+        category_id: formDataRegItem.category_id,
+        inventory_id: formDataRegItem.inventory_id,
+        item_update_datetime: formDataRegItem.item_update_datetime,
+        item_created_datetime: formDataRegItem.item_created_datetime,
+        __v: formDataRegItem.__v,
+        inventory: formDataRegItem.inventory,
+        
+        batch_code: formDataStock.batch_code,
+        sku: formDataRegItem.sku,
+        quantity: parseFloat(formDataStock.quantity) || 0,
+        threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
+        stock_price: parseFloat(formDataStock.stock_price) || 0,
+        retail_price: parseFloat(formDataStock.retail_price) || 0,
+        expired_datetime: formDataStock.expired_datetime,
+        availability: formDataStock.availability,
 
-    //verify if it's a return item, register item or a dispose item
+        uom_symbol: formDataStock.uom?.uom_symbol
+      };
+      console.log(newRegItem);
+      //TODO: do a validation first
+      setSelectedRegItemList(prev => [...prev, newRegItem]);
+    }
+    else{
+      console.log("return item was selected");
+      const newRetItem = {
 
-    //if it doesn't exists and a register item, add it to the list(for now adding from form state but i can also add it from selectedRegItem just in case)
-    const newRegItem = {
-      _id: formDataRegItem._id,
-      id: formDataRegItem.id,
-      stock_trace: formDataRegItem.stock_trace,
-      item_name: formDataRegItem.item_name,
-      item_image_url: formDataRegItem.item_image_url,
-      batch_code: formDataRegItem.batch_code,
-      maximum_capacity: formDataRegItem.maximum_capacity,
-      uom_id: formDataRegItem.uom_id,
-      category_id: formDataRegItem.category_id,
-      inventory_id: formDataRegItem.inventory_id,
-      item_update_datetime: formDataRegItem.item_update_datetime,
-      item_created_datetime: formDataRegItem.item_created_datetime,
-      __v: formDataRegItem.__v,
-      // uom: {
-      //   _id: "",
-      //   id: 0,
-      //   symbol: "",
-      //   unit_name: "",
-      //   __v: 0
-      // },
-      // category: {
-      //   _id: "",
-      //   id: 0,
-      //   brand: "",
-      //   type: "",
-      //   __v: 0
-      // },
-      inventory: formDataRegItem.inventory,
-      // availability: true,
+        _id: formDataRegItem._id,
+        id: formDataRegItem.id,
+        stock_trace: formDataRegItem.stock_trace,
+        item_name: formDataRegItem.item_name,
+        item_image_url: formDataRegItem.item_image_url,
+        maximum_capacity: formDataRegItem.maximum_capacity,
+        uom_id: formDataRegItem.uom_id,
+        category_id: formDataRegItem.category_id,
+        inventory_id: formDataRegItem.inventory_id,
+        item_update_datetime: formDataRegItem.item_update_datetime,
+        item_created_datetime: formDataRegItem.item_created_datetime,
+        __v: formDataRegItem.__v,
+        inventory: formDataRegItem.inventory,
 
-      sku: formDataStock.sku,
-      quantity: parseFloat(formDataStock.quantity) || 0,
-      threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
-      stock_price: parseFloat(formDataStock.stock_price) || 0,
-      retail_price: parseFloat(formDataStock.retail_price) || 0,
-      expired_datetime: formDataStock.expired_datetime,
-      availability: formDataStock.availability,
-
-      uom_symbol: formDataStock.uom?.uom_symbol
-    };
-    console.log(newRegItem);
-    //TODO: do a validation first
-    setSelectedRegItemList(prev => [...prev, newRegItem]);
+        sku: formDataStock.sku,
+        threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
+        stock_price: parseFloat(formDataStock.stock_price) || 0,
+        retail_price: parseFloat(formDataStock.retail_price) || 0,
+        expired_datetime: formDataStock.expired_datetime,
+        availability: formDataStock.availability,
+        
+        batch_code: formDataReturnItem.batch_code,
+        quantity: parseFloat(formDataReturnItem.quantity) || 0,
+        uom_symbol: formDataStock.uom?.uom_symbol,
+        return_description: formDataReturnItem.return_description
+      };
+      console.log(newRetItem);
+      //TODO: do a validation first
+      setSelectedReturnItemList(prev => [...prev, newRetItem]);
+    }
   }
+  
+    //verify if it's a return item, register item or a dispose item
+    //if it doesn't exists and a register item, add it to the list(for now adding from form state but i can also add it from selectedRegItem just in case)
+
+  
   //removes item from list by id
   const removeItemFromList = (id) => {
     setSelectedRegItemList(prev => prev.filter(item => item.id !== id));
@@ -369,12 +309,14 @@ function InventoryRestock() {
   }, [selectedStockItemList]);
 
   const [formDataRegItem, setFormDataRegItem] = useState({
+
+    sku: "",
+
     _id: "",
     id: 0,
     stock_trace: [0],
-    item_name: "fdsaf",
+    item_name: "",
     item_image_url: "",
-    batch_code: "fdsaf",
     maximum_capacity: 10,
     uom_id: 10,
     category_id: 10,
@@ -401,7 +343,7 @@ function InventoryRestock() {
   });
 
   const [formDataStock, setFormDataStock] = useState({
-    sku: "skupsps",
+    batch_code: "batch",
     quantity: 110,
     threshold_limit: 20,
     stock_price: 20,
@@ -443,14 +385,14 @@ function InventoryRestock() {
     setFormDataSupplier(prev => ({ ...prev, [name]: value }));
   };
   const [formDataReturnItem, setFormDataReturnItem] = useState({
-    sku: "retret",
-    quantity: 150,
-    threshold_limit: 20,
-    stock_price: 20,
-    retail_price: 35,
-    expired_datetime: "2025-12-31T23:59:59",
-    availability: true,
+    sku: "---",
 
+    stock_price: 0,
+    retail_price: 0,
+
+    
+    batch_code: 0,
+    quantity: 0,
     return_description: "returning item"
   });
   const handleReturnItemInputChange = (e) => {
@@ -460,7 +402,7 @@ function InventoryRestock() {
   };
   const [transactionData, setTransactionData] = useState({
     supplier_id: "",
-    supplierName: "supplier123",
+    supplierName: "",
     prep_id: "",
     preparedBy: "prep123",
     auth_id: "",
@@ -491,12 +433,14 @@ function InventoryRestock() {
   const loadItemtoForm = (item) => {
     //load item basic details(loaded for all item types-reg, return...etc)
     setFormDataRegItem({
+      sku: item.sku,
+
       _id: item._id,
       id: item.id,
       stock_trace: item.stock_trace,
       item_name: item.item_name,
       item_image_url: item.item_image_url,
-      batch_code: item.batch_code,
+      //batch_code: item.batch_code,
       maximum_capacity: item.maximum_capacity,
       uom_id: item.uom_id,
       category_id: item.category_id,
@@ -627,19 +571,20 @@ function InventoryRestock() {
     //e.preventDefault();
     try {
       const requestData = {
-        sup_id: 1,
-        prep_agent_id: 2,
-        auth_agent_id: 3,
-        invoice_no: "fjkdslfksdf",
-        bill_no: "fkldfdfjkd",
+        sup_id: transactionData.supplier_id,
+        prep_agent_id: transactionData.prep_id,
+        auth_agent_id: transactionData.auth_id,
+        invoice_no: transactionData.invoiceNo,
+        bill_no: formDataSupplier.bill_no,
         payment_method: formDataSupplier.payment_method,
         expenses: formDataSupplier.expenses,
 
-        discount: 5.00,
+        discount: transactionData.discountAmount,
         current_amount: 100.00,
         cash_amount: 95.00,
         change_amount: 5.00,
         total_amount: 105.00,
+        
         exe_level: "medium",
 
         added_items: transformToAddedItems(), //contatins a list
@@ -682,6 +627,7 @@ function InventoryRestock() {
       const response = await apiClient.post("api/restocks", requestData);
 
       if (response.data.status === "success") {
+        //setModal({ open: true, type: 'success' });
         // Add new item to local state
         //alert("Item created successfully!");
         //toast.open("Item created successfully", 4000, 'Success', 'success');
@@ -695,6 +641,7 @@ function InventoryRestock() {
         // }, 4000);
         // clearUserInput();
       } else {
+        //setModal({ open: true, type: 'failed' });
         console.log(response.data.data.message);
         //alert(response.data.message || "Failed to create item");
         //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
@@ -755,7 +702,7 @@ function InventoryRestock() {
                 <div className="flex flex-row px-4 items-center max-h-[12rem]">
                   <div className="">
                     <img src={barcodeImg} alt="Barcode" className="w-[100px] object-contain" />
-                    <p className="text-sm text-gray-800">SKU: 345634BRE</p>
+                    <p className="text-sm text-gray-800">SKU: {formDataRegItem.sku}</p>
                   </div>
                   {/* Vertical black line separator */}
                   <div className="flex flex-col m-10">
@@ -764,8 +711,8 @@ function InventoryRestock() {
                       <p className="text-sm text-gray-700">{formDataRegItem.item_name}</p>
                       <p className="text-sm font-semibold text-gray-800">Category</p>
                       <p className="text-sm text-gray-700">{formDataRegItem?.category?.type}</p>
-                      <p className="text-sm font-semibold text-gray-800">Current Qty</p>
-                      <p className="text-sm text-gray-700">{formDataStock?.quantity}/{formDataRegItem?.maximum_capacity}({formDataRegItem?.uom?.symbol})</p>
+                      {/* <p className="text-sm font-semibold text-gray-800">Current Qty</p> */}
+                      {/* <p className="text-sm text-gray-700">{formDataStock?.quantity}/{formDataRegItem?.maximum_capacity}({formDataRegItem?.uom?.symbol})</p> */}
                     </div>
                   </div>
                 </div>
@@ -795,8 +742,8 @@ function InventoryRestock() {
                       </label>
                       <input
                         type="text"
-                        name="sku"
-                        value={formDataStock.sku}
+                        name="batch_code"
+                        value={formDataStock.batch_code}
                         onChange={handleStockInputChange}
                         //placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -917,19 +864,19 @@ function InventoryRestock() {
                         />
                       </div>
                     </div>
-                    <div>
+                    {/* <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
                         Discount (%)
                       </label>
                       <input
                         type="number"
-                        name="retail_price"
-                        value={formDataStock.retail_price}
+                        name="discount"
+                        value={formDataStock.discount}
                         onChange={handleStockInputChange}
                         placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
-                    </div>
+                    </div> */}
                   </div>
                   {/* <p>Recent Batch Code Changes</p>
                   <div className="flex flex-col gap-3 overflow-y-scroll overflow-x-hidden h-[13rem] -mr-4">
@@ -995,7 +942,20 @@ function InventoryRestock() {
                     <select
                       name="supplier_name"
                       value={formDataSupplier.supplier_name}
-                      onChange={handleSupplierInputChange}
+                      onChange={(e) => {
+                        handleSupplierInputChange(e);
+                        const selectedSupplierName = e.target.value;
+                        const selectedSupplier = suppliers.find(supplier => supplier?.basic_info?.supplier_name === selectedSupplierName);
+                        if (selectedSupplier) {
+                          console.log(selectedSupplier.id);
+                          setTransactionData(prev => ({
+                            ...prev,
+                            supplier_id: selectedSupplier.id,
+                            supplierName: selectedSupplier?.basic_info?.supplier_name,
+                            previousAmount: selectedSupplier?.financial_info?.previous_amount
+                          }));
+                        }
+                      }}
                       className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">-- select supplier --</option>
@@ -1016,7 +976,7 @@ function InventoryRestock() {
                         type="text"
                         name="invoice_no"
                         value={formDataSupplier.invoice_no}
-                        onChange={handleSupplierInputChange}
+                        //onChange={handleSupplierInputChange}
                         placeholder=""
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
@@ -1266,14 +1226,15 @@ function InventoryRestock() {
               </div>
               <div className="mt-8 flex flex-row gap-4">
                 <button
-                  // onClick={() => {
-                  //   clearUserInput();
-                  //   //switch from update item button to add item button 
-                  //   setUserEditing(false)
-                  // }}
+                  onClick={() => {
+                    setInvoiceGenerate(invoiceGenerate+1);
+                    //clearUserInput();
+                    //switch from update item button to add item button 
+                    //setUserEditing(false)
+                  }}
                   className="px-6 py-2 w-[8rem] h-10  border bg-[#727272] border-gray-300 text-white hover:bg-gray-500 transition-colors"
                 >
-                  Clear All
+                  Clear
                 </button>
                 <button
                   onClick={() => {
@@ -1446,8 +1407,9 @@ function InventoryRestock() {
                 <label className="block text-sm text-gray-400 mb-2">Discount ( Rs. )</label>
                 <input
                   type="number"
-                  // value={discount}
-                  // onChange={(e) => setDiscount(Number(e.target.value))}
+                  name="discountAmount"
+                  value={transactionData.discountAmount}
+                  onChange={handleTransactionDataInputChange}
                   className="w-full px-3 py-3 bg-[#F8F8F8] border border-[#EBEBEB] text-right rounded"
                   placeholder="0.00"
                 />
@@ -1702,6 +1664,59 @@ function InventoryRestock() {
           </div>
         )} */}
       </div>
+
+
+      {/* MODAL OVERLAY */}
+      {modal.open && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+        >
+          {/* backdrop (click to close) */}
+          <div
+            className="absolute inset-0"
+            style={{ backgroundColor: 'rgba(255,255,255,0.55)' }}
+            onClick={closeModal}
+          />
+
+          {/* close button top-left */}
+          <button
+            onClick={closeModal}
+            className="absolute top-6 right-6 w-8 h-8 rounded-full bg-black/90 text-white flex items-center justify-center z-[10001]"
+            aria-label="Close"
+            title="Close"
+          >
+            ✕
+          </button>
+
+          {/* modal content */}
+          <div
+            className="relative z-[10000] flex flex-col items-center justify-center text-center p-6"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              transition: 'transform 160ms ease, opacity 160ms ease'
+            }}
+          >
+            <img
+              src={modal.type === 'success' ? successImage : failedImage}
+              alt={modal.type === 'success' ? 'Success' : 'Failed'}
+              className="w-24 h-24 object-contain"
+              style={{ filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.08))' }}
+            />
+
+            <h3 className="mt-4 text-2xl font-bold text-black">
+              {modal.type === 'success' ? 'Success!' : 'Failed!'}
+            </h3>
+            <p className="mt-1 text-sm text-gray-600">
+              {modal.type === 'success'
+                ? 'All Changes were Applied.'
+                : 'Something went wrong.'}
+            </p>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
