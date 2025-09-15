@@ -155,7 +155,7 @@ function AddItem() {
   });
 
   // Barcode generation
-  const barcodeValue = formData.batch_code || "SKU-123456";
+  const barcodeValue = formData.sku || "-";
 
   const generateBarcode = () => {
     return new Promise((resolve) => {
@@ -239,84 +239,117 @@ function AddItem() {
   const [isUserEditting, setUserEditing] = useState(false);
 
   // Create new item
-  const createItem = async (e) => {
-    setFormStatus("loading");
-    e.preventDefault();
-    try {
-      const selectedCategory = itemCategories.find(c =>
-        c.type === formCategoryData.categoryType &&
-        c.brand === formCategoryData.brand
-      );
-      const requestData = {
-        sku: formData.sku,  
-        item_name: formData.item_name,
-        quantity: Number(formData.quantity),
-        threshold_limit: Number(formData.threshold_limit),
-        maximum_capacity: Number(formData.maximum_capacity),
-        uom_id: formUOMData,
-        category_id: selectedCategory?.id ?? null, // look up id
-        inventory_id: 1, // Fixed value
-        item_image_url: formData.item_image_url || null,
-        batch_code: formData.batch_code,
-        stock_price: parseFloat(formData.stock_price),
-        retail_price: parseFloat(formData.retail_price),
-        expired_datetime: formData.expired_datetime,
-        availability: formData.availability,
-      };
-      if (!validateItem(requestData)) {
-        // on fail
-        setFormStatus("fail");
-        // after 4 seconds, flip back to the form
-        alert("validation failed")
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
-        return;
-      }
+  // const createItem = async (e) => {
+  //   setFormStatus("loading");
+  //   e.preventDefault();
+  //   try {
+  //     const selectedCategory = itemCategories.find(c =>
+  //       c.type === formCategoryData.categoryType &&
+  //       c.brand === formCategoryData.brand
+  //     );
+  //     const requestData = {
+  //       sku: formData.sku,  
+  //       item_name: formData.item_name,
+  //       quantity: Number(formData.quantity),
+  //       threshold_limit: Number(formData.threshold_limit),
+  //       maximum_capacity: Number(formData.maximum_capacity),
+  //       uom_id: formUOMData,
+  //       category_id: selectedCategory?.id ?? null, // look up id
+  //       inventory_id: 1, // Fixed value
+  //       item_image_url: formData.item_image_url || null,
+  //       batch_code: formData.batch_code,
+  //       stock_price: parseFloat(formData.stock_price),
+  //       retail_price: parseFloat(formData.retail_price),
+  //       expired_datetime: formData.expired_datetime,
+  //       availability: formData.availability,
+  //     };
+  //     if (!validateItem(requestData)) {
+  //       // on fail
+  //       setFormStatus("fail");
+  //       // after 4 seconds, flip back to the form
+  //       alert("validation failed")
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //       return;
+  //     }
 
-      const response = await apiClient.post("api/items/add", requestData);
+  //     const response = await apiClient.post("api/items/add", requestData);
 
-      if (response.data.status === "success") {
-        // Add new item to local state
-        //alert("Item created successfully!");
-        //toast.open("Item created successfully", 4000, 'Success', 'success');
-        //clear data upon successful response
-        setFormStatus("success");
-        // after 4 seconds, flip back to the form
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
-        clearUserInput();
-      } else {
-        //alert(response.data.message || "Failed to create item");
-        //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
-        setFormStatus("fail");
-        // after 4 seconds, flip back to the form
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
-      }
-    } catch (err) {
-      console.error("Create item error:", err);
-      //alert("Error creating item"+err.message);
-      setFormStatus("fail");
-        // after 4 seconds, flip back to the form
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
-      toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
-    }
-    finally {
-      //repopulate items
-      fetchItems();
-    }
-  };
+  //     if (response.data.status === "success") {
+  //       // Add new item to local state
+  //       //alert("Item created successfully!");
+  //       //toast.open("Item created successfully", 4000, 'Success', 'success');
+  //       //clear data upon successful response
+  //       setFormStatus("success");
+  //       // after 4 seconds, flip back to the form
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //       clearUserInput();
+  //     } else {
+  //       //alert(response.data.message || "Failed to create item");
+  //       //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
+  //       setFormStatus("fail");
+  //       // after 4 seconds, flip back to the form
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //     }
+  //   } catch (err) {
+  //     console.error("Create item error:", err);
+  //     //alert("Error creating item"+err.message);
+  //     setFormStatus("fail");
+  //       // after 4 seconds, flip back to the form
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //     toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
+  //   }
+  //   finally {
+  //     //repopulate items
+  //     fetchItems();
+  //   }
+  // };
 
     // Create new item
+
+    const isRequestDataValid = (requestData) => {
+      // Check string fields
+      if (
+        !requestData.item_name?.trim() ||
+        !requestData.sku?.trim() ||
+        (requestData.item_image_url && !requestData.item_image_url.trim()) || // Optional, but validate if provided
+        (typeof requestData.availability === 'string' && !requestData.availability.trim()) // If string
+      ) {
+        console.log("Basic item info missing");
+        return false;
+      }
+
+      // Check boolean availability (if it's a boolean, just check truthiness)
+      if (typeof requestData.availability === 'boolean' && !requestData.availability) {
+        console.log("Availability missing");
+        return false;
+      }
+
+      // Check numeric fields
+      if (
+        Number.isNaN(requestData.maximum_capacity) || requestData.maximum_capacity <= 0 ||
+        Number.isNaN(requestData.uom_id) || requestData.uom_id <= 0 ||
+        (requestData.category_id !== null && (Number.isNaN(requestData.category_id) || requestData.category_id <= 0)) // Optional, validate if provided
+      ) {
+        console.log("Numeric fields invalid");
+        return false;
+      }
+
+      // Fixed fields are always valid
+      return true;
+    };
+
   const registerItem = async (e) => {
     setFormStatus("loading");
     e.preventDefault();
@@ -328,7 +361,7 @@ function AddItem() {
       const requestData = {
         item_name: formData.item_name,
         item_image_url: formData.item_image_url || null,
-        batch_code: formData.batch_code,
+        sku: formData.sku,
         maximum_capacity: Number(formData.maximum_capacity),
         uom_id: formUOMData,
         category_id: selectedCategory?.id ?? null, // look up id
@@ -336,90 +369,9 @@ function AddItem() {
         availability: formData.availability,
         stock_trace: [101] // Fixed value
       };
-      console.log("registering item: "+requestData);
+      console.log(requestData);
       const response = await apiClient.post("api/itemRegistry/add", requestData);
 
-    // Create new item
-  const registerItem = async (e) => {
-    setFormStatus("loading");
-    e.preventDefault();
-    try {
-      const selectedCategory = itemCategories.find(c =>
-        c.type === formCategoryData.categoryType &&
-        c.brand === formCategoryData.brand
-      );
-      const requestData = {
-        item_name: formData.item_name,
-        item_image_url: formData.item_image_url || null,
-        batch_code: formData.batch_code,
-        maximum_capacity: Number(formData.maximum_capacity),
-        uom_id: formUOMData,
-        category_id: selectedCategory?.id ?? null, // look up id
-        inventory_id: 1, // Fixed value
-        availability: formData.availability,
-        stock_trace: [101] // Fixed value
-      };
-  // "item_name": "Sample Item(3)",
-  // "item_image_url": null,
-  // "batch_code": "SI03",
-  // "maximum_capacity": 500,
-  // "uom_id": 1,
-  // "category_id": 2,
-  // "inventory_id": 3,
-  // "availability": true,
-  // "stock_trace": [101, 102]
-      // if (!validateItem(requestData)) {
-      //   // on fail
-      //   setFormStatus("fail");
-      //   // after 4 seconds, flip back to the form
-      //   alert("validation failed")
-      //   timerRef.current = window.setTimeout(() => {
-      //     setFormStatus("form");
-      //     timerRef.current = null;
-      //   }, 4000);
-      //   return;
-      // }
-      console.log("registering item: "+requestData);
-      const response = await apiClient.post("api/itemRegistry/add", requestData);
-
-      if (response.data.status === "success") {
-        // Add new item to local state
-        //alert("Item created successfully!");
-        //toast.open("Item created successfully", 4000, 'Success', 'success');
-        //clear data upon successful response
-        setFormStatus("success");
-        // after 4 seconds, flip back to the form
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
-        clearUserInput();
-      } else {
-        //alert(response.data.message || "Failed to create item");
-        //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
-        setFormStatus("fail");
-        // after 4 seconds, flip back to the form
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
-      }
-    } catch (err) {
-      console.error("Create item error:", err);
-      //alert("Error creating item"+err.message);
-      setFormStatus("fail");
-        // after 4 seconds, flip back to the form
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
-      toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
-    }
-    finally {
-      //repopulate items
-      fetchItems();
-    }
-  };
       if (response.data.status === "success") {
         // Add new item to local state
         //alert("Item created successfully!");
@@ -536,7 +488,7 @@ function AddItem() {
       const requestData = {
         item_name: formData.item_name,
         item_image_url: formData.item_image_url || null,
-        batch_code: formData.batch_code,
+        sku: formData.sku,
         maximum_capacity: Number(formData.maximum_capacity),
         uom_id: formUOMData,
         category_id: selectedCategory?.id ?? null, // look up id
@@ -738,7 +690,7 @@ const filteredItems = inventoryItems.filter((item) => {
                     <div>
                       <img src={barcodeImg} alt="Barcode" className="w-[100px] object-contain" />
                       {/* <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p> */}
-                      <p className="text-sm font-semibold text-gray-800">BATCHCODE: {formData.batch_code}</p>
+                      <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p>
                     </div>
                   </div>
                 </div>
@@ -820,12 +772,12 @@ const filteredItems = inventoryItems.filter((item) => {
                   <div className="grid grid-cols-2 mt-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Batch Code
+                        SKU
                       </label>
                       <input
                         type="text"
-                        name="batch_code"
-                        value={formData.batch_code}
+                        name="sku"
+                        value={formData.sku}
                         onChange={handleInputChange}
                         //placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1142,7 +1094,7 @@ const INITIAL_FORM_DATA = {
   stock_trace: [0],
   item_name: "",
   item_image_url: "",
-  batch_code: "",
+  sku: "",
   maximum_capacity: 0,
   uom_id: 0,
   category_id: 0,
