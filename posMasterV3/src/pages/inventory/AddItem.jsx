@@ -86,7 +86,7 @@ function AddItem() {
     const uomId = Number(e.target.value);
     setFormUOMData(uomId);
     // optionally keep formData.uom_id in sync:
-    setformData(fd => ({
+    setFormData(fd => ({
       ...fd,
       uom_id: uomId,
       uom: uoms.find(u => u.id === uomId) || fd.uom
@@ -141,11 +141,12 @@ function AddItem() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
+  const [searchAvailability, setSearchAvailability] = useState("All");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
 
-  // Form state
-  const [formData, setformData] = useState(INITIAL_FORM_DATA);
+  // Form select
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [deletingItem, setDeletingItem] = useState(INITIAL_FORM_DATA);
 
   const [formCategoryData, setFormCategoryData] = useState({
@@ -154,7 +155,7 @@ function AddItem() {
   });
 
   // Barcode generation
-  const barcodeValue = formData.batch_code || "SKU-000000";
+  const barcodeValue = formData.batch_code || "SKU-123456";
 
   const generateBarcode = () => {
     return new Promise((resolve) => {
@@ -197,6 +198,7 @@ function AddItem() {
     }
   };
 
+  //filteriings
   // Search handler
   const handleSearch = (e) => {
     setSearchLoading(true);
@@ -204,22 +206,17 @@ function AddItem() {
     setTimeout(() => setSearchLoading(false), 600);
   };
 
-  // Category handler
-  const handleSearchCategoryChange = (e) => {
-    setSearchCategory(e.target.value);
-  };
-
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     console.log(name +": "+ value);
-    setformData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
 
   const fetchItems = async () => {
     try {
-      const response = await apiClient.get("api/items/extended");
+      const response = await apiClient.get("api/itemRegistry/extended");
       if (response.data.status === "success") {
         setInventoryItems(response.data.data);
       }
@@ -251,7 +248,7 @@ function AddItem() {
         c.brand === formCategoryData.brand
       );
       const requestData = {
-        sku: formData.sku,
+        sku: formData.sku,  
         item_name: formData.item_name,
         quantity: Number(formData.quantity),
         threshold_limit: Number(formData.threshold_limit),
@@ -319,7 +316,215 @@ function AddItem() {
     }
   };
 
+    // Create new item
+  const registerItem = async (e) => {
+    setFormStatus("loading");
+    e.preventDefault();
+    try {
+      const selectedCategory = itemCategories.find(c =>
+        c.type === formCategoryData.categoryType &&
+        c.brand === formCategoryData.brand
+      );
+      const requestData = {
+        item_name: formData.item_name,
+        item_image_url: formData.item_image_url || null,
+        batch_code: formData.batch_code,
+        maximum_capacity: Number(formData.maximum_capacity),
+        uom_id: formUOMData,
+        category_id: selectedCategory?.id ?? null, // look up id
+        inventory_id: 1, // Fixed value
+        availability: formData.availability,
+        stock_trace: [101] // Fixed value
+      };
+      console.log("registering item: "+requestData);
+      const response = await apiClient.post("api/itemRegistry/add", requestData);
+
+    // Create new item
+  const registerItem = async (e) => {
+    setFormStatus("loading");
+    e.preventDefault();
+    try {
+      const selectedCategory = itemCategories.find(c =>
+        c.type === formCategoryData.categoryType &&
+        c.brand === formCategoryData.brand
+      );
+      const requestData = {
+        item_name: formData.item_name,
+        item_image_url: formData.item_image_url || null,
+        batch_code: formData.batch_code,
+        maximum_capacity: Number(formData.maximum_capacity),
+        uom_id: formUOMData,
+        category_id: selectedCategory?.id ?? null, // look up id
+        inventory_id: 1, // Fixed value
+        availability: formData.availability,
+        stock_trace: [101] // Fixed value
+      };
+  // "item_name": "Sample Item(3)",
+  // "item_image_url": null,
+  // "batch_code": "SI03",
+  // "maximum_capacity": 500,
+  // "uom_id": 1,
+  // "category_id": 2,
+  // "inventory_id": 3,
+  // "availability": true,
+  // "stock_trace": [101, 102]
+      // if (!validateItem(requestData)) {
+      //   // on fail
+      //   setFormStatus("fail");
+      //   // after 4 seconds, flip back to the form
+      //   alert("validation failed")
+      //   timerRef.current = window.setTimeout(() => {
+      //     setFormStatus("form");
+      //     timerRef.current = null;
+      //   }, 4000);
+      //   return;
+      // }
+      console.log("registering item: "+requestData);
+      const response = await apiClient.post("api/itemRegistry/add", requestData);
+
+      if (response.data.status === "success") {
+        // Add new item to local state
+        //alert("Item created successfully!");
+        //toast.open("Item created successfully", 4000, 'Success', 'success');
+        //clear data upon successful response
+        setFormStatus("success");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
+        clearUserInput();
+      } else {
+        //alert(response.data.message || "Failed to create item");
+        //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
+        setFormStatus("fail");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
+      }
+    } catch (err) {
+      console.error("Create item error:", err);
+      //alert("Error creating item"+err.message);
+      setFormStatus("fail");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
+      toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
+    }
+    finally {
+      //repopulate items
+      fetchItems();
+    }
+  };
+      if (response.data.status === "success") {
+        // Add new item to local state
+        //alert("Item created successfully!");
+        //toast.open("Item created successfully", 4000, 'Success', 'success');
+        //clear data upon successful response
+        setFormStatus("success");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
+        clearUserInput();
+      } else {
+        //alert(response.data.message || "Failed to create item");
+        //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
+        setFormStatus("fail");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
+      }
+    } catch (err) {
+      console.error("Create item error:", err);
+      //alert("Error creating item"+err.message);
+      setFormStatus("fail");
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
+      toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
+    }
+    finally {
+      //repopulate items
+      fetchItems();
+    }
+  };
+
   // Update item
+  // const updateItem = async (e) => {
+  //   setFormStatus("loading");
+  //   e.preventDefault();
+  //   try {
+  //     const selectedCategory = itemCategories.find(c =>
+  //       c.type === formCategoryData.categoryType &&
+  //       c.brand === formCategoryData.brand
+  //     );
+  //     const requestData = {
+  //       sku: formData.sku,
+  //       item_name: formData.item_name,
+  //       quantity: Number(formData.quantity),
+  //       threshold_limit: Number(formData.threshold_limit),
+  //       maximum_capacity: Number(formData.maximum_capacity),
+  //       uom_id: formUOMData,
+  //       category_id: selectedCategory?.id ?? null, // look up id
+  //       inventory_id: 1, // Fixed value for now
+  //       item_image_url: formData.item_image_url || null,
+  //       batch_code: formData.batch_code,
+  //       stock_price: parseFloat(formData.stock_price),
+  //       retail_price: parseFloat(formData.retail_price),
+  //       expired_datetime: formData.expired_datetime,
+  //       availability: formData.availability,
+  //     };
+
+  //     const response = await apiClient.put(`api/items/${formData.id}`, requestData);
+
+  //     if (response.data.status === "success") {
+  //       //alert("Item created successfully!");
+  //       setFormStatus("success");
+  //       // after 4 seconds, flip back to the form
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //       toast.open("Item updated successfully", 4000, 'Success', 'success');
+  //       //clear data upon successful response
+  //       clearUserInput();
+  //       setUserEditing(false);
+  //     } else {
+  //       setFormStatus("fail");
+  //       // after 4 seconds, flip back to the form
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //       //alert(response.data.message || "Failed to update item");
+  //       toast.open("Failed to update the item, please try again", 4000, 'Request failed', 'error');
+  //     }
+  //   } catch (err) {
+  //     console.error("Update item error:", err);
+  //     setFormStatus("fail");
+  //       // after 4 seconds, flip back to the form
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //     //alert("Error updating item");
+  //     toast.open("Update item operation faild. Please try again", 4000, 'Item update Failed', 'error');
+  //   }
+  //   finally {
+  //     //repopulate items
+  //     fetchItems();
+  //   }
+  // };
   const updateItem = async (e) => {
     setFormStatus("loading");
     e.preventDefault();
@@ -329,23 +534,18 @@ function AddItem() {
         c.brand === formCategoryData.brand
       );
       const requestData = {
-        sku: formData.sku,
         item_name: formData.item_name,
-        quantity: Number(formData.quantity),
-        threshold_limit: Number(formData.threshold_limit),
+        item_image_url: formData.item_image_url || null,
+        batch_code: formData.batch_code,
         maximum_capacity: Number(formData.maximum_capacity),
         uom_id: formUOMData,
         category_id: selectedCategory?.id ?? null, // look up id
-        inventory_id: 1, // Fixed value for now
-        item_image_url: formData.item_image_url || null,
-        batch_code: formData.batch_code,
-        stock_price: parseFloat(formData.stock_price),
-        retail_price: parseFloat(formData.retail_price),
-        expired_datetime: formData.expired_datetime,
+        inventory_id: 1, // Fixed value
         availability: formData.availability,
+        stock_trace: [101], // Fixed value
       };
 
-      const response = await apiClient.put(`api/items/${formData.id}`, requestData);
+      const response = await apiClient.put(`api/itemRegistry/${formData.id}`, requestData);
 
       if (response.data.status === "success") {
         //alert("Item created successfully!");
@@ -389,7 +589,7 @@ function AddItem() {
   //clear the form and related statee data(hrrngh)
   const clearUserInput = () => {
     //alert("clearing user inputs")
-    setformData(INITIAL_FORM_DATA)
+    setFormData(INITIAL_FORM_DATA)
     setSelectedCategoryType("");
     setBrandOptions([]);
     setFormCategoryData({
@@ -405,7 +605,7 @@ function AddItem() {
   const loadItem = (item) => {
     //to enable edit button and disable the create button
     setUserEditing(true);
-    setformData(item);
+    setFormData(item);
     // 2. extract its category & brand:
     const { type, brand } = item.category;
     // 3a. set the category‐dropdown state (this also fires your useEffect to populate brandOptions)
@@ -419,7 +619,7 @@ function AddItem() {
     // 3. pre‐select the UOM dropdown
     setFormUOMData(item.uom.id);
     // and keep formData.uom_id correct:
-    setformData(fd => ({ ...fd, uom_id: item.uom.id, uom: item.uom }));
+    setFormData(fd => ({ ...fd, uom_id: item.uom.id, uom: item.uom }));
   };
 
 
@@ -437,16 +637,38 @@ function AddItem() {
     setDeletingItem(null);
   };
 
-  // Filter items based on search and category
-  const filteredItems = inventoryItems.filter(
-    (item) =>
-      (searchCategory === "All" || item.category.type === searchCategory) &&
-      item.item_name.toLowerCase().includes(search.toLowerCase())
-  );
+//helper method for item availability filtering
+  const interpretAvailability = (item) => {
+    // handle boolean, string, numeric types defensively
+    const a = item?.availability;
+    if (typeof a === "boolean") return a;
+    if (typeof a === "string") return a.toLowerCase() === "true";
+    return Boolean(a); // numbers (1/0) or other truthy/falsy
+  };
+  
+  // Filter items based on search, category and availability
+const filteredItems = inventoryItems.filter((item) => {
+  // category match: either All or item.category.type equals selected
+  const matchesCategory =
+    searchCategory === "All" ||
+    (item?.category && item.category.type === searchCategory);
+
+  // availability match: All, Available (true), Unavailable (false)
+  const isAvailable = interpretAvailability(item);
+  const matchesAvailability =
+    searchAvailability === "All" ||
+    (searchAvailability === "Available" && isAvailable) ||
+    (searchAvailability === "Unavailable" && !isAvailable);
+
+  // text search match
+  const matchesSearch =
+    (item?.item_name || "").toLowerCase().includes((search || "").toLowerCase());
+
+  return matchesCategory && matchesAvailability && matchesSearch;
+});
 
   const [openBasic, setOpenBasic] = useState(false);
   const [openPrimary, setOpenPrimary] = useState(true);
-  const [openDetailed, setOpenDetailed] = useState(true);
 
   const [formStatus, setFormStatus] = useState("form");   // possible values: "form" | "loading" | "success" | "fail"
   // keep the timer ID so we can clear it if the component unmounts early
@@ -458,11 +680,18 @@ function AddItem() {
       }
     };
   }, []);
+
+  //right filter section controls
+  const [openFilter, setOpenFilter] = useState(true);
+  const [openOrderBy, setOpenOrderBy] = useState(true);
+
   return (
     <div className="flex flex-row">
       {/* Item form (left) */}
       {formStatus === "form" ? (
-      <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-between">
+      // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-between">
+      // <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] overflow-y-scroll">
+      <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 z-10 flex flex-col justify-between">
         <div className="flex flex-col h-[45rem] gap-3">
           {/* ▼ Basic info block ▼ */}
           <div className="border rounded bg-white">
@@ -470,11 +699,11 @@ function AddItem() {
               onClick={() => setOpenBasic(!openBasic)}
               className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
             >
-              <span className="text-gray-600">Barcode & SKU</span>
+              <span className="text-gray-400">Barcode & SKU</span>
               {openBasic ? <ChevronUp /> : <ChevronDown />}
             </button>
             {openBasic && (
-              <div className="bg-white border-2 border-black mx-4">
+              <div className="bg-white mx-4">
                 <div className="flex flex-row px-4 items-center max-h-[12rem]">
                   <div className="w-36 h-36 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center mb-4 hover:border-gray-400 transition-colors">
                     {formData.item_image_url ? (
@@ -504,12 +733,12 @@ function AddItem() {
                     )}
                   </div>
                   {/* Vertical black line separator */}
-                  <div className="w-0.5 bg-black self-stretch"></div>
+                  {/* <div className="w-0.5 bg-black self-stretch"></div> */}
                   <div className="flex flex-col m-10">
                     <div>
                       <img src={barcodeImg} alt="Barcode" className="w-[100px] object-contain" />
-                      <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p>
-                      <p className="text-sm font-semibold text-gray-800">BARCODE: {formData.batch_code}</p>
+                      {/* <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p> */}
+                      <p className="text-sm font-semibold text-gray-800">BATCHCODE: {formData.batch_code}</p>
                     </div>
                   </div>
                 </div>
@@ -523,17 +752,17 @@ function AddItem() {
               onClick={() => setOpenPrimary(!openPrimary)}
               className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
             >
-              <span className="text-gray-600">Primary Description</span>
+              <span className="text-gray-400">Primary Description</span>
               {openPrimary ? <ChevronUp /> : <ChevronDown />}
             </button>
             {openPrimary && (
-              <div className="px-4 bg h-[7rem] bg-white">
+              <div className="px-4 bg h-[20rem] bg-white">
                 {/*primary description block  */}
                 <div className="">
                   <div className="pt-2">
-                    {/* <label className="block text-sm font-medium text-gray-700 mb-1">
-                Name
-              </label> */}
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Item Name
+                    </label>
                     <input
                       type="text"
                       name="item_name"
@@ -545,9 +774,9 @@ function AddItem() {
                   </div>
                   <div className="grid grid-cols-2 mt-2 gap-4">
                     <div>
-                      {/* <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                   Category
-                </label> */}
+                </label>
                       <select
                         // name="category"
                         // value={formData.category}
@@ -566,9 +795,9 @@ function AddItem() {
                       </select>
                     </div>
                     <div>
-                      {/* <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                   Brand
-                </label> */}
+                </label>
                       <select
                         // name="brand"
                         // value={formData.brand}
@@ -588,73 +817,22 @@ function AddItem() {
                       </select>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-
-          {/* ▼ Detailed description block ▼ */}
-          <div className="bg-white">
-            <button
-              onClick={() => setOpenDetailed(!openDetailed)}
-              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
-            >
-              <span className="text-gray-600">Detailed Description</span>
-              {openDetailed ? <ChevronUp /> : <ChevronDown />}
-            </button>
-            {openDetailed && (
-              <div className="px-4 bg-white pb-5">
-                {/* detailed description block */}
-                <div className="">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 mt-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        SKU
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Batch Code
                       </label>
                       <input
                         type="text"
-                        name="sku"
-                        value={formData.sku}
-                        onChange={handleInputChange}
-                        placeholder="Generate barcode"
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Barcode
-                      </label>
-                      <input
-                        type="text"
-                        readOnly = {true}
-                        disabled = {true}
                         name="batch_code"
                         value={formData.batch_code}
                         onChange={handleInputChange}
-                        placeholder="system genereated"
+                        //placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Threshold Limit(%)
-                      </label>
-                      <input
-                        type="number"
-                        name="threshold_limit"
-                        min={0}
-                        max={100}
-                        value={formData.threshold_limit}
-                        onChange={handleInputChange}
-                        placeholder=""
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                         Maximum Capacity
                       </label>
                       <input
@@ -662,28 +840,14 @@ function AddItem() {
                         name="maximum_capacity"
                         value={formData.maximum_capacity}
                         onChange={handleInputChange}
-                        placeholder=""
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        // placeholder=""
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Quantity
-                      </label>
-                      <input
-                        type="number"
-                        name="quantity"
-                        value={formData.quantity}
-                        onChange={handleInputChange}
-                        placeholder=""
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                         UOM
                       </label>
                       <select
@@ -700,110 +864,36 @@ function AddItem() {
                         ))}
                       </select>
                     </div>
-                  </div>
-
-                  {/* //newly added */}
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Stock Price (Rs.)
-                      </label>
-                      <input
-                        type="number"
-                        name="stock_price"
-                        value={formData.stock_price}
-                        onChange={handleInputChange}
-                        placeholder="Enter item price"
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Retail Price (Rs.)
-                      </label>
-                      <input
-                        type="number"
-                        name="retail_price"
-                        value={formData.retail_price}
-                        onChange={handleInputChange}
-                        placeholder="Enter item price"
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
                         Availability
                       </label>
                       <select
                         name="availability"
-                        value={formData.availability}
-                        onChange={handleInputChange}
+                        value={formData.availability}               // show the selected id
+                        onChange={handleInputChange}              // hook up your new handler
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="">-- select availability --</option>
-                        <option value={true}>Available</option>
-                        <option value={false}>Unavailable</option>
+                        <option>-- select availability --</option>
+                          <option value={true}>Available</option>
+                          <option value={false}>Unavailable</option>
+
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Expiration Date
-                      </label>
-                      <div className="relative max-w-sm">
-                        <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
-                          {/* <svg
-                            className="w-4 h-4 text-gray-500 dark:text-gray-400"
-                            aria-hidden="true"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
-                          </svg> */}
-                        </div>
-                          <input
-                            type="date"
-                            id="expired_datetime"
-                            value={formData.expired_datetime ? formData.expired_datetime.split('T')[0] : ''}
-                            onChange={(e) => {
-                              const selectedDate = e.target.value;
-                              console.log("date input value: "+selectedDate);
-                              if (selectedDate) {
-                                // Format to UTC midnight: YYYY-MM-DDT00:00:00.000Z
-                                const utcMidnight = `${selectedDate}T00:00:00.000Z`;
-                                console.log("to formData:"+utcMidnight)
-                                setformData({
-                                  ...formData,
-                                  expired_datetime: utcMidnight
-                                });
-                              } else {
-                                // Clear the field if date is empty
-                                setformData({ ...formData, expired_datetime: null });
-                              }
-                            }}
-                            name="expired_datetime"
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full px-3 py-2"
-                            placeholder="Select date"
-                          />
-                      </div>
-                    </div>
-
                   </div>
 
                 </div>
               </div>
             )}
           </div>
+
+
         </div>
 
         {/* Bottom bar */}
         <div className="flex flex-row min-w-max justify-around">
           <button
-            className="flex items-center w-[12rem] h-10 px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
+            className="flex items-center w-[10rem] h-10 px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
             onClick={() => generatePdf('print')}
           >
             <Printer className="w-4 h-4 mr-4" />
@@ -815,29 +905,32 @@ function AddItem() {
               //switch from update item button to add item button 
               setUserEditing(false)
             }}
-            className="px-6 py-2 w-[8rem] h-10  border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
+            className="px-6 py-2 w-[6rem] h-10  border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
           >
             Cancel
           </button>
           {/* switch between update and add button functions based on item card selection and clear form button click */}
           <button
-            onClick={isUserEditting ? updateItem : createItem}
-            className="px-6 py-2 h-10 w-[8rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
+            onClick={isUserEditting ? updateItem : registerItem}
+            className="px-6 py-2 h-10 w-[6rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
           >
-            {isUserEditting ? 'Update' : 'Add Item'}
+            {isUserEditting ? 'Update' : 'Create'}
           </button>
 
         </div>
       </div>
       ) : formStatus === "loading" ? (
-        <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+        // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+        // <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] overflow-y-scroll">
+        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 z-10 flex flex-col justify-around">
           <div className="flex flex-col items-center justify-center">
           <div className="animate-spin mb-3 rounded-full border-4 border-gray-300 border-t-[#1A318C] h-12 w-12"></div>
           <h2>Please wait…</h2>
           </div>
         </div>
       ) : formStatus === "success" ? (
-        <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+        // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 z-10 flex flex-col justify-around">
           <div className="flex flex-col items-center justify-center">
           <svg width={80} height={80} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             {/* green circle */}
@@ -849,7 +942,8 @@ function AddItem() {
         </div>
       ) : (
         /* if it's none of the above, we treat it as "fail" */
-        <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+        // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
+        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 z-10 flex flex-col justify-around">
           <div className="flex flex-col items-center justify-center">
           <svg width={80} height={80} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             {/* red circle */}
@@ -862,8 +956,9 @@ function AddItem() {
         </div>
       )}
 
-      {/* Item list (right) */}
-      <div className="w-2/3 h-[calc(100vh-1rem)] bg-[#EBEBEB]">
+      {/* Item list (mid) */}
+      <div className="w-[calc(57rem)] h-[calc(100vh-1rem)] bg-[#EBEBEB]">
+      
         {/* Search panel */}
         <nav className="w-full flex flex-row justify-between py-8 px-10 h-[7rem] bg-white gap-6">
           <div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-2 border-blue-400">
@@ -878,27 +973,9 @@ function AddItem() {
               Search
             </button>
           </div>
-
-          <select
-            value={searchCategory}
-            onChange={handleSearchCategoryChange}
-            className="w-80 h-10 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            {/* <option value="All">All Categories</option>
-            <option value="electronics">Electronics</option>
-            <option value="fruit">Fruit</option>
-            <option value="beverage">Beverage</option> */}
-            {/* //fix this */}
-            <option value="All">All Categories</option>
-            {uniqueCategoryTypes.map(type => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
         </nav>
 
-        <div className="h-[calc(100vh-14rem)] overflow-y-scroll">
+        <div className="h-[calc(100vh-8rem)] overflow-y-scroll">
           {isLoading ? (
             <div className="flex justify-center items-center h-full">
               <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12"></div>
@@ -929,6 +1006,120 @@ function AddItem() {
         </div>
       </div>
 
+      {/* filter section (right) */}
+      <div className="bg-[#EBEBEB] w-[calc(20rem)] h-[calc(100vh-2rem)] p-1">
+        <div className="flex flex-col h-[calc(100vh-2rem)] gap-2">
+          {/* top block set */}
+          <div>
+          {/* ▼ search filters block ▼ */}
+          <div className="bg-white">
+            <button
+              onClick={() => setOpenFilter(!openFilter)}
+              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+            >
+              <span className="text-gray-400">SEARCH FILTERS</span>
+              {openFilter ? <ChevronUp /> : <ChevronDown />}
+            </button>
+            {openFilter && (
+              <div className="px-4 bg-white pb-5">
+                {/* detailed description block */}
+                <div className="">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Category
+                      </label>
+                      <select
+                        value={searchCategory}
+                        onChange={(e) => setSearchCategory(e.target.value)}
+                        className="w-full h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
+                      >
+                        <option value="All">All Categories</option>
+                          {uniqueCategoryTypes.map(type => (
+                              <option key={type} value={type}>
+                                {type}
+                            </option>
+                            ))}
+                      </select>
+                    </div>
+
+                    {/* fix availability here */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Item Availability
+                      </label>
+                      <select
+                        name="searchAvailability"
+                        value={searchAvailability}
+                        onChange={(e) => setSearchAvailability(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="All">All</option>
+                        <option value="Available">Available</option>
+                        <option value="Unavailable">Unavailable</option>
+                      </select>
+                    </div>
+
+                    {/* <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Popularity
+                      </label>
+                      <select
+                        name="uom"
+                        // value={formUOMData ?? ""}               // show the selected id
+                        // onChange={handleUOMChange}              // hook up your new handler
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Default</option>
+
+                      </select>
+                    </div> */}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ▼ order by block ▼ */}
+          <div className="bg-white">
+            <button
+              onClick={() => setOpenOrderBy(!openOrderBy)}
+              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+            >
+              <span className="text-gray-400">ORDER BY</span>
+              {openOrderBy ? <ChevronUp /> : <ChevronDown />}
+            </button>
+            {openOrderBy && (
+              <div className="px-4 bg-white pb-5">
+                {/* detailed description block */}
+                <div className="">
+                    <div>
+                      {/* <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Suppier
+                      </label> */}
+                      <select
+                        name="uom"
+                        // value={formUOMData ?? ""}               // show the selected id
+                        // onChange={handleUOMChange}              // hook up your new handler
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Default</option>
+                        {/* {uoms.map(uom => (
+                          <option key={uom.id} value={uom.id}>
+                            {uom.unit_name} ({uom.symbol})
+                          </option>
+                        ))} */}
+                      </select>
+                    </div>
+
+                </div>
+              </div>
+            )}
+          </div>
+          </div>
+          {/* empty bottom block */}
+          <div className="bg-white h-full"></div>
+        </div>
+      </div>
+
       {/* Delete confirmation modal */}
       <ConfirmDeleteModal
         open={showDeleteModal}
@@ -944,7 +1135,7 @@ function AddItem() {
 export default AddItem;
 
 
-// Define your “empty” form‐data once
+// uncompleted empty form‐data state(new api)
 const INITIAL_FORM_DATA = {
   _id: "",
   id: 0,
@@ -952,17 +1143,12 @@ const INITIAL_FORM_DATA = {
   item_name: "",
   item_image_url: "",
   batch_code: "",
-  sku: "",
-  quantity: 0,
-  threshold_limit: 0,
   maximum_capacity: 0,
   uom_id: 0,
   category_id: 0,
   inventory_id: 1,
-  stock_price: 0,
-  retail_price: 0,
-  stock_update_datetime: "",
-  stock_created_datetime: "",
+  item_update_datetime: "",
+  item_created_datetime: "",
   __v: 0,
   uom: {
     _id: "",
@@ -979,12 +1165,82 @@ const INITIAL_FORM_DATA = {
     __v: 0
   },
   inventory: null,
-  expired_datetime: null,
-  initiate_datetime: "",
-  availability: true,
+  availability: true
 };
+// {
+//       "_id": "68afba2b039b3743594090b3",
+//       "id": 5,
+//       "item_update_datetime": "2025-08-28T02:15:13.000Z",
+//       "item_created_datetime": "2025-08-28T02:08:43.000Z",
+//       "stock_trace": [
+//         101,
+//         102
+//       ],
+//       "item_name": "Sample Item",
+//       "item_image_url": null,
+//       "batch_code": "SI01sdw4w",
+//       "maximum_capacity": 500,
+//       "uom_id": 22,
+//       "category_id": 1364,
+//       "inventory_id": 1,
+//       "availability": true,
+//       "__v": 0,
+//       "uom": {
+//         "_id": "687720ad798018e0851599a0",
+//         "id": 22,
+//         "symbol": "pcs",
+//         "unit_name": "Piece",
+//         "__v": 0
+//       },
+//       "category": {
+//         "_id": "687fb2b7d9b1c944cfddf226",
+//         "id": 1364,
+//         "brand": "Battler",
+//         "type": "Tea",
+//         "__v": 0
+//       },
+//       "inventory": null
+//     }
+// const INITIAL_FORM_DATA = {
+//   _id: "",
+//   id: 0,
+//   stock_trace: [0],
+//   item_name: "",
+//   item_image_url: "",
+//   batch_code: "",
+//   sku: "",
+//   quantity: 0,
+//   threshold_limit: 0,
+//   maximum_capacity: 0,
+//   uom_id: 0,
+//   category_id: 0,
+//   inventory_id: 1,
+//   stock_price: 0,
+//   retail_price: 0,
+//   stock_update_datetime: "",
+//   stock_created_datetime: "",
+//   __v: 0,
+//   uom: {
+//     _id: "",
+//     id: 0,
+//     symbol: "",
+//     unit_name: "",
+//     __v: 0
+//   },
+//   category: {
+//     _id: "",
+//     id: 0,
+//     brand: "",
+//     type: "",
+//     __v: 0
+//   },
+//   inventory: null,
+//   expired_datetime: null,
+//   initiate_datetime: "",
+//   availability: true,
+// };
 
-//inventory dummy data
+//inventory dummy data (old api)
 // {
 //   _id: "6877751e6d4492e44dbb403b",
 //   id: 19,

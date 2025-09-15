@@ -18,6 +18,7 @@ import Notification from './pages/notification/Notification.jsx';
 
 import InventoryConfig from './pages/inventory/InventoryConfig.jsx';
 import Sales from './pages/sales/Sales.jsx';
+import Startup from './pages/Startup.jsx';
 
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
       <HashRouter>
         <Routes>
           <Route index element={<Intro />} />
+          <Route path="startup" element={<Startup />} />
           <Route path="login" element={<Login />} />
 
           <Route path="dashboard" element={<Dashboard />} >
@@ -63,3 +65,21 @@ function App() {
 }
 
 export default App;
+
+
+
+
+
+// import { useEffect, useState } from "react";
+// import ApiService from "./api/services/userService.jsx";
+// import UserDTO from "./templates/dtos/UserDTO.jsx";
+
+// export default function UserList() {
+//   const [users, setUsers] = useState(/** @type {UserDTO[]} */([]));
+
+//   useEffect(() => {
+//     ApiService.getUsers().then(setUsers).catch((err) => {
+//       console.error("Failed to fetch users", err);
+//     });
+//   }, []);
+
