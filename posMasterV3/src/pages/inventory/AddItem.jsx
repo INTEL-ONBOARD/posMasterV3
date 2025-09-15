@@ -155,7 +155,7 @@ function AddItem() {
   });
 
   // Barcode generation
-  const barcodeValue = formData.batch_code || "SKU-000000";
+  const barcodeValue = formData.batch_code || "SKU-123456";
 
   const generateBarcode = () => {
     return new Promise((resolve) => {
