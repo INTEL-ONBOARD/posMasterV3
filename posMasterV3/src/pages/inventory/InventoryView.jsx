@@ -3,8 +3,9 @@ import InventorySidebar from "./Inventory_sidebar";
 import ItemCard from "../../components/ItemCard.jsx";
 import SpinnerDot from "../../frontend/components/SpinnerDot";
 import bananaImg from "../../assets/Inventory_banana.png";
-import NotFound from "../../assets/nonicons_not-found-16.png";
+import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import { apiClient } from "../../api/client.jsx";
+import {ChevronDown, ChevronUp } from "lucide-react";
 
 function InventoryView() {
   const [inventoryItems, setInventoryItems] = useState([
@@ -194,7 +195,15 @@ function InventoryView() {
       item.item_name.toLowerCase().includes(search.toLowerCase())
   );
 
+  //right filter section controls
+  const [openFilter, setOpenFilter] = useState(true);
+  const [openOrderBy, setOpenOrderBy] = useState(true);
+
   return (
+
+    <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
+      {/* item list section (right) */}
+      <div className="bg-white w-[calc(85rem)] h-[calc(100vh-2rem)] overflow-y-scroll p-4">
         <div className="">
           <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4 ">
             <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
@@ -222,30 +231,8 @@ function InventoryView() {
                 Search
               </button>
             </div>
-
-
-            <select
-              value={searchCategory}
-              onChange={(e) => setSearchCategory(e.target.value)}
-              className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
-            >
-              <option value="All">All Categories</option>
-                {uniqueCategoryTypes.map(type => (
-                    <option key={type} value={type}>
-                      {type}
-                  </option>
-                  ))}
-            </select>
-            <select
-              value={viewMode}
-              onChange={(e) => setViewMode(e.target.value)}
-              className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
-            >
-              <option value="grid">View mode</option>
-              <option value="grid">Grid</option>
-              <option value="list">List</option>
-            </select>
           </nav>
+
           <div className="h-[calc(100vh-13rem)] overflow-y-scroll bg-transparent">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-10">
               {isSearching ? (
@@ -259,7 +246,7 @@ function InventoryView() {
               ) : filteredItems.length === 0 ? (
                 <div className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg" style={{ minHeight: "50vh" }}>
                   <img
-                    src={NotFound}
+                    src={NotFoundImg}
                     alt="No items found!"
                     className="w-12 h-12 mb-2 opacity-70"
                   />
@@ -275,6 +262,129 @@ function InventoryView() {
               )}
             </div>
           </div>
+        </div>
+        </div>
+
+      {/* filter section (right) */}
+      <div className="bg-[#EBEBEB] w-[calc(20rem)] h-[calc(100vh-2rem)] p-1">
+        <div className="flex flex-col h-[calc(100vh-2rem)] gap-2">
+          {/* top block set */}
+          <div>
+          {/* ▼ search filters block ▼ */}
+          <div className="bg-white">
+            <button
+              onClick={() => setOpenFilter(!openFilter)}
+              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+            >
+              <span className="text-gray-400">SEARCH FILTERS</span>
+              {openFilter ? <ChevronUp /> : <ChevronDown />}
+            </button>
+            {openFilter && (
+              <div className="px-4 bg-white pb-5">
+                {/* detailed description block */}
+                <div className="">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Category
+                      </label>
+                      <select
+                        value={searchCategory}
+                        onChange={(e) => setSearchCategory(e.target.value)}
+                        className="w-full h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
+                      >
+                        <option value="All">All Categories</option>
+                          {uniqueCategoryTypes.map(type => (
+                              <option key={type} value={type}>
+                                {type}
+                            </option>
+                            ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Stock Availability
+                      </label>
+                      <select
+                        name="uom"
+                        // value={formUOMData ?? ""}               // show the selected id
+                        // onChange={handleUOMChange}              // hook up your new handler
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Available</option>
+                        <option value="">Unavailable</option>
+                        {/* {uoms.map(uom => (
+                          <option key={uom.id} value={uom.id}>
+                            {uom.unit_name} ({uom.symbol})
+                          </option>
+                        ))} */}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Popularity
+                      </label>
+                      <select
+                        name="uom"
+                        // value={formUOMData ?? ""}               // show the selected id
+                        // onChange={handleUOMChange}              // hook up your new handler
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Default</option>
+                        {/* {uoms.map(uom => (
+                          <option key={uom.id} value={uom.id}>
+                            {uom.unit_name} ({uom.symbol})
+                          </option>
+                        ))} */}
+                      </select>
+                    </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ▼ order by block ▼ */}
+          <div className="bg-white">
+            <button
+              onClick={() => setOpenOrderBy(!openOrderBy)}
+              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+            >
+              <span className="text-gray-400">ORDER BY</span>
+              {openOrderBy ? <ChevronUp /> : <ChevronDown />}
+            </button>
+            {openOrderBy && (
+              <div className="px-4 bg-white pb-5">
+                {/* detailed description block */}
+                <div className="">
+                    <div>
+                      {/* <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Suppier
+                      </label> */}
+                      <select
+                        name="uom"
+                        // value={formUOMData ?? ""}               // show the selected id
+                        // onChange={handleUOMChange}              // hook up your new handler
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Default</option>
+                        {/* {uoms.map(uom => (
+                          <option key={uom.id} value={uom.id}>
+                            {uom.unit_name} ({uom.symbol})
+                          </option>
+                        ))} */}
+                      </select>
+                    </div>
+
+                </div>
+              </div>
+            )}
+          </div>
+          </div>
+          {/* empty bottom block */}
+          <div className="bg-white h-full"></div>
+        </div>
+      </div>
         </div>
   )
 }
