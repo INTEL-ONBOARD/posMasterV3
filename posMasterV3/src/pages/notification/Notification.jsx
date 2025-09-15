@@ -4,10 +4,10 @@ import NotificationCard from '../../components/NotificationCard'
 
 function Notification() {
   return (
-    <div className="p-8">
+    <div className="p-8 pt-16 pl-16">
       <header className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-700">Notifications</h1>
-        <p className="text-sm text-gray-500 mt-2 max-w-3xl">Customize how the app works for you. Manage preferences such as notifications, themes, language, and other general behaviors to tailor the experience to your needs. Your settings are saved automatically and can be updated anytime.</p>
+        <h1 className="text-[36px] font-bold leading-[32px] text-gray-400 mb-2">Notifications</h1>
+        <p className="text-[14px] text-[#525252] mt-2 max-w-3xl">Customize how the app works for you. Manage preferences such as notifications, themes, language, and other general behaviors to tailor the experience to your needs. Your settings are saved automatically and can be updated anytime.</p>
       </header>
 
       <div className="flex gap-8">
@@ -29,7 +29,7 @@ function Notification() {
         {/* Right: help panel */}
         <aside className="w-[360px] flex flex-col items-center px-6">
           <img src={notificationsImg} alt="Need help" className="w-24 h-24 mb-4" />
-          <h3 className="text-lg font-bold text-gray-700 mb-2">NEED A HELP?</h3>
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">NEED A HELP?</h3>
           <p className="text-sm text-gray-500 text-center mb-4">Got stuck or need guidance? The Need a Help? section is your go-to support hub. Access quick tutorials, FAQs, troubleshooting tips, and direct contact with our support team</p>
 
           <textarea
