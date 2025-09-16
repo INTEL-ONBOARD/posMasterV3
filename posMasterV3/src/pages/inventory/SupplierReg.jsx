@@ -768,25 +768,31 @@ function SupplierReg() {
             <tbody className="bg-white">
               {isLoading ? (
                 // single row that spans all columns and centers the spinner vertically/horizontally
-                <tr className='flex flex-row'>
-                  <td colSpan={7} className="h-[22rem] w-full flex items-center justify-center">
-                    <div className="flex flex-col items-center">
-                      <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12"></div>
-                      <span className="mt-3 text-gray-700 text-lg">Loading table...</span>
+                <tr>
+                  <td colSpan={7}>
+                    <div className="h-[22rem] w-full flex items-center justify-center">
+                      <div className="flex flex-col items-center">
+                        <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12"></div>
+                        <span className="mt-3 text-gray-700 text-lg">Loading table...</span>
+                      </div>
                     </div>
                   </td>
                 </tr>
               ) : searchLoading ? (
                 <tr>
-                  <td colSpan={7} className="h-[22rem] w-full flex flex-col items-center justify-center">
-                    <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
-                    <span className="text-gray-700 text-xl mt-1">Please wait...</span>
+                  <td colSpan={7}>
+                    <div className="h-[22rem] w-full flex flex-col items-center justify-center">
+                      <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
+                      <span className="text-gray-700 text-xl mt-1">Please wait...</span>
+                    </div>
                   </td>
                 </tr>
               ) : filteredSuppliers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="h-[18rem] w-full flex items-center justify-center text-gray-500 text-lg">
-                    No suppliers found!
+                  <td colSpan={7}>
+                    <div className="h-[18rem] w-full flex items-center justify-center">
+                      <span className="text-gray-500 text-lg">No suppliers found!</span>
+                    </div>
                   </td>
                 </tr>
               ) : (
