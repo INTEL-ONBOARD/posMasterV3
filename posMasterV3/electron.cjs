@@ -72,24 +72,24 @@ function createWindow() {
 
 }
 
-// ipcMain.on("store-user-data", async (event, { username, token }) => {
-//   if (isQuitting) return;
+ipcMain.on("store-user-data", async (event, { username, token }) => {
+  if (isQuitting) return;
 
-//   console.log("Received user data for logout:", { username, token });
+  console.log("Received user data for logout:", { username, token });
 
-//   try {
-//     await axios.post("https://posmasterv3-backend.onrender.com/api/users/logout", {
-//       username,
-//       token,
-//     });
-//     console.log("Logout successful from store-user-data event");
-//   } catch (error) {
-//     console.error("Logout failed from store-user-data event:", error.message);
-//   }
+  try {
+    await axios.post("https://posmasterv3-backend.onrender.com/api/users/logout", {
+      username,
+      token,
+    });
+    console.log("Logout successful from store-user-data event");
+  } catch (error) {
+    console.error("Logout failed from store-user-data event:", error.message);
+  }
 
-//   isQuitting = true;
-//   app.quit();
-// });
+  isQuitting = true;
+  app.quit();
+});
 
 
 
@@ -167,6 +167,7 @@ app.whenReady().then(() => {
 // Quit when all windows are closed, except on macOS
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
+    
     app.quit();
   }
 });
