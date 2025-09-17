@@ -218,7 +218,7 @@ function InventoryRestock() {
     //check if it already exists on the item list first
     // console.log(formDataRegItem.id);
     // console.log(formDataRegItem._id);
-      if(rightActiveSection!="return"){
+    if (rightActiveSection != "return") {
       const newRegItem = {
         _id: formDataRegItem._id,
         id: formDataRegItem.id,
@@ -233,7 +233,7 @@ function InventoryRestock() {
         item_created_datetime: formDataRegItem.item_created_datetime,
         __v: formDataRegItem.__v,
         inventory: formDataRegItem.inventory,
-        
+
         batch_code: formDataStock.batch_code,
         sku: formDataRegItem.sku,
         quantity: parseFloat(formDataStock.quantity) || 0,
@@ -249,7 +249,7 @@ function InventoryRestock() {
       //TODO: do a validation first
       setSelectedRegItemList(prev => [...prev, newRegItem]);
     }
-    else{
+    else {
       console.log("return item was selected");
       const newRetItem = {
 
@@ -273,7 +273,7 @@ function InventoryRestock() {
         retail_price: parseFloat(formDataStock.retail_price) || 0,
         expired_datetime: formDataStock.expired_datetime,
         availability: formDataStock.availability,
-        
+
         batch_code: formDataReturnItem.batch_code,
         quantity: parseFloat(formDataReturnItem.quantity) || 0,
         uom_symbol: formDataStock.uom?.uom_symbol,
@@ -284,11 +284,11 @@ function InventoryRestock() {
       setSelectedReturnItemList(prev => [...prev, newRetItem]);
     }
   }
-  
-    //verify if it's a return item, register item or a dispose item
-    //if it doesn't exists and a register item, add it to the list(for now adding from form state but i can also add it from selectedRegItem just in case)
 
-  
+  //verify if it's a return item, register item or a dispose item
+  //if it doesn't exists and a register item, add it to the list(for now adding from form state but i can also add it from selectedRegItem just in case)
+
+
   //removes item from list by id
   const removeItemFromList = (id) => {
     setSelectedRegItemList(prev => prev.filter(item => item.id !== id));
@@ -351,6 +351,50 @@ function InventoryRestock() {
     expired_datetime: "2025-12-31T23:59:59",
     availability: true
   });
+  
+  const [stockEntries, setStockEntries] = useState([]);
+
+
+  const formatDateSafe = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      if (Number.isNaN(d.getTime())) return '';
+      return d.toISOString().split('T')[0];
+    } catch (err) {
+      console.error('formatDateSafe error for', dateStr, err);
+      return '';
+    }
+  };
+
+  // fetch stock entries for a given SKU
+  const fetchStockEntries = async (sku) => {
+    if (!sku) return;
+    try {
+      const response = await apiClient.get(`api/restocks/stock-data/${sku}`);
+      const payload = response?.data;
+
+      if (payload) {
+        if (payload.status === 'success' && Array.isArray(payload.data)) {
+          setStockEntries(payload.data);
+        } else if (Array.isArray(payload)) {
+          setStockEntries(payload);
+        } else if (Array.isArray(payload.data)) {
+          setStockEntries(payload.data);
+        } else {
+          setStockEntries([]);
+          setStockFetchError(payload.message || 'Unexpected response shape');
+        }
+
+      } else {
+        setStockEntries([]);
+        setStockFetchError('Empty response from server');
+      }
+    } catch (err) {
+      console.error('Failed to fetch stock entries for', sku, err);
+      setStockEntries([]);
+    }
+  };
   const handleStockInputChange = (e) => {
     const { name, value } = e.target;
     console.log(name + ": " + value);
@@ -390,7 +434,7 @@ function InventoryRestock() {
     stock_price: 0,
     retail_price: 0,
 
-    
+
     batch_code: 0,
     quantity: 0,
     return_description: "returning item"
@@ -477,7 +521,9 @@ function InventoryRestock() {
     // });
     //load item into bucket just in case
     setSelectedRegItem(item);
-    //load item into form blocks based on the type(register/return)
+
+    setFormDataRegItem(fd => ({ ...fd, ...item }));
+    fetchStockEntries(item.sku);
 
 
 
@@ -584,7 +630,7 @@ function InventoryRestock() {
         cash_amount: 95.00,
         change_amount: 5.00,
         total_amount: 105.00,
-        
+
         exe_level: "medium",
 
         added_items: transformToAddedItems(), //contatins a list
@@ -878,40 +924,29 @@ function InventoryRestock() {
                       />
                     </div> */}
                   </div>
-                  {/* <p>Recent Batch Code Changes</p>
-                  <div className="flex flex-col gap-3 overflow-y-scroll overflow-x-hidden h-[13rem] -mr-4">
-                  <div className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
-                    <div className="flex flex-col">
-                      <span className="text-md font-bold">SKU:</span>
-                      <span className="text-gray-600">SKU23453RE</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-gray-400 font-bold">60 units</span>
-                      <span className="text-gray-400">2025-04-04 Exp</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
-                    <div className="flex flex-col">
-                      <span className="text-md font-bold">SKU:</span>
-                      <span className="text-gray-600">SKU23453RE</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-gray-400 font-bold">60 units</span>
-                      <span className="text-gray-400">2025-04-04 Exp</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
-                    <div className="flex flex-col">
-                      <span className="text-md font-bold">SKU:</span>
-                      <span className="text-gray-600">SKU23453RE</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-gray-400 font-bold">60 units</span>
-                      <span className="text-gray-400">2025-04-04 Exp</span>
-                    </div>
-                  </div>
 
-                  </div> */}
+                  <p>Recent Batch Code Changes</p>
+                  <div className="flex flex-col gap-3 overflow-y-scroll overflow-x-hidden h-[13rem] -mr-4">
+                    {stockEntries.length === 0 ? (
+                      <div className="text-gray-500">No recent batches</div>
+                    ) : (
+                      stockEntries.map((s, i) => (
+                        <div key={s.batch_code + i} className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
+                          <div className="flex flex-col">
+                            <span className="text-md font-bold">Batchcode:</span>
+                            <span className="text-gray-600">{s.batch_code}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-400 font-bold">{s.qty} units</span>
+                            <span className="text-gray-400">{s.exp_date ? formatDateSafe(s.exp_date) : ''} Exp</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+
+                    {/* end recent batches list */}
+
+                  </div>
 
 
                 </div>
@@ -1078,36 +1113,23 @@ function InventoryRestock() {
                   </div>
                   <p className="text-gray-400 font-semibold">Select the batchcode</p>
                   <div className="flex flex-col gap-3 overflow-y-scroll overflow-x-hidden h-[13rem] -mr-4">
-                    <div className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
-                      <div className="flex flex-col">
-                        <span className="text-md font-bold">SKU:</span>
-                        <span className="text-gray-600">SKU23453RE</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-gray-400 font-bold">60 units</span>
-                        <span className="text-gray-400">2025-04-04 Exp</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
-                      <div className="flex flex-col">
-                        <span className="text-md font-bold">SKU:</span>
-                        <span className="text-gray-600">SKU23453RE</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-gray-400 font-bold">60 units</span>
-                        <span className="text-gray-400">2025-04-04 Exp</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
-                      <div className="flex flex-col">
-                        <span className="text-md font-bold">SKU:</span>
-                        <span className="text-gray-600">SKU23453RE</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-gray-400 font-bold">60 units</span>
-                        <span className="text-gray-400">2025-04-04 Exp</span>
-                      </div>
-                    </div>
+                    {stockEntries.length === 0 ? (
+                      <div className="text-gray-500">No batches available</div>
+                    ) : (
+                      stockEntries.map((s, i) => (
+                        <div key={s.batch_code + i} className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
+                          <div className="flex flex-col">
+                            <span className="text-md font-bold">SKU:</span>
+                            <span className="text-gray-600">{s.sku}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-400 font-bold">{s.qty} units</span>
+                            <span className="text-gray-400">{s.exp_date ? formatDateSafe(s.exp_date) : ''} Exp</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    {/* end return batch list */}
 
                   </div>
                 </div>
@@ -1227,7 +1249,7 @@ function InventoryRestock() {
               <div className="mt-8 flex flex-row gap-4">
                 <button
                   onClick={() => {
-                    setInvoiceGenerate(invoiceGenerate+1);
+                    setInvoiceGenerate(invoiceGenerate + 1);
                     //clearUserInput();
                     //switch from update item button to add item button 
                     //setUserEditing(false)
