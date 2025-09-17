@@ -959,7 +959,7 @@ console.log("printing complete");
                       </div>
                     </div>
                     {/* transaction list */}
-                    <div className="h-[21rem] bg-red-500 overflow-y-scroll gap-3">
+                    <div className="h-[21rem] bg-white overflow-y-scroll gap-3">
 
                     {/* transaction card */}
                     <div className="bg-[#F5F5F5] h-24 items-center gap-8 flex flex-row px-6">
