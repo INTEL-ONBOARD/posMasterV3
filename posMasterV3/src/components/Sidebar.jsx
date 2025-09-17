@@ -108,11 +108,11 @@ function Sidebar() {
               icon: Dashboard_inventory,
               label: "Inventory",
             },
-            {
-              to: "sales",
-              icon: Dashboard_sales,
-              label: "Sales",
-            },
+            // {
+            //   to: "sales",
+            //   icon: Dashboard_sales,
+            //   label: "Sales",
+            // },
             {
               to: "settings",
               icon: Dashboard_settings,
