@@ -1,12 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const axios = require('axios');
-const fs = require('fs').promises; // Use promise-based fs API
-//const { pdf } = require("@react-pdf/renderer"); //
-//const { error } = require("console");
-//const pdf =  require('react-pdf'); // ES module compatible
-//for hot reload npm package
-//const electronReload = require('electron-reload')
+const fs = require('fs').promises;
 
 const printer = require("pdf-to-printer");
 
@@ -15,10 +10,7 @@ let storedUser = null;
 let isQuitting = false;
 
 
-// ipcMain.on("store-user-data", (event, userData) => {
-//   console.log("User data received in main process:", userData);
-//   storedUser = userData;
-// });
+
 
 
 ipcMain.handle('store-user-data', async (event, userData) => {
@@ -26,6 +18,79 @@ ipcMain.handle('store-user-data', async (event, userData) => {
   console.log('User data stored:', userData);
   return { success: true };
 });
+
+const performLogoutAndQuit = async () => {
+  if (isQuitting) return;
+  isQuitting = true;
+  console.log('performLogoutAndQuit: starting logout sequence');
+
+  if (!storedUser) {
+    try {
+      const userFromRenderer = await new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          ipcMain.removeAllListeners('reply-user-data');
+          resolve(null);
+        }, 2000);
+
+        ipcMain.once('reply-user-data', (event, user) => {
+          clearTimeout(timeout);
+          resolve(user);
+        });
+
+        try {
+          if (mainWindow && mainWindow.webContents) {
+            mainWindow.webContents.send('request-user-data');
+          }
+        } catch (e) {
+          console.error('Error sending request-user-data to renderer', e);
+        }
+      });
+
+      if (userFromRenderer) {
+        storedUser = userFromRenderer;
+        console.log('performLogoutAndQuit: received user from renderer', storedUser);
+      } else {
+        console.warn('performLogoutAndQuit: no user reply from renderer');
+      }
+    } catch (e) {
+      console.error('Error requesting user from renderer', e);
+    }
+  }
+
+  if (storedUser && (storedUser.email || storedUser.username) && (storedUser._id || storedUser.token)) {
+    try {
+      const resp = await axios.post(
+        'https://posmasterv3-backend.onrender.com/api/users/logout',
+        {
+          email: storedUser.email,
+          user_id: storedUser._id,
+          username: storedUser.username,
+          token: storedUser.token,
+        },
+        { timeout: 5000 }
+      );
+      console.log('Logout successful', resp && resp.data ? resp.data : resp);
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('logout-response', { ok: true, data: resp.data });
+      }
+    } catch (error) {
+      const errMsg = error && error.response && error.response.data ? error.response.data : (error && error.message ? error.message : String(error));
+      console.error('Logout failed:', errMsg);
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('logout-response', { ok: false, error: errMsg });
+      }
+    }
+  } else {
+    console.warn('No user data to logout');
+  }
+
+  try {
+    app.quit();
+  } catch (e) {
+    console.error('Error quitting app:', e && e.message ? e.message : String(e));
+    process.exit(0);
+  }
+};
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -44,52 +109,20 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
   mainWindow.webContents.openDevTools();
 
-
   mainWindow.on("close", async (event) => {
     if (isQuitting) return;
-
     event.preventDefault();
-    console.log("Window close triggered, handling logout...");
-
-    if (storedUser && storedUser.email && storedUser._id) {
-      try {
-        await axios.post("https://posmasterv3-backend.onrender.com/api/users/logout", {
-          email: storedUser.email,
-          user_id: storedUser._id,
-        });
-        console.log("Logout successful");
-      } catch (error) {
-        console.error("Logout failed:", error.message);
-      }
-    } else {
-      console.warn("No user data to logout");
-    }
-
-    isQuitting = true;
-    app.quit(); // only call quit AFTER logout
+    console.log('Window close triggered, handling logout...');
+    performLogoutAndQuit();
   });
 
 
 }
 
-// ipcMain.on("store-user-data", async (event, { username, token }) => {
-//   if (isQuitting) return;
-
-//   console.log("Received user data for logout:", { username, token });
-
-//   try {
-//     await axios.post("https://posmasterv3-backend.onrender.com/api/users/logout", {
-//       username,
-//       token,
-//     });
-//     console.log("Logout successful from store-user-data event");
-//   } catch (error) {
-//     console.error("Logout failed from store-user-data event:", error.message);
-//   }
-
-//   isQuitting = true;
-//   app.quit();
-// });
+ipcMain.on('perform-logout', async () => {
+  console.log('IPC perform-logout received');
+  await performLogoutAndQuit();
+});
 
 
 
@@ -104,20 +137,17 @@ ipcMain.on("print-silent", async (event, arrayBuffer) => {
   const tempFile = path.join(app.getPath("temp"), `print-${Date.now()}.pdf`);
 
   try {
-    // Convert ArrayBuffer to Node.js Buffer
     const pdfBuffer = Buffer.from(arrayBuffer);
 
     await fs.writeFile(tempFile, pdfBuffer);
     console.log("PDF saved to", tempFile);
 
-    // Print using specialized module (most reliable)
     await printer.print(tempFile, { silent: true });
     console.log("Printed via pdf-to-printer");
 
   } catch (error) {
     console.error("Silent print failed:", error.message);
 
-    // Fallback method using hidden window
     try {
       console.log("Attempting fallback printing");
       const printWindow = new BrowserWindow({ show: false });
@@ -141,7 +171,6 @@ ipcMain.on("print-silent", async (event, arrayBuffer) => {
       console.error("Fallback printing failed:", fallbackError.message);
     }
   } finally {
-    // Cleanup temporary file
     try {
       await fs.unlink(tempFile);
       console.log("Temporary file cleaned up");
@@ -167,6 +196,7 @@ app.whenReady().then(() => {
 // Quit when all windows are closed, except on macOS
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
+
     app.quit();
   }
 });

@@ -54,20 +54,35 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-
+    console.log("Submitting login for:", formData.email);
     try {
       const response = await apiClient.post("api/users/login", {
         email: formData.email,
         password: formData.password
       });
 
+
       if (response.data.status === "success") {
-        // Store user data in localStorage
-        // if (response.data.data.email && response.data.data._id) {
-        //   window.electronAPI.sendUserData(response.data.data.email, response.data.data._id);
-        // }
-        //window.electronAPI.sendUserData("user@example.com", "token123");
-        //console.log("Renderer: sent user data");
+        console.log("Login successful:", response.data.data.email + " " + response.data.data._id);
+        if (response.data.data.email && response.data.data._id) {
+          const userData = response.data.data;
+          // Persist user fields explicitly so other parts of the app can read them
+          localStorage.setItem("user", JSON.stringify(userData));
+          if (response.data.token !== undefined && response.data.token !== null) {
+            localStorage.setItem("token", response.data.token);
+          } else {
+            console.warn('Login: token is undefined/null', response.data.token);
+            localStorage.removeItem('token');
+          }
+          // common keys used across app
+          localStorage.setItem('username', userData.username ?? userData.email ?? '');
+          localStorage.setItem('email', userData.email ?? '');
+          localStorage.setItem('_id', userData._id ?? '');
+          // Send user data to main process for logout handling
+          //window.electronAPI.sendUserData(response.data.data.email, response.data.data._id);
+        }
+        // window.electronAPI.sendUserData("user@example.com", "token123");
+        console.log("Renderer: sent user data");
         navigate("/dashboard");
       } else {
         toast.open(`${response.data.message}`, 4000, 'Login Failed', 'warning');
@@ -235,11 +250,3 @@ function Login() {
 
 export default Login;
 
-// Basic usage
-//open('Operation completed');
-
-// With custom title and status
-//open('File upload failed', 5000, 'Upload Error', 'error');
-
-// All parameters
-//open('Please check your inputs', 3000, 'Validation Warning', 'warning');
