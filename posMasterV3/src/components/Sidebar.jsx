@@ -130,13 +130,6 @@ function Sidebar() {
               >
                 <div className="relative flex flex-col items-center mb-2">
                   <img className="w-12 object-contain" src={item.icon} alt={item.label} />
-                  {currentPath === `/dashboard/${item.to}` && (
-                    <span className="absolute right-[-32px] top-1/2 -translate-y-1/2">
-                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </span>
-                  )}
                 </div>
                 <span className="text-sm font-medium text-center mt-1">
                   {item.label}
@@ -156,13 +149,6 @@ function Sidebar() {
             >
               <div className="relative flex flex-col items-center mb-2">
                 <img className="w-12 object-contain" src={Dashboard_logout} alt="Logout" />
-                {currentPath === "/dashboard/logout" && (
-                  <span className="absolute right-[-32px] top-1/2 -translate-y-1/2">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </span>
-                )}
               </div>
               <span className="text-sm font-medium text-center mt-1">
                 {isLoggingOut ? "Logging out..." : "Logout"}
