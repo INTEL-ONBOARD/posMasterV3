@@ -1005,6 +1005,7 @@ function InventoryRestock() {
 
 
   return (
+
     <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
       {/* form section (left) */}
       <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 z-10">
