@@ -1,5 +1,5 @@
 export default class ResponseDTO {
-    // Declaring private fields
+    // Declaring private fields as private
     #data;
     #message;
     #status;
