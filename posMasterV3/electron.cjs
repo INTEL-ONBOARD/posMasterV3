@@ -93,17 +93,19 @@ const performLogoutAndQuit = async () => {
 };
 
 function createWindow() {
+  const iconPath = path.join(__dirname, "src", "assets", "icon.ico");
+
   mainWindow = new BrowserWindow({
-    width: 1024,
-    height: 768,
-    autoHideMenuBar: true,
-    titleBarOverlay: true,
-    icon: path.join(__dirname, "src", '../assets/app_logo/app_logo.ico'),
-    webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
-      nodeIntegration: false,
-      contextIsolation: true,
-    },
+  width: 1024,
+  height: 768,
+  autoHideMenuBar: true,
+  titleBarOverlay: true,
+  icon: iconPath,
+  webPreferences: {
+    preload: path.join(__dirname, "preload.cjs"),
+    nodeIntegration: false,
+    contextIsolation: true,
+  },
   });
 
   mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
