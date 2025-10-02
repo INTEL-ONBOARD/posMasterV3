@@ -125,26 +125,27 @@ function UnitOfMeassurement() {
         <div className="mb-4 flex items-center">
           <input
             type="text"
-            placeholder="Search your item code"
+            placeholder="Search your Unit Name or ID"
             className="flex-grow px-2 py-2 border-b border-gray-300 focus:outline-none focus:border-[#00489A]"
             value={formData.search || ""}
-            onChange={e => {
+            onChange={async e => {
               const value = e.target.value;
               setFormData(prev => ({ ...prev, search: value }));
-              setUnits(
-                value
-                  ? units.filter(
-                      unit =>
-                        unit.unit_name.toLowerCase().includes(value.toLowerCase()) ||
-                        unit.symbol.toLowerCase().includes(value.toLowerCase())
-                    )
-                  : (() => {
-                      fetchUoms();
-                      return units;
-                    })()
+
+              if (!value) {
+                await fetchUoms();
+                return;
+              }
+
+              const filteredUnits = units.filter(unit => 
+                unit.unit_name.toLowerCase().includes(value.toLowerCase()) ||
+                unit.symbol.toLowerCase().includes(value.toLowerCase()) ||
+                unit.id.toString().includes(value)
               );
+              setUnits(filteredUnits);
             }}
           />
+
           <button
             className="bg-[#00489A] text-white px-6 py-2 ml-2 flex items-center gap-2 hover:bg-blue-900"
           >
