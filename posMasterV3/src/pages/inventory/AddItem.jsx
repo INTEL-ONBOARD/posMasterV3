@@ -5,15 +5,14 @@ import { X, Printer, ChevronDown, ChevronUp } from "lucide-react";
 import AddItemCard from "../../components/AddItemCard.jsx";
 import ConfirmDeleteModal from "../../frontend/components/ConfirmDeleteModal";
 import barcodeImg from "../../assets/barcode.png";
-import validateItem from "../../util/validate.jsx";
 import ToastContext from "../toasts/ToastService.jsx";
 
 import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
 import JsBarcode from 'jsbarcode';
+import registerItemService from "../../api/services/registerItemService.jsx";
 
 function AddItem() {
-  const navigate = useNavigate();
   const toast = useContext(ToastContext);
 
   // Fetch UOMs from API
@@ -370,9 +369,10 @@ function AddItem() {
         stock_trace: [101] // Fixed value
       };
       console.log(requestData);
-      const response = await apiClient.post("api/itemRegistry/add", requestData);
-
-      if (response.data.status === "success") {
+      //const response = await apiClient.post("api/itemRegistry/add", requestData);
+      const response = await registerItemService.registerItem(requestData);
+      console.log(response);
+      if (response.status === "success") {
         // Add new item to local state
         //alert("Item created successfully!");
         //toast.open("Item created successfully", 4000, 'Success', 'success');
@@ -497,9 +497,10 @@ function AddItem() {
         stock_trace: [101], // Fixed value
       };
 
-      const response = await apiClient.put(`api/itemRegistry/${formData.id}`, requestData);
-
-      if (response.data.status === "success") {
+      //const response = await apiClient.put(`api/itemRegistry/${formData.id}`, requestData);
+      const response =registerItemService.updateItem(formData.id, requestData);
+      
+      if (response.status === "success") {
         //alert("Item created successfully!");
         setFormStatus("success");
         // after 4 seconds, flip back to the form
