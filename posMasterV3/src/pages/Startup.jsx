@@ -125,7 +125,7 @@ function Startup() {
               className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-lg"
             >
               <option value="">Select outlet</option>
-              <option value="allenvalley">Allenvalley</option>
+              <option value="alenweli">Alenweli Outlet</option>
               <option value="morawakkorale">Morawakkorale</option>
               <option value="kotapola">Kotapola</option>
             </select>
