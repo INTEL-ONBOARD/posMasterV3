@@ -111,8 +111,15 @@ function UnitOfMeassurement() {
   return (
     <div className="flex-1 h-[calc(100vh-2rem)] bg-white flex justify-between flex-col px-8 py-8">
       <div>
-        <h2 className="text-2xl font-bold text-gray-400 mb-6">UNIT OF MEASUREMENT</h2>
-
+        <h2 className="text-2xl font-bold text-gray-400 mb-1">
+          UNIT OF MEASUREMENT
+        </h2>
+        <p className="text-sm font-bold text-gray-400 mb-4">
+          Customize how the app works for you. Manage preferences such as
+          notifications, themes, language, and other general behaviors to tailor
+          the experience to your needs. Your settings are saved automatically
+          and can be updated anytime.
+        </p>
         {error && (
           <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">
             {error}
