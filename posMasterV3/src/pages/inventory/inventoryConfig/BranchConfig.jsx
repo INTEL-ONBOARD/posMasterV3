@@ -130,24 +130,25 @@ function BranchConfig() {
         <div className="mb-4 flex items-center">
           <input
             type="text"
-            placeholder="Search your item code"
+            placeholder="Search by ID, branch name, location or contact"
             className="flex-grow px-2 py-2 border-b border-gray-300 focus:outline-none focus:border-[#00489A]"
             value={formData.search || ""}
             onChange={e => {
               const value = e.target.value;
               setFormData(prev => ({ ...prev, search: value }));
-              setUnits(
-                value
-                  ? units.filter(
-                      unit =>
-                        unit.unit_name.toLowerCase().includes(value.toLowerCase()) ||
-                        unit.symbol.toLowerCase().includes(value.toLowerCase())
-                    )
-                  : (() => {
-                      fetchUoms();
-                      return units;
-                    })()
+
+              if (!value) {
+                fetchBranches();
+                return;
+              }
+
+              const filteredBranches = branches.filter(branch => 
+                branch.inventory_name.toLowerCase().includes(value.toLowerCase()) ||
+                branch.inventory_location.toLowerCase().includes(value.toLowerCase()) ||
+                branch.inventory_contact.toLowerCase().includes(value.toLowerCase()) ||
+                branch.id.toString().includes(value)
               );
+              setBranches(filteredBranches);
             }}
           />
           <button
@@ -170,6 +171,7 @@ function BranchConfig() {
             Search
           </button>
         </div>
+
 
 
         
