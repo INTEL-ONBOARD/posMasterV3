@@ -126,7 +126,7 @@ function BranchConfig() {
           and can be updated anytime.
         </p>
         
-        {/* Search bar */}
+        {/* Search bar with dynamic clear button */}
         <div className="mb-4 flex items-center">
           <input
             type="text"
@@ -151,26 +151,57 @@ function BranchConfig() {
               setBranches(filteredBranches);
             }}
           />
-          <button
-            className="bg-[#00489A] text-white px-6 py-2 ml-2 flex items-center gap-2 hover:bg-blue-900"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+
+          {formData.search ? (
+            // Clear button appears when typing, styled like Search
+            <button
+              onClick={() => {
+                setFormData(prev => ({ ...prev, search: "" }));
+                fetchBranches(); // Reset branches
+              }}
+              className="ml-2 bg-[#00489A] text-white px-6 py-2 flex items-center gap-2 hover:bg-blue-900"
+              title="Clear search"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1110.5 3a7.5 7.5 0 016.15 13.65z"
-              />
-            </svg>
-            Search
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-7"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+              Clear
+            </button>
+          ) : (
+            // Search button
+            <button
+              className="ml-2 bg-[#00489A] text-white px-6 py-2 flex items-center gap-2 hover:bg-blue-900"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1110.5 3a7.5 7.5 0 016.15 13.65z"
+                />
+              </svg>
+              Search
+            </button>
+          )}
         </div>
+
 
 
 
