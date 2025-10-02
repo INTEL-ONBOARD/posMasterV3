@@ -149,165 +149,179 @@ function CategoryConfig() {
   }));
 
   return (
-    <div className="flex-1 h-[calc(100vh-2rem)] bg-white flex justify-between flex-col px-8 py-8 overflow-hidden">
-      <div className="flex flex-col h-full">
-        <h2 className="text-2xl font-bold text-gray-400 mb-6">CATEGORY CONFIGURATION</h2>
+    <div className="flex-1 h-[calc(100vh-2rem)] bg-white flex flex-col px-8 py-8 overflow-hidden">
+  <div className="flex flex-col h-full">
+    <h2 className="text-2xl font-bold text-gray-400 mb-1">
+          BRANCH CONFIGURATION
+        </h2>
+        <p className="text-sm font-bold text-gray-400 mb-7">
+          Customize how the app works for you. Manage preferences such as
+          notifications, themes, language, and other general behaviors to tailor
+          the experience to your needs. Your settings are saved automatically
+          and can be updated anytime.
+        </p>
 
-        {error && (
-          <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">
-            {error}
-          </div>
-        )}
+    {error && (
+      <div className="mb-4 p-2 bg-red-100 text-red-700 rounded text-center">
+        {error}
+      </div>
+    )}
 
-        {/* Search Panel - Imported from AddItem */}
-        <div className="w-full flex flex-row justify-between py-4 px-6 gap-6 mb-6">
-          <div className="w-full flex flex-row justify-between border-b-2 border-black-600 ">
-            <input
-              type="text"
-              value={search}
-              onChange={handleSearch}
-              placeholder="Search categories and brands..."
-              className="px-3 py-2 w-full bg-white border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button className="px-10 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors">
-              Search
-            </button>
-          </div>
+    {/* Search Panel */}
+    <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-4 mb-6">
+      {/* Search box */}
+      <div className="flex w-full lg:w-2/3 items-center border-b-2 border-gray-400">
+        <input
+          type="text"
+          value={search}
+          onChange={handleSearch}
+          placeholder="Search categories and brands..."
+          className="flex-1 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button className="px-6 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors">
+          Search
+        </button>
+      </div>
 
-          <select
-            value={searchCategory}
-            onChange={handleSearchCategoryChange}
-            className="w-80 h-10 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="All">All Categories</option>
-            {uniqueCategoryTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-        </div>
+      {/* Category filter */}
+      <select
+        value={searchCategory}
+        onChange={handleSearchCategoryChange}
+        className="w-full lg:w-1/3 h-10 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="All">All Categories</option>
+        {uniqueCategoryTypes.map(type => (
+          <option key={type} value={type}>{type}</option>
+        ))}
+      </select>
+    </div>
 
-        <div className="flex gap-2 mb-4">
-          <input
-            type="text"
-            name="brand"
-            placeholder="Brand name"
-            className="flex-1 border border-gray-300 px-4 py-2 bg-[#F8F8F8]"
-            value={formData.brand}
-            onChange={handleChange}
-          />
-          <input
-            type="text"
-            name="type"
-            placeholder="Category type"
-            className="flex-1 border border-gray-300 px-4 py-2 bg-[#F8F8F8]"
-            value={formData.type}
-            onChange={handleChange}
-          />
-          <button
-            className="bg-gray-400 text-white px-3"
-            onClick={handleClear}
-            title="Clear"
-          >
+    {/* Add / Edit Form */}
+    <div className="flex flex-wrap gap-2 mb-6 items-center">
+      <input
+        type="text"
+        name="brand"
+        placeholder="Brand name"
+        className="flex-1 min-w-[200px] border border-gray-300 px-4 py-2 bg-[#F8F8F8]"
+        value={formData.brand}
+        onChange={handleChange}
+      />
+      <input
+        type="text"
+        name="type"
+        placeholder="Category type"
+        className="flex-1 min-w-[200px] border border-gray-300 px-4 py-2 bg-[#F8F8F8]"
+        value={formData.type}
+        onChange={handleChange}
+      />
+      <div className="flex gap-2">
+        <button
+          className="bg-gray-400 text-white px-3 py-2 rounded"
+          onClick={handleClear}
+          title="Clear"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <button
+          className={`${editingId ? 'bg-blue-600' : 'bg-green-600'} text-white px-4 py-2 rounded ${isPosting ? 'opacity-50 cursor-not-allowed' : ''}`}
+          onClick={handleSubmit}
+          title={editingId ? "Update" : "Add"}
+          disabled={isPosting}
+        >
+          {isPosting ? (
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              {editingId ? "Updating..." : "Adding..."}
+            </div>
+          ) : (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-          </button>
-          <button
-            className={`${editingId ? 'bg-blue-600' : 'bg-green-600'} text-white px-3 py-2 ${isPosting ? 'opacity-50 cursor-not-allowed' : ''}`}
-            onClick={handleSubmit}
-            title={editingId ? "Update" : "Add"}
-            disabled={isPosting}
-          >
-            {isPosting ? (
-              <div className="flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
-                {editingId ? "Updating..." : "Adding..."}
-              </div>
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-          </button>
-        </div>
-
-        {/*full category table with search filtering */}
-        <div className="max-h-[21rem] overflow-y-scroll mb-4">
-          <table className="w-full border-collapse bg-[#F8F8F8] min-w-[500px]">
-            <thead className="bg-gray-700 text-white sticky top-0 z-10">
-              <tr className="text-left font-medium text-xs lg:text-sm">
-                <th className="px-4 py-2">ID</th>
-                <th className="px-4 py-2">CATEGORY</th>
-                <th className="px-4 py-2">BRAND</th>
-                <th className="px-4 py-2 w-16">ACTION</th>
-              </tr>
-            </thead>
-            <tbody>
-              {searchLoading ? (
-                <tr>
-                  <td colSpan="4" className="text-center py-8">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-8 w-8 mb-3"></div>
-                      <span className="text-gray-700">Searching...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredCategories.length === 0 ? (
-                <tr>
-                  <td colSpan="4" className="text-center py-8 text-gray-500">
-                    {search ? 'No categories found matching your search.' : 'No categories available.'}
-                  </td>
-                </tr>
-              ) : (
-                filteredCategories.map((category) => (
-                  <tr
-                    key={category.id}
-                    className={`border-b border-gray-200 text-gray-700 cursor-pointer hover:bg-gray-100 ${editingId === category.id ? 'bg-blue-50' : ''}`}
-                    onClick={() => handleRowClick(category)}
-                  >
-                    <td className="px-4 py-2">{category.id}</td>
-                    <td className="px-4 py-2">{category.type}</td>
-                    <td className="px-4 py-2">{category.brand}</td>
-                    <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        className="text-red-500 hover:text-red-700"
-                        onClick={(e) => handleDelete(category.id, e)}
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Summary table */}
-        <div className="max-h-[20rem] overflow-y-scroll">
-          <table className="w-full border-collapse bg-[#F8F8F8] min-w-[500px]">
-            <thead className="bg-gray-700 text-white sticky top-0 z-10">
-              <tr className="text-left font-medium text-xs lg:text-sm">
-                <th className="px-4 py-2">#</th>
-                <th className="px-4 py-2">CATEGORY NAME</th>
-                <th className="px-4 py-2">Num. OF BRANDS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summaryRows.map(({ idx, type, count }) => (
-                <tr key={type} className="border-b hover:bg-gray-100">
-                  <td className="px-4 py-2">{idx}</td>
-                  <td className="px-4 py-2">{type}</td>
-                  <td className="px-4 py-2">{count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          )}
+        </button>
       </div>
     </div>
+
+    {/* Categories Table */}
+    <div className="flex-1 overflow-y-auto mb-6">
+      <table className="w-full border-collapse bg-[#F8F8F8] min-w-[600px] rounded shadow-sm">
+        <thead className="bg-gray-700 text-white sticky top-0 z-10">
+          <tr className="text-left font-medium text-sm">
+            <th className="px-4 py-2 w-12">ID</th>
+            <th className="px-4 py-2">CATEGORY</th>
+            <th className="px-4 py-2">BRAND</th>
+            <th className="px-4 py-2 w-16">ACTION</th>
+          </tr>
+        </thead>
+        <tbody>
+          {searchLoading ? (
+            <tr>
+              <td colSpan="4" className="text-center py-8">
+                <div className="flex flex-col items-center justify-center">
+                  <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-8 w-8 mb-3"></div>
+                  <span className="text-gray-700">Searching...</span>
+                </div>
+              </td>
+            </tr>
+          ) : filteredCategories.length === 0 ? (
+            <tr>
+              <td colSpan="4" className="text-center py-8 text-gray-500">
+                {search ? 'No categories found matching your search.' : 'No categories available.'}
+              </td>
+            </tr>
+          ) : (
+            filteredCategories.map((category) => (
+              <tr
+                key={category.id}
+                className={`border-b border-gray-200 text-gray-700 cursor-pointer hover:bg-gray-100 ${editingId === category.id ? 'bg-blue-50' : ''}`}
+                onClick={() => handleRowClick(category)}
+              >
+                <td className="px-4 py-2">{category.id}</td>
+                <td className="px-4 py-2">{category.type}</td>
+                <td className="px-4 py-2">{category.brand}</td>
+                <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className="text-red-500 hover:text-red-700"
+                    onClick={(e) => handleDelete(category.id, e)}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+
+    {/* Summary Table */}
+    <div className="flex-1 overflow-y-auto">
+      <table className="w-full border-collapse bg-[#F8F8F8] min-w-[500px] rounded shadow-sm">
+        <thead className="bg-gray-700 text-white sticky top-0 z-10">
+          <tr className="text-left font-medium text-sm">
+            <th className="px-4 py-2">#</th>
+            <th className="px-4 py-2">CATEGORY NAME</th>
+            <th className="px-4 py-2">Num. OF BRANDS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {summaryRows.map(({ idx, type, count }) => (
+            <tr key={type} className="border-b hover:bg-gray-100">
+              <td className="px-4 py-2">{idx}</td>
+              <td className="px-4 py-2">{type}</td>
+              <td className="px-4 py-2">{count}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
   );
 }
 
