@@ -120,6 +120,53 @@ function UnitOfMeassurement() {
           the experience to your needs. Your settings are saved automatically
           and can be updated anytime.
         </p>
+
+        {/* Search bar */}
+        <div className="mb-4 flex items-center w-full max-w-xl">
+          <input
+            type="text"
+            placeholder="Search your item code"
+            className="flex-grow px-2 py-2 border-b border-gray-300 focus:outline-none focus:border-[#00489A]"
+            value={formData.search || ""}
+            onChange={e => {
+              const value = e.target.value;
+              setFormData(prev => ({ ...prev, search: value }));
+              setUnits(
+                value
+                  ? units.filter(
+                      unit =>
+                        unit.unit_name.toLowerCase().includes(value.toLowerCase()) ||
+                        unit.symbol.toLowerCase().includes(value.toLowerCase())
+                    )
+                  : (() => {
+                      fetchUoms();
+                      return units;
+                    })()
+              );
+            }}
+          />
+          <button
+            className="bg-[#00489A] text-white px-6 py-2 ml-2 flex items-center gap-2 hover:bg-blue-900"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1110.5 3a7.5 7.5 0 016.15 13.65z"
+              />
+            </svg>
+            Search
+          </button>
+        </div>
+
+
         {error && (
           <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">
             {error}
