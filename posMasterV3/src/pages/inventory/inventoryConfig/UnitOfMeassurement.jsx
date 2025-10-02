@@ -122,7 +122,7 @@ function UnitOfMeassurement() {
         </p>
 
         {/* Search bar */}
-        <div className="mb-4 flex items-center w-full max-w-xl">
+        <div className="mb-4 flex items-center">
           <input
             type="text"
             placeholder="Search your item code"
