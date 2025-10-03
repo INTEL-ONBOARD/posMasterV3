@@ -10,7 +10,8 @@ import ToastContext from "../toasts/ToastService.jsx";
 import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
 import JsBarcode from 'jsbarcode';
-import registerItemService from "../../api/services/registerItemService.jsx";
+import registerItemService from "../../api/services/inventory/registerItemService.jsx";
+
 
 function AddItem() {
   const toast = useContext(ToastContext);
