@@ -8,7 +8,7 @@ function NotificationCard({
 }) {
   return (
     <div className="w-full notification-item">
-      <div className="w-full bg-[#E9E9E9] border border-gray-200 px-4 py-4 flex items-center justify-between animate-fade-up hover-pop">
+      <div className="w-full bg-gray-100 border border-gray-200 px-4 py-4 flex items-center justify-between animate-fade-up hover-pop">
         <div className="flex-1 pr-4">
           <p className="text-lg font-bold text-[#787878] leading-tight">{title}</p>
           <p className="text-sm text-gray-400 mt-1 truncate">{description}</p>
