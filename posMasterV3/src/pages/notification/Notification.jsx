@@ -50,16 +50,22 @@ function Notification() {
   };
 
   return (
-    <div className="p-8 pt-16 pl-16">
-      <header className="mb-6">
-        <h1 className="text-[36px] font-bold leading-[32px] text-gray-400 mb-2">Notifications</h1>
-        <p className="text-[14px] text-[#525252] mt-2 max-w-3xl">Customize how the app works for you. Manage preferences such as notifications, themes, language, and other general behaviors to tailor the experience to your needs. Your settings are saved automatically and can be updated anytime.</p>
+    <div className="grid grid-rows-[auto_1fr] h-screen pl-16">
+      {/* Header row full width */}
+      <header className="p-8 pb-0">
+        <h1 className="text-[36px] font-bold leading-[32px] text-[#A3A3A3] mb-2">Notifications</h1>
+        <p className="text-[14px] text-[#525252] mt-4 max-w-3xl">
+          Customize how the app works for you. Manage preferences such as notifications,
+          themes, language, and other general behaviors to tailor the experience to your
+          needs. Your settings are saved automatically and can be updated anytime.
+        </p>
       </header>
 
-      <div className="flex gap-8">
+      {/* Second row: notification list + divider + help panel */}
+      <div className="grid grid-cols-[1fr_auto_480px] h-full">
         {/* Left: notification list */}
-        <div className="flex-1 pr-4">
-          <div className="space-y-4 notification-list">
+        <div className="p-8 pr-4 overflow-y-auto">
+          <div className="space-y-2 notification-list">
             <NotificationCard title="System notification" description="lorem ipsom lorem ipsom lorem ipsom lorem ipsom lorem ipsom" date="12.06 PM" onClose={() => { }} />
             <NotificationCard title="Suppliers updated" description="lorem ipsom lorem ipsom lorem ipsom lorem ipsom lorem ipsom" date="12.06 PM" onClose={() => { }} />
             <NotificationCard title="local database got synced successfully" description="lorem ipsom lorem ipsom lorem ipsom lorem ipsom lorem ipsom" date="12.06 PM" onClose={() => { }} />
@@ -69,12 +75,12 @@ function Notification() {
           </div>
         </div>
 
-        {/* Divider */}
+        {/* Divider (only spans this row, not header) */}
         <div className="w-px bg-gray-200" />
 
         {/* Right: help panel */}
-        <aside className="w-[480px] h-screen flex items-center justify-center px-6">
-          <div className="flex flex-col items-center -mt-10">
+        <aside className="flex items-center justify-center px-6">
+          <div className="flex flex-col items-center justify-center w-full">
             <img src={currentImg} alt="Need help" className="w-24 h-24 mb-4 transition-all duration-500" />
             <h3 className={`text-lg font-bold text-black mb-2
               ${fade ? "opacity-100" : "opacity-0"} transition-opacity duration-300 ease-in-out`}>
@@ -114,5 +120,6 @@ function Notification() {
     </div>
   )
 }
+
 
 export default Notification
