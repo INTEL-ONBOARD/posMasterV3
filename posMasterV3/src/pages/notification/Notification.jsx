@@ -24,25 +24,27 @@ function Notification() {
         </div>
 
         {/* Divider */}
-        <div className="w-px bg-gray-200" />
+        <div className="h-svh w-px bg-gray-200" />
 
         {/* Right: help panel */}
-        <aside className="w-[480px] flex flex-col items-center px-6">
-          <img src={notificationsImg} alt="Need help" className="w-24 h-24 mb-4" />
-          <h3 className="text-lg font-bold text-black mb-2">NEED A HELP?</h3>
-          <p className="text-xs text-[#989898] text-center mb-4">Got stuck or need guidance? The Need a Help? section is your go-to support hub. Access quick tutorials, FAQs, troubleshooting tips, and direct contact with our support team</p>
+        <aside className="w-[480px] h-screen flex items-center justify-center px-6">
+          <div className="flex flex-col items-center -mt-10">
+            <img src={notificationsImg} alt="Need help" className="w-24 h-24 mb-4" />
+            <h3 className="text-lg font-bold text-black mb-2">NEED A HELP?</h3>
+            <p className="text-xs text-[#989898] text-center mb-4">Got stuck or need guidance? The Need a Help? section is your go-to support hub. Access quick tutorials, FAQs, troubleshooting tips, and direct contact with our support team</p>
 
-          <textarea
-            placeholder="Let us know what's your emergency....."
-            rows={6}
-            className="w-full bg-[#EBEBEB] border border-gray-200 p-4 text-sm text-[#9E9E9E] resize-none shadow-sm"
-          />
+            <textarea
+              placeholder="Let us know what's your emergency....."
+              rows={6}
+              className="w-full bg-[#EBEBEB] border border-gray-200 p-4 text-sm text-[#9E9E9E] resize-none shadow-sm"
+            />
 
-          <button className="mt-8 w-14 h-14 rounded-full bg-[#C7C7C7] flex items-center justify-center shadow">
-            <svg width={20} height={20} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 12l4 6 10-12" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+            <button className="mt-8 w-14 h-14 rounded-full bg-[#C7C7C7] flex items-center justify-center shadow">
+              <svg width={20} height={20} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 12l4 6 10-12" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
         </aside>
       </div>
     </div>
