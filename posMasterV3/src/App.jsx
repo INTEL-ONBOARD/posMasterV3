@@ -87,6 +87,7 @@ function App() {
           <Route path="login" element={<Login />} />
 
           <Route path="dashboard" element={<Dashboard />} >
+            <Route index element={<Notification />} />
             <Route path="inventory/*" element={<Inventory />} />
             <Route path="inventory-config" element={<InventoryConfig />} />
             <Route path="settings/*" element={<Settings />} />
