@@ -3,7 +3,8 @@ import Add_item_Card from "./Add_item_Card";
 import { useState, useEffect } from "react";
 import { apiClient } from "../../api/client";
 import ItemCard from "../../components/ItemCard";
-import registerItemService from "../../api/services/registerItemService";
+import registerItemService from "../../api/services/inventory/registerItemService";
+
 
 
 export default function ConfirmDeleteModal({ open, item, onCancel, onSuccess }) {
