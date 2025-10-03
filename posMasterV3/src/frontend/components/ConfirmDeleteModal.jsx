@@ -3,6 +3,7 @@ import Add_item_Card from "./Add_item_Card";
 import { useState, useEffect } from "react";
 import { apiClient } from "../../api/client";
 import ItemCard from "../../components/ItemCard";
+import registerItemService from "../../api/services/registerItemService";
 
 
 export default function ConfirmDeleteModal({ open, item, onCancel, onSuccess }) {
@@ -20,10 +21,11 @@ export default function ConfirmDeleteModal({ open, item, onCancel, onSuccess }) 
     // }
     
       try {
-      const result = await apiClient.delete(`api/itemRegistry/${selectedItemId}`);
+      //const result = await apiClient.delete(`api/itemRegistry/${selectedItemId}`);
+      const result = await registerItemService.deleteItem(selectedItemId);
       //setDeleteResult(result);
       
-      if (result.data.status === 'success') {
+      if (result.status === 'success') {
         // Handle successful deletion (e.g., update UI, show notification)
         console.log('Item deleted:', result.data);
         onSuccess();

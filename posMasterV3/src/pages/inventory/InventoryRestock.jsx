@@ -10,10 +10,15 @@ import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
 import { generateUniqueString } from "../../util/generate";
 
+//modal images
+import successImage from '../../assets/Success.png';
+import failedImage from '../../assets/Failed.png';
+
 function InventoryRestock() {
 
   // modal state: { open: boolean, type: 'success' | 'failed' | null }
   const [modal, setModal] = useState({ open: false, type: null });
+  const closeModal = () => setModal({ open: false, type: null });
   // Fetch Categories from API and create mapping
   const [suppliers, setSuppliers] = useState([]);
   useEffect(() => {
@@ -188,37 +193,211 @@ function InventoryRestock() {
   }, [invoiceGenerate]);
 
 
-  const [selectedSupplier, setselectedSupplier] = useState({});
-  const [selectedEmpPrep, setSelectedEmpPrep] = useState({});
-  const [selectedEmpAuth, setSeleselectedEmpAuth] = useState({});
+  // const [selectedSupplier, setselectedSupplier] = useState({});
+  // const [selectedEmpPrep, setSelectedEmpPrep] = useState({});
+  // const [selectedEmpAuth, setSeleselectedEmpAuth] = useState({});
 
   //storing additional data from api just in case(form data is maintained seperately)
-  const [selectedRegItem, setSelectedRegItem] = useState({});
-  const [selectedReturnItem, setselectedReturnItem] = useState({});
+  //const [selectedRegItem, setSelectedRegItem] = useState({});
+  //const [selectedReturnItem, setselectedReturnItem] = useState({});
 
   //item list for the mid section table
-  const [selectedStockItemList, setSelectedRegItemList] = useState([
+  const [selectedStockItemList, setSelectedStockItemList] = useState([
+    {
+      _id: "",
+      id: 0,
+      stock_trace: [0],
+      item_name: "fdsaf",
+      item_image_url: "",
+      batch_code: "fdsaf",
+      maximum_capacity: 10,
+      uom_id: 10,
+      category_id: 10,
+      inventory_id: 11,
+      item_update_datetime: "2025-12-31T23:59:59",
+      item_created_datetime: "2025-12-31T23:59:59",
+      __v: 0,
+      inventory: null,
+      sku: "skupsps",
+      quantity: 3,
+      threshold_limit: 20,
+      stock_price: 20,
+      retail_price: 30,
+      expired_datetime: "2025-12-31T23:59:59",
+      availability: true,
 
+      uom_symbol: "pcs"
+    },
+    {
+      _id: "",
+      id: 0,
+      stock_trace: [0],
+      item_name: "fdsaf",
+      item_image_url: "",
+      batch_code: "fdsaf",
+      maximum_capacity: 10,
+      uom_id: 10,
+      category_id: 10,
+      inventory_id: 11,
+      item_update_datetime: "2025-12-31T23:59:59",
+      item_created_datetime: "2025-12-31T23:59:59",
+      __v: 0,
+      inventory: null,
+      sku: "skupsps",
+      quantity: 3,
+      threshold_limit: 20,
+      stock_price: 20,
+      retail_price: 30,
+      expired_datetime: "2025-12-31T23:59:59",
+      availability: true,
+
+      uom_symbol: "pcs"
+    }
   ]);
 
   const [selectedReturnItemList, setSelectedReturnItemList] = useState([
+    {
+      _id: "",
+      id: 0,
+      stock_trace: [0],
+      item_name: "fdsaf return",
+      item_image_url: "",
+      batch_code: "fdsaf",
+      maximum_capacity: 10,
+      uom_id: 10,
+      category_id: 10,
+      inventory_id: 11,
+      item_update_datetime: "2025-12-31T23:59:59",
+      item_created_datetime: "2025-12-31T23:59:59",
+      __v: 0,
+      // uom: {
+      //   _id: "",
+      //   id: 0,
+      //   symbol: "",
+      //   unit_name: "",
+      //   __v: 0
+      // },
+      // category: {
+      //   _id: "",
+      //   id: 0,
+      //   brand: "",
+      //   type: "",
+      //   __v: 0
+      // },
+      inventory: null,
+      // availability: true
 
+      sku: "skupsps",
+      quantity: 150,
+      threshold_limit: 20,
+      stock_price: 20,
+      retail_price: 35,
+      expired_datetime: "2025-12-31T23:59:59",
+      availability: true,
+
+      uom_symbol: "pcs",
+
+      return_description: "damaged goods"
+    }
   ]);
 
   //select table rows and load form sections
-  const selectRowStock = () => {
+  const addRegItemToForm = (item) => {
+
+        //load item basic details(loaded for all item types-reg, return...etc)
+    setFormDataRegItem({
+      sku: item.sku,
+
+      _id: item._id,
+      id: item.id,
+      stock_trace: item.stock_trace,
+      item_name: item.item_name,
+      item_image_url: item.item_image_url,
+      //batch_code: item.batch_code,
+      maximum_capacity: item.maximum_capacity,
+      uom_id: item.uom_id,
+      category_id: item.category_id,
+      inventory_id: item.inventory_id,
+      item_update_datetime: item.item_update_datetime,
+      item_created_datetime: item.item_created_datetime,
+      __v: item._v,
+      uom: {
+        _id: item.uom?._id,
+        id: item.uom?._id.id,
+        symbol: item.uom?.symbol,
+        unit_name: item.uom?.unit_name,
+        __v: item.uom?._v,
+      },
+      category: {
+        _id: item.category?._id,
+        id: item.category?.id,
+        brand: item.category?.brand,
+        type: item.category?.type,
+        __v: item.category?._v,
+      },
+      inventory: item.inventory,
+      availability: item.availability
+    });
+
+    setFormDataStock({
+      sku: item.sku,
+      quantity: item.quantity,
+      threshold_limit: item.threshold_limit,
+      stock_price: item.stock_price,
+      retail_price: item.retail_price,
+      expired_datetime: item.expired_datetime,
+      availability: item.availability
+    });
+    //load item into bucket just in case
+    //setSelectedRegItem(item);
+
+    //setFormDataRegItem(fd => ({ ...fd, ...item })); //not usefull with new row block obj
+    //fetch stock list for item sku
+    fetchStockEntries(item.sku);
 
   }
-  const selectRowReturn = () => {
 
+  const addReturnItemToForm = (item) => {
+    //validation of some sort?
+
+    
   }
 
-  const addItemToList = () => {
+  const addNewRegItem = () => {
 
     //check if it already exists on the item list first
     // console.log(formDataRegItem.id);
     // console.log(formDataRegItem._id);
     if (rightActiveSection != "return") {
+      // const newRegItem = {
+      //   _id: formDataRegItem._id,
+      //   id: formDataRegItem.id,
+      //   stock_trace: formDataRegItem.stock_trace,
+      //   item_name: formDataRegItem.item_name,
+      //   item_image_url: formDataRegItem.item_image_url,
+      //   maximum_capacity: formDataRegItem.maximum_capacity,
+      //   uom_id: formDataRegItem.uom_id,
+      //   category_id: formDataRegItem.category_id,
+      //   inventory_id: formDataRegItem.inventory_id,
+      //   item_update_datetime: formDataRegItem.item_update_datetime,
+      //   item_created_datetime: formDataRegItem.item_created_datetime,
+      //   __v: formDataRegItem.__v,
+      //   inventory: formDataRegItem.inventory,
+
+      //   batch_code: formDataStock.batch_code,
+      //   sku: formDataRegItem.sku,
+      //   quantity: parseFloat(formDataStock.quantity) || 0,
+      //   threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
+      //   stock_price: parseFloat(formDataStock.stock_price) || 0,
+      //   retail_price: parseFloat(formDataStock.retail_price) || 0,
+      //   expired_datetime: formDataStock.expired_datetime,
+      //   availability: formDataStock.availability,
+
+      //   uom_symbol: formDataStock.uom?.uom_symbol
+      // };
+      // console.log(newRegItem);
+      // //TODO: do a validation first
+      // setSelectedStockItemList(prev => [...prev, newRegItem]);
       const newRegItem = {
         _id: formDataRegItem._id,
         id: formDataRegItem.id,
@@ -247,7 +426,13 @@ function InventoryRestock() {
       };
       console.log(newRegItem);
       //TODO: do a validation first
-      setSelectedRegItemList(prev => [...prev, newRegItem]);
+
+      // Update existing item by id instead of adding new item
+      setSelectedStockItemList(prev => 
+        prev.map(prevItem => 
+          prevItem.id === formDataRegItem.id ? newRegItem : prevItem
+        )
+      );
     }
     else {
       console.log("return item was selected");
@@ -290,8 +475,11 @@ function InventoryRestock() {
 
 
   //removes item from list by id
-  const removeItemFromList = (id) => {
-    setSelectedRegItemList(prev => prev.filter(item => item.id !== id));
+  const removeStockItemFromList = (id) => {
+    setSelectedStockItemList(prev => prev.filter(item => item.id !== id));
+  }
+    const removeReturnItemFromList = (id) => {
+    setSelectedReturnItemList(prev => prev.filter(item => item.id !== id));
   }
 
   //totalValues
@@ -352,9 +540,8 @@ function InventoryRestock() {
     availability: true
   });
   
-  const [stockEntries, setStockEntries] = useState([]);
-
-
+  
+  //date for batch code item cards
   const formatDateSafe = (dateStr) => {
     if (!dateStr) return '';
     try {
@@ -366,9 +553,10 @@ function InventoryRestock() {
       return '';
     }
   };
-
+  
+  const [stockEntries, setStockEntries] = useState([]);
   // fetch stock entries for a given SKU
-  const fetchStockEntries = async (sku) => {
+  const fetchStockEntries = async (sku, isStockItem) => {
     if (!sku) return;
     try {
       const response = await apiClient.get(`api/restocks/stock-data/${sku}`);
@@ -383,18 +571,27 @@ function InventoryRestock() {
           setStockEntries(payload.data);
         } else {
           setStockEntries([]);
-          setStockFetchError(payload.message || 'Unexpected response shape');
+          //setStockFetchError(payload.message || 'Unexpected response shape');
         }
 
       } else {
         setStockEntries([]);
-        setStockFetchError('Empty response from server');
+        //setStockFetchError('Empty response from server');
       }
     } catch (err) {
       console.error('Failed to fetch stock entries for', sku, err);
       setStockEntries([]);
     }
   };
+  //populate the batchcode textbox from recent sku card
+  const setStockBatchCodeFromEntry = (batch_code) => {
+    console.log(batch_code);
+    setFormDataStock(prev => ({ ...prev, batch_code: batch_code }));
+  }
+  const setReturnBatchCodeFromEntry = (batch_code) => {
+    console.log(batch_code);
+    setFormDataReturnItem(prev => ({ ...prev, batch_code: batch_code }));
+  }
   const handleStockInputChange = (e) => {
     const { name, value } = e.target;
     console.log(name + ": " + value);
@@ -474,77 +671,164 @@ function InventoryRestock() {
   };
 
   // Load item object into selectd item list
-  const loadItemtoForm = (item) => {
+  const loadItemtoList = (item) => {
+
+    if (rightActiveSection != "return") {
+      const newRegItem = {
+        _id: item._id,
+        id: item.id,
+        stock_trace: item.stock_trace,
+        item_name: item.item_name,
+        item_image_url: item.item_image_url,
+        maximum_capacity: item.maximum_capacity,
+        uom_id: item.uom_id,
+        category_id: item.category_id,
+        // inventory_id: item.inventory_id,
+        // item_update_datetime: item.item_update_datetime,
+        // item_created_datetime: item.item_created_datetime,
+        // __v: item.__v,
+        // inventory: item.inventory,
+
+        //batch_code: formDataStock.batch_code,
+        //need to make them zeros and empty when loading to table for the first tiem
+        // sku: formDataRegItem.sku,
+        // quantity: parseFloat(formDataStock.quantity) || 0,
+        // threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
+        // stock_price: parseFloat(formDataStock.stock_price) || 0,
+        // retail_price: parseFloat(formDataStock.retail_price) || 0,
+        // expired_datetime: formDataStock.expired_datetime,
+        // availability: formDataStock.availability,
+
+        sku: item.sku,
+        quantity: 0,
+        threshold_limit: 0,
+        stock_price: 0,
+        retail_price: 0,
+        expired_datetime: "",
+        availability: true,
+
+        uom_symbol: formDataStock.uom?.uom_symbol
+      };
+      console.log(newRegItem);
+      //setSelectedStockItemList(prev => [...prev, newRegItem]);
+      //TODO: do a validation first: if item already exists, don't add it(can be changed to update mulitple items with different batch codes)
+      setSelectedStockItemList(prev => 
+        prev.some(item => item.id === newRegItem.id) 
+          ? prev 
+          : [...prev, newRegItem]
+      );
+    }
+    else {
+      console.log("return item was selected");
+
+      //TODO: fix quantity redunduncy here
+      const newRetItem = {
+
+        _id: formDataRegItem._id,
+        id: formDataRegItem.id,
+        stock_trace: formDataRegItem.stock_trace,
+        item_name: formDataRegItem.item_name,
+        item_image_url: formDataRegItem.item_image_url,
+        maximum_capacity: formDataRegItem.maximum_capacity,
+        uom_id: formDataRegItem.uom_id,
+        category_id: formDataRegItem.category_id,
+        inventory_id: formDataRegItem.inventory_id,
+        item_update_datetime: formDataRegItem.item_update_datetime,
+        item_created_datetime: formDataRegItem.item_created_datetime,
+        __v: formDataRegItem.__v,
+        inventory: formDataRegItem.inventory,
+
+        
+        sku: formDataStock.sku,
+        threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
+        stock_price: parseFloat(formDataStock.stock_price) || 0,
+        retail_price: parseFloat(formDataStock.retail_price) || 0,
+        expired_datetime: formDataStock.expired_datetime,
+        availability: formDataStock.availability,
+
+        batch_code: formDataReturnItem.batch_code,
+        quantity: parseFloat(formDataReturnItem.quantity) || 0,
+        uom_symbol: formDataStock.uom?.uom_symbol,
+        return_description: formDataReturnItem.return_description
+      };
+      console.log(newRetItem);
+      //TODO: do a validation first
+      setSelectedReturnItemList(prev => [...prev, newRetItem]);
+    }
+    
     //load item basic details(loaded for all item types-reg, return...etc)
-    setFormDataRegItem({
-      sku: item.sku,
+    // setFormDataRegItem({
+    //   sku: item.sku,
 
-      _id: item._id,
-      id: item.id,
-      stock_trace: item.stock_trace,
-      item_name: item.item_name,
-      item_image_url: item.item_image_url,
-      //batch_code: item.batch_code,
-      maximum_capacity: item.maximum_capacity,
-      uom_id: item.uom_id,
-      category_id: item.category_id,
-      inventory_id: item.inventory_id,
-      item_update_datetime: item.item_update_datetime,
-      item_created_datetime: item.item_created_datetime,
-      __v: item._v,
-      uom: {
-        _id: item.uom?._id,
-        id: item.uom?._id.id,
-        symbol: item.uom?.symbol,
-        unit_name: item.uom?.unit_name,
-        __v: item.uom?._v,
-      },
-      category: {
-        _id: item.category?._id,
-        id: item.category?.id,
-        brand: item.category?.brand,
-        type: item.category?.type,
-        __v: item.category?._v,
-      },
-      inventory: item.inventory,
-      availability: item.availability
-    });
-
-    // setFormDataStock({
-    //   sku: "skupsps",
-    //   quantity: 150,
-    //   threshold_limit: 20,
-    //   stock_price: 20.0,
-    //   retail_price: 35.0,
-    //   expired_datetime: "2025-12-31T23:59:59",
-    //   availability: true
+    //   _id: item._id,
+    //   id: item.id,
+    //   stock_trace: item.stock_trace,
+    //   item_name: item.item_name,
+    //   item_image_url: item.item_image_url,
+    //   //batch_code: item.batch_code,
+    //   maximum_capacity: item.maximum_capacity,
+    //   uom_id: item.uom_id,
+    //   category_id: item.category_id,
+    //   inventory_id: item.inventory_id,
+    //   item_update_datetime: item.item_update_datetime,
+    //   item_created_datetime: item.item_created_datetime,
+    //   __v: item._v,
+    //   uom: {
+    //     _id: item.uom?._id,
+    //     id: item.uom?._id.id,
+    //     symbol: item.uom?.symbol,
+    //     unit_name: item.uom?.unit_name,
+    //     __v: item.uom?._v,
+    //   },
+    //   category: {
+    //     _id: item.category?._id,
+    //     id: item.category?.id,
+    //     brand: item.category?.brand,
+    //     type: item.category?.type,
+    //     __v: item.category?._v,
+    //   },
+    //   inventory: item.inventory,
+    //   availability: item.availability
     // });
-    //load item into bucket just in case
-    setSelectedRegItem(item);
 
-    setFormDataRegItem(fd => ({ ...fd, ...item }));
-    fetchStockEntries(item.sku);
+    // // setFormDataStock({
+    // //   sku: "skupsps",
+    // //   quantity: 150,
+    // //   threshold_limit: 20,
+    // //   stock_price: 20.0,
+    // //   retail_price: 35.0,
+    // //   expired_datetime: "2025-12-31T23:59:59",
+    // //   availability: true
+    // // });
+    // //load item into bucket just in case
+    // //setSelectedRegItem(item);
+
+    // setFormDataRegItem(fd => ({ ...fd, ...item }));
+    // //fetch stock list for item sku
+    // fetchStockEntries(item.sku);
 
 
 
 
 
-    //**________________________________________________________________________________________________________________________________
-    // 2. extract its category & brand:
-    const { type, brand } = item.category;
-    // 3a. set the category‐dropdown state (this also fires your useEffect to populate brandOptions)
-    setSelectedCategoryType(type);
-    // 3b. explicitly set the form’s dropdown values:
-    setFormCategoryData({
-      categoryType: type,
-      brand,
-    });
-    //set unit of measure in the dropdown
-    // 3. pre‐select the UOM dropdown
-    setFormUOMData(item.uom.id);
-    // and keep formData.uom_id correct:
-    setFormData(fd => ({ ...fd, uom_id: item.uom.id, uom: item.uom }));
-    //**________________________________________________________________________________________________________________________________
+    // //**________________________________________________________________________________________________________________________________
+    // // 2. extract its category & brand:
+    // const { type, brand } = item.category;
+    // // 3a. set the category‐dropdown state (this also fires your useEffect to populate brandOptions)
+    // setSelectedCategoryType(type);
+    // // 3b. explicitly set the form’s dropdown values:
+    // setFormCategoryData({
+    //   categoryType: type,
+    //   brand,
+    // });
+    // //set unit of measure in the dropdown
+    // // 3. pre‐select the UOM dropdown
+    // setFormUOMData(item.uom.id);
+    // // and keep formData.uom_id correct:
+    // setFormData(fd => ({ ...fd, uom_id: item.uom.id, uom: item.uom }));
+    // //**________________________________________________________________________________________________________________________________
+
+
   };
 
 
@@ -581,7 +865,8 @@ function InventoryRestock() {
 
 
   const registerTransaction = async (e) => {
-
+    setModal({ open: true, type: 'success' });
+    return;
 
     //create reg item list for req data
     // Function to transform selected items to the required format
@@ -720,6 +1005,7 @@ function InventoryRestock() {
 
 
   return (
+
     <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
       {/* form section (left) */}
       <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 z-10">
@@ -931,7 +1217,9 @@ function InventoryRestock() {
                       <div className="text-gray-500">No recent batches</div>
                     ) : (
                       stockEntries.map((s, i) => (
-                        <div key={s.batch_code + i} className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
+                        <div key={s.batch_code + i} className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]"
+                          onClick={()=>setStockBatchCodeFromEntry(s.batch_code)}
+                        >
                           <div className="flex flex-col">
                             <span className="text-md font-bold">Batchcode:</span>
                             <span className="text-gray-600">{s.batch_code}</span>
@@ -1069,7 +1357,7 @@ function InventoryRestock() {
           </div>
 
           {/* ▼ return description block ▼ */}
-          {(rightActiveSection === "return") && (
+          {(true) && (
             <div className="bg-white">
               <button
                 onClick={() => setopenFormBlock('return')}
@@ -1117,7 +1405,8 @@ function InventoryRestock() {
                       <div className="text-gray-500">No batches available</div>
                     ) : (
                       stockEntries.map((s, i) => (
-                        <div key={s.batch_code + i} className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]">
+                        <div key={s.batch_code + i} className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]"
+                        onClick={()=>setReturnBatchCodeFromEntry(s.batch_code)}>
                           <div className="flex flex-col">
                             <span className="text-md font-bold">SKU:</span>
                             <span className="text-gray-600">{s.sku}</span>
@@ -1165,7 +1454,7 @@ function InventoryRestock() {
           {/* switch between update and add button functions based on item card selection and clear form button click */}
           <button
             // onClick={isUserEditting ? updateItem : createItem}
-            onClick={addItemToList}
+            onClick={addNewRegItem}
             className="flex-1 min-w-0 h-10 px-3 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors text-sm"
           >
             <span className="truncate">Add Item</span>
@@ -1308,8 +1597,8 @@ function InventoryRestock() {
               {selectedStockItemList.map((item, index) => (
                 <tr
                   onClick={() => {
-                    //alert("reg i");
-                    selectRowStock();
+                    alert("item added");
+                    addRegItemToForm(item);
                   }}
                   key={item.id || generateUniqueString()} // Use the previously defined generateUniqueString
                   className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors`}
@@ -1318,7 +1607,9 @@ function InventoryRestock() {
                     {index + 1}
                   </td>
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {item.sku || generateUniqueString()}
+                    {item.sku 
+                    // || generateUniqueString()
+                    }
                   </td>
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
                     {item.quantity} ({item.uom_symbol})
@@ -1338,10 +1629,15 @@ function InventoryRestock() {
                   <td>
                     <button
                       type="button"
-                      onClick={() => removeItemFromList(item.id || generateUniqueString())}
+                      onClick={(e) => { // 'e' represents the React synthetic event
+                        e.stopPropagation(); // This stops the event from reaching the row
+                        removeStockItemFromList(item.id);
+                        alert("item removed");
+                      }}
                       aria-label="Close notification"
                       className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
                     >
+                      {/* Your SVG icon remains the same */}
                       <svg
                         className="w-4 h-4 text-white"
                         viewBox="0 0 24 24"
@@ -1356,8 +1652,8 @@ function InventoryRestock() {
                         <line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
                     </button>
-                  </td>
-                </tr>
+                  </td>                
+                  </tr>
               ))}
 
               {/* Map selectedReturnItemList */}
@@ -1365,7 +1661,7 @@ function InventoryRestock() {
                 <tr
                   onClick={() => {
                     //alert("ret i");
-                    selectRowReturn();
+                    addReturnItemToForm(item);
                   }}
                   key={item.id || generateUniqueString()}
                   className={`border-b bg-red-100 border-gray-200 hover:bg-red-200 cursor-pointer transition-colors`}
@@ -1394,7 +1690,7 @@ function InventoryRestock() {
                   <td>
                     <button
                       type="button"
-                      onClick={() => removeItemFromList(item.id || generateUniqueString())}
+                      onClick={() => removeReturnItemFromList(item.id)}
                       aria-label="Close notification"
                       className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
                     >
@@ -1659,7 +1955,7 @@ function InventoryRestock() {
                   </div>
                 ) : (
                   filteredItems.map((item) => (
-                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={() => loadItemtoForm(item)} />
+                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={() => loadItemtoList(item)} />
                   ))
                 )}
               </div>
@@ -1688,6 +1984,7 @@ function InventoryRestock() {
       </div>
 
 
+      {/* integrage this modal later */}
       {/* MODAL OVERLAY */}
       {modal.open && (
         <div
@@ -1697,8 +1994,8 @@ function InventoryRestock() {
         >
           {/* backdrop (click to close) */}
           <div
-            className="absolute inset-0"
-            style={{ backgroundColor: 'rgba(255,255,255,0.55)' }}
+            className="absolute inset-0 bg-black opacity-60"
+            //style={{ backgroundColor: 'rgba(255,255,255,0.55)' }}
             onClick={closeModal}
           />
 
