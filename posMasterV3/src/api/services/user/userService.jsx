@@ -1,5 +1,5 @@
 import apiClient from "./apiClient";
-import UserDTO from "../../templates/dtos/UserDTO";
+import UserDTO from "../../../templates/dtos/user/UserDTO";
 
 class ApiService {
 
