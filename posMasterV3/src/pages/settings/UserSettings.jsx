@@ -139,7 +139,7 @@ function UserSettings() {
   const handleSave = async () => {
 
     //new password was selected as current for now
-    const newPassword = formData.currentPassword
+    var newPassword = formData.currentPassword
     //if a new password was selected
     if (formData.email && !isValidEmail(formData.email)) {
     //alert('Please enter a valid email address.');
