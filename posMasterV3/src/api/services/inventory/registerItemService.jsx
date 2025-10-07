@@ -1,8 +1,8 @@
-import ResponseDTO from "../../templates/dtos/ResponseDTO";
-import UserDTO from "../../templates/dtos/UserDTO";
-import { apiClient } from "../client";
+import ResponseDTO from "../../../templates/dtos/ResponseDTO";
 
-class ApiService {
+import { apiClient } from "../../client";
+
+class RegisterItemService {
 
     async getItems() {
         const response = await apiClient.get("api/itemRegistry/extended");
@@ -35,4 +35,4 @@ class ApiService {
 
 }
 
-export default new ApiService();
+export default new RegisterItemService();

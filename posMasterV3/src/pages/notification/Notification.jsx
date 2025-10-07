@@ -1,8 +1,54 @@
 import React from 'react'
+import { useState } from 'react'
 import notificationsImg from '../../assets/notifications.png'
+import notificationsSubmitImg from '../../assets/notifications_submitted.png'
 import NotificationCard from '../../components/NotificationCard'
 
 function Notification() {
+  const [text, setText] = useState("");
+  const [buttonActive, setButtonActive] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [success, setSuccess] = useState(null);
+  const [showTextarea, setShowTextarea] = useState(true);
+  const [showButton, setShowButton] = useState(true);
+  const [currentImg, setCurrentImg] = useState(notificationsImg);
+  const [fade, setFade] = useState(true);
+
+  const handleChange = (e) => {
+    const msg = e.target.value;
+    setText(msg);
+    setButtonActive(msg.trim().length > 0);
+  };
+
+  const handleSubmit = () => {
+    if (!buttonActive || submitting) return;
+
+    setSubmitting(true);
+    setFade(false);
+
+    setTimeout(() => {
+      setShowTextarea(false);
+      setShowButton(false);
+      setSubmitted(true);
+
+      const randomSuccess = Math.random() < 0.5;
+      setSuccess(randomSuccess);
+      setCurrentImg(randomSuccess ? notificationsSubmitImg : notificationsImg);
+      setFade(true);
+
+      setTimeout(() => {
+        setShowTextarea(true);
+        setText("");
+        setButtonActive(false);
+        setSubmitted(false);
+        setCurrentImg(notificationsImg);
+        setSubmitting(false);
+        setShowButton(true);
+      }, 2000);
+    }, 300);
+  };
+
   return (
     <div className="grid grid-rows-[auto_1fr] h-screen pl-16">
       {/* Header row full width */}
@@ -35,25 +81,39 @@ function Notification() {
         {/* Right: help panel */}
         <aside className="flex items-center justify-center px-6">
           <div className="flex flex-col items-center justify-center w-full">
-            <img src={notificationsImg} alt="Need help" className="w-24 h-24 mb-4" />
-            <h3 className="text-lg font-bold text-black mb-2">NEED A HELP?</h3>
-            <p className="text-xs text-[#989898] text-center mb-4">
-              Got stuck or need guidance? The Need a Help? section is your go-to support hub.
-              Access quick tutorials, FAQs, troubleshooting tips, and direct contact with our
-              support team
+            <img src={currentImg} alt="Need help" className="w-24 h-24 mb-4 transition-all duration-500" />
+            <h3 className={`text-lg font-bold text-black mb-2
+              ${fade ? "opacity-100" : "opacity-0"} transition-opacity duration-300 ease-in-out`}>
+              {submitted ? success ? "Submitted!" : "Submission Failed..." : "Need a Help?"}
+            </h3>
+            <p className={`text-xs text-[#989898] text-center mb-4
+              ${fade ? "opacity-100" : "opacity-0"} transition-opacity duration-300 ease-in-out`}>
+              {submitted ? success ? "Thank you." : "Please try again" : "Got stuck or need guidance? The Need a Help? section is your go-to support hub. Access quick tutorials, FAQs, troubleshooting tips, and direct contact with our support team"}
             </p>
 
-            <textarea
-              placeholder="Let us know what's your emergency....."
-              rows={6}
-              className="w-full bg-[#EBEBEB] border border-gray-200 p-4 text-sm text-[#9E9E9E] resize-none shadow-sm"
-            />
+            {showTextarea && (
+              <textarea
+                placeholder="Let us know what's your emergency....."
+                rows={6}
+                className={`w-full bg-[#EBEBEB] border border-gray-200 p-4 text-sm text-[#9E9E9E] resize-none shadow-sm
+                  ${fade ? "opacity-100" : "opacity-0"} transition-opacity duration-300 ease-in-out`}
+                value={text}
+                onChange={handleChange}
+              />
+            )}
 
-            <button className="mt-8 w-14 h-14 rounded-full bg-[#C7C7C7] flex items-center justify-center shadow">
-              <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                <path d="M4 12l4 6 10-12" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+            {showButton && (
+              <button
+                disabled={!buttonActive || submitting}
+                onClick={handleSubmit}
+                className={`mt-8 w-14 h-14 rounded-full flex items-center justify-center shadow
+              ${buttonActive && !submitting ? "bg-[#17841E]" : "bg-[#C7C7C7]"} transition-colors duration-300 ease-in-out`}>
+                <svg width={20} height={20} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 12l4 6 10-12" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
+
           </div>
         </aside>
       </div>
