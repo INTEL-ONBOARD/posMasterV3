@@ -8,7 +8,7 @@ function Intro() {
   useEffect(() => {
     const timer = setTimeout(() => {
       //navigate("/startup");
-      navigate("/login");
+      navigate("/startup");
     }, 3000);
     return () => clearTimeout(timer);
   }, [navigate]);
