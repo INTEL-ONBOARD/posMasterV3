@@ -108,6 +108,8 @@ function createWindow() {
   },
   });
 
+  mainWindow.maximize();
+
   mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
   mainWindow.webContents.openDevTools();
 
@@ -117,8 +119,6 @@ function createWindow() {
     console.log('Window close triggered, handling logout...');
     performLogoutAndQuit();
   });
-
-
 }
 
 ipcMain.on('perform-logout', async () => {
