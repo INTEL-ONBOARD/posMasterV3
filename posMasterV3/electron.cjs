@@ -1,17 +1,55 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
 const axios = require('axios');
 const fs = require('fs').promises;
-
 const printer = require("pdf-to-printer");
 
 let mainWindow;
 let storedUser = null;
 let isQuitting = false;
 
+// IPC to open folder selector
+ipcMain.handle('select-folder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory']
+  });
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+  return result.filePaths[0];
+});
 
+// IPC to ensure sample.json
+ipcMain.handle('ensure-sample-json', async (event, folderPath) => {
+  const filePath = path.join(folderPath, 'sample.json');
+  const sampleContent = {
+    name: "sample name",
+    address: "sample address",
+    description: "This is sample json"
+  };
 
+  let needsWrite = false;
+  try {
+    const file = await fs.readFile(filePath, 'utf-8');
+    const data = JSON.parse(file);
 
+    if (
+      data.name !== sampleContent.name ||
+      data.address !== sampleContent.address ||
+      data.description !== sampleContent.description
+    ) {
+      needsWrite = true;
+    }
+  } catch (err) {
+    needsWrite = true; // File does not exist or is invalid
+  }
+
+  if (needsWrite) {
+    await fs.writeFile(filePath, JSON.stringify(sampleContent, null, 2), 'utf-8');
+    return { created: true, filePath };
+  }
+  return { created: false, filePath };
+});
 
 ipcMain.handle('store-user-data', async (event, userData) => {
   storedUser = userData;
@@ -96,16 +134,16 @@ function createWindow() {
   const iconPath = path.join(__dirname, "src", "assets", "icon.ico");
 
   mainWindow = new BrowserWindow({
-  width: 1024,
-  height: 768,
-  autoHideMenuBar: true,
-  titleBarOverlay: true,
-  icon: iconPath,
-  webPreferences: {
-    preload: path.join(__dirname, "preload.cjs"),
-    nodeIntegration: false,
-    contextIsolation: true,
-  },
+    width: 1024,
+    height: 768,
+    autoHideMenuBar: true,
+    titleBarOverlay: true,
+    icon: iconPath,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.cjs"),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
   });
 
   mainWindow.maximize();
@@ -125,8 +163,6 @@ ipcMain.on('perform-logout', async () => {
   console.log('IPC perform-logout received');
   await performLogoutAndQuit();
 });
-
-
 
 ipcMain.on("print-silent", async (event, arrayBuffer) => {
   console.log("Silent print started");
@@ -182,7 +218,6 @@ ipcMain.on("print-silent", async (event, arrayBuffer) => {
   }
 });
 
-
 app.whenReady().then(() => {
   createWindow();
 
@@ -193,14 +228,9 @@ app.whenReady().then(() => {
   });
 });
 
-
-
 // Quit when all windows are closed, except on macOS
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-
     app.quit();
   }
 });
-
-
