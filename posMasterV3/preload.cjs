@@ -31,5 +31,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     } catch (e) {
       console.error('preload: onRequestUserData setup failed', e);
     }
-  }
+  },
+
+  // --- For folder selection and sample.json handling ---
+  selectFolder: () => ipcRenderer.invoke('select-folder'),
+  ensureSampleJson: (folderPath) => ipcRenderer.invoke('ensure-sample-json', folderPath),
 });

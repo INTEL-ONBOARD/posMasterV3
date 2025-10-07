@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
@@ -8,9 +8,8 @@ function Startup() {
     outlet: "",
     filePath: "",
   });
-
+  const [selecting, setSelecting] = useState(false);
   const navigate = useNavigate();
-  const hiddenFileInput = useRef(null);
 
   // Auto-timers for loading pages
   useEffect(() => {
@@ -29,17 +28,38 @@ function Startup() {
     }
   }, [currentPage, navigate]);
 
-  // Handle file select
-  const handleFileSelect = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setFormData({ ...formData, filePath: file.name }); // only file name shown
-      // if you want full path in Electron/desktop, you can use file.path
+  // Handle folder selection & sample.json validation/creation
+  const handleSelectFolder = async () => {
+    setSelecting(true);
+    try {
+      if (
+        window.electronAPI &&
+        window.electronAPI.selectFolder &&
+        window.electronAPI.ensureSampleJson
+      ) {
+        const folderPath = await window.electronAPI.selectFolder();
+        if (folderPath) {
+          // Ensure sample.json exists and is correct
+          await window.electronAPI.ensureSampleJson(folderPath);
+          setFormData((prev) => ({ ...prev, filePath: folderPath }));
+        }
+      } else {
+        alert("Electron API not available!");
+      }
+    } catch (e) {
+      alert(
+        "Failed to select folder or create sample.json: " +
+          (e && e.message ? e.message : e)
+      );
+    } finally {
+      setSelecting(false);
     }
   };
 
-  const handleButtonClick = () => {
-    hiddenFileInput.current.click();
+  // Confirm handler
+  const handleConfirm = () => {
+    // You can add further validation here if needed
+    setCurrentPage("finalLoading");
   };
 
   return (
@@ -89,22 +109,18 @@ function Startup() {
                 type="text"
                 value={formData.filePath}
                 readOnly
-                placeholder="C:/Drive//"
+                placeholder="Select a folder..."
                 className="flex-1 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded-lg"
               />
               <button
-                onClick={handleButtonClick}
-                className="px-4 py-2 bg-gray-500 text-white rounded-lg"
+                onClick={handleSelectFolder}
+                disabled={selecting}
+                className={`px-4 py-2 bg-gray-500 text-white rounded-lg ${
+                  selecting ? "opacity-60" : ""
+                }`}
               >
-                Select
+                {selecting ? "Selecting..." : "Select"}
               </button>
-              <input
-                type="file"
-                accept=".json"
-                ref={hiddenFileInput}
-                onChange={handleFileSelect}
-                style={{ display: "none" }}
-              />
             </div>
           </div>
 
@@ -134,7 +150,7 @@ function Startup() {
           {/* Confirm Button */}
           <div className="w-full flex justify-between items-center">
             <button
-              onClick={() => setCurrentPage("finalLoading")}
+              onClick={handleConfirm}
               className="px-6 py-2 h-10 w-full bg-[#00489A] text-white rounded-md hover:bg-[#003B7A] transition-colors"
             >
               Confirm
