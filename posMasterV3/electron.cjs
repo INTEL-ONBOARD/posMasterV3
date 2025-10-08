@@ -8,6 +8,18 @@ let mainWindow;
 let storedUser = null;
 let isQuitting = false;
 
+try {
+  if (!app.isPackaged) {
+    require('electron-reload')(__dirname, {
+      awaitWriteFinish: true,
+      ignored: /node_modules|[\/\\]\.git|dist|dist-react/
+    });
+    console.log('electron-reload enabled');
+  }
+} catch (e) {
+  console.log('electron-reload not available, skipping hot reload');
+}
+
 // IPC to open folder selector
 ipcMain.handle('select-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -130,7 +142,7 @@ const performLogoutAndQuit = async () => {
   }
 };
 
-function createWindow() {
+async function createWindow() {
   const iconPath = path.join(__dirname, "src", "assets", "icon.ico");
 
   mainWindow = new BrowserWindow({
@@ -148,9 +160,57 @@ function createWindow() {
 
   mainWindow.maximize();
 
-  mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
-  mainWindow.webContents.openDevTools();
+  // In development, prefer loading the Vite dev server for HMR.
+  const envUrl = process.env.VITE_DEV_SERVER_URL;
+  const candidateUrls = envUrl ? [envUrl] : ['http://localhost:5173', 'http://localhost:5174'];
+  if (!app.isPackaged) {
+    let loaded = false;
+    for (const url of candidateUrls) {
+      const ok = await waitForDevServer(url, 5000);
+      if (ok) {
+        await mainWindow.loadURL(url);
+        console.log('Loaded renderer from dev server:', url);
+        mainWindow.webContents.openDevTools();
+        loaded = true;
+        break;
+      }
+    }
+    if (!loaded) {
+      console.warn('Dev server not available on candidate ports, falling back to built files');
+      await mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
+    }
+  } else {
+    await mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
+  }
 
+
+// Poll the dev server URL until available or timeout (ms)
+function waitForDevServer(url, timeoutMs = 15000) {
+  const { URL } = require('url');
+  const parsed = new URL(url);
+  const http = parsed.protocol === 'https:' ? require('https') : require('http');
+
+  const start = Date.now();
+
+  return new Promise((resolve) => {
+    const tryOnce = () => {
+      const req = http.request({ method: 'HEAD', host: parsed.hostname, port: parsed.port, path: parsed.pathname, timeout: 2000 }, (res) => {
+        resolve(true);
+      });
+      req.on('error', () => {
+        if (Date.now() - start >= timeoutMs) return resolve(false);
+        setTimeout(tryOnce, 500);
+      });
+      req.on('timeout', () => {
+        req.destroy();
+        if (Date.now() - start >= timeoutMs) return resolve(false);
+        setTimeout(tryOnce, 500);
+      });
+      req.end();
+    };
+    tryOnce();
+  });
+}
   mainWindow.on("close", async (event) => {
     if (isQuitting) return;
     event.preventDefault();
