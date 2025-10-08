@@ -49,7 +49,7 @@ function Startup() {
     } catch (e) {
       alert(
         "Failed to select folder or create sample.json: " +
-          (e && e.message ? e.message : e)
+        (e && e.message ? e.message : e)
       );
     } finally {
       setSelecting(false);
@@ -115,9 +115,8 @@ function Startup() {
               <button
                 onClick={handleSelectFolder}
                 disabled={selecting}
-                className={`px-4 py-2 bg-gray-500 text-white rounded-lg ${
-                  selecting ? "opacity-60" : ""
-                }`}
+                className={`px-4 py-2 bg-gray-500 text-white rounded-lg ${selecting ? "opacity-60" : ""
+                  }`}
               >
                 {selecting ? "Selecting..." : "Select"}
               </button>
