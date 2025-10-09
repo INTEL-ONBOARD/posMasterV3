@@ -113,7 +113,7 @@ export default function TransactionHistory() {
           <div className="w-2/3">
             <div>
               <p className="text-sm">Customer Name</p>
-              <p className="font-bold text-lg">
+              <p className="font-semibold text-lg">
                 Nimal Gamage Rathnayake/Member
               </p>
             </div>
@@ -121,7 +121,7 @@ export default function TransactionHistory() {
             <div className="bg-[#E2E2E2] flex items-center justify-around border-black p-4 mr-8 mt-5">
               <div className="text-center">
                 <div className="text-lg font-bold">RS. 20000</div>
-                <div className="text-sm font-bold text-gray-600">Income</div>
+                <div className="text-sm font-bold text-gray-600">INCOME</div>
               </div>
               {/* vertical divider */}
               <div
@@ -130,8 +130,8 @@ export default function TransactionHistory() {
                 className="w-px h-12 bg-white"
               />
               <div className="text-center">
-                <div className="text-lg font-bold">RS. 20000</div>
-                <div className="text-sm font-bold text-gray-600">Credits</div>
+                <div className="text-lg font-semibold text-[#8F8F8F]">RS. 20000</div>
+                <div className="text-sm font-semibold text-[#8F8F8F]">CREDITS</div>
               </div>
             </div>
           </div>
@@ -139,7 +139,7 @@ export default function TransactionHistory() {
           <div className="w-1/3 flex flex-col gap-3">
             <div>
               <p className="text-sm">Date</p>
-              <p className="font-bold text-lg">2025-08-02</p>
+              <p className="font-semibold text-lg">2025-08-02</p>
             </div>
           </div>
         </div>
@@ -214,22 +214,22 @@ export default function TransactionHistory() {
             <div className="w-1/2 flex flex-col gap-3">
               <div>
                 <p className="text-sm">Payment Method</p>
-                <p className="font-bold text-lg">Credit (06 Months)</p>
+                <p className="font-semibold text-lg">Credit (06 Months)</p>
               </div>
               <div>
                 <p className="text-sm">Cashier</p>
-                <p className="font-bold text-lg">Namal</p>
+                <p className="font-semibold text-lg">Namal</p>
               </div>
             </div>
             {/* right */}
             <div className="w-1/2 flex flex-col gap-3">
               <div>
                 <p className="text-sm">Date</p>
-                <p className="font-bold text-lg">2025-02-20</p>
+                <p className="font-semibold text-lg">2025-02-20</p>
               </div>
               <div>
                 <p className="text-sm">Invoice No</p>
-                <p className="font-bold text-lg">RECP23213</p>
+                <p className="font-semibold text-lg">RECP23213</p>
               </div>
             </div>
           </div>
@@ -272,30 +272,30 @@ export default function TransactionHistory() {
         </div>
 
         {/* Amounts - fixed at bottom */}
-        <div className="w-full grid grid-cols-2 p-4 bg-white sticky bottom-0 z-10 shadow">
+        <div className="w-full grid grid-cols-2 p-4 bg-white sticky bottom-0 z-10 shadow mb-6">
 
           <div className="p-2 bg-[#D9D9D9] text-sm lg:text-base text-gray-500">
             Discount Amount
           </div>
-          <div className="p-2 bg-[#D9D9D9] text-lg lg:text-xl font-normal text-gray-800 text-right">
+          <div className="p-2 bg-[#D9D9D9] text-sm lg:text-base font-normal text-gray-800 text-right">
             RS.1000
           </div>
           <div className="p-2 bg-[#5C5C5C] text-sm lg:text-base text-white">
             Total Amount
           </div>
-          <div className="p-2 bg-[#5C5C5C] text-lg lg:text-xl font-semibold text-white text-right">
+          <div className="p-2 bg-[#5C5C5C] text-sm lg:text-base font-semibold text-white text-right">
             RS.19000
           </div>
           <div className="p-2 bg-[#2D2C2C] text-sm lg:text-base text-white h-16">
             Customer Gave
           </div>
-          <div className="p-2 bg-[#2D2C2C] text-lg lg:text-3xl font-semibold text-white text-right h-16">
+          <div className="p-2 bg-[#2D2C2C] text-lg lg:text-2xl font-semibold text-white text-right h-16">
             RS.20000
           </div>
           <div className="p-2 bg-[#D9D9D9] text-sm lg:text-base text-gray-500">
             Change Amount
           </div>
-          <div className="p-2 bg-[#D9D9D9] text-lg lg:text-xl font-normal text-gray-800 text-right">
+          <div className="p-2 bg-[#D9D9D9] text-sm lg:text-base font-normal text-gray-800 text-right">
             RS.1000
           </div>
 
