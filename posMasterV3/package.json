@@ -22,6 +22,7 @@
     "productName": "POSMaster",
     "files": [
       "dist/**",
+      "preload.cjs",
       "electron.cjs",
       "node_modules/**",
       "!node_modules/fsevents",
