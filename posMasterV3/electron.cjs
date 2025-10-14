@@ -11,6 +11,9 @@ let mainWindow;
 let storedUser = null;
 let isQuitting = false;
 
+// Default folder path
+const defaultFolderPath = "C:\\POS Master";
+
 try {
   if (!app.isPackaged) {
     require("electron-reload")(__dirname, {
@@ -29,22 +32,23 @@ ipcMain.handle("select-folder", async () => {
     properties: ["openDirectory"],
   });
   if (result.canceled || result.filePaths.length === 0) {
-    return null;
+    return defaultFolderPath; // Return default folder path if no folder is selected
   }
-  return result.filePaths[0];
+  return result.filePaths[0]; // Return the user-selected folder
 });
 
 // IPC to create temp.json and config.json
 ipcMain.handle("create-files", async (event, { folderPath, outlet }) => {
-  const tempFilePath = path.join(folderPath, "temp.json");
-  const configFilePath = path.join(folderPath, "config.json");
+  const chosenFolderPath = folderPath || defaultFolderPath; // Use default if folderPath is null or undefined
+  const tempFilePath = path.join(chosenFolderPath, "temp.json");
+  const configFilePath = path.join(chosenFolderPath, "config.json");
 
   const currentDate = new Date().toISOString();
 
   // Define temp.json structure
   const tempContent = {
-    version_no: appVersion,
-    config_path: folderPath,
+    version_no: appVersion, // Use the version from package.json
+    config_path: chosenFolderPath,
     created_date: currentDate,
     updated_date: currentDate,
     log: [
@@ -65,15 +69,18 @@ ipcMain.handle("create-files", async (event, { folderPath, outlet }) => {
     temp_system: false,
     run_on_startup: false,
     maximize_window: true,
-    temp_file_path: folderPath,
-    config_path: folderPath,
-    db_config_path: folderPath,
+    temp_file_path: chosenFolderPath,
+    config_path: chosenFolderPath,
+    db_config_path: chosenFolderPath,
     outlet_setup: outlet,
     created_date: currentDate,
     updated_date: currentDate,
   };
 
   try {
+    // Create directory if it doesn't exist
+    await fs.mkdir(chosenFolderPath, { recursive: true });
+
     // Write temp.json
     await fs.writeFile(
       tempFilePath,
