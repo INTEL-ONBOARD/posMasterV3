@@ -4,6 +4,9 @@ const axios = require("axios");
 const fs = require("fs").promises;
 const printer = require("pdf-to-printer");
 
+// Load the version from package.json
+const appVersion = require(path.join(__dirname, "package.json")).version;
+
 let mainWindow;
 let storedUser = null;
 let isQuitting = false;
@@ -40,7 +43,7 @@ ipcMain.handle("create-files", async (event, { folderPath, outlet }) => {
 
   // Define temp.json structure
   const tempContent = {
-    version_no: "1.10.07",
+    version_no: appVersion,
     config_path: folderPath,
     created_date: currentDate,
     updated_date: currentDate,
