@@ -28,19 +28,19 @@ function Startup() {
     }
   }, [currentPage, navigate]);
 
-  // Handle folder selection & sample.json validation/creation
+  // Handle folder selection & config.json validation/creation
   const handleSelectFolder = async () => {
     setSelecting(true);
     try {
       if (
         window.electronAPI &&
         window.electronAPI.selectFolder &&
-        window.electronAPI.ensureSampleJson
+        window.electronAPI.ensureConfigJson
       ) {
         const folderPath = await window.electronAPI.selectFolder();
         if (folderPath) {
-          // Ensure sample.json exists and is correct
-          await window.electronAPI.ensureSampleJson(folderPath);
+          // Ensure config.json exists and is correct
+          await window.electronAPI.ensureConfigJson(folderPath);
           setFormData((prev) => ({ ...prev, filePath: folderPath }));
         }
       } else {
@@ -48,7 +48,7 @@ function Startup() {
       }
     } catch (e) {
       alert(
-        "Failed to select folder or create sample.json: " +
+        "Failed to select folder or create config.json: " +
         (e && e.message ? e.message : e)
       );
     } finally {
