@@ -1,39 +1,39 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld('electronAPI', {
-  bufferFrom: (data, encoding = 'base64') => Buffer.from(data, encoding),
+contextBridge.exposeInMainWorld("electronAPI", {
+  // Utility to create a Buffer from a given data string and encoding
+  bufferFrom: (data, encoding = "base64") => Buffer.from(data, encoding),
+
+  // General send and receive IPC methods
   send: (channel, data) => ipcRenderer.send(channel, data),
-  sendPrintSilent: (arrayBuffer) => ipcRenderer.send('print-silent', arrayBuffer),
+  sendPrintSilent: (arrayBuffer) =>
+    ipcRenderer.send("print-silent", arrayBuffer),
   receive: (channel, func) => {
     ipcRenderer.on(channel, (event, ...args) => func(...args));
   },
+
+  // User data-related methods
   sendUserData: (email, token) => {
-    return ipcRenderer.invoke('store-user-data', { email, token });
-  },
-  sendUserDataSync: (email, token) => {
-    try {
-      ipcRenderer.send('store-user-data', { email, token });
-    } catch (e) {
-      console.error('preload: sendUserDataSync failed', e);
-    }
+    return ipcRenderer.invoke("store-user-data", { email, token });
   },
   onRequestUserData: (getUserDataFn) => {
     try {
-      ipcRenderer.on('request-user-data', async () => {
+      ipcRenderer.on("request-user-data", async () => {
         try {
           const user = await Promise.resolve(getUserDataFn());
-          ipcRenderer.send('reply-user-data', user);
+          ipcRenderer.send("reply-user-data", user);
         } catch (e) {
-          console.error('preload: onRequestUserData handler error', e);
-          ipcRenderer.send('reply-user-data', null);
+          console.error("preload: onRequestUserData handler error", e);
+          ipcRenderer.send("reply-user-data", null);
         }
       });
     } catch (e) {
-      console.error('preload: onRequestUserData setup failed', e);
+      console.error("preload: onRequestUserData setup failed", e);
     }
   },
 
-  // --- For folder selection and sample.json handling ---
-  selectFolder: () => ipcRenderer.invoke('select-folder'),
-  ensureSampleJson: (folderPath) => ipcRenderer.invoke('ensure-sample-json', folderPath),
+  // Folder selection and config.json handling
+  selectFolder: () => ipcRenderer.invoke("select-folder"),
+  ensureConfigJson: (folderPath) =>
+    ipcRenderer.invoke("ensure-config-json", folderPath),
 });
