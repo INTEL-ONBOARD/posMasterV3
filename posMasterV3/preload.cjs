@@ -32,8 +32,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
     }
   },
 
-  // Folder selection and config.json handling
+  // Folder selection and file creation
   selectFolder: () => ipcRenderer.invoke("select-folder"),
-  ensureConfigJson: (folderPath) =>
-    ipcRenderer.invoke("ensure-config-json", folderPath),
+
+  // Create temp.json and config.json
+  createFiles: (folderPath, outlet) =>
+    ipcRenderer.invoke("create-files", { folderPath, outlet }),
+
+  // Ensure sample.json (legacy feature)
+  ensureSampleJson: (folderPath) =>
+    ipcRenderer.invoke("ensure-json-created", folderPath),
 });
