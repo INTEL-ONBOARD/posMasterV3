@@ -31,48 +31,75 @@ ipcMain.handle("select-folder", async () => {
   return result.filePaths[0];
 });
 
-// IPC to ensure config.json
-ipcMain.handle("ensure-config-json", async (event, folderPath) => {
-  const filePath = path.join(folderPath, "config.json");
-  const configContent = {
-    name: "sample name",
-    address: "sample address",
-    description: "This is sample config",
+// IPC to create temp.json and config.json
+ipcMain.handle("create-files", async (event, { folderPath, outlet }) => {
+  const tempFilePath = path.join(folderPath, "temp.json");
+  const configFilePath = path.join(folderPath, "config.json");
+
+  const currentDate = new Date().toISOString();
+
+  // Define temp.json structure
+  const tempContent = {
+    version_no: "1.10.07",
+    config_path: folderPath,
+    created_date: currentDate,
+    updated_date: currentDate,
+    log: [
+      {
+        date_time: currentDate,
+        status: "INFO",
+        message: "Initial configuration created.",
+        mode: "SYSTEM",
+      },
+    ],
   };
 
-  let needsWrite = false;
+  // Define config.json structure
+  const configContent = {
+    automatic_logout: false,
+    notifications: false,
+    cloud_sync: false,
+    temp_system: false,
+    run_on_startup: false,
+    maximize_window: true,
+    temp_file_path: folderPath,
+    config_path: folderPath,
+    db_config_path: folderPath,
+    outlet_setup: outlet,
+    created_date: currentDate,
+    updated_date: currentDate,
+  };
+
   try {
-    const file = await fs.readFile(filePath, "utf-8");
-    const data = JSON.parse(file);
-
-    if (
-      data.name !== configContent.name ||
-      data.address !== configContent.address ||
-      data.description !== configContent.description
-    ) {
-      needsWrite = true;
-    }
-  } catch (err) {
-    needsWrite = true; // File does not exist or is invalid
-  }
-
-  if (needsWrite) {
+    // Write temp.json
     await fs.writeFile(
-      filePath,
+      tempFilePath,
+      JSON.stringify(tempContent, null, 2),
+      "utf-8"
+    );
+
+    // Write config.json
+    await fs.writeFile(
+      configFilePath,
       JSON.stringify(configContent, null, 2),
       "utf-8"
     );
-    return { created: true, filePath };
+
+    return { success: true, tempFilePath, configFilePath };
+  } catch (error) {
+    console.error("Error creating files:", error);
+    return { success: false, error: error.message };
   }
-  return { created: false, filePath };
 });
 
+// IPC to store user data
 ipcMain.handle("store-user-data", async (event, userData) => {
   storedUser = userData;
   console.log("User data stored:", userData);
   return { success: true };
 });
 
+// Perform logout and quit
 const performLogoutAndQuit = async () => {
   if (isQuitting) return;
   isQuitting = true;
