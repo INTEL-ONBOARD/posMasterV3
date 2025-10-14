@@ -6,7 +6,7 @@ function Startup() {
   const [currentPage, setCurrentPage] = useState("initialLoading");
   const [formData, setFormData] = useState({
     outlet: "",
-    filePath: "",
+    filePath: "", // Default folder path will be set here on load
   });
   const [message, setMessage] = useState("");
   const [selecting, setSelecting] = useState(false);
@@ -14,6 +14,12 @@ function Startup() {
   const navigate = useNavigate();
 
   const isConfirmEnabled = formData.filePath && formData.outlet;
+
+  // Set default folder path when the component is mounted
+  useEffect(() => {
+    const defaultFolderPath = window.electronAPI.getDefaultFolderPath();
+    setFormData((prev) => ({ ...prev, filePath: defaultFolderPath }));
+  }, []);
 
   // Auto-timers for loading pages
   useEffect(() => {

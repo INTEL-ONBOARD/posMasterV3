@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
+const defaultFolderPath = "C:\\POS Master";
+
 contextBridge.exposeInMainWorld("electronAPI", {
   // Utility to create a Buffer from a given data string and encoding
   bufferFrom: (data, encoding = "base64") => Buffer.from(data, encoding),
@@ -34,12 +36,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Folder selection and file creation
   selectFolder: () => ipcRenderer.invoke("select-folder"),
-
-  // Create temp.json and config.json
   createFiles: (folderPath, outlet) =>
     ipcRenderer.invoke("create-files", { folderPath, outlet }),
 
   // Ensure sample.json (legacy feature)
   ensureSampleJson: (folderPath) =>
-    ipcRenderer.invoke("ensure-json-created", folderPath),
+    ipcRenderer.invoke("ensure-sample-json", folderPath),
+
+  // Expose default folder path
+  getDefaultFolderPath: () => defaultFolderPath,
 });
