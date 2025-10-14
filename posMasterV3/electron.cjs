@@ -37,7 +37,24 @@ ipcMain.handle("select-folder", async () => {
   return result.filePaths[0]; // Return the user-selected folder
 });
 
-// IPC to create temp.json and config.json
+// Validate JSON structure helper
+const validateJsonStructure = (fileContent, expectedStructure) => {
+  try {
+    const parsedContent = JSON.parse(fileContent);
+    for (const key of Object.keys(expectedStructure)) {
+      if (!(key in parsedContent)) {
+        console.error(`Missing key ${key} in JSON structure`);
+        return false;
+      }
+    }
+    return true;
+  } catch (error) {
+    console.error("Invalid JSON format:", error.message);
+    return false;
+  }
+};
+
+// IPC to create or validate temp.json and config.json
 ipcMain.handle("create-files", async (event, { folderPath, outlet }) => {
   const chosenFolderPath = folderPath || defaultFolderPath; // Use default if folderPath is null or undefined
   const tempFilePath = path.join(chosenFolderPath, "temp.json");
@@ -78,26 +95,50 @@ ipcMain.handle("create-files", async (event, { folderPath, outlet }) => {
   };
 
   try {
-    // Create directory if it doesn't exist
+    // Ensure folder exists
     await fs.mkdir(chosenFolderPath, { recursive: true });
 
-    // Write temp.json
-    await fs.writeFile(
-      tempFilePath,
-      JSON.stringify(tempContent, null, 2),
-      "utf-8"
-    );
+    // Check and validate temp.json
+    try {
+      const existingTempContent = await fs.readFile(tempFilePath, "utf-8");
+      const isTempValid = validateJsonStructure(
+        existingTempContent,
+        tempContent
+      );
+      if (!isTempValid) {
+        return { success: false, error: "Invalid temp.json structure" };
+      }
+    } catch {
+      // File doesn't exist, create it
+      await fs.writeFile(
+        tempFilePath,
+        JSON.stringify(tempContent, null, 2),
+        "utf-8"
+      );
+    }
 
-    // Write config.json
-    await fs.writeFile(
-      configFilePath,
-      JSON.stringify(configContent, null, 2),
-      "utf-8"
-    );
+    // Check and validate config.json
+    try {
+      const existingConfigContent = await fs.readFile(configFilePath, "utf-8");
+      const isConfigValid = validateJsonStructure(
+        existingConfigContent,
+        configContent
+      );
+      if (!isConfigValid) {
+        return { success: false, error: "Invalid config.json structure" };
+      }
+    } catch {
+      // File doesn't exist, create it
+      await fs.writeFile(
+        configFilePath,
+        JSON.stringify(configContent, null, 2),
+        "utf-8"
+      );
+    }
 
     return { success: true, tempFilePath, configFilePath };
   } catch (error) {
-    console.error("Error creating files:", error);
+    console.error("Error creating or validating files:", error);
     return { success: false, error: error.message };
   }
 });
