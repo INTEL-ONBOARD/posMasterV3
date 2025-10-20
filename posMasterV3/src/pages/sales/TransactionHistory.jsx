@@ -3,8 +3,7 @@ import React, { useState } from "react";
 
 export default function TransactionHistory() {
   //left section controls
-  const [openTransactionFormBlock, setopenTransactionFormBlock] =
-    useState("item");
+  const [openTransactionFormBlock, setopenTransactionFormBlock] = useState("item");
   const [formDataTransaction, setFormDataTransaction] = useState("item");
   const handleTransactionInputChange = (e) => {
     const { name, value } = e.target;
@@ -12,16 +11,15 @@ export default function TransactionHistory() {
     setFormStockData((prev) => ({ ...prev, [name]: value }));
   };
   return (
-    <div className="flex bg-gray-300 w-full h-[calc(100vh-2rem)] relative gap-1">
-      {/* form section (left) */}
-      <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 z-10">
-        {/* 56 is the correct height */}
-        <div className="flex flex-col h-[56rem] gap-3">
+    <div className="grid grid-cols-[24rem_1fr_25rem] h-screen bg-gray-300 gap-1">
+      {/* Left panel */}
+      <div className="bg-gray-300 h-full pl-1 z-10">
+        <div className="flex flex-col gap-3">
           {/* ▼ item description block ▼ */}
           <div className="border rounded bg-white">
             <button
               onClick={() => setopenTransactionFormBlock("item")}
-              className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
+              className="w-full flex justify-between items-center bg-white px-1 py-1 text-sm font-bold"
             >
               <span className="text-gray-400">TRANSACTION DESCIRPTION</span>
               {openTransactionFormBlock == "item" ? (
@@ -31,9 +29,9 @@ export default function TransactionHistory() {
               )}
             </button>
             {openTransactionFormBlock == "item" && (
-              <div className="px-4 bg h-[16rem] bg-white">
+              <div className="px-2 bg h-auto bg-white">
                 {/*stock description block  */}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 pb-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1">
                       Batch Code
@@ -44,11 +42,11 @@ export default function TransactionHistory() {
                       value={formDataTransaction.sku}
                       onChange={handleTransactionInputChange}
                       placeholder=""
-                      className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-2 py-1 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
                         Payment Type
@@ -57,7 +55,7 @@ export default function TransactionHistory() {
                         name="availability"
                         value={formDataTransaction.availability}
                         onChange={handleTransactionInputChange}
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
+                        className="w-full px-2 py-1 bg-[#F8F8F8] border border-[#EBEBEB]"
                       >
                         <option value="">-- select availability --</option>
                         <option value={true}>Available</option>
@@ -72,7 +70,7 @@ export default function TransactionHistory() {
                         name="availability"
                         value={formDataTransaction.availability}
                         onChange={handleTransactionInputChange}
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
+                        className="w-full px-2 py-1 bg-[#F8F8F8] border border-[#EBEBEB]"
                       >
                         <option value="">-- select availability --</option>
                         <option value={true}>Available</option>
@@ -82,7 +80,7 @@ export default function TransactionHistory() {
                   </div>
                   <div className="flex flex-row justify-end mt-6">
                     <button
-                      /*onClick={handleSearchClick}*/ className="flex items-center px-4 py-2 bg-[#1A318C] text-white w-[10rem]"
+                      /*onClick={handleSearchClick}*/ className="flex items-center px-3 py-1 bg-[#1A318C] text-white w-[10rem]"
                     >
                       <svg
                         className="w-5 h-5 mr-2"
@@ -107,63 +105,73 @@ export default function TransactionHistory() {
         </div>
       </div>
 
-      {/* main transaction section (mid) */}
-      <div className="bg-white w-[calc(45rem)] h-[calc(100vh-2rem)] p-4">
+      {/* Middle panel */}
+      <div className="bg-white h-full p-4">
         {/* Main search container */}
         <div className="flex flex-row gap-6">
           {/* left */}
           <div className="w-2/3">
             <div>
-              <p>Customer Name</p>
-              <p className="font-semibold text-xl">
+              <p className="text-sm">Customer Name</p>
+              <p className="font-semibold text-lg">
                 Nimal Gamage Rathnayake/Member
               </p>
             </div>
             {/* income details */}
-            <div className="bg-[#E2E2E2] flex items-center justify-around border-black p-4 mx-10 mt-5">
+            <div className="bg-[#E2E2E2] flex items-center justify-around border-black p-4 mr-8 mt-5">
               <div className="text-center">
                 <div className="text-lg font-bold">RS. 20000</div>
-                <div className="text-sm text-gray-600">Income</div>
+                <div className="text-sm font-bold text-gray-600">INCOME</div>
               </div>
               {/* vertical divider */}
               <div
                 role="separator"
                 aria-orientation="vertical"
-                className="w-px h-8 bg-white"
+                className="w-px h-12 bg-white"
               />
               <div className="text-center">
-                <div className="text-lg font-bold">RS. 20000</div>
-                <div className="text-sm text-gray-600">Credits</div>
+                <div className="text-lg font-semibold text-[#8F8F8F]">RS. 20000</div>
+                <div className="text-sm font-semibold text-[#8F8F8F]">CREDITS</div>
               </div>
             </div>
           </div>
           {/* right */}
           <div className="w-1/3 flex flex-col gap-3">
             <div>
-              <p>Date</p>
-              <p className="font-semibold text-xl">2025-08-02</p>
+              <p className="text-sm">Date</p>
+              <p className="font-semibold text-lg">2025-08-02</p>
             </div>
           </div>
         </div>
+
+        {/* horizontal divider */}
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          className="w-full h-px bg-gray-200 mt-5 mb-2"
+        />
 
         {/* transaction main table */}
         <table className="w-full min-w-[500px]">
           <thead className="bg-gray-700 text-white">
             <tr>
               <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
-                #
+
               </th>
               <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
-                Item code
+                Date
               </th>
               <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
-                Unit price
+                Payment Type
               </th>
               <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
-                Unit count
+                Payment Duration
               </th>
               <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
-                Total
+                Retail Price
+              </th>
+              <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
+                Retail Total
               </th>
             </tr>
           </thead>
@@ -172,59 +180,75 @@ export default function TransactionHistory() {
             <tr
               // key={item.id}
               className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors`}
-              // onClick={() => handleTableRowClick(item)}
+            // onClick={() => handleTableRowClick(item)}
             >
               <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                {/* {index+1} */}
+                {/* {index+1} */}1
               </td>
               <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                {/* {item.code} */}
+                {/* {item.code} */}2025-05-02
               </td>
               <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                {/* {item.quantity || 30}(pcs) */}
+                {/* {item.quantity || 30}(pcs) */}Cash
               </td>
               <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                {/* {item.total.toFixed(2)} */}
+                {/* {item.total.toFixed(2)} */}06-months
+              </td>
+              <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                {/* {item.total.toFixed(2)} */}12 500.00
+              </td>
+              <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                {/* {item.total.toFixed(2)} */}12 500.00
               </td>
             </tr>
-            {/* ))} */}
           </tbody>
         </table>
       </div>
 
-      <div className="bg-white w-[calc(32rem)] h-[calc(100vh-2rem)]">
-        {/* member container */}
-        <div className="w-full relative p-auto p-4">
+      {/* Right panel */}
+      <div className="bg-white h-full flex flex-col pr-5">
+        <div className="w-full p-4 bg-white sticky top-0 z-10">
           {/* Main search container */}
           <div className="flex flex-row gap-6">
             {/* left */}
             <div className="w-1/2 flex flex-col gap-3">
               <div>
-                <p>Payment Method</p>
-                <p className="font-semibold text-xl">Credit (06 Months)</p>
+                <p className="text-sm">Payment Method</p>
+                <p className="font-semibold text-lg">Credit (06 Months)</p>
               </div>
               <div>
-                <p>Cashier</p>
-                <p className="font-semibold text-xl">Namal</p>
+                <p className="text-sm">Cashier</p>
+                <p className="font-semibold text-lg">Namal</p>
               </div>
             </div>
             {/* right */}
             <div className="w-1/2 flex flex-col gap-3">
               <div>
-                <p>Date</p>
+                <p className="text-sm">Date</p>
                 <p className="font-semibold text-lg">2025-02-20</p>
               </div>
               <div>
-                <p>Invoice No</p>
+                <p className="text-sm">Invoice No</p>
                 <p className="font-semibold text-lg">RECP23213</p>
               </div>
             </div>
           </div>
-          {/* table section */}
-          {/* transaction main table */}
-          <table className="w-full min-w-[500px] h-[40rem] overflow-y-scroll">
+        </div>
+
+        {/* horizontal divider */}
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          className="w-full h-px bg-gray-200 mt-11"
+        />
+
+        <div className="flex-1 overflow-y-auto px-4 py-2">
+          <table className="w-full min-w-auto h-auto">
             <thead className="bg-gray-700 text-white">
               <tr>
+                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
+                  
+                </th>
                 <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
                   Item code
                 </th>
@@ -237,60 +261,69 @@ export default function TransactionHistory() {
               </tr>
             </thead>
             <tbody className="bg-white">
-              {/* {selectedItems.map((item, index) => ( */}
-              <tr
-                // key={item.id}
-                className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors`}
-                // onClick={() => handleTableRowClick(item)}
-              >
-                <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                  {/* {item.code} */}
-                </td>
-                <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                  {/* {item.quantity || 30}(pcs) */}
-                </td>
-                <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                  {/* {item.total.toFixed(2)} */}
-                </td>
+              <tr className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors`}>
+                <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">1</td>
+                <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">XLR9590565</td>
+                <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">30(pcs)</td>
+                <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">12 300.00</td>
               </tr>
-              {/* ))} */}
             </tbody>
           </table>
-          {/* Amounts */}
-          <div className="grid grid-cols-2 p-3 bg-white w-full">
-            <div className="p-2 bg-[#5C5C5C] text-sm lg:text-base text-gray-500">
-              Amount
-            </div>
-            <div className="p-2 bg-[#5C5C5C] text-lg lg:text-xl font-semibold text-white text-right">
-              RS.20000
-            </div>
-            <div className="p-2 bg-[#D9D9D9] text-sm lg:text-base text-gray-500">
-              Discount Amount
-            </div>
-            <div className="p-2 bg-[#D9D9D9] text-lg lg:text-xl font-normal text-gray-800 text-right">
-              RS.1000
-            </div>
-            <div className="p-2 bg-[#5C5C5C] text-sm lg:text-base text-gray-500">
-              Total Amount
-            </div>
-            <div className="p-2 bg-[#5C5C5C] text-lg lg:text-xl font-semibold text-white text-right">
-              RS.19000
-            </div>
-            <div className="p-2 bg-white text-sm lg:text-base text-gray-500 h-16">
-              Customer Gave
-            </div>
-            <div className="p-2 bg-white text-lg lg:text-3xl font-semibold text-[#737373] text-right  h-16 border-b-2 ">
-              RS.20000
-            </div>
-            <div className="p-2 bg-[#F8F8F8] text-sm lg:text-base text-gray-500">
-              Change Amount
-            </div>
-            <div className="p-2 bg-[#F8F8F8] text-lg lg:text-xl font-normal text-gray-800 text-right">
-              RS.1000
-            </div>
+        </div>
+
+        {/* Amounts - fixed at bottom */}
+        <div className="w-full grid grid-cols-2 p-4 bg-white sticky bottom-0 z-10 shadow mb-6">
+
+          <div className="p-2 bg-[#D9D9D9] text-sm lg:text-base text-gray-500">
+            Discount Amount
+          </div>
+          <div className="p-2 bg-[#D9D9D9] text-sm lg:text-base font-normal text-gray-800 text-right">
+            RS.1000
+          </div>
+          <div className="p-2 bg-[#5C5C5C] text-sm lg:text-base text-white">
+            Total Amount
+          </div>
+          <div className="p-2 bg-[#5C5C5C] text-sm lg:text-base font-semibold text-white text-right">
+            RS.19000
+          </div>
+          <div className="p-2 bg-[#2D2C2C] text-sm lg:text-base text-white h-16">
+            Customer Gave
+          </div>
+          <div className="p-2 bg-[#2D2C2C] text-lg lg:text-2xl font-semibold text-white text-right h-16">
+            RS.20000
+          </div>
+          <div className="p-2 bg-[#D9D9D9] text-sm lg:text-base text-gray-500">
+            Change Amount
+          </div>
+          <div className="p-2 bg-[#D9D9D9] text-sm lg:text-base font-normal text-gray-800 text-right">
+            RS.1000
+          </div>
+
+          {/* Button - positioned bottom right */}
+          <div className="col-span-2 flex justify-end mt-2">
+            <button
+              className="flex items-center px-4 py-2 bg-[#1A318C] text-white shadow hover:bg-[#0f2366] transition"
+            >
+              <svg
+                className="w-4 h-4 mr-2"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M5 13l4 4L19 7" />
+              </svg>
+              View Receipt
+            </button>
           </div>
         </div>
+
       </div>
+
     </div>
   );
+
 }
