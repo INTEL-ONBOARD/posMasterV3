@@ -14,6 +14,56 @@ let isQuitting = false;
 // Default folder path
 const defaultFolderPath = "C:\\POS Master";
 
+// Paths to your DTOs (as you specified)
+const dtoPaths = {
+  temp: path.join(
+    __dirname,
+    "src",
+    "templates",
+    "dtos",
+    "config",
+    "TempConfigDTO.jsx"
+  ),
+  config: path.join(
+    __dirname,
+    "src",
+    "templates",
+    "dtos",
+    "config",
+    "ConfigFileDTO.jsx"
+  ),
+};
+
+// Cache for loaded DTO classes
+const DTOCache = {};
+
+// Dynamically import DTO modules (ES modules) and cache the default exports (classes)
+async function loadDTOs() {
+  if (DTOCache.TempConfigDTO && DTOCache.ConfigFileDTO) {
+    return {
+      TempConfigDTO: DTOCache.TempConfigDTO,
+      ConfigFileDTO: DTOCache.ConfigFileDTO,
+    };
+  }
+
+  // Convert file path to file:// URL for dynamic import
+  const tempUrl = pathToFileURL(dtoPaths.temp).href;
+  const configUrl = pathToFileURL(dtoPaths.config).href;
+
+  // Dynamic import - these files should be transpiled/usable at runtime in your build
+  const tempModule = await import(tempUrl);
+  const configModule = await import(configUrl);
+
+  // Default export is expected to be the DTO class
+  DTOCache.TempConfigDTO = tempModule.default;
+  DTOCache.ConfigFileDTO = configModule.default;
+
+  return {
+    TempConfigDTO: DTOCache.TempConfigDTO,
+    ConfigFileDTO: DTOCache.ConfigFileDTO,
+  };
+}
+
 try {
   if (!app.isPackaged) {
     require("electron-reload")(__dirname, {
@@ -37,7 +87,7 @@ ipcMain.handle("select-folder", async () => {
   return result.filePaths[0]; // Return the user-selected folder
 });
 
-// Validate JSON structure helper
+// Validate JSON structure helper (kept for fallback; DTO validation is preferred)
 const validateJsonStructure = (fileContent, expectedStructure) => {
   try {
     const parsedContent = JSON.parse(fileContent);
@@ -55,14 +105,14 @@ const validateJsonStructure = (fileContent, expectedStructure) => {
 };
 
 // IPC to create or validate temp.json and config.json
-ipcMain.handle("create-files", async (event, { folderPath, outlet }) => {
+ipcMain.handle("create-files", async (event, { folderPath, outlet } = {}) => {
   const chosenFolderPath = folderPath || defaultFolderPath; // Use default if folderPath is null or undefined
   const tempFilePath = path.join(chosenFolderPath, "temp.json");
   const configFilePath = path.join(chosenFolderPath, "config.json");
 
   const currentDate = new Date().toISOString();
 
-  // Define temp.json structure
+  // Prepare plain objects (these will be validated/normalized via DTO.fromJSON if needed)
   const tempContent = {
     version_no: appVersion, // Use the version from package.json
     config_path: chosenFolderPath,
@@ -87,7 +137,7 @@ ipcMain.handle("create-files", async (event, { folderPath, outlet }) => {
     run_on_startup: false,
     maximize_window: true,
     temp_file_path: chosenFolderPath,
-    config_path: chosenFolderPath,
+    config_path: chosenFolderPath, // note: legacy key name kept for compatibility; DTO may accept it
     db_config_path: chosenFolderPath,
     outlet_setup: outlet,
     created_date: currentDate,
@@ -98,15 +148,40 @@ ipcMain.handle("create-files", async (event, { folderPath, outlet }) => {
     // Ensure folder exists
     await fs.mkdir(chosenFolderPath, { recursive: true });
 
+    // Load DTOs (so we can validate using their fromJSON factories)
+    let TempConfigDTO, ConfigFileDTO;
+    try {
+      ({ TempConfigDTO, ConfigFileDTO } = await loadDTOs());
+    } catch (dtoErr) {
+      console.warn(
+        "Could not load DTO modules dynamically, falling back to basic validation:",
+        dtoErr && dtoErr.message ? dtoErr.message : String(dtoErr)
+      );
+    }
+
     // Check and validate temp.json
     try {
       const existingTempContent = await fs.readFile(tempFilePath, "utf-8");
-      const isTempValid = validateJsonStructure(
-        existingTempContent,
-        tempContent
-      );
-      if (!isTempValid) {
-        return { success: false, error: "Invalid temp.json structure" };
+      if (TempConfigDTO && typeof TempConfigDTO.fromJSON === "function") {
+        try {
+          const parsed = JSON.parse(existingTempContent);
+          // will throw if invalid
+          TempConfigDTO.fromJSON(parsed);
+        } catch (validationErr) {
+          return {
+            success: false,
+            error: "Invalid temp.json structure: " + validationErr.message,
+          };
+        }
+      } else {
+        // fallback shallow check
+        const isTempValid = validateJsonStructure(
+          existingTempContent,
+          tempContent
+        );
+        if (!isTempValid) {
+          return { success: false, error: "Invalid temp.json structure" };
+        }
       }
     } catch {
       // File doesn't exist, create it
@@ -120,12 +195,26 @@ ipcMain.handle("create-files", async (event, { folderPath, outlet }) => {
     // Check and validate config.json
     try {
       const existingConfigContent = await fs.readFile(configFilePath, "utf-8");
-      const isConfigValid = validateJsonStructure(
-        existingConfigContent,
-        configContent
-      );
-      if (!isConfigValid) {
-        return { success: false, error: "Invalid config.json structure" };
+      if (ConfigFileDTO && typeof ConfigFileDTO.fromJSON === "function") {
+        try {
+          const parsed = JSON.parse(existingConfigContent);
+          // will throw if invalid
+          ConfigFileDTO.fromJSON(parsed);
+        } catch (validationErr) {
+          return {
+            success: false,
+            error: "Invalid config.json structure: " + validationErr.message,
+          };
+        }
+      } else {
+        // fallback shallow check
+        const isConfigValid = validateJsonStructure(
+          existingConfigContent,
+          configContent
+        );
+        if (!isConfigValid) {
+          return { success: false, error: "Invalid config.json structure" };
+        }
       }
     } catch {
       // File doesn't exist, create it
@@ -140,6 +229,39 @@ ipcMain.handle("create-files", async (event, { folderPath, outlet }) => {
   } catch (error) {
     console.error("Error creating or validating files:", error);
     return { success: false, error: error.message };
+  }
+});
+
+// IPC to read the DTOs and return serialized objects
+ipcMain.handle("read-config-dtos", async (event, { folderPath } = {}) => {
+  const chosenFolderPath = folderPath || defaultFolderPath;
+  const tempFilePath = path.join(chosenFolderPath, "temp.json");
+  const configFilePath = path.join(chosenFolderPath, "config.json");
+
+  try {
+    const { TempConfigDTO, ConfigFileDTO } = await loadDTOs();
+
+    const tempRaw = JSON.parse(await fs.readFile(tempFilePath, "utf-8"));
+    const configRaw = JSON.parse(await fs.readFile(configFilePath, "utf-8"));
+
+    const tempDto = TempConfigDTO.fromJSON(tempRaw);
+    const configDto = ConfigFileDTO.fromJSON(configRaw);
+
+    return {
+      success: true,
+      temp: typeof tempDto.toJSON === "function" ? tempDto.toJSON() : tempDto,
+      config:
+        typeof configDto.toJSON === "function" ? configDto.toJSON() : configDto,
+    };
+  } catch (err) {
+    console.error(
+      "read-config-dtos error:",
+      err && err.message ? err.message : err
+    );
+    return {
+      success: false,
+      error: err && err.message ? err.message : String(err),
+    };
   }
 });
 
