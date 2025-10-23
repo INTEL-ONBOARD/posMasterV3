@@ -8,7 +8,7 @@ function ReturnItem() {
   return (
     <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
       {/* Form section left */}
-      <div className="bg-gray-300 w-[28rem] h-full p-4 z-10">
+      <div className="bg-white w-[28rem] h-full p-4 z-10">
         <div className="flex flex-col h-full gap-6">
           {/* Item description box */}
           <div className="border rounded bg-white p-4">
@@ -230,6 +230,75 @@ function ReturnItem() {
           </div>
         </div>
       </div>
+      {/* Form Selection left section end */}
+
+      {/* ------------------------------------------------------------------------------ */}
+      {/* Mid Section */}
+      <div className="flex-1 bg-gray-50 p-6 shadow-md rounded-md">
+        {/* Search by name/sku/batchcode : search button Category Drop Down -> Those should be in the same line*/}
+        <div className="flex items-center gap-4 mb-6">
+          <input
+            type="text"
+            placeholder="Search by Name / SKU / Batch Code"
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {/* add search icon */}
+          <button className="px-5 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            Search
+            <span></span>
+          </button>
+          <select className="px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">All Categories</option>
+            <option value="category1">Category 1</option>
+            <option value="category2">Category 2</option>
+          </select>
+        </div>
+
+        {/* Table View */}
+        {/* Table -> heading dark gray, font light gray */}
+        {/* Columns : SKU, Status, Qty, Stock Price */}
+        <div className="overflow-y-auto h-[calc(100vh-10rem)]">
+          <table className="w-full table-auto border-collapse">
+            <thead>
+              <tr className="bg-gray-800 text-gray-300">
+                <th className="px-4 py-2 border-b border-gray-700 text-left">
+                  SKU
+                </th>
+                <th className="px-4 py-2 border-b border-gray-700 text-left">
+                  Status
+                </th>
+                <th className="px-4 py-2 border-b border-gray-700 text-left">
+                  Qty
+                </th>
+                <th className="px-4 py-2 border-b border-gray-700 text-left">
+                  Stock Price
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Sample Row */}
+              <tr className="hover:bg-gray-100">
+                <td className="px-4 py-2 border-b border-gray-200">
+                  123456789
+                </td>
+                <td className="px-4 py-2 border-b border-gray-200">In Stock</td>
+                <td className="px-4 py-2 border-b border-gray-200">50</td>
+                <td className="px-4 py-2 border-b border-gray-200">$10.00</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {/* Mid Section end */}
+
+      {/* ------------------------------------------------------------------------------- */}
+      {/* Right Section */}
+      <div className="w-[20rem] bg-gray-100 p-4">
+        {/* Content for the right section goes here */}
+      </div>
+      {/* Right Section end */}
+
+      {/*  */}
     </div>
   );
 }
