@@ -76,24 +76,108 @@ function ReturnItem() {
                 <span className="text-gray-400">STOCK DESCRIPTION</span>
               </button>
               {openFormBlock === "stock" && (
-                <div className="mx-4">
-                  <div className="flex flex-col px-4 py-2 max-h-[12rem]">
-                    <div className="grid grid-cols-2 gap-x-1 gap-y-1">
-                      {/* Stock Type */}
-                      <p className="text-sm font-semibold text-gray-800">
-                        Stock Type
+                <div className="flex flex-col gap-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Batch Code */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Batch Code
+                      </label>
+                      <input
+                        type="text"
+                        name="batch_code"
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    {/* Quantity */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Quantity
+                      </label>
+                      <input
+                        type="number"
+                        name="quantity"
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    {/* Lower Threshold Rate */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Lower Threshold Rate
+                      </label>
+                      <input
+                        type="number"
+                        name="lower_threshold"
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    {/* Availability */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Availability
+                      </label>
+                      <select
+                        name="availability"
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="in_stock">In Stock</option>
+                        <option value="out_of_stock">Out of Stock</option>
+                        <option value="pre_order">Pre-order</option>
+                      </select>
+                    </div>
+                    {/* Stock Price */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Stock Price
+                      </label>
+                      <input
+                        type="number"
+                        name="stock_price"
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    {/* Retail Price */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Retail Price
+                      </label>
+                      <input
+                        type="number"
+                        name="retail_price"
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    {/* Expire Date */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Expire Date
+                      </label>
+                      <input
+                        type="date"
+                        name="expire_date"
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    {/* Discount % */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Discount (%)
+                      </label>
+                      <input
+                        type="number"
+                        name="discount_percentage"
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    {/* Recent Batch code changes */}
+                    <p className="text-sm font-semibold text-gray-800 mt-4">
+                      Recent Batch Code Changes
+                    </p>
+                    <br />
+                    <div className="flex flex-col gap-3 overflow-y-auto overflow-x-hidden h-[13rem] pr-2">
+                      <p className="text-sm text-gray-700 italic">
+                        No batch code changes
                       </p>
-                      <p className="text-sm text-gray-700">Regular</p>
-                      {/* Supplier */}
-                      <p className="text-sm font-semibold text-gray-800">
-                        Supplier
-                      </p>
-                      <p className="text-sm text-gray-700">Sample Supplier</p>
-                      {/* Purchase Date */}
-                      <p className="text-sm font-semibold text-gray-800">
-                        Purchase Date
-                      </p>
-                      <p className="text-sm text-gray-700">2024-01-01</p>
                     </div>
                   </div>
                 </div>
