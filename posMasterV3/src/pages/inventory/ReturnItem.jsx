@@ -185,7 +185,7 @@ function ReturnItem() {
             </div>
             {/* ----------------------------------------------------------------------------- */}
 
-            {/* Return Description */}
+            {/* Return Descrition */}
             <div className="border rounded bg-white mt-2">
               <button
                 className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
@@ -196,20 +196,55 @@ function ReturnItem() {
                 <span className="text-gray-400">RETURN DESCRIPTION</span>
               </button>
               {openFormBlock === "return" && (
-                <div className="mx-4">
-                  <div className="flex flex-col px-4 py-2 max-h-[12rem]">
-                    <div className="grid grid-cols-2 gap-x-1 gap-y-1">
-                      {/* Return Qty */}
-                      <p className="text-sm font-semibold text-gray-800">
-                        Return Qty
-                      </p>
-                      <p className="text-sm text-gray-700">10</p>
-                      {/* Return Reason */}
-                      <p className="text-sm font-semibold text-gray-800">
-                        Return Reason
-                      </p>
-                      <p className="text-sm text-gray-700">Damaged</p>
+                <div className="flex flex-col gap-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* SKU */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        SKU
+                      </label>
+                      <input
+                        type="text"
+                        name="sku"
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
                     </div>
+
+                    {/* Dispose Quantity */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Dispose Quantity
+                      </label>
+                      <input
+                        type="number"
+                        name="dispose_quantity"
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Return Date */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Return Date
+                    </label>
+                    <input
+                      type="date"
+                      name="return_date"
+                      className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      name="description"
+                      rows="4"
+                      className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    ></textarea>
                   </div>
                 </div>
               )}
