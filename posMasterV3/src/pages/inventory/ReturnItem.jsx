@@ -294,7 +294,7 @@ function ReturnItem() {
 
       {/* ------------------------------------------------------------------------------- */}
       {/* Right Section */}
-      <div className="w-[20rem] bg-gray-100 p-4">
+      <div className="flex-1 w-[20rem] bg-gray-100 p-4">
         {/* Search bar with search button and icon */}
         <div className="flex items-center gap-4 mb-6">
           <input
