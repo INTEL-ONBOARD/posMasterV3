@@ -7,6 +7,7 @@ import ViewInventoryImg from "../../assets/View_inventory.png";
 import SupplierRegImg from "../../assets/Inventory_supplier_reg.png";
 import checkHistoryImg from "../../assets/Inventory_history_check.png";
 import returnItemImg from "../../assets/return_stock_image.png";
+import disposeItemImg from "../../assets/dispose_items.png";
 
 function InventorySidebar({
   activeSection,
@@ -18,6 +19,7 @@ function InventorySidebar({
   onConfigClick,
   onCReportClick,
   onReturnItemClick,
+  onDisposeItemClick,
 }) {
   const sidebarItems = [
     {
@@ -43,6 +45,12 @@ function InventorySidebar({
       label: "Return Item",
       icon: returnItemImg,
       onClick: onReturnItemClick,
+    },
+    {
+      id: "dispose-item",
+      label: "Dispose Item",
+      icon: disposeItemImg,
+      onClick: onDisposeItemClick,
     },
     {
       id: "supplier-registration",

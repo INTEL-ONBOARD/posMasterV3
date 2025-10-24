@@ -13,6 +13,7 @@ import InventoryRestock from "./InventoryRestock.jsx";
 import SupplierReg from "./SupplierReg.jsx";
 import CheckHistory from "./CheckHistory.jsx";
 import ReturnItem from "./ReturnItem.jsx";
+import DisposeItem from "./DisposeItem.jsx";
 
 function Inventory() {
   const { setActiveSection } = useOutletContext();
@@ -41,6 +42,7 @@ function Inventory() {
         onAddItemClick={() => handleSectionChange("add-item")}
         onRestockClick={() => handleSectionChange("inventory-restock")}
         onReturnItemClick={() => handleSectionChange("return-item")}
+        onDisposeItemClick={() => handleSectionChange("dispose-item")}
         onSupplierRegClick={() => handleSectionChange("supplier-registration")}
         onCheckHistoryClick={() => handleSectionChange("check-history")}
         onConfigClick={() => handleSectionChange("inventory-config")}
@@ -63,6 +65,10 @@ function Inventory() {
         {/* Return Item */}
         <div className={isVisible("return-item")}>
           <ReturnItem />
+        </div>
+        {/* Dispose Item */}
+        <div className={isVisible("dispose-item")}>
+          <DisposeItem />
         </div>
         {/* Supplier Reg */}
         <div className={isVisible("supplier-registration")}>
