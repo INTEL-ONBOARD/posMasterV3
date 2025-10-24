@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import barcodeImg from "../../assets/barcode.png";
 import { ChevronDown, Printer, ChevronUp } from "lucide-react";
+import AddItemCard from "../../components/AddItemCard.jsx";
 
 function ReturnItem() {
   const [openFormBlock, setOpenFormBlock] = useState("item");
@@ -294,7 +295,36 @@ function ReturnItem() {
       {/* ------------------------------------------------------------------------------- */}
       {/* Right Section */}
       <div className="w-[20rem] bg-gray-100 p-4">
-        {/* Content for the right section goes here */}
+        {/* Search bar with search button and icon */}
+        <div className="flex items-center gap-4 mb-6">
+          <input
+            type="text"
+            placeholder="Search your item code"
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button className="p-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <span>Search</span>
+          </button>
+        </div>
+
+        {/* Category and Stock Availability Drop Down in the same line */}
+        <div className="flex items-center gap-4 mb-6">
+          <select className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Category</option>
+            <option value="category1">Category 1</option>
+            <option value="category2">Category 2</option>
+          </select>
+          <select className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Availability</option>
+            <option value="in_stock">In Stock</option>
+            <option value="out_of_stock">Out of Stock</option>
+          </select>
+        </div>
+
+        {/* Item Cards  */}
+        <div className="flex flex-col gap-4 overflow-y-auto h-[calc(100vh-16rem)]">
+          <AddItemCard item={INITIAL_FORM_DATA} />
+        </div>
       </div>
       {/* Right Section end */}
 
@@ -303,3 +333,36 @@ function ReturnItem() {
   );
 }
 export default ReturnItem;
+
+// uncompleted empty form‐data state(new api)
+const INITIAL_FORM_DATA = {
+  _id: "",
+  id: 0,
+  stock_trace: [0],
+  item_name: "",
+  item_image_url: "",
+  sku: "",
+  maximum_capacity: 0,
+  uom_id: 0,
+  category_id: 0,
+  inventory_id: 1,
+  item_update_datetime: "",
+  item_created_datetime: "",
+  __v: 0,
+  uom: {
+    _id: "",
+    id: 0,
+    symbol: "",
+    unit_name: "",
+    __v: 0,
+  },
+  category: {
+    _id: "",
+    id: 0,
+    brand: "",
+    type: "",
+    __v: 0,
+  },
+  inventory: null,
+  availability: true,
+};
