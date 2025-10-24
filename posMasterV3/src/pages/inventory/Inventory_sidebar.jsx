@@ -8,6 +8,7 @@ import SupplierRegImg from "../../assets/Inventory_supplier_reg.png";
 import checkHistoryImg from "../../assets/Inventory_history_check.png";
 import returnItemImg from "../../assets/return_stock_image.png";
 import disposeItemImg from "../../assets/dispose_items.png";
+import priceChangeImg from "../../assets/price_change.png";
 
 function InventorySidebar({
   activeSection,
@@ -20,6 +21,7 @@ function InventorySidebar({
   onCReportClick,
   onReturnItemClick,
   onDisposeItemClick,
+  onPriceChangeClick,
 }) {
   const sidebarItems = [
     {
@@ -57,6 +59,12 @@ function InventorySidebar({
       label: "Supplier Registration",
       icon: SupplierRegImg,
       onClick: onSupplierRegClick,
+    },
+    {
+      id: "price-change",
+      label: "Price Change",
+      icon: priceChangeImg,
+      onClick: onPriceChangeClick,
     },
     {
       id: "check-history",
