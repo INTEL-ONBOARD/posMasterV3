@@ -49,22 +49,22 @@ function UnitOfMeassurement() {
 
       if (response.data.status === "success") {
         if (editingId) {
-          toast.open(`${response.data.message}`, 4000, 'UOM updated', 'success');
+
         } else {
-          toast.open(`${response.data.message}`, 4000, 'New UOM added', 'success');
+
         }
         fetchUoms(); // Refresh the list
         handleClear();
       } else {
         setError(response.data.message || "Operation failed");
-        toast.open(`${response.data.message}`, 4000, 'UOM request error', 'error');
+
       }
     } catch (error) {
       const errorMessage = error.response?.data?.message ||
         error.message ||
         "Network error, please try again";
       setError(errorMessage);
-      toast.open(`${errorMessage}`, 4000, 'UOM operation error', 'error');
+      
     } finally {
       setIsPosting(false);
     }

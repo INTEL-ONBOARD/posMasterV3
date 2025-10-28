@@ -84,7 +84,10 @@ function Inventory() {
         <div className={isVisible("check-history")}>
           <CheckHistory />
         </div>
-
+        {/* Dispose Item */}
+        <div className={isVisible("dispose-item")}>
+          <DisposeItem />
+        </div>
         {/* Inventory Config */}
         <div className={isVisible("inventory-config")}>
           <InventoryConfig />

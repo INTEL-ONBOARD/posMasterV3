@@ -79,22 +79,22 @@ function CategoryConfig() {
 
       if (response.data.status === "success") {
         if (editingId) {
-          toast.open(`${response.data.message}`, 4000, 'Category updated', 'success');
+
         } else {
-          toast.open(`${response.data.message}`, 4000, 'New Category added', 'success');
+
         }
         fetchCategories();
         handleClear();
       } else {
         setError(response.data.message || "Operation failed");
-        toast.open(`${response.data.message}`, 4000, 'Category request error', 'error');
+
       }
     } catch (error) {
       const errorMessage = error.response?.data?.message ||
         error.message ||
         "Network error, please try again";
       setError(errorMessage);
-      toast.open(`${errorMessage}`, 4000, 'Category operation error', 'error');
+
     } finally {
       setIsPosting(false);
     }
@@ -107,7 +107,7 @@ function CategoryConfig() {
       try {
         const response = await apiClient.delete(`api/categories/${id}`);
         if (response.data.status === "success") {
-          toast.open(`${response.data.message}`, 4000, 'Category deleted', 'success');
+
           setCategories(prev => prev.filter(cat => cat.id !== id));
           if (editingId === id) handleClear();
         }
