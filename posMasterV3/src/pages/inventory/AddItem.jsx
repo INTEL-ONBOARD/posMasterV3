@@ -614,9 +614,13 @@ function AddItem() {
       (searchAvailability === "Available" && isAvailable) ||
       (searchAvailability === "Unavailable" && !isAvailable);
 
+    // Item name or batch code text search match
+    const searchTerm = (search || "").toLowerCase();
     // text search match
     const matchesSearch =
-      (item?.item_name || "").toLowerCase().includes((search || "").toLowerCase());
+      (item?.item_name || "").toLowerCase().includes(searchTerm) ||
+      (item?.batch_code || "").toLowerCase().includes(searchTerm) ||
+      (item?.sku || "").toLowerCase().includes(searchTerm);
 
     return matchesCategory && matchesAvailability && matchesSearch;
   });
