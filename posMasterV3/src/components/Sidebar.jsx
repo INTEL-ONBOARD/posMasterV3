@@ -42,22 +42,23 @@ function Sidebar() {
 
   // Logout function
   const handleLogout = async () => {
-    if (isLoggingOut) return; 
-    
+    console.log("Logout initiated");
+    if (isLoggingOut) return;
+    console.log("Logout process started");
     setIsLoggingOut(true);
-    
+
     try {
       const storedUserInfo = localStorage.getItem('user');
-      
+
       if (storedUserInfo) {
         const user = JSON.parse(storedUserInfo);
-        
+
         const logoutData = {
           email: user.email,
           user_id: user._id
         };
         const response = await apiClient.post('/api/users/logout', logoutData);
-      
+
         if (response.status === 200) {
           console.log("Logout successful:", response.data);
         } else {
@@ -68,15 +69,15 @@ function Sidebar() {
       console.error("Error during logout:", error.response?.data || error.message);
     } finally {
       localStorage.removeItem('userInfo');
-      localStorage.removeItem('token'); 
-      localStorage.removeItem('authToken'); 
-      
+      localStorage.removeItem('token');
+      localStorage.removeItem('authToken');
+
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('auth') || key.startsWith('user')) {
           localStorage.removeItem(key);
         }
       });
-      
+
       setIsLoggingOut(false);
       navigate("/");
     }
@@ -123,19 +124,12 @@ function Sidebar() {
               <Link
                 to={item.to}
                 className={`${currentPath.startsWith(`/dashboard/${item.to}`)
-                    ? "bg-[#EBEBEB] border-blue-500 relative"
-                    : ""
+                  ? "bg-[#EBEBEB] border-blue-500 relative"
+                  : ""
                   } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
               >
                 <div className="relative flex flex-col items-center mb-2">
                   <img className="w-12 object-contain" src={item.icon} alt={item.label} />
-                  {currentPath === `/dashboard/${item.to}` && (
-                    <span className="absolute right-[-32px] top-1/2 -translate-y-1/2">
-                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </span>
-                  )}
                 </div>
                 <span className="text-sm font-medium text-center mt-1">
                   {item.label}
@@ -155,13 +149,6 @@ function Sidebar() {
             >
               <div className="relative flex flex-col items-center mb-2">
                 <img className="w-12 object-contain" src={Dashboard_logout} alt="Logout" />
-                {currentPath === "/dashboard/logout" && (
-                  <span className="absolute right-[-32px] top-1/2 -translate-y-1/2">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </span>
-                )}
               </div>
               <span className="text-sm font-medium text-center mt-1">
                 {isLoggingOut ? "Logging out..." : "Logout"}
