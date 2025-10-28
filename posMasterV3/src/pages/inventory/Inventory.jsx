@@ -12,7 +12,9 @@ import InventoryView from "./InventoryView.jsx";
 import InventoryRestock from "./InventoryRestock.jsx";
 import SupplierReg from "./SupplierReg.jsx";
 import CheckHistory from "./CheckHistory.jsx";
+import ReturnItem from "./ReturnItem.jsx";
 import DisposeItem from "./DisposeItem.jsx";
+import PriceChange from "./PriceChange.jsx";
 
 function Inventory() {
   const { setActiveSection } = useOutletContext();
@@ -39,21 +41,20 @@ function Inventory() {
         activeSection={activeSection}
         onViewInvClick={() => handleSectionChange("view-inventory")}
         onAddItemClick={() => handleSectionChange("add-item")}
-
         onRestockClick={() => handleSectionChange("inventory-restock")}
+        onReturnItemClick={() => handleSectionChange("return-item")}
+        onDisposeItemClick={() => handleSectionChange("dispose-item")}
         onSupplierRegClick={() => handleSectionChange("supplier-registration")}
+        onPriceChangeClick={() => handleSectionChange("price-change")}
         onCheckHistoryClick={() => handleSectionChange("check-history")}
-        
         onConfigClick={() => handleSectionChange("inventory-config")}
         onCReportClick={() => handleSectionChange("inventory-report")}
       />
 
-
       <main className="flex-1 bg-[#F3F3F3] h-[calc(100vh-2rem)] relative">
-
         {/* View Inventory */}
         <div className={isVisible("view-inventory")}>
-          <InventoryView/>
+          <InventoryView />
         </div>
         {/* Add Item */}
         <div className={isVisible("add-item")}>
@@ -63,9 +64,21 @@ function Inventory() {
         <div className={isVisible("inventory-restock")}>
           <InventoryRestock />
         </div>
+        {/* Return Item */}
+        <div className={isVisible("return-item")}>
+          <ReturnItem />
+        </div>
+        {/* Dispose Item */}
+        <div className={isVisible("dispose-item")}>
+          <DisposeItem />
+        </div>
         {/* Supplier Reg */}
         <div className={isVisible("supplier-registration")}>
           <SupplierReg />
+        </div>
+        {/* Price Change */}
+        <div className={isVisible("price-change")}>
+          <PriceChange />
         </div>
         {/* Check History */}
         <div className={isVisible("check-history")}>
@@ -85,8 +98,6 @@ function Inventory() {
           <InventoryReport />
         </div>
       </main>
-
-
     </div>
   );
 }

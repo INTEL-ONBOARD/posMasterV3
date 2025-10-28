@@ -3,7 +3,7 @@ import barcodeImg from "../../assets/barcode.png";
 import { ChevronDown, Printer, ChevronUp } from "lucide-react";
 import AddItemCard from "../../components/AddItemCard.jsx";
 
-function DisposeItem() {
+function ReturnItem() {
   const [openFormBlock, setOpenFormBlock] = useState("item");
 
   return (
@@ -170,7 +170,7 @@ function DisposeItem() {
               )}
             </div>
 
-            {/* Dispose Description */}
+            {/* Return Description */}
             <div className="border rounded bg-white">
               <button
                 className="w-full flex justify-between items-center bg-white px-4 py-3 text-lg font-bold"
@@ -178,7 +178,7 @@ function DisposeItem() {
                   setOpenFormBlock(openFormBlock === "return" ? "" : "return")
                 }
               >
-                <span className="text-gray-400">DISPOSE DESCRIPTION</span>
+                <span className="text-gray-400">RETURN DESCRIPTION</span>
                 {openFormBlock == "item" ? <ChevronUp /> : <ChevronDown />}
               </button>
               {openFormBlock === "return" && (
@@ -332,8 +332,7 @@ function DisposeItem() {
     </div>
   );
 }
-
-export default DisposeItem;
+export default ReturnItem;
 
 // uncompleted empty form‐data state(new api)
 const INITIAL_FORM_DATA = {
