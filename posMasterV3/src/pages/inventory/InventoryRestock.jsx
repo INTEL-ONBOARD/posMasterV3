@@ -13,6 +13,8 @@ import { generateUniqueString } from "../../util/generate";
 //modal images
 import successImage from '../../assets/Success.png';
 import failedImage from '../../assets/Failed.png';
+import { appendCurrentTimeToDate, getCurrentDate, getCurrentDateTime } from "../../util/date";
+import { validateStockForm } from "../../util/validate";
 
 function InventoryRestock() {
 
@@ -341,6 +343,10 @@ function InventoryRestock() {
 
   //select table rows and load form sections
   const addRegItemToForm = (item) => {
+
+  const { valid, errors: validationErrors } = validateStockForm(formDataStock);
+  setErrors(validationErrors);
+
     //to make left section's return item block invisible or removed only after selecting a return item from the table
     setReturnItemSelected(false);
         //load item basic details(loaded for all item types-reg, return...etc)
@@ -362,7 +368,7 @@ function InventoryRestock() {
       __v: item._v,
       uom: {
         _id: item.uom?._id,
-        id: item.uom?._id.id,
+        id: item.uom?._id,
         symbol: item.uom?.symbol,
         unit_name: item.uom?.unit_name,
         __v: item.uom?._v,
@@ -409,6 +415,14 @@ function InventoryRestock() {
 
   const addNewRegItem = () => {
 
+  const { valid, formErrors: validationErrors } = validateStockForm(formDataStock);
+  setFormErrors(validationErrors);
+
+  if (!valid) {
+    // bail out so UI shows highlights
+    console.warn("Validation failed", validationErrors);
+    return;
+  }
     //hide the return description Upon VALIDATION SUCCESS
     setReturnItemSelected(false);
 
@@ -523,6 +537,25 @@ function InventoryRestock() {
     }
   }
 
+  const clearFormInput = (stock) => {
+    // console.log(stock);
+    // setFormDataReturnItem(prev => ({ ...prev, stock: stock }));
+
+    setFormDataStock(
+      {
+      batch_code: "",
+      quantity: 0,
+      threshold_limit: 0,
+      stock_price: 0,
+      retail_price: 0,
+      expired_datetime: null,
+      availability: true,
+
+      discount: 0
+      }
+    );
+  }
+
   //verify if it's a return item, register item or a dispose item
   //if it doesn't exists and a register item, add it to the list(for now adding from form state but i can also add it from selectedRegItem just in case)
 
@@ -571,16 +604,18 @@ function InventoryRestock() {
   });
 
   const [formDataStock, setFormDataStock] = useState({
-    batch_code: "batch",
-    quantity: 110,
-    threshold_limit: 20,
-    stock_price: 20,
-    retail_price: 30,
-    expired_datetime: "2025-12-31T23:59:59",
+    batch_code: "",
+    quantity: 0,
+    threshold_limit: 0,
+    stock_price: 0,
+    retail_price: 0,
+    expired_datetime: null,
     availability: true,
 
-    discount: 10
+    discount: 0
   });
+  //to validate and
+  const [formErrors, setFormErrors] = useState({});
   
   
   //date for batch code item cards
@@ -627,13 +662,22 @@ function InventoryRestock() {
     }
   };
   //populate the batchcode textbox from recent sku card
-  const setStockBatchCodeFromEntry = (batch_code) => {
-    console.log(batch_code);
-    setFormDataStock(prev => ({ ...prev, batch_code: batch_code }));
+  const setStockBatchCodeFromEntry = (stock) => {
+    console.log(stock);
+    //populate existing stock form block according to selected batch code
+    // setFormDataStock({
+    //   sku: item.sku,
+    //   quantity: item.quantity,
+    //   threshold_limit: item.threshold_limit,
+    //   stock_price: item.stock_price,
+    //   retail_price: item.retail_price,
+    //   expired_datetime: item.expired_datetime,
+    //   availability: item.availability
+    // });
   }
-  const setReturnBatchCodeFromEntry = (batch_code) => {
-    console.log(batch_code);
-    setFormDataReturnItem(prev => ({ ...prev, batch_code: batch_code }));
+  const setReturnBatchCodeFromEntry = (stock) => {
+    // console.log(stock);
+    // setFormDataReturnItem(prev => ({ ...prev, stock: stock }));
   }
   const handleStockInputChange = (e) => {
     const { name, value } = e.target;
@@ -691,7 +735,7 @@ function InventoryRestock() {
     preparedBy: "prep123",
     auth_id: "",
     authorizedBy: "auth123",
-    date: "2020",
+    date: "",
 
     invoiceNo: "No1234",
     description: "returning item",
@@ -1034,6 +1078,7 @@ function InventoryRestock() {
         // }, 4000);
         // clearUserInput();
       } else {
+        setModal({ open: true, type: 'failed' });
         //setModal({ open: true, type: 'failed' });
         console.log(response.data.data.message);
         //alert(response.data.message || "Failed to create item");
@@ -1119,7 +1164,7 @@ function InventoryRestock() {
           <div className="border">
             <button
               // onClick={() => setOpenStock(!openStock)}
-              openFormBlock
+              //openFormBlock
               onClick={() => setopenFormBlock('stock')}
               className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
             >
@@ -1141,8 +1186,11 @@ function InventoryRestock() {
                         value={formDataStock.batch_code}
                         onChange={handleStockInputChange}
                         //placeholder=""
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className={`w-full px-3 py-2 border ${
+                          formErrors.batch_code ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
                       />
+                      {formErrors.batch_code && <p className="text-red-500 text-xs mt-1">{formErrors.batch_code}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
@@ -1239,18 +1287,19 @@ function InventoryRestock() {
                           value={formDataStock.expired_datetime ? formDataStock.expired_datetime.split('T')[0] : ''}
                           onChange={(e) => {
                             const selectedDate = e.target.value;
-                            console.log("date input value: " + selectedDate);
+                            console.log("date input value:", selectedDate);
                             if (selectedDate) {
-                              // Format to UTC midnight: YYYY-MM-DDT00:00:00.000Z (or change to T23:59:59.000Z for end of day)
-                              const utcMidnight = `${selectedDate}T00:00:00.000Z`;
-                              console.log("to formData:" + utcMidnight)
+                              const localDateTime = appendCurrentTimeToDate(selectedDate);
+                              console.log("to formData:", localDateTime);
                               setFormDataStock({
                                 ...formDataStock,
-                                expired_datetime: utcMidnight
+                                expired_datetime: localDateTime,
                               });
                             } else {
-                              // Clear the field if date is empty
-                              setFormDataStock({ ...formDataStock, expired_datetime: null });
+                              setFormDataStock({
+                                ...formDataStock,
+                                expired_datetime: null,
+                              });
                             }
                           }}
                           name="expired_datetime"
@@ -1281,7 +1330,7 @@ function InventoryRestock() {
                     ) : (
                       stockEntries.map((s, i) => (
                         <div key={s.batch_code + i} className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]"
-                          onClick={()=>setStockBatchCodeFromEntry(s.batch_code)}
+                          onClick={()=>setStockBatchCodeFromEntry(s)}
                         >
                           <div className="flex flex-col">
                             <span className="text-md font-bold">Batchcode:</span>
@@ -1507,9 +1556,8 @@ function InventoryRestock() {
           </button> */}
           <button
             onClick={() => {
-              clearUserInput();
+              clearFormInput();
               //switch from update item button to add item button
-              setUserEditing(false)
             }}
             className="flex-1 min-w-0 h-10 px-3 py-2 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors text-sm"
           >
