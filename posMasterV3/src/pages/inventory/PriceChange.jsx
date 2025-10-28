@@ -3,7 +3,7 @@ import barcodeImg from "../../assets/barcode.png";
 import { ChevronDown, Printer, ChevronUp } from "lucide-react";
 import AddItemCard from "../../components/AddItemCard.jsx";
 
-function DisposeItem() {
+function PriceChange() {
   const [openFormBlock, setOpenFormBlock] = useState("item");
 
   return (
@@ -170,7 +170,7 @@ function DisposeItem() {
               )}
             </div>
 
-            {/* Dispose Description */}
+            {/* Price Change Description */}
             <div className="border rounded bg-white">
               <button
                 className="w-full flex justify-between items-center bg-white px-4 py-3 text-lg font-bold"
@@ -178,7 +178,7 @@ function DisposeItem() {
                   setOpenFormBlock(openFormBlock === "return" ? "" : "return")
                 }
               >
-                <span className="text-gray-400">DISPOSE DESCRIPTION</span>
+                <span className="text-gray-400">PRICE CHANGE DESCRIPTION</span>
                 {openFormBlock == "item" ? <ChevronUp /> : <ChevronDown />}
               </button>
               {openFormBlock === "return" && (
@@ -186,7 +186,7 @@ function DisposeItem() {
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-2">
-                        SKU
+                        New Price
                       </label>
                       <input
                         type="text"
@@ -204,16 +204,6 @@ function DisposeItem() {
                         className="w-full px-3 py-2 border bg-gray-100 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
-                  </div>
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-400 mb-2">
-                      Return Date
-                    </label>
-                    <input
-                      type="date"
-                      name="return_date"
-                      className="w-full px-3 py-2 border bg-gray-100 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
                   </div>
                   <div className="mt-4">
                     <label className="block text-sm font-medium text-gray-400 mb-2">
@@ -333,7 +323,7 @@ function DisposeItem() {
   );
 }
 
-export default DisposeItem;
+export default PriceChange;
 
 // uncompleted empty form‐data state(new api)
 const INITIAL_FORM_DATA = {

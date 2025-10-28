@@ -13,6 +13,8 @@ import { generateUniqueString } from "../../util/generate";
 //modal images
 import successImage from '../../assets/Success.png';
 import failedImage from '../../assets/Failed.png';
+import { appendCurrentTimeToDate, getCurrentDate, getCurrentDateTime } from "../../util/date";
+import { validateStockForm } from "../../util/validate";
 
 function InventoryRestock() {
 
@@ -64,9 +66,13 @@ function InventoryRestock() {
     fetchUsers();
   }, []);
 
+  // right section controls
+  const [rightActiveSection, setRightActiveSection] = useState("buttons"); // "buttons" | "dispose" | "add" | "return"
+
   // registered item list
   const [inventoryItems, setInventoryItems] = useState([]);
   const fetchItems = async () => {
+    console.log("item list repopulated");
     try {
       const response = await apiClient.get("api/itemRegistry/extended");
       if (response.data.status === "success") {
@@ -81,7 +87,7 @@ function InventoryRestock() {
   // Fetch items from API
   useEffect(() => {
     fetchItems();
-  }, []);
+  }, [rightActiveSection]);
 
 
   // Fetch Categories from API and create mapping
@@ -157,7 +163,8 @@ function InventoryRestock() {
     const searchTerm = (search || "").toLowerCase();
     const matchesSearch =
       (item?.item_name || "").toLowerCase().includes(searchTerm) ||
-      (item?.batch_code || "").toLowerCase().includes(searchTerm);
+      (item?.batch_code || "").toLowerCase().includes(searchTerm) ||
+      (item?.sku || "").toLowerCase().includes(searchTerm);
 
     return matchesCategory && matchesAvailability && matchesSearch;
   });
@@ -169,8 +176,6 @@ function InventoryRestock() {
   // const [openSupplier, setOpenSupplier] = useState(true);
   //replaced with this
   const [openFormBlock, setopenFormBlock] = useState('item'); //item || stock || supplier || 
-  // right section controls
-  const [rightActiveSection, setRightActiveSection] = useState("buttons"); // "buttons" | "dispose" | "add" | "return"
 
 
   //mid section logic
@@ -218,7 +223,7 @@ function InventoryRestock() {
       item_created_datetime: "2025-12-31T23:59:59",
       __v: 0,
       inventory: null,
-      sku: "skupsps",
+      sku: "1skupsps",
       quantity: 3,
       threshold_limit: 20,
       stock_price: 20,
@@ -226,11 +231,13 @@ function InventoryRestock() {
       expired_datetime: "2025-12-31T23:59:59",
       availability: true,
 
+      item_discount_amt: 10,
+
       uom_symbol: "pcs"
     },
     {
       _id: "",
-      id: 0,
+      id: 1,
       stock_trace: [0],
       item_name: "fdsaf",
       item_image_url: "",
@@ -243,13 +250,15 @@ function InventoryRestock() {
       item_created_datetime: "2025-12-31T23:59:59",
       __v: 0,
       inventory: null,
-      sku: "skupsps",
+      sku: "2skupsps",
       quantity: 3,
       threshold_limit: 20,
       stock_price: 20,
       retail_price: 30,
       expired_datetime: "2025-12-31T23:59:59",
       availability: true,
+
+      item_discount_amt: 0,
 
       uom_symbol: "pcs"
     }
@@ -288,7 +297,7 @@ function InventoryRestock() {
       // availability: true
 
       sku: "skupsps",
-      quantity: 150,
+      quantity: 1,
       threshold_limit: 20,
       stock_price: 20,
       retail_price: 35,
@@ -297,13 +306,49 @@ function InventoryRestock() {
 
       uom_symbol: "pcs",
 
+      item_discount_amt: 0,
+
       return_description: "damaged goods"
     }
   ]);
 
+  // Calculate total for selectedStockItemList with discount deduction
+  const stockTotal = selectedStockItemList.reduce((total, item) => {
+    const discountedPrice = item.stock_price - (item.item_discount_amt || 0);
+    return total + (discountedPrice * item.quantity);
+  }, 0);
+
+  // Calculate total for selectedReturnItemList with discount deduction
+  const returnTotal = selectedReturnItemList.reduce((total, item) => {
+    const discountedPrice = item.stock_price - (item.item_discount_amt || 0);
+    return total + (discountedPrice * item.quantity);
+  }, 0);
+
+  //Just in case for wenuja
+  // Calculate total discount amounts for display
+  const totalStockDiscount = selectedStockItemList.reduce((total, item) => {
+    return total + ((item.item_discount_amt || 0) * item.quantity);
+  }, 0);
+
+  const totalReturnDiscount = selectedReturnItemList.reduce((total, item) => {
+    return total + ((item.item_discount_amt || 0) * item.quantity);
+  }, 0);
+
+  // State for form inputs
+  const [cashAmount, setCashAmount] = useState(0);
+  const [finalDiscount, setFinalDiscount] = useState(0);
+  // Calculate the main totals(for table bottom content area)
+  const totalAmount = (stockTotal - returnTotal) - parseFloat(finalDiscount || 0);
+  const changeAmount = parseFloat(cashAmount || 0) - totalAmount;
+
   //select table rows and load form sections
   const addRegItemToForm = (item) => {
 
+  const { valid, errors: validationErrors } = validateStockForm(formDataStock);
+  setErrors(validationErrors);
+
+    //to make left section's return item block invisible or removed only after selecting a return item from the table
+    setReturnItemSelected(false);
         //load item basic details(loaded for all item types-reg, return...etc)
     setFormDataRegItem({
       sku: item.sku,
@@ -323,7 +368,7 @@ function InventoryRestock() {
       __v: item._v,
       uom: {
         _id: item.uom?._id,
-        id: item.uom?._id.id,
+        id: item.uom?._id,
         symbol: item.uom?.symbol,
         unit_name: item.uom?.unit_name,
         __v: item.uom?._v,
@@ -360,10 +405,26 @@ function InventoryRestock() {
   const addReturnItemToForm = (item) => {
     //validation of some sort?
 
+    //to make left section's return item block visible only after selecting a return item from the table
+    setReturnItemSelected(true);
+
+
+    
     
   }
 
   const addNewRegItem = () => {
+
+  const { valid, formErrors: validationErrors } = validateStockForm(formDataStock);
+  setFormErrors(validationErrors);
+
+  if (!valid) {
+    // bail out so UI shows highlights
+    console.warn("Validation failed", validationErrors);
+    return;
+  }
+    //hide the return description Upon VALIDATION SUCCESS
+    setReturnItemSelected(false);
 
     //check if it already exists on the item list first
     // console.log(formDataRegItem.id);
@@ -422,6 +483,8 @@ function InventoryRestock() {
         expired_datetime: formDataStock.expired_datetime,
         availability: formDataStock.availability,
 
+        item_discount_amt: parseFloat(formDataStock.discount),
+
         uom_symbol: formDataStock.uom?.uom_symbol
       };
       console.log(newRegItem);
@@ -462,12 +525,35 @@ function InventoryRestock() {
         batch_code: formDataReturnItem.batch_code,
         quantity: parseFloat(formDataReturnItem.quantity) || 0,
         uom_symbol: formDataStock.uom?.uom_symbol,
+
+        item_discount_amt: formDataStock.discount,
+
         return_description: formDataReturnItem.return_description
+        
       };
       console.log(newRetItem);
       //TODO: do a validation first
       setSelectedReturnItemList(prev => [...prev, newRetItem]);
     }
+  }
+
+  const clearFormInput = (stock) => {
+    // console.log(stock);
+    // setFormDataReturnItem(prev => ({ ...prev, stock: stock }));
+
+    setFormDataStock(
+      {
+      batch_code: "",
+      quantity: 0,
+      threshold_limit: 0,
+      stock_price: 0,
+      retail_price: 0,
+      expired_datetime: null,
+      availability: true,
+
+      discount: 0
+      }
+    );
   }
 
   //verify if it's a return item, register item or a dispose item
@@ -482,19 +568,6 @@ function InventoryRestock() {
     setSelectedReturnItemList(prev => prev.filter(item => item.id !== id));
   }
 
-  //totalValues
-  const { totalStock, totalRetail } = useMemo(() => {
-    return selectedStockItemList.reduce(
-      (acc, item) => {
-        const s = Number(item?.stock_total ?? 0);
-        const r = Number(item?.retail_total ?? 0);
-        acc.totalStock += Number.isFinite(s) ? s : 0;
-        acc.totalRetail += Number.isFinite(r) ? r : 0;
-        return acc;
-      },
-      { totalStock: 0, totalRetail: 0 }
-    );
-  }, [selectedStockItemList]);
 
   const [formDataRegItem, setFormDataRegItem] = useState({
 
@@ -531,14 +604,18 @@ function InventoryRestock() {
   });
 
   const [formDataStock, setFormDataStock] = useState({
-    batch_code: "batch",
-    quantity: 110,
-    threshold_limit: 20,
-    stock_price: 20,
-    retail_price: 35,
-    expired_datetime: "2025-12-31T23:59:59",
-    availability: true
+    batch_code: "",
+    quantity: 0,
+    threshold_limit: 0,
+    stock_price: 0,
+    retail_price: 0,
+    expired_datetime: null,
+    availability: true,
+
+    discount: 0
   });
+  //to validate and
+  const [formErrors, setFormErrors] = useState({});
   
   
   //date for batch code item cards
@@ -565,6 +642,7 @@ function InventoryRestock() {
       if (payload) {
         if (payload.status === 'success' && Array.isArray(payload.data)) {
           setStockEntries(payload.data);
+          console.log(stockEntries);
         } else if (Array.isArray(payload)) {
           setStockEntries(payload);
         } else if (Array.isArray(payload.data)) {
@@ -584,13 +662,22 @@ function InventoryRestock() {
     }
   };
   //populate the batchcode textbox from recent sku card
-  const setStockBatchCodeFromEntry = (batch_code) => {
-    console.log(batch_code);
-    setFormDataStock(prev => ({ ...prev, batch_code: batch_code }));
+  const setStockBatchCodeFromEntry = (stock) => {
+    console.log(stock);
+    //populate existing stock form block according to selected batch code
+    // setFormDataStock({
+    //   sku: item.sku,
+    //   quantity: item.quantity,
+    //   threshold_limit: item.threshold_limit,
+    //   stock_price: item.stock_price,
+    //   retail_price: item.retail_price,
+    //   expired_datetime: item.expired_datetime,
+    //   availability: item.availability
+    // });
   }
-  const setReturnBatchCodeFromEntry = (batch_code) => {
-    console.log(batch_code);
-    setFormDataReturnItem(prev => ({ ...prev, batch_code: batch_code }));
+  const setReturnBatchCodeFromEntry = (stock) => {
+    // console.log(stock);
+    // setFormDataReturnItem(prev => ({ ...prev, stock: stock }));
   }
   const handleStockInputChange = (e) => {
     const { name, value } = e.target;
@@ -648,7 +735,7 @@ function InventoryRestock() {
     preparedBy: "prep123",
     auth_id: "",
     authorizedBy: "auth123",
-    date: "2020",
+    date: "",
 
     invoiceNo: "No1234",
     description: "returning item",
@@ -699,6 +786,17 @@ function InventoryRestock() {
         // expired_datetime: formDataStock.expired_datetime,
         // availability: formDataStock.availability,
 
+        uom: {
+        id: item.uom.id,
+        symbol: item.uom.symbol,
+        unit_name: item.uom.unit_name,
+      },
+      category: {
+        id: item.category.id,
+        brand: item.category.brand,
+        type: item.category.type,
+      },
+
         sku: item.sku,
         quantity: 0,
         threshold_limit: 0,
@@ -706,6 +804,8 @@ function InventoryRestock() {
         retail_price: 0,
         expired_datetime: "",
         availability: true,
+
+        item_discount_amt: 0,
 
         uom_symbol: formDataStock.uom?.uom_symbol
       };
@@ -749,6 +849,9 @@ function InventoryRestock() {
         batch_code: formDataReturnItem.batch_code,
         quantity: parseFloat(formDataReturnItem.quantity) || 0,
         uom_symbol: formDataStock.uom?.uom_symbol,
+
+        item_discount_amt: formDataStock.discount,
+
         return_description: formDataReturnItem.return_description
       };
       console.log(newRetItem);
@@ -831,6 +934,8 @@ function InventoryRestock() {
 
   };
 
+    //to make left section's return item block visible only after selecting a return item from the table
+    const [returnItemSelected, setReturnItemSelected] = useState(false);
 
 
 
@@ -865,8 +970,8 @@ function InventoryRestock() {
 
 
   const registerTransaction = async (e) => {
-    setModal({ open: true, type: 'success' });
-    return;
+    //setModal({ open: true, type: 'success' });
+    //return;
 
     //create reg item list for req data
     // Function to transform selected items to the required format
@@ -874,7 +979,8 @@ function InventoryRestock() {
       return selectedStockItemList.map(item => ({
         sku: item.sku,
         qty: item.quantity,
-        stock_price: item.stock_price,
+        //stock price is deducted with the discount upon the request sendint 
+        stock_price: item.stock_price-item.item_discount_amt,
         retail_price: item.retail_price,
         exp_date: item.expired_datetime,
         batch_code: item.batch_code
@@ -910,11 +1016,11 @@ function InventoryRestock() {
         payment_method: formDataSupplier.payment_method,
         expenses: formDataSupplier.expenses,
 
-        discount: transactionData.discountAmount,
-        current_amount: 100.00,
-        cash_amount: 95.00,
-        change_amount: 5.00,
-        total_amount: 105.00,
+        discount: finalDiscount,
+        current_amount: 0,
+        cash_amount: cashAmount,
+        change_amount: changeAmount,
+        total_amount: (returnTotal+stockTotal),
 
         exe_level: "medium",
 
@@ -958,7 +1064,7 @@ function InventoryRestock() {
       const response = await apiClient.post("api/restocks", requestData);
 
       if (response.data.status === "success") {
-        //setModal({ open: true, type: 'success' });
+        setModal({ open: true, type: 'success' });
         // Add new item to local state
         //alert("Item created successfully!");
         //toast.open("Item created successfully", 4000, 'Success', 'success');
@@ -972,6 +1078,7 @@ function InventoryRestock() {
         // }, 4000);
         // clearUserInput();
       } else {
+        setModal({ open: true, type: 'failed' });
         //setModal({ open: true, type: 'failed' });
         console.log(response.data.data.message);
         //alert(response.data.message || "Failed to create item");
@@ -1042,6 +1149,7 @@ function InventoryRestock() {
                       <p className="text-sm font-semibold text-gray-800">Name</p>
                       <p className="text-sm text-gray-700">{formDataRegItem.item_name}</p>
                       <p className="text-sm font-semibold text-gray-800">Category</p>
+                      {/* {console.log(formDataRegItem.category)} */}
                       <p className="text-sm text-gray-700">{formDataRegItem?.category?.type}</p>
                       {/* <p className="text-sm font-semibold text-gray-800">Current Qty</p> */}
                       {/* <p className="text-sm text-gray-700">{formDataStock?.quantity}/{formDataRegItem?.maximum_capacity}({formDataRegItem?.uom?.symbol})</p> */}
@@ -1056,7 +1164,7 @@ function InventoryRestock() {
           <div className="border">
             <button
               // onClick={() => setOpenStock(!openStock)}
-              openFormBlock
+              //openFormBlock
               onClick={() => setopenFormBlock('stock')}
               className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
             >
@@ -1078,8 +1186,11 @@ function InventoryRestock() {
                         value={formDataStock.batch_code}
                         onChange={handleStockInputChange}
                         //placeholder=""
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className={`w-full px-3 py-2 border ${
+                          formErrors.batch_code ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
                       />
+                      {formErrors.batch_code && <p className="text-red-500 text-xs mt-1">{formErrors.batch_code}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
@@ -1176,18 +1287,19 @@ function InventoryRestock() {
                           value={formDataStock.expired_datetime ? formDataStock.expired_datetime.split('T')[0] : ''}
                           onChange={(e) => {
                             const selectedDate = e.target.value;
-                            console.log("date input value: " + selectedDate);
+                            console.log("date input value:", selectedDate);
                             if (selectedDate) {
-                              // Format to UTC midnight: YYYY-MM-DDT00:00:00.000Z (or change to T23:59:59.000Z for end of day)
-                              const utcMidnight = `${selectedDate}T00:00:00.000Z`;
-                              console.log("to formData:" + utcMidnight)
+                              const localDateTime = appendCurrentTimeToDate(selectedDate);
+                              console.log("to formData:", localDateTime);
                               setFormDataStock({
                                 ...formDataStock,
-                                expired_datetime: utcMidnight
+                                expired_datetime: localDateTime,
                               });
                             } else {
-                              // Clear the field if date is empty
-                              setFormDataStock({ ...formDataStock, expired_datetime: null });
+                              setFormDataStock({
+                                ...formDataStock,
+                                expired_datetime: null,
+                              });
                             }
                           }}
                           name="expired_datetime"
@@ -1196,9 +1308,9 @@ function InventoryRestock() {
                         />
                       </div>
                     </div>
-                    {/* <div>
+                    <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Discount (%)
+                        Discount (Rs/-)
                       </label>
                       <input
                         type="number"
@@ -1208,7 +1320,7 @@ function InventoryRestock() {
                         placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
-                    </div> */}
+                    </div>
                   </div>
 
                   <p>Recent Batch Code Changes</p>
@@ -1218,7 +1330,7 @@ function InventoryRestock() {
                     ) : (
                       stockEntries.map((s, i) => (
                         <div key={s.batch_code + i} className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]"
-                          onClick={()=>setStockBatchCodeFromEntry(s.batch_code)}
+                          onClick={()=>setStockBatchCodeFromEntry(s)}
                         >
                           <div className="flex flex-col">
                             <span className="text-md font-bold">Batchcode:</span>
@@ -1332,8 +1444,9 @@ function InventoryRestock() {
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">-- select payment method --</option>
-                        <option value="bank">Bank Check</option>
-                        <option value="cash">Cash</option>
+                        <option value="bank_transfer">Bank Check</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="other">Other</option>
                       </select>
                     </div>
                     <div>
@@ -1357,7 +1470,7 @@ function InventoryRestock() {
           </div>
 
           {/* ▼ return description block ▼ */}
-          {(true) && (
+          {(returnItemSelected) && (
             <div className="bg-white">
               <button
                 onClick={() => setopenFormBlock('return')}
@@ -1433,7 +1546,7 @@ function InventoryRestock() {
 
         </div>
         {/* Bottom bar */}
-        <div className="flex flex-row w-full gap-2">
+        <div className="flex flex-row w-full mt-[10rem] gap-2">
           {/* <button
             className="flex items-center flex-1 min-w-0 h-10 px-2 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors text-sm"
             // onClick={() => generatePdf('print')}
@@ -1443,9 +1556,8 @@ function InventoryRestock() {
           </button> */}
           <button
             onClick={() => {
-              clearUserInput();
+              clearFormInput();
               //switch from update item button to add item button
-              setUserEditing(false)
             }}
             className="flex-1 min-w-0 h-10 px-3 py-2 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors text-sm"
           >
@@ -1614,14 +1726,17 @@ function InventoryRestock() {
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
                     {item.quantity} ({item.uom_symbol})
                   </td>
+                  {/* stock prices are shown with their discounts deducted */}
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {item.stock_price.toFixed(2)}
+                    {(item.stock_price).toFixed(2) - (item.item_discount_amt).toFixed(2)}
                   </td>
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {(item.stock_price * item.quantity).toFixed(2)}
+                    {
+                    (((item.stock_price).toFixed(2) - (item.item_discount_amt).toFixed(2)) * item.quantity).toFixed(2)}
                   </td>
+                  {/* retail prices doesn't have discounts (for now) */}
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {item.retail_price.toFixed(2)}
+                    {item.retail_price.toFixed(2) - (item.item_discount_amt).toFixed(2)}
                   </td>
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
                     {(item.retail_price * item.quantity).toFixed(2)}
@@ -1724,28 +1839,31 @@ function InventoryRestock() {
               <div className="mb-6">
                 <label className="block text-sm text-gray-400 mb-2">Discount ( Rs. )</label>
                 <input
+                  // type="number"
+                  // name="discountAmount"
+                  // value={transactionData.discountAmount}
+                  // onChange={handleTransactionDataInputChange}
                   type="number"
-                  name="discountAmount"
-                  value={transactionData.discountAmount}
-                  onChange={handleTransactionDataInputChange}
+                  value={finalDiscount}
+                  onChange={(e) => setFinalDiscount(e.target.value)}
                   className="w-full px-3 py-3 bg-[#F8F8F8] border border-[#EBEBEB] text-right rounded"
                   placeholder="0.00"
                 />
               </div>
 
               {/* amounts area: two columns with a vertical divider */}
-              <div className="flex gap-6 items-start">
+              <div className="flex gap-6 py-10 items-start">
                 {/* left column inside amount area */}
                 <div className="flex-1">
                   <div className="mb-6">
-                    <p className="text-sm text-gray-500">Discount Amount</p>
-                    <p className="text-xl font-semibold">{transactionData.discountAmount}</p>
+                    <p className="text-sm text-gray-500">Restock Amount</p>
+                    <p className="text-xl font-semibold">{stockTotal.toFixed(2)}</p>
                   </div>
 
-                  <div className="mt-6">
+                  {/* <div className="mt-6">
                     <p className="text-sm font-semibold text-gray-700">Previous Amount</p>
-                    <p className="text-3xl font-extrabold text-black">{transactionData.previousAmount}</p>
-                  </div>
+                    <p className="text-3xl font-bold text-black">{transactionData.previousAmount}</p>
+                  </div> */}
                 </div>
 
                 {/* vertical divider */}
@@ -1755,13 +1873,13 @@ function InventoryRestock() {
                 <div className="flex-1 pl-6">
                   <div className="mb-6">
                     <p className="text-sm text-red-500">Return Amount</p>
-                    <p className="text-xl font-semibold text-red-500">{transactionData.returnAmount}</p>
+                    <p className="text-xl font-semibold text-red-500"> {returnTotal.toFixed(2)}</p>
                   </div>
 
-                  <div className="mt-6">
+                  {/* <div className="mt-6">
                     <p className="text-sm text-gray-500">Current Amount</p>
                     <p className="text-xl font-semibold text-gray-700">{transactionData.currentAmount}</p>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </div>
@@ -1772,9 +1890,12 @@ function InventoryRestock() {
               <div className="mb-6">
                 <label className="block text-sm text-gray-400 mb-2">Cash Amount ( Rs. )</label>
                 <input
+                  // type="number"
+                  // value={transactionData.cashAmount}
+                  // onChange={(e) => setTransactionData(Number(e.target.value))}
                   type="number"
-                  value={transactionData.cashAmount}
-                  onChange={(e) => setTransactionData(Number(e.target.value))}
+                  value={cashAmount}
+                  onChange={(e) => setCashAmount(e.target.value)}
                   className="w-full px-3 py-3 bg-[#F8F8F8] border border-[#EBEBEB] text-right rounded"
                   placeholder="0.00"
                 />
@@ -1783,13 +1904,16 @@ function InventoryRestock() {
               {/* change amount */}
               <div className="mb-6">
                 <p className="text-sm text-gray-500">Change Amount</p>
-                <p className="text-lg font-semibold text-gray-800">{transactionData.changeAmount}</p>
+                <p className="text-lg font-semibold text-gray-800">
+                  {/* {transactionData.changeAmount} */}
+                  {changeAmount.toFixed(2)}
+                </p>
               </div>
 
               {/* total amount */}
               <div>
                 <p className="text-sm font-semibold text-gray-800">Total Amount</p>
-                <p className="text-4xl font-extrabold text-black">{totalStock}</p>
+                <p className="text-4xl font-bold text-black">{(returnTotal+stockTotal).toFixed()}</p>
               </div>
             </div>
           </div>
@@ -1800,20 +1924,8 @@ function InventoryRestock() {
         {rightActiveSection === "buttons" && (
           <div className="flex flex-col flex-1 p-2 gap-1">
             <button
-              onClick={() => setRightActiveSection("dispose")}
-              className="h-[16rem] flex flex-col items-center justify-center p-4 bg-white rounded shadow hover:bg-gray-100 w-full"
-            >
-              <img
-                src={DisposeItemsImg}
-                alt="Dispose Items"
-                className="w-[8rem] h-[8rem] object-contain mb-2"
-              />
-              <span>Dispose Items</span>
-            </button>
-
-            <button
               onClick={() => setRightActiveSection("add")}
-              className="h-[16rem] flex flex-col items-center justify-center p-4 bg-white rounded shadow hover:bg-gray-100 w-full"
+              className="h-[26rem] flex flex-col items-center justify-center p-4 bg-white rounded shadow hover:bg-gray-100 w-full"
             >
               <img
                 src={AddRegitemsImg}
@@ -1822,18 +1934,18 @@ function InventoryRestock() {
               />
               <span>Add Registered Items</span>
             </button>
-
             <button
               onClick={() => setRightActiveSection("return")}
-              className="h-[16rem] flex flex-col items-center justify-center p-4 bg-white rounded shadow hover:bg-gray-100 w-full"
+              className="h-[26rem] flex flex-col items-center justify-center p-4 bg-white rounded shadow hover:bg-gray-100 w-full"
             >
               <img
                 src={ReturnItemsImg}
                 alt="Return Items"
                 className="w-[8rem] h-[8rem] object-contain mb-2"
               />
-              <span className="text-xl">Return Items</span>
+              <span>Return Items</span>
             </button>
+
 
             {/* White block to fill remaining space */}
             <div className="h-[20rem] bg-white rounded"></div>
@@ -2029,8 +2141,8 @@ function InventoryRestock() {
             </h3>
             <p className="mt-1 text-sm text-gray-600">
               {modal.type === 'success'
-                ? 'All Changes were Applied.'
-                : 'Something went wrong.'}
+                ? 'Transaction Complete.'
+                : 'Something went wrong, Try again.'}
             </p>
           </div>
         </div>
