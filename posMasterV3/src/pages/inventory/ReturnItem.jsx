@@ -9,7 +9,7 @@ function ReturnItem() {
   return (
     <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
       {/* Form section left */}
-      <div className="bg-gray-300 w-[28rem] h-full p-4 z-10">
+      <div className="bg-gray-200 w-[28rem] h-full p-4 z-10">
         <div className="flex flex-col h-full gap-6">
           {/* Item description box */}
           <div className="border rounded bg-white p-4">
@@ -244,7 +244,7 @@ function ReturnItem() {
             className="flex-1 px-6 py-3 border-b-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 texts"
           />
           {/* add search icon */}
-          <button className="px-10 py-2 bg-[#00489A] text-white hover:bg-blue-900 transition-colors">
+          <button className="px-10 py-3 bg-[#00489A] text-white hover:bg-blue-900 transition-colors">
             Search
             <span></span>
           </button>
