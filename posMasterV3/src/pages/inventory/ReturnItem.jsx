@@ -9,12 +9,12 @@ function ReturnItem() {
   return (
     <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
       {/* Form section left */}
-      <div className="bg-white w-[28rem] h-full p-4 z-10">
+      <div className="bg-gray-300 w-[28rem] h-full p-4 z-10">
         <div className="flex flex-col h-full gap-6">
           {/* Item description box */}
           <div className="border rounded bg-white p-4">
             {/* Item description block */}
-            <div className="border rounded bg-white mb-4">
+            <div className="rounded bg-white mb-4">
               <button
                 className="w-full flex justify-between items-center bg-white px-4 py-3 text-lg font-bold"
                 onClick={() =>
@@ -61,7 +61,7 @@ function ReturnItem() {
             </div>
 
             {/* Stock Description */}
-            <div className="border rounded bg-white mb-4">
+            <div className="rounded bg-white mb-4">
               <button
                 className="w-full flex justify-between items-center bg-white px-4 py-3 text-lg font-bold"
                 onClick={() =>
@@ -171,7 +171,7 @@ function ReturnItem() {
             </div>
 
             {/* Return Description */}
-            <div className="border rounded bg-white">
+            <div className="rounded bg-white">
               <button
                 className="w-full flex justify-between items-center bg-white px-4 py-3 text-lg font-bold"
                 onClick={() =>
@@ -235,20 +235,20 @@ function ReturnItem() {
 
       {/* ------------------------------------------------------------------------------ */}
       {/* Mid Section */}
-      <div className="flex-1 bg-gray-50 p-6 shadow-md rounded-md">
+      <div className="flex-1 bg-gray-50 p-6 shadow-md">
         {/* Search by name/sku/batchcode : search button Category Drop Down -> Those should be in the same line*/}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-4 mb-6 px-5">
           <input
             type="text"
             placeholder="Search by Name / SKU / Batch Code"
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-6 py-3 border-b-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 texts"
           />
           {/* add search icon */}
-          <button className="px-5 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <button className="px-10 py-2 bg-[#00489A] text-white hover:bg-blue-900 transition-colors">
             Search
             <span></span>
           </button>
-          <select className="px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select className="px-6 py-3 m-4 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">All Categories</option>
             <option value="category1">Category 1</option>
             <option value="category2">Category 2</option>
@@ -300,9 +300,9 @@ function ReturnItem() {
           <input
             type="text"
             placeholder="Search your item code"
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-3 py-3 border-b-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 texts"
           />
-          <button className="p-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <button className="px-5 py-3 bg-[#00489A] text-white hover:bg-blue-900 transition-colors">
             <span>Search</span>
           </button>
         </div>
