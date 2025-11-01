@@ -7,7 +7,7 @@ function ReturnItem() {
   const [openFormBlock, setOpenFormBlock] = useState("item");
 
   return (
-    <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
+    <div className="flex bg-white w-full h-[calc(100vh-2rem)] relative">
       {/* Form section left */}
       <div className="bg-gray-200 w-[28rem] h-full p-4 z-10">
         <div className="flex flex-col h-full gap-6">
@@ -235,9 +235,9 @@ function ReturnItem() {
 
       {/* ------------------------------------------------------------------------------ */}
       {/* Mid Section */}
-      <div className="flex-1 bg-gray-50 p-6 shadow-md">
+      <div className="flex-1 bg-gray-50 p-6 shadow-md rounded-md">
         {/* Search by name/sku/batchcode : search button Category Drop Down -> Those should be in the same line*/}
-        <div className="flex items-center gap-4 mb-6 px-5">
+        <div className="flex items-center gap-4 mb-6">
           <input
             type="text"
             placeholder="Search by Name / SKU / Batch Code"
