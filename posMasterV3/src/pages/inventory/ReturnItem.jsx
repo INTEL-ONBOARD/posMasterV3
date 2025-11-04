@@ -7,14 +7,14 @@ function ReturnItem() {
   const [openFormBlock, setOpenFormBlock] = useState("item");
 
   return (
-    <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
+    <div className="flex bg-white w-full h-[calc(100vh-2rem)] relative">
       {/* Form section left */}
-      <div className="bg-white w-[28rem] h-full p-4 z-10">
+      <div className="bg-gray-200 w-[28rem] h-full p-4 z-10">
         <div className="flex flex-col h-full gap-6">
           {/* Item description box */}
           <div className="border rounded bg-white p-4">
             {/* Item description block */}
-            <div className="border rounded bg-white mb-4">
+            <div className="rounded bg-white mb-4">
               <button
                 className="w-full flex justify-between items-center bg-white px-4 py-3 text-lg font-bold"
                 onClick={() =>
@@ -61,7 +61,7 @@ function ReturnItem() {
             </div>
 
             {/* Stock Description */}
-            <div className="border rounded bg-white mb-4">
+            <div className="rounded bg-white mb-4">
               <button
                 className="w-full flex justify-between items-center bg-white px-4 py-3 text-lg font-bold"
                 onClick={() =>
@@ -171,7 +171,7 @@ function ReturnItem() {
             </div>
 
             {/* Return Description */}
-            <div className="border rounded bg-white">
+            <div className="rounded bg-white">
               <button
                 className="w-full flex justify-between items-center bg-white px-4 py-3 text-lg font-bold"
                 onClick={() =>
@@ -241,14 +241,14 @@ function ReturnItem() {
           <input
             type="text"
             placeholder="Search by Name / SKU / Batch Code"
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-6 py-3 border-b-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 texts"
           />
           {/* add search icon */}
-          <button className="px-5 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <button className="px-10 py-3 bg-[#00489A] text-white hover:bg-blue-900 transition-colors">
             Search
             <span></span>
           </button>
-          <select className="px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select className="px-6 py-3 m-4 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">All Categories</option>
             <option value="category1">Category 1</option>
             <option value="category2">Category 2</option>
@@ -300,9 +300,9 @@ function ReturnItem() {
           <input
             type="text"
             placeholder="Search your item code"
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-3 py-3 border-b-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 texts"
           />
-          <button className="p-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <button className="px-5 py-3 bg-[#00489A] text-white hover:bg-blue-900 transition-colors">
             <span>Search</span>
           </button>
         </div>
