@@ -13,7 +13,7 @@ import { generateUniqueString } from "../../util/generate";
 //modal images
 import successImage from '../../assets/Success.png';
 import failedImage from '../../assets/Failed.png';
-import { appendCurrentTimeToDate, getCurrentDate, getCurrentDateTime } from "../../util/date";
+import { appendCurrentTimeToDate, extractDateOnly, getCurrentDate, getCurrentDateTime } from "../../util/date";
 import { validateStockForm } from "../../util/validate";
 
 function InventoryRestock() {
@@ -343,9 +343,11 @@ function InventoryRestock() {
 
   //select table rows and load form sections
   const addRegItemToForm = (item) => {
+    console.log(item);
 
-  const { valid, errors: validationErrors } = validateStockForm(formDataStock);
-  setErrors(validationErrors);
+    //not sure what are these
+  //const { valid, errors: validationErrors } = validateStockForm(formDataStock);
+  //setErrors(validationErrors);
 
     //to make left section's return item block invisible or removed only after selecting a return item from the table
     setReturnItemSelected(false);
@@ -391,7 +393,10 @@ function InventoryRestock() {
       stock_price: item.stock_price,
       retail_price: item.retail_price,
       expired_datetime: item.expired_datetime,
-      availability: item.availability
+      availability: item.availability,
+
+      //discount is given within the frontend
+      discount: item.item_discount_amt
     });
     //load item into bucket just in case
     //setSelectedRegItem(item);
@@ -415,6 +420,12 @@ function InventoryRestock() {
 
   const addNewRegItem = () => {
 
+    //prevent adding items without selecting table rows
+    if(formDataRegItem.id===0){
+      return;
+    }
+
+    //validate stock data input fields
   const { valid, formErrors: validationErrors } = validateStockForm(formDataStock);
   setFormErrors(validationErrors);
 
@@ -541,6 +552,41 @@ function InventoryRestock() {
     // console.log(stock);
     // setFormDataReturnItem(prev => ({ ...prev, stock: stock }));
 
+    setFormDataRegItem(
+      {
+            sku: "",
+
+            _id: "",
+            id: 0,
+            stock_trace: [0],
+            item_name: "",
+            item_image_url: "",
+            maximum_capacity: 10,
+            uom_id: 10,
+            category_id: 10,
+            inventory_id: 11,
+            item_update_datetime: "",
+            item_created_datetime: "",
+            __v: 0,
+            uom: {
+              _id: "",
+              id: 0,
+              symbol: "",
+              unit_name: "",
+              __v: 0
+            },
+            category: {
+              _id: "",
+              id: 0,
+              brand: "",
+              type: "",
+              __v: 0
+            },
+            inventory: null,
+            availability: true
+      }
+    );
+
     setFormDataStock(
       {
       batch_code: "",
@@ -662,18 +708,22 @@ function InventoryRestock() {
     }
   };
   //populate the batchcode textbox from recent sku card
-  const setStockBatchCodeFromEntry = (stock) => {
-    console.log(stock);
+  const setStockBatchCodeFromEntry = (item) => {
+    console.log(item);
+    //const newDate = extractDateOnly(item.exp_date)
     //populate existing stock form block according to selected batch code
-    // setFormDataStock({
-    //   sku: item.sku,
-    //   quantity: item.quantity,
-    //   threshold_limit: item.threshold_limit,
-    //   stock_price: item.stock_price,
-    //   retail_price: item.retail_price,
-    //   expired_datetime: item.expired_datetime,
-    //   availability: item.availability
-    // });
+    setFormDataStock({
+      batch_code: item.batch_code,
+      quantity: item.quantity,
+      threshold_limit: item.threshold_limit,
+      stock_price: item.stock_price,
+      retail_price: item.retail_price,
+      expired_datetime: item.exp_date,
+      //expired_datetime: "2025-10-31T00:00:00.000Z",
+      availability: item.availability,
+
+      discount: item.discount_price
+    });
   }
   const setReturnBatchCodeFromEntry = (stock) => {
     // console.log(stock);
@@ -1064,6 +1114,9 @@ function InventoryRestock() {
       const response = await apiClient.post("api/restocks", requestData);
 
       if (response.data.status === "success") {
+        //generate a new invoice number
+        setInvoiceGenerate(invoiceGenerate + 1);
+        
         setModal({ open: true, type: 'success' });
         // Add new item to local state
         //alert("Item created successfully!");
@@ -1196,14 +1249,17 @@ function InventoryRestock() {
                       <label className="block text-sm font-medium text-gray-400 mb-1">
                         Quantity
                       </label>
+                      {/* Quantity */}
                       <input
                         type="number"
                         name="quantity"
                         value={formDataStock.quantity}
                         onChange={handleStockInputChange}
-                        //placeholder=""
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className={`w-full px-3 py-2 border ${
+                          formErrors.quantity ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
                       />
+                      {formErrors.quantity && <p className="text-red-500 text-xs mt-1">{formErrors.quantity}</p>}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -1217,8 +1273,11 @@ function InventoryRestock() {
                         value={formDataStock.threshold_limit}
                         onChange={handleStockInputChange}
                         //placeholder=""
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className={`w-full px-3 py-2 border ${
+                          formErrors.threshold_limit ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
                       />
+                      {formErrors.threshold_limit && <p className="text-red-500 text-xs mt-1">{formErrors.threshold_limit}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
@@ -1228,8 +1287,11 @@ function InventoryRestock() {
                         name="availability"
                         value={formDataStock.availability}
                         onChange={handleStockInputChange}
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
+                        className={`w-full px-3 py-2 border ${
+                          formErrors.quantity ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
                       >
+                      {formErrors.quantity && <p className="text-red-500 text-xs mt-1">{formErrors.quantity}</p>}
                         <option value="">-- select availability --</option>
                         <option value={true}>Available</option>
                         <option value={false}>Unavailable</option>
@@ -1247,8 +1309,11 @@ function InventoryRestock() {
                         value={formDataStock.stock_price}
                         onChange={handleStockInputChange}
                         //placeholder=""
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className={`w-full px-3 py-2 border ${
+                          formErrors.stock_price ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
                       />
+                      {formErrors.stock_price && <p className="text-red-500 text-xs mt-1">{formErrors.stock_price}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
@@ -1260,8 +1325,11 @@ function InventoryRestock() {
                         value={formDataStock.retail_price}
                         onChange={handleStockInputChange}
                         //placeholder=""
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className={`w-full px-3 py-2 border ${
+                          formErrors.retail_price ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
                       />
+                      {formErrors.retail_price && <p className="text-red-500 text-xs mt-1">{formErrors.retail_price}</p>}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -1303,10 +1371,13 @@ function InventoryRestock() {
                             }
                           }}
                           name="expired_datetime"
-                          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500 block w-full px-3 py-2"
                           placeholder="Select date"
-                        />
-                      </div>
+                          className={`w-full px-3 py-2 border ${
+                            formErrors.expired_datetime ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
+                          } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                          />
+                          {formErrors.expired_datetime && <p className="text-red-500 text-xs mt-1">{formErrors.expired_datetime}</p>}
+                          </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
@@ -1318,8 +1389,11 @@ function InventoryRestock() {
                         value={formDataStock.discount}
                         onChange={handleStockInputChange}
                         placeholder=""
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                        className={`w-full px-3 py-2 border ${
+                          formErrors.discount ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        />
+                      {formErrors.discount && <p className="text-red-500 text-xs mt-1">{formErrors.discount}</p>}
                     </div>
                   </div>
 
@@ -1556,6 +1630,8 @@ function InventoryRestock() {
           </button> */}
           <button
             onClick={() => {
+              //clearing only stock form block for now
+              //should i also clear reg item data also?: yess
               clearFormInput();
               //switch from update item button to add item button
             }}
@@ -1565,9 +1641,9 @@ function InventoryRestock() {
           </button>
           {/* switch between update and add button functions based on item card selection and clear form button click */}
           <button
-            // onClick={isUserEditting ? updateItem : createItem}
             onClick={addNewRegItem}
-            className="flex-1 min-w-0 h-10 px-3 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors text-sm"
+            disabled={formDataRegItem.id === 0}
+            className="flex-1 min-w-0 h-10 px-3 py-2 bg-blue-600 text-white enabled:hover:bg-[#1A318C] transition-colors text-sm disabled:bg-gray-400 disabled:text-gray-200 disabled:cursor-not-allowed"
           >
             <span className="truncate">Add Item</span>
           </button>
@@ -1641,7 +1717,7 @@ function InventoryRestock() {
             <div className="flex flex-col w-1/3">
               <div>
                 <p>Date:</p>
-                <p className="text-2xl font-semibold">{transactionData.date}</p>
+                <p className="text-2xl font-semibold">{getCurrentDate()}</p>
               </div>
               <div>
                 <p>Invoice No:</p>
@@ -1709,7 +1785,7 @@ function InventoryRestock() {
               {selectedStockItemList.map((item, index) => (
                 <tr
                   onClick={() => {
-                    alert("item added");
+                    //alert("item added");
                     addRegItemToForm(item);
                   }}
                   key={item.id || generateUniqueString()} // Use the previously defined generateUniqueString

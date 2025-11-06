@@ -19,3 +19,12 @@ export const appendCurrentTimeToDate = (dateString) => {
   const currentTime = now.toISOString().split("T")[1]; // "HH:mm:ss.sssZ"
   return `${dateString}T${currentTime}`;
 };
+
+// Accepts a datetime string (e.g. "2025-10-31T00:00:00.000Z")
+// Returns only the date part (e.g. "2025-10-31")
+export const extractDateOnly = (dateTimeString) => {
+  if (!dateTimeString || typeof dateTimeString !== "string") return null;
+  const newDate = dateTimeString.split("T")[0];
+  console.log('new date is '+newDate);
+  return dateTimeString.split("T")[0];
+};
