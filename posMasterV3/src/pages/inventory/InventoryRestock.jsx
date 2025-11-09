@@ -507,37 +507,6 @@ function InventoryRestock() {
     setReturnItemSelected(false);
 
     //check if it already exists on the item list first
-    // console.log(formDataRegItem.id);
-    // console.log(formDataRegItem._id);
-      // const newRegItem = {
-      //   _id: formDataRegItem._id,
-      //   id: formDataRegItem.id,
-      //   stock_trace: formDataRegItem.stock_trace,
-      //   item_name: formDataRegItem.item_name,
-      //   item_image_url: formDataRegItem.item_image_url,
-      //   maximum_capacity: formDataRegItem.maximum_capacity,
-      //   uom_id: formDataRegItem.uom_id,
-      //   category_id: formDataRegItem.category_id,
-      //   inventory_id: formDataRegItem.inventory_id,
-      //   item_update_datetime: formDataRegItem.item_update_datetime,
-      //   item_created_datetime: formDataRegItem.item_created_datetime,
-      //   __v: formDataRegItem.__v,
-      //   inventory: formDataRegItem.inventory,
-
-      //   batch_code: formDataStock.batch_code,
-      //   sku: formDataRegItem.sku,
-      //   quantity: parseFloat(formDataStock.quantity) || 0,
-      //   threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
-      //   stock_price: parseFloat(formDataStock.stock_price) || 0,
-      //   retail_price: parseFloat(formDataStock.retail_price) || 0,
-      //   expired_datetime: formDataStock.expired_datetime,
-      //   availability: formDataStock.availability,
-
-      //   uom_symbol: formDataStock.uom?.uom_symbol
-      // };
-      // console.log(newRegItem);
-      // //TODO: do a validation first
-      // setSelectedStockItemList(prev => [...prev, newRegItem]);
       const newRegItem = {
         _id: formDataRegItem._id,
         id: formDataRegItem.id,
@@ -575,6 +544,13 @@ function InventoryRestock() {
           prevItem.id === formDataRegItem.id ? newRegItem : prevItem
         )
       );
+
+      //finally clear inputs
+      clearFormInput();
+      setReturnItemSelected(false);
+      //also clear the recent batch code changes
+      setStockEntries([]);
+
     }
     else {
       console.log("return item was selected");
@@ -603,7 +579,7 @@ function InventoryRestock() {
         __v: formDataRegItem.__v,
         inventory: formDataRegItem.inventory,
 
-        sku: formDataStock.sku,
+        sku: formDataRegItem.sku,
         threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
         stock_price: parseFloat(formDataStock.stock_price) || 0,
         retail_price: parseFloat(formDataStock.retail_price) || 0,
@@ -630,10 +606,17 @@ function InventoryRestock() {
           prevItem.id === formDataRegItem.id ? newRetItem : prevItem
         )
       );
+
+      //finally clear inputs
+      clearFormInput();
+      setReturnItemSelected(false);
+      //also clear the recent batch code changes
+      setStockEntries([]);
+
     }
   }
 
-  const clearFormInput = (stock) => {
+  const clearFormInput = () => {
     // console.log(stock);
     // setFormDataReturnItem(prev => ({ ...prev, stock: stock }));
 
@@ -1513,8 +1496,10 @@ function InventoryRestock() {
                       <div className="text-gray-500">No recent batches</div>
                     ) : (
                       stockEntries.map((s, i) => (
-                        <div key={s.batch_code + i} className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]"
-                          onClick={()=>setStockBatchCodeFromEntry(s)}
+                        <div
+                          key={s.batch_code + i}
+                          className={`${s.batch_code === formDataStock.batch_code ? 'border-4 border-blue-500' : ''} flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]`}
+                          onClick={() => setStockBatchCodeFromEntry(s)}
                         >
                           <div className="flex flex-col">
                             <span className="text-md font-bold">Batchcode:</span>
@@ -1909,7 +1894,8 @@ function InventoryRestock() {
                     addRegItemToForm(item);
                   }}
                   key={item.id || generateUniqueString()} // Use the previously defined generateUniqueString
-                  className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors`}
+                  //add blue border by comparing item name and id. prevent both item from return and restock by determining retrunItemSelected.
+                  className={`${item.id === formDataRegItem.id && item.item_name === formDataRegItem.item_name && !returnItemSelected ? 'border-4 border-blue-500' : 'border-b border-gray-200'} hover:bg-gray-50 cursor-pointer transition-colors`}
                 >
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
                     {index + 1}
@@ -1974,8 +1960,8 @@ function InventoryRestock() {
                     //alert("ret i");
                     addReturnItemToForm(item);
                   }}
-                  key={item.id || generateUniqueString()}
-                  className={`border-b bg-red-100 border-gray-200 hover:bg-red-200 cursor-pointer transition-colors`}
+                  key={item.id}
+                  className={`${item.id === formDataRegItem.id && item.item_name === formDataRegItem.item_name && returnItemSelected ? 'border-4 border-red-400' : 'border-b border-gray-200'} bg-red-100 hover:bg-red-200 cursor-pointer transition-colors`}
                 >
                   <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
                     {selectedStockItemList.length + index + 1} {/* Continue numbering */}
