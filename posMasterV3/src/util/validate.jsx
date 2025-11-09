@@ -55,6 +55,34 @@ export function validateStockForm(formDataStock = {}) {
 }
 
 
+export function validateReturnForm(formDataReturnItem = {}) {
+  const formReturnErrors = {};
+
+  // batch_code: cannot be empty
+  const batch = (formDataReturnItem.batch_code || "").toString().trim();
+  if (!batch) {
+    formReturnErrors.batch_code = "Batch code is required.";
+  }
+
+  // quantity: cannot be zero or missing
+  const quantity = parseFloat(formDataReturnItem.quantity);
+  if (Number.isNaN(quantity) || quantity <= 0) {
+    formReturnErrors.quantity = "Quantity must be greater than 0.";
+  }
+
+  // return_description: cannot be empty
+  const desc = (formDataReturnItem.return_description || "").toString().trim();
+  if (!desc) {
+    formReturnErrors.return_description = "Description is required.";
+  }
+
+  // sku, stock_price, retail_price: ok to be empty or zero (no checks)
+
+  const valid = Object.keys(formReturnErrors).length === 0;
+  return { valid, formReturnErrors };
+}
+
+
 
 
 
