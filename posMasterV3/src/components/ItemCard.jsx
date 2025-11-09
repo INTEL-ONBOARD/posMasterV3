@@ -55,10 +55,16 @@ export default function ItemCard({ item }) {
               {item.category?.brand || 'Unknown'}
             </span>
           </div>
+          <div className="flex flex-row gap-6">
+          {/* <p className="text-xl font-extrabold text-black mt-2">
+            (St)Rs.{item.retail_price}
+            <span className="text-sm font-semibold">{item.uom?.symbol || 'unit'}</span>
+          </p> */}
           <p className="text-xl font-extrabold text-black mt-2">
-            Rs.{item.retail_price}
+            (Ret)Rs.{item.stock_price}
             <span className="text-sm font-semibold">{item.uom?.symbol || 'unit'}</span>
           </p>
+          </div>
         </div>
       </div>
 

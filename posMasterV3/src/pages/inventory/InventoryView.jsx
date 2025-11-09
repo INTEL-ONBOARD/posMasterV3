@@ -6,6 +6,7 @@ import bananaImg from "../../assets/Inventory_banana.png";
 import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import { apiClient } from "../../api/client.jsx";
 import {ChevronDown, ChevronUp } from "lucide-react";
+import { transformStockData } from "../../util/blockConverter.jsx";
 
 function InventoryView() {
   const [inventoryItems, setInventoryItems] = useState([
@@ -23,7 +24,7 @@ function InventoryView() {
         //     uom_id: 21,
         //     category_id: 45,
         //     inventory_id: 1,
-        //     unit_price: 111,
+        //     retail_price: 111,
         //     stock_update_datetime: '2025-07-23T19:21:29.406Z',
         //     stock_created_datetime: '2025-07-23T19:21:29.406Z',
         //     __v: 0,
@@ -57,7 +58,7 @@ function InventoryView() {
             uom_id: 22,
             category_id: 90,
             inventory_id: 1,
-            unit_price: 25.5,
+            retail_price: 25.5,
             stock_update_datetime: '2025-07-26T04:00:47.273Z',
             stock_created_datetime: '2025-07-26T04:00:47.273Z',
             __v: 0,
@@ -83,15 +84,22 @@ function InventoryView() {
             stock_trace: [1],
             item_name: 'Mobile Data cable',
             item_image_url: null,
-            batch_code: 'SKU-32452DA15822',
-            sku: 'SKU-32452',
-            quantity: 54,
             threshold_limit: 40,
             maximum_capacity: 60,
             uom_id: 22,
             category_id: 158,
             inventory_id: 1,
-            unit_price: 155,
+            
+            //assign some from stockData object 
+            sku: 'SKU-32452',
+            batch_code: 'SKU-32452DA15822',
+            quantity: 54,
+            stock_price: 155,
+            retail_price: 155,
+            discount_price: 100,
+            exp_date: "2025-11-14T22:45:52.014Z",
+            stock_availability: true, //use availability attribute from stockData object
+
             stock_update_datetime: '2025-07-26T04:31:07.861Z',
             stock_created_datetime: '2025-07-26T04:31:07.861Z',
             __v: 0,
@@ -116,9 +124,11 @@ function InventoryView() {
 
   const fetchItems = async () => {
     try {
-      const response = await apiClient.get("api/items/extended");
+      const response = await apiClient.get("api/restocks/stock-items");
       if (response.data.status === "success") {
-            setInventoryItems(response.data.data);
+            const transformed = transformStockData(response.data);
+            //convert default response object to get each detailed stock items(detach stock item object and create a new obj with parent attributes)
+            setInventoryItems(transformed);
       }
       } catch (error) {
           console.error("Error fetching items:", error);
@@ -176,8 +186,8 @@ function InventoryView() {
 
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
-  const [viewMode, setViewMode] = useState("grid"); // or "list"
   const [isSearching, setIsSearching] = useState(false);
+  const [searchAvailability, setSearchAvailability] = useState("All");
 
   // search handler to set loading state:
   const handleSearch = (e) => {
@@ -189,11 +199,38 @@ function InventoryView() {
     }, 600); // 600ms delay for demo
   };
 
-  const filteredItems = inventoryItems.filter(
-    (item) =>
-      (searchCategory === "All" || item.category.type === searchCategory) &&
-      item.item_name.toLowerCase().includes(search.toLowerCase())
-  );
+  //helper method for item availability filtering
+  const interpretAvailability = (item) => {
+    // handle boolean, string, numeric types defensively
+    const a = item?.availability;
+    if (typeof a === "boolean") return a;
+    if (typeof a === "string") return a.toLowerCase() === "true";
+    return Boolean(a); // numbers (1/0) or other truthy/falsy
+  };
+
+  // Filter items based on search item name, batch code, category and availability
+  const filteredItems = inventoryItems.filter((item) => {
+    // Category match: either "All" or item.category.type equals selected
+    const matchesCategory =
+      searchCategory === "All" ||
+      (item?.category && item.category.type === searchCategory);
+
+    // Availability match: "All", Available (true), Unavailable (false)
+    const isAvailable = interpretAvailability(item);
+    const matchesAvailability =
+      searchAvailability === "All" ||
+      (searchAvailability === "Available" && isAvailable) ||
+      (searchAvailability === "Unavailable" && !isAvailable);
+
+    // Item name or batch code text search match
+    const searchTerm = (search || "").toLowerCase();
+    const matchesSearch =
+      (item?.item_name || "").toLowerCase().includes(searchTerm) ||
+      (item?.batch_code || "").toLowerCase().includes(searchTerm) ||
+      (item?.sku || "").toLowerCase().includes(searchTerm);
+
+    return matchesCategory && matchesAvailability && matchesSearch;
+  });
 
   //right filter section controls
   const [openFilter, setOpenFilter] = useState(true);
