@@ -445,11 +445,9 @@ function ReturnItem() {
     [loadItemtoList]
   );
 
-  const handleRemoveClick = useCallback((e, item) => {
-    e.stopPropagation();
-    console.log("Remove item:", item);
-    // Add remove logic here
-  }, []);
+  const removeStockItemFromList = (id) => {
+    setSelectedStockItemList((prev) => prev.filter((item) => item.id !== id));
+  };
 
   // Get the currently selected item for display
   const displayItem = selectedItem || SAMPLE_ITEMS[0];
@@ -945,10 +943,30 @@ function ReturnItem() {
                       ${item.stock_price}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <RemoveButton
-                        onClick={(e) => handleRemoveClick(e, item)}
-                        variant="return"
-                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeStockItemFromList(item.id);
+                        }}
+                        aria-label="Close notification"
+                        className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
+                      >
+                        {" "}
+                        <svg
+                          className="w-4 h-4 text-white"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
                     </td>
                   </tr>
                 );
@@ -970,8 +988,8 @@ function ReturnItem() {
       {/* Mid Section end */}
 
       {/* Right Section */}
-      <div className="w-96 bg-white border-l border-gray-200">
-        <div className="w-full flex flex-col justify-between py-4 px-6 bg-white gap-6 mb-4">
+      <div className=" bg-white border-l border-gray-200">
+        <div className="flex flex-col justify-between py-4 px-6 bg-white gap-6 mb-4">
           {/* Right section search bar */}
           <div className="flex items-center border-b border-[#EDEDED] h-12 gap-3 mt-1">
             <button
