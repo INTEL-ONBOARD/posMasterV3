@@ -198,20 +198,6 @@ const SAMPLE_STOCK_ENTRIES = [
   },
 ];
 
-// RemoveButton component
-const RemoveButton = ({ onClick, variant = "default" }) => (
-  <button
-    onClick={onClick}
-    className={`px-3 py-1 text-xs rounded transition-colors ${
-      variant === "return"
-        ? "bg-red-500 hover:bg-red-600 text-white"
-        : "bg-gray-500 hover:bg-gray-600 text-white"
-    }`}
-  >
-    Remove
-  </button>
-);
-
 function ReturnItem() {
   // Form section state
   const [openFormBlock, setOpenFormBlock] = useState("item");
@@ -221,8 +207,9 @@ function ReturnItem() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedAvailability, setSelectedAvailability] = useState("All");
 
-  // Selected item state
-  const [selectedItem, setSelectedItem] = useState(null);
+  // NEW: Separate states for different sections
+  const [selectedItemsForTable, setSelectedItemsForTable] = useState([]); // Mid section table items
+  const [selectedItemForDetails, setSelectedItemForDetails] = useState(null); // Left section details
 
   // Loading states
   const [isLoading, setIsLoading] = useState(false);
@@ -241,7 +228,7 @@ function ReturnItem() {
   // Stock entries state
   const [stockEntries] = useState(SAMPLE_STOCK_ENTRIES);
 
-  // Memoized filtered items for performance
+  // Memoized filtered items for performance (Right section)
   const filteredItems = useMemo(() => {
     return SAMPLE_ITEMS.filter((item) => {
       const matchesSearch =
@@ -261,6 +248,53 @@ function ReturnItem() {
       return matchesSearch && matchesCategory && matchesAvailability;
     });
   }, [searchTerm, selectedCategory, selectedAvailability]);
+
+  // NEW: Add item to mid section table from right section
+  const addItemToTable = useCallback((item) => {
+    setSelectedItemsForTable((prev) => {
+      // Check if item already exists
+      const exists = prev.find((existingItem) => existingItem.id === item.id);
+      if (exists) {
+        return prev; // Don't add duplicates
+      }
+      return [...prev, item];
+    });
+  }, []);
+
+  // NEW: Remove item from mid section table
+  const removeItemFromTable = useCallback(
+    (itemId) => {
+      setSelectedItemsForTable((prev) =>
+        prev.filter((item) => item.id !== itemId)
+      );
+
+      // If the removed item was selected for details, clear the details
+      if (selectedItemForDetails?.id === itemId) {
+        setSelectedItemForDetails(null);
+        setFormDataStock(INITIAL_STOCK_FORM);
+        setFormDataReturnItem(INITIAL_RETURN_FORM);
+      }
+    },
+    [selectedItemForDetails]
+  );
+
+  // NEW: Select item for left section details from mid section table
+  const selectItemForDetails = useCallback((item) => {
+    setSelectedItemForDetails(item);
+
+    // Auto-populate stock form with selected item data
+    setFormDataStock((prev) => ({
+      ...prev,
+      batch_code: item.batch_code || "",
+      quantity: item.current_qty?.toString() || "",
+      stock_price: item.stock_price?.toString() || "",
+      retail_price: item.retail_price?.toString() || "",
+      availability: item.availability?.toString() || "",
+      expired_datetime: item.expire_date || "",
+    }));
+
+    console.log("Selected item for details:", item);
+  }, []);
 
   // Optimized event handlers with useCallback
   const handleStockInputChange = useCallback(
@@ -300,23 +334,6 @@ function ReturnItem() {
     },
     [formReturnErrors]
   );
-
-  const loadItemtoList = useCallback((item) => {
-    setSelectedItem(item);
-
-    // Auto-populate stock form with selected item data
-    setFormDataStock((prev) => ({
-      ...prev,
-      batch_code: item.batch_code || "",
-      quantity: item.current_qty?.toString() || "",
-      stock_price: item.stock_price?.toString() || "",
-      retail_price: item.retail_price?.toString() || "",
-      availability: item.availability?.toString() || "",
-      expired_datetime: item.expire_date || "",
-    }));
-
-    console.log("Selected item:", item);
-  }, []);
 
   const handleSearch = useCallback(() => {
     setSearchLoading(true);
@@ -380,8 +397,9 @@ function ReturnItem() {
     ) {
       errors.quantity = "Quantity must be a positive number";
     } else if (
-      selectedItem &&
-      parseFloat(formDataReturnItem.quantity) > selectedItem.current_qty
+      selectedItemForDetails &&
+      parseFloat(formDataReturnItem.quantity) >
+        selectedItemForDetails.current_qty
     ) {
       errors.quantity = "Return quantity cannot exceed available stock";
     }
@@ -408,8 +426,8 @@ function ReturnItem() {
   }, [formDataStock]);
 
   const handleReturnSubmit = useCallback(() => {
-    if (!selectedItem) {
-      alert("Please select an item first");
+    if (!selectedItemForDetails) {
+      alert("Please select an item from the table first");
       return;
     }
 
@@ -418,7 +436,7 @@ function ReturnItem() {
       // Simulate API call
       setTimeout(() => {
         console.log("Return form submitted:", {
-          item: selectedItem,
+          item: selectedItemForDetails,
           return_data: formDataReturnItem,
         });
         setSubmitLoading(false);
@@ -426,7 +444,7 @@ function ReturnItem() {
         setFormDataReturnItem(INITIAL_RETURN_FORM);
       }, 1500);
     }
-  }, [selectedItem, formDataReturnItem]);
+  }, [selectedItemForDetails, formDataReturnItem]);
 
   // Reset forms
   const resetForms = useCallback(() => {
@@ -434,23 +452,25 @@ function ReturnItem() {
     setFormDataReturnItem(INITIAL_RETURN_FORM);
     setFormErrors({});
     setFormReturnErrors({});
-    setSelectedItem(null);
+    setSelectedItemForDetails(null);
+    setSelectedItemsForTable([]);
   }, []);
 
-  // Table row handlers
-  const handleRowClick = useCallback(
-    (item) => {
-      loadItemtoList(item);
-    },
-    [loadItemtoList]
-  );
-
-  const removeStockItemFromList = (id) => {
-    setSelectedStockItemList((prev) => prev.filter((item) => item.id !== id));
+  // NEW: Get display item for left section (N/A if no selection)
+  const getDisplayItem = () => {
+    if (!selectedItemForDetails) {
+      return {
+        sku: "N/A",
+        item_name: "N/A",
+        category: { type: "N/A" },
+        current_qty: "N/A",
+        uom: { symbol: "" },
+      };
+    }
+    return selectedItemForDetails;
   };
 
-  // Get the currently selected item for display
-  const displayItem = selectedItem || SAMPLE_ITEMS[0];
+  const displayItem = getDisplayItem();
 
   return (
     <div className="flex bg-white w-full h-[calc(100vh-2rem)] relative">
@@ -526,11 +546,16 @@ function ReturnItem() {
                         name="batch_code"
                         value={formDataStock.batch_code}
                         onChange={handleStockInputChange}
+                        disabled={!selectedItemForDetails}
                         className={`w-full px-3 py-2 border ${
                           formErrors.batch_code
                             ? "border-red-500 focus:ring-red-500"
                             : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
+                          !selectedItemForDetails
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }`}
                       />
                       {formErrors.batch_code && (
                         <p className="text-red-500 text-xs mt-1">
@@ -547,11 +572,16 @@ function ReturnItem() {
                         name="quantity"
                         value={formDataStock.quantity}
                         onChange={handleStockInputChange}
+                        disabled={!selectedItemForDetails}
                         className={`w-full px-3 py-2 border ${
                           formErrors.quantity
                             ? "border-red-500 focus:ring-red-500"
                             : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
+                          !selectedItemForDetails
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }`}
                       />
                       {formErrors.quantity && (
                         <p className="text-red-500 text-xs mt-1">
@@ -570,11 +600,16 @@ function ReturnItem() {
                         name="threshold_limit"
                         value={formDataStock.threshold_limit}
                         onChange={handleStockInputChange}
+                        disabled={!selectedItemForDetails}
                         className={`w-full px-3 py-2 border ${
                           formErrors.threshold_limit
                             ? "border-red-500 focus:ring-red-500"
                             : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
+                          !selectedItemForDetails
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }`}
                       />
                       {formErrors.threshold_limit && (
                         <p className="text-red-500 text-xs mt-1">
@@ -590,11 +625,16 @@ function ReturnItem() {
                         name="availability"
                         value={formDataStock.availability}
                         onChange={handleStockInputChange}
+                        disabled={!selectedItemForDetails}
                         className={`w-full px-3 py-2 border ${
                           formErrors.availability
                             ? "border-red-500 focus:ring-red-500"
                             : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
+                          !selectedItemForDetails
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }`}
                       >
                         <option value="">-- select availability --</option>
                         <option value="true">Available</option>
@@ -617,11 +657,16 @@ function ReturnItem() {
                         name="stock_price"
                         value={formDataStock.stock_price}
                         onChange={handleStockInputChange}
+                        disabled={!selectedItemForDetails}
                         className={`w-full px-3 py-2 border ${
                           formErrors.stock_price
                             ? "border-red-500 focus:ring-red-500"
                             : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
+                          !selectedItemForDetails
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }`}
                       />
                       {formErrors.stock_price && (
                         <p className="text-red-500 text-xs mt-1">
@@ -638,11 +683,16 @@ function ReturnItem() {
                         name="retail_price"
                         value={formDataStock.retail_price}
                         onChange={handleStockInputChange}
+                        disabled={!selectedItemForDetails}
                         className={`w-full px-3 py-2 border ${
                           formErrors.retail_price
                             ? "border-red-500 focus:ring-red-500"
                             : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
+                          !selectedItemForDetails
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }`}
                       />
                       {formErrors.retail_price && (
                         <p className="text-red-500 text-xs mt-1">
@@ -673,12 +723,17 @@ function ReturnItem() {
                             });
                           }}
                           name="expired_datetime"
+                          disabled={!selectedItemForDetails}
                           placeholder="Select date"
                           className={`w-full px-3 py-2 border ${
                             formErrors.expired_datetime
                               ? "border-red-500 focus:ring-red-500"
                               : "border-[#EBEBEB] focus:ring-blue-500"
-                          } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                          } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
+                            !selectedItemForDetails
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
+                          }`}
                         />
                         {formErrors.expired_datetime && (
                           <p className="text-red-500 text-xs mt-1">
@@ -696,12 +751,17 @@ function ReturnItem() {
                         name="discount"
                         value={formDataStock.discount}
                         onChange={handleStockInputChange}
+                        disabled={!selectedItemForDetails}
                         placeholder=""
                         className={`w-full px-3 py-2 border ${
                           formErrors.discount
                             ? "border-red-500 focus:ring-red-500"
                             : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
+                          !selectedItemForDetails
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }`}
                       />
                       {formErrors.discount && (
                         <p className="text-red-500 text-xs mt-1">
@@ -715,7 +775,7 @@ function ReturnItem() {
                     <p className="font-semibold">Recent Batch Code Changes</p>
                     <button
                       onClick={handleStockSubmit}
-                      disabled={submitLoading}
+                      disabled={submitLoading || !selectedItemForDetails}
                       className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                     >
                       {submitLoading ? "Updating..." : "Update Stock"}
@@ -733,13 +793,19 @@ function ReturnItem() {
                             s.code === formDataStock.batch_code
                               ? "border-4 border-blue-500"
                               : ""
-                          } flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px] cursor-pointer hover:bg-gray-200`}
-                          onClick={() =>
-                            setFormDataStock({
-                              ...formDataStock,
-                              batch_code: s.code,
-                            })
-                          }
+                          } flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px] cursor-pointer hover:bg-gray-200 ${
+                            !selectedItemForDetails
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
+                          }`}
+                          onClick={() => {
+                            if (selectedItemForDetails) {
+                              setFormDataStock({
+                                ...formDataStock,
+                                batch_code: s.code,
+                              });
+                            }
+                          }}
                         >
                           <div className="flex flex-col">
                             <span className="text-md font-bold">
@@ -786,23 +852,28 @@ function ReturnItem() {
                         name="quantity"
                         value={formDataReturnItem.quantity}
                         onChange={handleReturnItemInputChange}
+                        disabled={!selectedItemForDetails}
                         placeholder="Enter quantity"
-                        max={selectedItem?.current_qty || ""}
+                        max={selectedItemForDetails?.current_qty || ""}
                         className={`w-full px-3 py-2 bg-[#F8F8F8] border ${
                           formReturnErrors.quantity
                             ? "border-red-500 focus:ring-red-500"
                             : "border-[#EBEBEB] focus:ring-blue-500"
-                        } focus:outline-none focus:ring-2 focus:border-transparent`}
+                        } focus:outline-none focus:ring-2 focus:border-transparent ${
+                          !selectedItemForDetails
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }`}
                       />
                       {formReturnErrors.quantity && (
                         <p className="text-red-500 text-xs mt-1">
                           {formReturnErrors.quantity}
                         </p>
                       )}
-                      {selectedItem && (
+                      {selectedItemForDetails && (
                         <p className="text-gray-500 text-xs mt-1">
-                          Available: {selectedItem.current_qty}{" "}
-                          {selectedItem.uom?.symbol}
+                          Available: {selectedItemForDetails.current_qty}{" "}
+                          {selectedItemForDetails.uom?.symbol}
                         </p>
                       )}
                     </div>
@@ -816,13 +887,18 @@ function ReturnItem() {
                       type="text"
                       value={formDataReturnItem.return_description}
                       onChange={handleReturnItemInputChange}
+                      disabled={!selectedItemForDetails}
                       placeholder="Enter return reason and details..."
                       rows={3}
                       className={`w-full mt-2 px-3 py-2 bg-[#F8F8F8] border ${
                         formReturnErrors.return_description
                           ? "border-red-500 focus:ring-red-500"
                           : "border-[#EBEBEB] focus:ring-blue-500"
-                      } focus:outline-none focus:ring-2 focus:border-transparent`}
+                      } focus:outline-none focus:ring-2 focus:border-transparent ${
+                        !selectedItemForDetails
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
                     />
                     {formReturnErrors.return_description && (
                       <p className="text-red-500 text-xs mt-1">
@@ -834,7 +910,7 @@ function ReturnItem() {
                   <div className="flex gap-2 mt-4">
                     <button
                       onClick={handleReturnSubmit}
-                      disabled={submitLoading || !selectedItem}
+                      disabled={submitLoading || !selectedItemForDetails}
                       className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
                     >
                       {submitLoading ? "Processing..." : "Process Return"}
@@ -860,7 +936,7 @@ function ReturnItem() {
         <div className="flex items-center border-b border-[#EDEDED] h-12 gap-3 mb-5">
           <input
             type="text"
-            placeholder="Search your item here"
+            placeholder="Search selected items"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
@@ -887,103 +963,111 @@ function ReturnItem() {
           </button>
         </div>
 
-        {/* Table View - Only 4 columns + remove button */}
-        <div className="overflow-y-auto h-[calc(100vh-10rem)]">
-          <table className="w-full table-auto border-collapse">
-            <thead>
-              <tr className="bg-gray-800 text-gray-300">
-                <th className="px-4 py-2 border-b border-gray-700 text-left">
-                  SKU
-                </th>
-                <th className="px-4 py-2 border-b border-gray-700 text-left">
-                  Status
-                </th>
-                <th className="px-4 py-2 border-b border-gray-700 text-left">
-                  Quantity
-                </th>
-                <th className="px-4 py-2 border-b border-gray-700 text-left">
-                  Stock Price
-                </th>
-                <th className="px-4 py-2 border-b border-gray-700 text-center">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredItems.map((item, index) => {
-                const isSelected = selectedItem?.id === item.id;
-                return (
-                  <tr
-                    key={item.id}
-                    onClick={() => handleRowClick(item)}
-                    className={`${
-                      isSelected
-                        ? "border-4 border-red-400 bg-red-50"
-                        : "border-b border-gray-200"
-                    } bg-red-100 hover:bg-red-200 cursor-pointer transition-colors`}
-                  >
-                    <td className="px-4 py-3 text-sm text-gray-700 font-medium">
-                      {item.sku || "N/A"}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span
-                        className={`px-2 py-1 text-xs rounded ${
-                          item.availability
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {item.current_qty} {item.uom?.symbol || "units"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      ${item.stock_price}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeStockItemFromList(item.id);
-                        }}
-                        aria-label="Close notification"
-                        className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
-                      >
-                        {" "}
-                        <svg
-                          className="w-4 h-4 text-white"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                        >
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {filteredItems.length === 0 && (
+        {/* NEW: Display message when no items selected */}
+        {selectedItemsForTable.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+            <p className="text-lg mb-2">No items selected for return</p>
+            <p className="text-sm">
+              Select items from the right panel to add them here
+            </p>
+          </div>
+        )}
+
+        {/* Table View - Updated with reference styling */}
+        {selectedItemsForTable.length > 0 && (
+          <div className="overflow-x-auto h-[28rem] p-2 lg:p-4">
+            <table className="w-full min-w-[500px]">
+              <thead className="bg-gray-700 text-[#848484]">
                 <tr>
-                  <td
-                    colSpan="5"
-                    className="px-4 py-8 text-center text-gray-500"
-                  >
-                    No items found matching your criteria
-                  </td>
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+                    #
+                  </th>
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+                    SKU
+                  </th>
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+                    Status
+                  </th>
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+                    Quantity
+                  </th>
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+                    Stock Price
+                  </th>
+                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+                    Action
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white">
+                {selectedItemsForTable.map((item, index) => {
+                  const isSelectedForDetails =
+                    selectedItemForDetails?.id === item.id;
+                  return (
+                    <tr
+                      key={item.id}
+                      onClick={() => selectItemForDetails(item)}
+                      className={`${
+                        isSelectedForDetails
+                          ? "border-4 border-blue-500"
+                          : "border-b border-gray-200"
+                      } bg-white hover:bg-red-100 cursor-pointer transition-colors`}
+                    >
+                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        {index + 1}
+                      </td>
+                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        {item.sku || "N/A"}
+                      </td>
+                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm">
+                        <span
+                          className={`px-2 py-1 text-xs rounded ${
+                            item.availability
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        {item.current_qty} ({item.uom?.symbol || "units"})
+                      </td>
+                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        ${item.stock_price}
+                      </td>
+                      <td className="px-2 lg:px-4 py-2 lg:py-3">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeItemFromTable(item.id);
+                          }}
+                          aria-label="Remove item"
+                          className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none hover:bg-red-600 transition-colors"
+                        >
+                          <svg
+                            className="w-4 h-4 text-white"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
       {/* Mid Section end */}
 
@@ -1002,7 +1086,7 @@ function ReturnItem() {
 
             <input
               type="text"
-              placeholder="Search your item here"
+              placeholder="Search available items"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
@@ -1075,14 +1159,18 @@ function ReturnItem() {
                   <span>No items found!</span>
                 </div>
               ) : (
-                filteredItems.map((item) => (
-                  <SalesItemCard
-                    key={item.id ?? item._id}
-                    item={item}
-                    onOpen={() => loadItemtoList(item)}
-                    isSelected={selectedItem?.id === item.id}
-                  />
-                ))
+                filteredItems.map((item) => {
+                  const isAlreadySelected = selectedItemsForTable.find(
+                    (selectedItem) => selectedItem.id === item.id
+                  );
+                  return (
+                    <SalesItemCard
+                      key={item.id ?? item._id}
+                      item={item}
+                      onOpen={() => addItemToTable(item)}
+                    />
+                  );
+                })
               )}
             </div>
           </div>
