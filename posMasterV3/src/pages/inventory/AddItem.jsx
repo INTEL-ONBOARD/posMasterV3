@@ -55,27 +55,27 @@ function AddItem() {
   const [inventoryItems, setInventoryItems] = useState([]);
 
   const [uoms, setUoms] = useState([
-    {
-      _id: "687720ad798018e0851599a0",
-      id: 22,
-      symbol: "pcs",
-      unit_name: "Piece",
-      __v: 0
-    },
-    {
-      _id: "6877207b798018e085159998",
-      id: 20,
-      symbol: "L",
-      unit_name: "Liter",
-      __v: 0
-    },
-    {
-      _id: "687720a0798018e08515999c",
-      id: 21,
-      symbol: "mL",
-      unit_name: "Milliliter",
-      __v: 0
-    },
+    // {
+    //   _id: "687720ad798018e0851599a0",
+    //   id: 22,
+    //   symbol: "pcs",
+    //   unit_name: "Piece",
+    //   __v: 0
+    // },
+    // {
+    //   _id: "6877207b798018e085159998",
+    //   id: 20,
+    //   symbol: "L",
+    //   unit_name: "Liter",
+    //   __v: 0
+    // },
+    // {
+    //   _id: "687720a0798018e08515999c",
+    //   id: 21,
+    //   symbol: "mL",
+    //   unit_name: "Milliliter",
+    //   __v: 0
+    // },
   ]);
 
   //holds the selected UOM id from the dropdown
@@ -95,11 +95,11 @@ function AddItem() {
 
   // State for category/brand mapping
   const [itemCategories, setItemCategories] = useState([
-    { id: 145, brand: "Close-Up", type: "Oral Care" },
-    { id: 94, brand: "Clogard", type: "Oral Care" },
-    { id: 15, brand: "Colgate", type: "Oral Care" },
-    { id: 26, brand: "Pepsi", type: "Beverages" },
-    { id: 7, brand: "Coca-Cola", type: "Beverages" },
+    // { id: 145, brand: "Close-Up", type: "Oral Care" },
+    // { id: 94, brand: "Clogard", type: "Oral Care" },
+    // { id: 15, brand: "Colgate", type: "Oral Care" },
+    // { id: 26, brand: "Pepsi", type: "Beverages" },
+    // { id: 7, brand: "Coca-Cola", type: "Beverages" },
   ]);
 
   //to select the brand option from category
@@ -218,6 +218,7 @@ function AddItem() {
     try {
       const response = await apiClient.get("api/itemRegistry/extended");
       if (response.data.status === "success") {
+        console.log(response.data.data);
         setInventoryItems(response.data.data);
       }
     } catch (error) {
@@ -360,7 +361,9 @@ function AddItem() {
       );
       const requestData = {
         item_name: formData.item_name,
-        item_image_url: formData.item_image_url || null,
+        //changed to recent production quick fix
+        //item_image_url: formData.item_image_url || null,
+        item_code: formData.item_code,
         sku: formData.sku,
         maximum_capacity: Number(formData.maximum_capacity),
         uom_id: formUOMData,
@@ -369,6 +372,7 @@ function AddItem() {
         availability: formData.availability,
         stock_trace: [101] // Fixed value
       };
+      console.log("create inventory request");
       console.log(requestData);
       //const response = await apiClient.post("api/itemRegistry/add", requestData);
       const response = await registerItemService.registerItem(requestData);
@@ -488,7 +492,8 @@ function AddItem() {
       );
       const requestData = {
         item_name: formData.item_name,
-        item_image_url: formData.item_image_url || null,
+        //item_image_url: formData.item_image_url || null,
+        item_code: formData.item_code,
         sku: formData.sku,
         maximum_capacity: Number(formData.maximum_capacity),
         uom_id: formUOMData,
@@ -714,7 +719,7 @@ function AddItem() {
               {openPrimary ? <ChevronUp /> : <ChevronDown />}
             </button>
             {openPrimary && (
-              <div className="px-4 bg h-[20rem] bg-white">
+              <div className="px-4 bg h-[25rem] bg-white">
                 {/*primary description block  */}
                 <div className="">
                   <div className="pt-2">
@@ -730,6 +735,23 @@ function AddItem() {
                       className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
+                  <div className="grid grid-cols-2 mt-2 gap-4">
+                  <div className="pt-2">
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Product Code
+                    </label>
+                    <input
+                      type="text"
+                      name="item_code"
+                      value={formData.item_code}
+                      onChange={handleInputChange}
+                      placeholder="Enter item name"
+                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  </div>
+
                   <div className="grid grid-cols-2 mt-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
@@ -1099,6 +1121,9 @@ const INITIAL_FORM_DATA = {
   id: 0,
   stock_trace: [0],
   item_name: "",
+
+  item_code: "",
+
   item_image_url: "",
   sku: "",
   maximum_capacity: 0,
@@ -1125,145 +1150,3 @@ const INITIAL_FORM_DATA = {
   inventory: null,
   availability: true
 };
-// {
-//       "_id": "68afba2b039b3743594090b3",
-//       "id": 5,
-//       "item_update_datetime": "2025-08-28T02:15:13.000Z",
-//       "item_created_datetime": "2025-08-28T02:08:43.000Z",
-//       "stock_trace": [
-//         101,
-//         102
-//       ],
-//       "item_name": "Sample Item",
-//       "item_image_url": null,
-//       "batch_code": "SI01sdw4w",
-//       "maximum_capacity": 500,
-//       "uom_id": 22,
-//       "category_id": 1364,
-//       "inventory_id": 1,
-//       "availability": true,
-//       "__v": 0,
-//       "uom": {
-//         "_id": "687720ad798018e0851599a0",
-//         "id": 22,
-//         "symbol": "pcs",
-//         "unit_name": "Piece",
-//         "__v": 0
-//       },
-//       "category": {
-//         "_id": "687fb2b7d9b1c944cfddf226",
-//         "id": 1364,
-//         "brand": "Battler",
-//         "type": "Tea",
-//         "__v": 0
-//       },
-//       "inventory": null
-//     }
-// const INITIAL_FORM_DATA = {
-//   _id: "",
-//   id: 0,
-//   stock_trace: [0],
-//   item_name: "",
-//   item_image_url: "",
-//   batch_code: "",
-//   sku: "",
-//   quantity: 0,
-//   threshold_limit: 0,
-//   maximum_capacity: 0,
-//   uom_id: 0,
-//   category_id: 0,
-//   inventory_id: 1,
-//   stock_price: 0,
-//   retail_price: 0,
-//   stock_update_datetime: "",
-//   stock_created_datetime: "",
-//   __v: 0,
-//   uom: {
-//     _id: "",
-//     id: 0,
-//     symbol: "",
-//     unit_name: "",
-//     __v: 0
-//   },
-//   category: {
-//     _id: "",
-//     id: 0,
-//     brand: "",
-//     type: "",
-//     __v: 0
-//   },
-//   inventory: null,
-//   expired_datetime: null,
-//   initiate_datetime: "",
-//   availability: true,
-// };
-
-//inventory dummy data (old api)
-// {
-//   _id: "6877751e6d4492e44dbb403b",
-//   id: 19,
-//   stock_trace: [1],
-//   item_name: "test toothbrush",
-//   item_image_url: "/src/assets/Inventory_banana.png",
-//   batch_code: "bar237645TE1522",
-//   sku: "bar237645",
-//   quantity: 30,
-//   threshold_limit: 20,
-//   maximum_capacity: 40,
-//   uom_id: 22,
-//   category_id: 15,
-//   inventory_id: 1,
-//   unit_price: 110,
-//   stock_update_datetime: "2025-07-16T09:47:10.682Z",
-//   stock_created_datetime: "2025-07-16T09:47:10.682Z",
-//   __v: 0,
-//   uom: {
-//     _id: "687720ad798018e0851599a0",
-//     id: 22,
-//     symbol: "pcs",
-//     unit_name: "Piece",
-//     __v: 0
-//   },
-//   category: {
-//     _id: "68773ebf1edd62f9c8128b58",
-//     id: 15,
-//     brand: "Colgate",
-//     type: "Oral Care",
-//     __v: 0
-//   },
-//   inventory: null
-// },
-// {
-//   _id: "687775746d4492e44dbb404f",
-//   id: 22,
-//   stock_trace: [1],
-//   item_name: "test toothbrush2",
-//   item_image_url: "/src/assets/Inventory_banana.png",
-//   batch_code: "fubar237645TE1522",
-//   sku: "fubar237645",
-//   quantity: 30,
-//   threshold_limit: 20,
-//   maximum_capacity: 40,
-//   uom_id: 22,
-//   category_id: 15,
-//   inventory_id: 1,
-//   unit_price: 110,
-//   stock_update_datetime: "2025-07-16T09:48:36.213Z",
-//   stock_created_datetime: "2025-07-16T09:48:36.213Z",
-//   __v: 0,
-//   uom: {
-//     _id: "687720ad798018e0851599a0",
-//     id: 22,
-//     symbol: "pcs",
-//     unit_name: "Piece",
-//     __v: 0
-//   },
-//   category: {
-//     _id: "68773ebf1edd62f9c8128b58",
-//     id: 15,
-//     brand: "Colgate",
-//     type: "Oral Care",
-//     __v: 0
-//   },
-//   inventory: null
-// },
