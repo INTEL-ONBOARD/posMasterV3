@@ -758,8 +758,7 @@ function SupplierReg() {
                 <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">#</th>
                 <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Name</th>
                 <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Status</th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Current Amount</th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Previous Amount</th>
+                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Contact</th>
                 {/* <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Due Amount</th> */}
                 <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm"></th>
               </tr>
@@ -811,10 +810,7 @@ function SupplierReg() {
                       {supplier.basic_info.status ? "Available" : "Unavailable"}
                     </td>
                     <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                      {supplier.financial_info.current_amount.toFixed(2)}
-                    </td>
-                    <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                      {supplier.financial_info.previous_amount.toFixed(2)}
+                      {supplier.basic_info.contact}
                     </td>
                     {/* <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
               {(supplier.financial_info.previous_amount - supplier.financial_info.current_amount).toFixed(2)}
