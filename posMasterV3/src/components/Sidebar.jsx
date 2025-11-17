@@ -5,9 +5,7 @@ import { apiClient } from "../api/client";
 import Dashboard_inventory from "../assets/Dashboard_inventory.png";
 import Dashboard_logout from "../assets/Dashboard_logout.png";
 import Dashboard_settings from "../assets/Dashboard_settings.png";
-import Dashboard_viewmore from "../assets/Dashboard_viewmore.png";
 import Dashboard_notification from "../assets/Dashboard_notification.png";
-import Dashboard_Morawakle from "../assets/Dashboard_Morawakle.png";
 import Dashboard_sales from "../assets/Dashboard_sales.png";
 
 // Animation variants
