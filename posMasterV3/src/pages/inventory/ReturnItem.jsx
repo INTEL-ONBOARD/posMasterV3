@@ -3,6 +3,7 @@ import barcodeImg from "../../assets/barcode.png";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import SalesItemCard from "../../components/SalesItemCard";
 import { fetchCommonData } from "../../context/inventory/common/CommonContext";
+import { fetchStockContext } from "../../context/inventory/return-stock/ReturnStockContext";
 
 // Initial form state
 const INITIAL_STOCK_FORM = {
@@ -21,25 +22,6 @@ const INITIAL_RETURN_FORM = {
   return_description: "",
   return_date: "",
 };
-
-// Sample stock entries for demonstration
-const SAMPLE_STOCK_ENTRIES = [
-  {
-    code: "WH001-2024-001",
-    quantity: "75 pcs",
-    expiry: "2025-12-31",
-  },
-  {
-    code: "BS002-2024-001",
-    quantity: "32 pcs",
-    expiry: "2025-06-30",
-  },
-  {
-    code: "SC004-2024-001",
-    quantity: "88 pcs",
-    expiry: "2025-09-15",
-  },
-];
 
 function ReturnItem() {
   // Form section state
@@ -79,8 +61,10 @@ function ReturnItem() {
     useState(INITIAL_RETURN_FORM);
   const [formReturnErrors, setFormReturnErrors] = useState({});
 
-  // Stock entries state
-  const [stockEntries] = useState(SAMPLE_STOCK_ENTRIES);
+  // NEW: Stock entries state - now from API
+  const [stockEntries, setStockEntries] = useState([]);
+  const [loadingStockEntries, setLoadingStockEntries] = useState(false);
+  const [stockEntriesError, setStockEntriesError] = useState(null);
 
   // Fetch data from API on component mount
   useEffect(() => {
@@ -181,6 +165,80 @@ function ReturnItem() {
     loadData();
   }, []);
 
+  // NEW: Fetch stock entries (batch codes) when an item is selected
+  const fetchStockEntriesForItem = useCallback(async (sku) => {
+    if (!sku) return;
+
+    try {
+      setLoadingStockEntries(true);
+      setStockEntriesError(null);
+
+      console.log("Fetching stock entries for SKU:", sku);
+
+      // Fetch stock data from API
+      const stockData = await fetchStockContext();
+
+      // Filter batch codes by SKU
+      let batchEntries = [];
+      if (stockData.batchCodes && Array.isArray(stockData.batchCodes)) {
+        batchEntries = stockData.batchCodes
+          .filter((batch) => batch.sku === sku || batch.item_sku === sku)
+          .map((batch) => ({
+            code: batch.batch_code || batch.code || "Unknown Batch",
+            quantity: `${batch.quantity || 0} ${batch.uom_symbol || "pcs"}`,
+            expiry: batch.expire_date
+              ? new Date(batch.expire_date).toISOString().split("T")[0]
+              : "No expiry",
+            stock_price: batch.stock_price || 0,
+            retail_price: batch.retail_price || 0,
+            availability:
+              batch.availability !== undefined ? batch.availability : true,
+            threshold_limit: batch.threshold_limit || 0,
+            discount: batch.discount || 0,
+          }));
+      }
+
+      // If no batch codes found, provide a default entry
+      if (batchEntries.length === 0) {
+        batchEntries = [
+          {
+            code: `DEFAULT-${sku}`,
+            quantity: "0 pcs",
+            expiry: "No expiry",
+            stock_price: 0,
+            retail_price: 0,
+            availability: false,
+            threshold_limit: 0,
+            discount: 0,
+          },
+        ];
+      }
+
+      setStockEntries(batchEntries);
+
+      console.log("Loaded stock entries:", batchEntries);
+    } catch (error) {
+      console.error("Failed to fetch stock entries:", error);
+      setStockEntriesError(error.message || "Failed to load batch codes");
+
+      // Set fallback stock entries on error
+      setStockEntries([
+        {
+          code: `ERROR-${sku}`,
+          quantity: "0 pcs",
+          expiry: "Error loading",
+          stock_price: 0,
+          retail_price: 0,
+          availability: false,
+          threshold_limit: 0,
+          discount: 0,
+        },
+      ]);
+    } finally {
+      setLoadingStockEntries(false);
+    }
+  }, []);
+
   // Generate unique category types from API categories
   const uniqueCategoryTypes = useMemo(() => {
     if (!categories || categories.length === 0) {
@@ -275,34 +333,67 @@ function ReturnItem() {
         setSelectedItemForDetails(null);
         setFormDataStock(INITIAL_STOCK_FORM);
         setFormDataReturnItem(INITIAL_RETURN_FORM);
+        setStockEntries([]); // Clear stock entries
       }
     },
     [selectedItemForDetails]
   );
 
-  // Select item for left section details from mid section table
-  const selectItemForDetails = useCallback((item) => {
-    setSelectedItemForDetails(item);
+  // UPDATED: Select item for left section details from mid section table
+  const selectItemForDetails = useCallback(
+    (item) => {
+      setSelectedItemForDetails(item);
 
-    // Auto-populate stock form with selected item data
-    setFormDataStock((prev) => ({
-      ...prev,
-      batch_code: item.batch_code || "",
-      quantity: item.current_qty?.toString() || "",
-      stock_price: item.stock_price?.toString() || "",
-      retail_price: item.retail_price?.toString() || "",
-      availability: item.availability?.toString() || "",
-      expired_datetime: item.expire_date || "",
-    }));
+      // Auto-populate stock form with selected item data
+      setFormDataStock((prev) => ({
+        ...prev,
+        batch_code: item.batch_code || "",
+        quantity: item.current_qty?.toString() || "",
+        stock_price: item.stock_price?.toString() || "",
+        retail_price: item.retail_price?.toString() || "",
+        availability: item.availability?.toString() || "",
+        expired_datetime: item.expire_date || "",
+      }));
 
-    // Auto-populate return form with current date
-    setFormDataReturnItem((prev) => ({
-      ...prev,
-      return_date: getCurrentDate(),
-    }));
+      // Auto-populate return form with current date
+      setFormDataReturnItem((prev) => ({
+        ...prev,
+        return_date: getCurrentDate(),
+      }));
 
-    console.log("Selected item for details:", item);
-  }, []);
+      // NEW: Fetch stock entries for the selected item's SKU
+      fetchStockEntriesForItem(item.sku);
+
+      console.log("Selected item for details:", item);
+    },
+    [fetchStockEntriesForItem]
+  );
+
+  // UPDATED: Handle batch code selection with all related data
+  const handleBatchCodeSelect = useCallback(
+    (batchEntry) => {
+      if (!selectedItemForDetails) return;
+
+      setFormDataStock((prev) => ({
+        ...prev,
+        batch_code: batchEntry.code,
+        stock_price: batchEntry.stock_price?.toString() || prev.stock_price,
+        retail_price: batchEntry.retail_price?.toString() || prev.retail_price,
+        availability: batchEntry.availability?.toString() || prev.availability,
+        expired_datetime:
+          batchEntry.expiry !== "No expiry" &&
+          batchEntry.expiry !== "Error loading"
+            ? batchEntry.expiry
+            : prev.expired_datetime,
+        threshold_limit:
+          batchEntry.threshold_limit?.toString() || prev.threshold_limit,
+        discount: batchEntry.discount?.toString() || prev.discount,
+      }));
+
+      console.log("Selected batch entry:", batchEntry);
+    },
+    [selectedItemForDetails]
+  );
 
   // Optimized event handlers with useCallback
   const handleStockInputChange = useCallback(
@@ -547,6 +638,11 @@ function ReturnItem() {
 
     // Reset success state
     setSaveSuccess(false);
+
+    // NEW: Clear stock entries
+    setStockEntries([]);
+    setLoadingStockEntries(false);
+    setStockEntriesError(null);
 
     console.log("All forms and states have been cleared");
   }, []);
@@ -871,10 +967,33 @@ function ReturnItem() {
                       )}
                     </div>
                   </div>
+                  <div className="pt-4">
+                    <span className="text-gray-500 text-sm font-bold mt-4 ml-1">
+                      Recent Batches{" "}
+                      {selectedItemForDetails &&
+                        `(SKU: ${selectedItemForDetails.sku})`}
+                    </span>
+                  </div>
 
+                  {/* UPDATED: Stock entries section with API integration */}
                   <div className="flex flex-col gap-3 overflow-y-scroll overflow-x-hidden h-[10rem] -mr-4">
-                    {stockEntries.length === 0 ? (
-                      <div className="text-gray-500">No recent batches</div>
+                    {loadingStockEntries ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="animate-spin rounded-full border-2 border-gray-300 border-t-blue-600 h-6 w-6 mr-2"></div>
+                        <span className="text-gray-500">
+                          Loading batch codes...
+                        </span>
+                      </div>
+                    ) : stockEntriesError ? (
+                      <div className="text-red-500 text-sm p-2">
+                        Error loading batch codes: {stockEntriesError}
+                      </div>
+                    ) : stockEntries.length === 0 ? (
+                      <div className="text-gray-500 p-2">
+                        {selectedItemForDetails
+                          ? "No batch codes found for this item"
+                          : "Select an item to view batch codes"}
+                      </div>
                     ) : (
                       stockEntries.map((s, i) => (
                         <div
@@ -882,32 +1001,31 @@ function ReturnItem() {
                           className={`${
                             s.code === formDataStock.batch_code
                               ? "border-4 border-blue-500"
-                              : ""
-                          } flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px] cursor-pointer hover:bg-gray-200 ${
+                              : "border border-gray-200"
+                          } flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px] cursor-pointer hover:bg-gray-200 transition-colors ${
                             !selectedItemForDetails
                               ? "opacity-50 cursor-not-allowed"
                               : ""
                           }`}
                           onClick={() => {
                             if (selectedItemForDetails) {
-                              setFormDataStock({
-                                ...formDataStock,
-                                batch_code: s.code,
-                              });
+                              handleBatchCodeSelect(s);
                             }
                           }}
                         >
                           <div className="flex flex-col">
                             <span className="text-md font-bold">
-                              Batchcode:
+                              Batch Code:
                             </span>
                             <span className="text-gray-600">{s.code}</span>
                           </div>
-                          <div className="flex flex-col">
+                          <div className="flex flex-col text-right">
                             <span className="text-gray-400 font-bold">
                               {s.quantity}
                             </span>
-                            <span className="text-gray-400">{s.expiry}</span>
+                            <span className="text-gray-400 text-xs">
+                              {s.expiry}
+                            </span>
                           </div>
                         </div>
                       ))
@@ -1133,7 +1251,7 @@ function ReturnItem() {
 
         {/* Save and clear buttons - MID SECTION - ONLY SHOW WHEN THERE IS DATA */}
         {selectedItemsForTable.length > 0 && (
-          <div className="bottom-4 left-4 right-4 flex gap-2 justify-end items-end relative">
+          <div className="bottom-4 left-0.5 right-4 flex gap-2 justify-end items-end relative">
             {/* Success message for mid section */}
             {saveSuccess && (
               <div className="absolute -top-12 left-0 right-0 p-2 bg-green-100 text-green-700 text-sm rounded">
