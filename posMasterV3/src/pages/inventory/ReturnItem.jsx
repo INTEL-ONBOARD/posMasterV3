@@ -932,7 +932,8 @@ function ReturnItem() {
                     )}
                   </div>
 
-                  <div className="flex gap-2 mt-4">
+                  {/* COMMENTED -> the return button if it is needed */}
+                  {/* <div className="flex gap-2 mt-4">
                     <button
                       onClick={handleReturnSubmit}
                       disabled={submitLoading || !selectedItemForDetails}
@@ -940,10 +941,27 @@ function ReturnItem() {
                     >
                       {submitLoading ? "Processing..." : "Process Return"}
                     </button>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             )}
+          </div>
+          {/* Save and clear buttons */}
+          <div className="bottom-4 left-4 right-4 flex gap-2 justify-end items-end">
+            {" "}
+            <button
+              onClick={resetForms}
+              className="flex items-center px-6 py-2 bg-gray-400 text-white disabled:opacity-50 flex-shrink-0"
+            >
+              Clear
+            </button>
+            <button
+              onClick={handleStockSubmit}
+              disabled={submitLoading || !selectedItemForDetails}
+              className="flex items-center px-6 py-2 bg-[#1A318C] text-white disabled:opacity-50 flex-shrink-0"
+            >
+              {submitLoading ? "Saving..." : "Save"}
+            </button>
           </div>
         </div>
       </div>
