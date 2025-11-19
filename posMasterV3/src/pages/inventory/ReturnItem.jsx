@@ -466,7 +466,7 @@ function ReturnItem() {
   return (
     <div className="flex bg-white w-full h-[calc(100vh-2rem)] relative">
       {/* Form section left */}
-      <div className="bg-gray-200 w-[28rem] h-full p-4 z-10">
+      <div className="bg-gray-300 w-[calc(30.5rem)] h-[calc(100vh-2rem)] p-2 z-10">
         <div className="flex flex-col h-[46rem] gap-3">
           {/* ▼ item description block ▼ */}
           <div className="border rounded bg-white">
