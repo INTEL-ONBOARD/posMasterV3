@@ -848,7 +848,8 @@ function ReturnItem() {
               <div className="px-4 bg-white pb-5">
                 <div className="">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
+                    {/*Comment -> Temporary Removing SKU From the UI */}
+                    {/* <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
                         SKU
                       </label>
@@ -858,9 +859,9 @@ function ReturnItem() {
                         disabled
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] opacity-50 cursor-not-allowed focus:outline-none"
                       />
-                    </div>
+                    </div> */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="text-sm font-medium text-gray-400 mb-1">
                         Return Quantity
                       </label>
                       <input
@@ -1152,13 +1153,14 @@ function ReturnItem() {
         <div className="flex flex-col justify-between py-4 px-6 bg-white gap-6 mb-4">
           {/* Right section search bar */}
           <div className="flex items-center border-b border-[#EDEDED] h-12 gap-3 mt-1">
-            <button
+            {/* Comment -> Remove back button temporary */}
+            {/* <button
               onClick={resetForms}
               className="flex items-center justify-center w-8 h-8 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors flex-shrink-0"
               title="Reset All Forms and States"
             >
               <BackIcon />
-            </button>
+            </button> */}
 
             <input
               type="text"
