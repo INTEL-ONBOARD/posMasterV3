@@ -65,6 +65,9 @@ function ReturnItem() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
 
+  // Success state
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
   // Stock form state
   const [formDataStock, setFormDataStock] = useState(INITIAL_STOCK_FORM);
   const [formErrors, setFormErrors] = useState({});
@@ -407,14 +410,64 @@ function ReturnItem() {
   const handleStockSubmit = useCallback(() => {
     if (validateStockForm()) {
       setSubmitLoading(true);
+      setSaveSuccess(false); // Reset success state
+
       // Simulate API call
       setTimeout(() => {
         console.log("Stock form submitted:", formDataStock);
+
+        // Update the selected item with form data
+        if (selectedItemForDetails) {
+          const updatedItem = {
+            ...selectedItemForDetails,
+            batch_code: formDataStock.batch_code,
+            current_qty:
+              parseInt(formDataStock.quantity) ||
+              selectedItemForDetails.current_qty,
+            stock_price:
+              parseFloat(formDataStock.stock_price) ||
+              selectedItemForDetails.stock_price,
+            retail_price:
+              parseFloat(formDataStock.retail_price) ||
+              selectedItemForDetails.retail_price,
+            availability: formDataStock.availability === "true",
+            expire_date:
+              formDataStock.expired_datetime ||
+              selectedItemForDetails.expire_date,
+            discount: parseFloat(formDataStock.discount) || 0,
+            threshold_limit:
+              parseFloat(formDataStock.threshold_limit) ||
+              selectedItemForDetails.threshold_limit,
+            status:
+              formDataStock.availability === "true"
+                ? "In Stock"
+                : "Out of Stock",
+            item_update_datetime: new Date().toISOString(),
+          };
+
+          // Update all relevant states
+          setSelectedItemsForTable((prev) =>
+            prev.map((item) =>
+              item.id === selectedItemForDetails.id ? updatedItem : item
+            )
+          );
+          setSelectedItemForDetails(updatedItem);
+          setItems((prev) =>
+            prev.map((item) =>
+              item.id === selectedItemForDetails.id ? updatedItem : item
+            )
+          );
+
+          setSaveSuccess(true);
+
+          // Auto-hide success message after 3 seconds
+          setTimeout(() => setSaveSuccess(false), 3000);
+        }
+
         setSubmitLoading(false);
-        // Reset form or show success message
       }, 1500);
     }
-  }, [formDataStock]);
+  }, [formDataStock, selectedItemForDetails, validateStockForm]);
 
   const handleReturnSubmit = useCallback(() => {
     if (!selectedItemForDetails) {
@@ -462,6 +515,9 @@ function ReturnItem() {
     // Reset loading states
     setSearchLoading(false);
     setSubmitLoading(false);
+
+    // Reset success state
+    setSaveSuccess(false);
 
     console.log("All forms and states have been cleared");
   }, []);
@@ -968,7 +1024,12 @@ function ReturnItem() {
           </div>
           {/* Save and clear buttons - LEFT SECTION */}
           <div className="bottom-4 left-4 right-4 flex gap-2 justify-end items-end">
-            {" "}
+            {/* Success message */}
+            {saveSuccess && (
+              <div className="absolute -top-12 left-0 right-0 mx-4 p-2 bg-green-100 text-green-700 text-sm rounded">
+                Stock information updated successfully!
+              </div>
+            )}
             <button
               onClick={resetForms}
               className="flex items-center px-6 py-2 bg-gray-400 text-white hover:bg-gray-500 transition-colors disabled:opacity-50 flex-shrink-0"
@@ -1032,8 +1093,13 @@ function ReturnItem() {
 
         {/* Save and clear buttons - MID SECTION - ONLY SHOW WHEN THERE IS DATA */}
         {selectedItemsForTable.length > 0 && (
-          <div className="bottom-4 left-4 right-4 flex gap-2 justify-end items-end">
-            {" "}
+          <div className="bottom-4 left-4 right-4 flex gap-2 justify-end items-end relative">
+            {/* Success message for mid section */}
+            {saveSuccess && (
+              <div className="absolute -top-12 left-0 right-0 p-2 bg-green-100 text-green-700 text-sm rounded">
+                Items updated successfully!
+              </div>
+            )}
             <button
               onClick={resetForms}
               className="flex items-center px-6 py-2 bg-gray-400 text-white hover:bg-gray-500 transition-colors disabled:opacity-50 flex-shrink-0"
