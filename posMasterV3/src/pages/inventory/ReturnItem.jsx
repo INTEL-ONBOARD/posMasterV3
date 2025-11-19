@@ -437,14 +437,33 @@ function ReturnItem() {
     }
   }, [selectedItemForDetails, formDataReturnItem]);
 
-  // Reset forms
+  // UPDATED: Comprehensive clear function for all clear buttons
   const resetForms = useCallback(() => {
+    // Reset all form states to initial values
     setFormDataStock(INITIAL_STOCK_FORM);
     setFormDataReturnItem(INITIAL_RETURN_FORM);
+
+    // Clear all error states
     setFormErrors({});
     setFormReturnErrors({});
+
+    // Clear selected items and details
     setSelectedItemForDetails(null);
     setSelectedItemsForTable([]);
+
+    // Reset search and filter states to default
+    setSearchTerm("");
+    setSelectedCategory("");
+    setSelectedAvailability("All");
+
+    // Reset form block to default state
+    setOpenFormBlock("item");
+
+    // Reset loading states
+    setSearchLoading(false);
+    setSubmitLoading(false);
+
+    console.log("All forms and states have been cleared");
   }, []);
 
   // Get display item for left section (N/A if no selection)
@@ -946,19 +965,19 @@ function ReturnItem() {
               </div>
             )}
           </div>
-          {/* Save and clear buttons */}
+          {/* Save and clear buttons - LEFT SECTION */}
           <div className="bottom-4 left-4 right-4 flex gap-2 justify-end items-end">
             {" "}
             <button
               onClick={resetForms}
-              className="flex items-center px-6 py-2 bg-gray-400 text-white disabled:opacity-50 flex-shrink-0"
+              className="flex items-center px-6 py-2 bg-gray-400 text-white hover:bg-gray-500 transition-colors disabled:opacity-50 flex-shrink-0"
             >
               Clear
             </button>
             <button
               onClick={handleStockSubmit}
               disabled={submitLoading || !selectedItemForDetails}
-              className="flex items-center px-6 py-2 bg-[#1A318C] text-white disabled:opacity-50 flex-shrink-0"
+              className="flex items-center px-6 py-2 bg-[#1A318C] text-white hover:bg-[#152763] transition-colors disabled:opacity-50 flex-shrink-0"
             >
               {submitLoading ? "Saving..." : "Save"}
             </button>
@@ -1007,6 +1026,26 @@ function ReturnItem() {
             <p className="text-sm">
               Select items from the right panel to add them here
             </p>
+          </div>
+        )}
+
+        {/* Save and clear buttons - MID SECTION - ONLY SHOW WHEN THERE IS DATA */}
+        {selectedItemsForTable.length > 0 && (
+          <div className="bottom-4 left-4 right-4 flex gap-2 justify-end items-end">
+            {" "}
+            <button
+              onClick={resetForms}
+              className="flex items-center px-6 py-2 bg-gray-400 text-white hover:bg-gray-500 transition-colors disabled:opacity-50 flex-shrink-0"
+            >
+              Clear
+            </button>
+            <button
+              onClick={handleStockSubmit}
+              disabled={submitLoading || !selectedItemForDetails}
+              className="flex items-center px-6 py-2 bg-[#2fbc34] text-white hover:bg-[#28a62f] transition-colors disabled:opacity-50 flex-shrink-0"
+            >
+              {submitLoading ? "Saving..." : "Done"}
+            </button>
           </div>
         )}
 
@@ -1116,7 +1155,7 @@ function ReturnItem() {
             <button
               onClick={resetForms}
               className="flex items-center justify-center w-8 h-8 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors flex-shrink-0"
-              title="Reset Forms"
+              title="Reset All Forms and States"
             >
               <BackIcon />
             </button>
