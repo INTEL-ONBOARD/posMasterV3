@@ -252,7 +252,7 @@ export default function SalesView({ isActive }) {
   ]);
 
 
-  const discountAmount = 450.0;
+
 
 
     // Calculate total for selectedItems with discount deduction
@@ -559,11 +559,11 @@ const filteredItems = inventoryItems.filter((item) => {
 
       // Create jsPDF document with custom size (11cm x 10cm converted to points)
       const widthPt = 311.81; // 11 cm in points
-      const heightPt = 283.46; // 10 cm in points
+      const heightPt = 311.81; // 10 cm in points
       const doc = new jsPDF({ unit: "pt", format: [widthPt, heightPt] });
 
       // Define margins and calculate max width/height per page in PDF units
-      const margin = 10;
+      const margin = 40;
       const pdfWidth = doc.internal.pageSize.getWidth() - 2 * margin;
       const pdfPageHeight = doc.internal.pageSize.getHeight() - 2 * margin;
 
@@ -631,7 +631,7 @@ const filteredItems = inventoryItems.filter((item) => {
       }
 
       // Save the PDF(for react)
-      //doc.save("multi-page-pdf.pdf");
+      doc.save("multi-page-pdf.pdf");
       //Get ArrayBuffer for silent printing
       const arrayBuffer = doc.output("arraybuffer");
 
@@ -644,11 +644,33 @@ const filteredItems = inventoryItems.filter((item) => {
     }
   };
 
+    // Convert selectedItems → stock_items with total_price
+  const stock_items = selectedItems.map((item) => ({
+    ...item,
+    total_price: item.retail_price * item.customer_quantity,
+  }));
+  
+    // Plain object to pass as prop
+  const billData = {
+    invoiceNo: "INV-2025-0001",
+    cashier_name: "-",
+    payment_method: "Cash",
+    date_time: "2025-11-20 10:30",
+    member_no: "-",
+    //get items form the selectedItems useState
+    stock_items: stock_items,
+    totalAmount: stockTotal,
+    discountAmount: finalDiscount,
+    finalAmount: totalAmount,
+    cashAmount: cashAmount,
+    changeAmount: changeAmount,
+  };
+
   return (
     <div className="flex h-screen bg-[#EBEBEB]">
             {/* Off-screen bill content using the separate component */}
       <div className="absolute top-[-9999px] left-[-9999px]">
-        <BillContent ref={billRef} />
+        <BillContent ref={billRef} billData={billData} />
       </div>
       {/* Main Content */}
       <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)] bg-[#EBEBEB] w-full">
