@@ -1,166 +1,8 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import barcodeImg from "../../assets/barcode.png";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import SalesItemCard from "../../components/SalesItemCard";
-
-// Sample data for testing
-const SAMPLE_ITEMS = [
-  {
-    id: 1,
-    _id: "64a1b2c3d4e5f6789012345a",
-    stock_trace: [1],
-    item_name: "Wireless Headphones",
-    item_image_url: "https://via.placeholder.com/150x150?text=Headphones",
-    sku: "WH001",
-    maximum_capacity: 100,
-    uom_id: 1,
-    category_id: 1,
-    inventory_id: 1,
-    item_update_datetime: "2024-01-15T10:30:00Z",
-    item_created_datetime: "2024-01-01T08:00:00Z",
-    __v: 0,
-    uom: {
-      _id: "64a1b2c3d4e5f6789012345b",
-      id: 1,
-      symbol: "pcs",
-      unit_name: "Pieces",
-      __v: 0,
-    },
-    category: {
-      _id: "64a1b2c3d4e5f6789012345c",
-      id: 1,
-      brand: "TechBrand",
-      type: "Electronics",
-      __v: 0,
-    },
-    inventory: null,
-    availability: true,
-    current_qty: 75,
-    stock_price: 45.99,
-    retail_price: 59.99,
-    batch_code: "WH001-2024-001",
-    expire_date: "2025-12-31",
-    status: "In Stock",
-  },
-  {
-    id: 2,
-    _id: "64a1b2c3d4e5f6789012345d",
-    stock_trace: [2],
-    item_name: "Bluetooth Speaker",
-    item_image_url: "https://via.placeholder.com/150x150?text=Speaker",
-    sku: "BS002",
-    maximum_capacity: 50,
-    uom_id: 1,
-    category_id: 1,
-    inventory_id: 1,
-    item_update_datetime: "2024-01-14T14:20:00Z",
-    item_created_datetime: "2024-01-02T09:15:00Z",
-    __v: 0,
-    uom: {
-      _id: "64a1b2c3d4e5f6789012345b",
-      id: 1,
-      symbol: "pcs",
-      unit_name: "Pieces",
-      __v: 0,
-    },
-    category: {
-      _id: "64a1b2c3d4e5f6789012345c",
-      id: 1,
-      brand: "AudioPro",
-      type: "Electronics",
-      __v: 0,
-    },
-    inventory: null,
-    availability: true,
-    current_qty: 32,
-    stock_price: 29.99,
-    retail_price: 39.99,
-    batch_code: "BS002-2024-001",
-    expire_date: "2025-06-30",
-    status: "In Stock",
-  },
-  {
-    id: 3,
-    _id: "64a1b2c3d4e5f6789012345e",
-    stock_trace: [3],
-    item_name: "USB Cable",
-    item_image_url: "https://via.placeholder.com/150x150?text=Cable",
-    sku: "UC003",
-    maximum_capacity: 200,
-    uom_id: 1,
-    category_id: 2,
-    inventory_id: 1,
-    item_update_datetime: "2024-01-13T11:45:00Z",
-    item_created_datetime: "2024-01-03T07:30:00Z",
-    __v: 0,
-    uom: {
-      _id: "64a1b2c3d4e5f6789012345b",
-      id: 1,
-      symbol: "pcs",
-      unit_name: "Pieces",
-      __v: 0,
-    },
-    category: {
-      _id: "64a1b2c3d4e5f6789012345f",
-      id: 2,
-      brand: "CableTech",
-      type: "Accessories",
-      __v: 0,
-    },
-    inventory: null,
-    availability: false,
-    current_qty: 0,
-    stock_price: 12.99,
-    retail_price: 19.99,
-    batch_code: "UC003-2024-001",
-    expire_date: "2026-01-31",
-    status: "Out of Stock",
-  },
-  {
-    id: 4,
-    _id: "64a1b2c3d4e5f6789012345g",
-    stock_trace: [4],
-    item_name: "Smartphone Case",
-    item_image_url: "https://via.placeholder.com/150x150?text=Case",
-    sku: "SC004",
-    maximum_capacity: 150,
-    uom_id: 1,
-    category_id: 2,
-    inventory_id: 1,
-    item_update_datetime: "2024-01-12T16:10:00Z",
-    item_created_datetime: "2024-01-04T10:45:00Z",
-    __v: 0,
-    uom: {
-      _id: "64a1b2c3d4e5f6789012345b",
-      id: 1,
-      symbol: "pcs",
-      unit_name: "Pieces",
-      __v: 0,
-    },
-    category: {
-      _id: "64a1b2c3d4e5f6789012345f",
-      id: 2,
-      brand: "ProtectPro",
-      type: "Accessories",
-      __v: 0,
-    },
-    inventory: null,
-    availability: true,
-    current_qty: 88,
-    stock_price: 15.99,
-    retail_price: 24.99,
-    batch_code: "SC004-2024-001",
-    expire_date: "2025-09-15",
-    status: "In Stock",
-  },
-];
-
-const SAMPLE_CATEGORIES = [
-  { id: 1, name: "Electronics" },
-  { id: 2, name: "Accessories" },
-  { id: 3, name: "Home & Garden" },
-  { id: 4, name: "Sports & Outdoors" },
-];
+import { fetchCommonData } from "../../context/inventory/common/CommonContext";
 
 // Initial form state
 const INITIAL_STOCK_FORM = {
@@ -177,6 +19,7 @@ const INITIAL_STOCK_FORM = {
 const INITIAL_RETURN_FORM = {
   quantity: "",
   return_description: "",
+  return_date: "",
 };
 
 // Sample stock entries for demonstration
@@ -207,7 +50,13 @@ function ReturnItem() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedAvailability, setSelectedAvailability] = useState("All");
 
-  // NEW: Separate states for different sections
+  // API data states
+  const [categories, setCategories] = useState([]);
+  const [items, setItems] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
+  const [dataError, setDataError] = useState(null);
+
+  // Separate states for different sections
   const [selectedItemsForTable, setSelectedItemsForTable] = useState([]); // Mid section table items
   const [selectedItemForDetails, setSelectedItemForDetails] = useState(null); // Left section details
 
@@ -228,9 +77,141 @@ function ReturnItem() {
   // Stock entries state
   const [stockEntries] = useState(SAMPLE_STOCK_ENTRIES);
 
+  // Fetch data from API on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoadingData(true);
+        setDataError(null);
+        const data = await fetchCommonData();
+
+        // Set categories
+        setCategories(data.categories || []);
+
+        // Set items - handle different possible API response formats
+        let apiItems = [];
+        if (data.items) {
+          // If items is an array
+          if (Array.isArray(data.items)) {
+            apiItems = data.items;
+          }
+          // If items is wrapped in a data property
+          else if (data.items.data && Array.isArray(data.items.data)) {
+            apiItems = data.items.data;
+          }
+          // If items has some other structure
+          else {
+            console.warn("Unexpected items structure:", data.items);
+            apiItems = [];
+          }
+        }
+
+        // Transform API items to match your component's expected format
+        const transformedItems = apiItems.map((item, index) => ({
+          // Use existing properties or provide defaults
+          id: item.id || item._id || index + 1,
+          _id: item._id || `item_${index + 1}`,
+          stock_trace: item.stock_trace || [item.id || index + 1],
+          item_name: item.item_name || item.name || "Unknown Item",
+          item_image_url: item.item_image_url || item.image_url || "",
+          sku: item.sku || `SKU_${index + 1}`,
+          maximum_capacity: item.maximum_capacity || 0,
+          uom_id: item.uom_id || 1,
+          category_id: item.category_id || 1,
+          inventory_id: item.inventory_id || 1,
+          item_update_datetime:
+            item.item_update_datetime ||
+            item.updated_at ||
+            new Date().toISOString(),
+          item_created_datetime:
+            item.item_created_datetime ||
+            item.created_at ||
+            new Date().toISOString(),
+          __v: item.__v || 0,
+          uom: item.uom || {
+            _id: `uom_${index + 1}`,
+            id: item.uom_id || 1,
+            symbol: item.uom?.symbol || "pcs",
+            unit_name: item.uom?.unit_name || "Pieces",
+            __v: 0,
+          },
+          category: item.category || {
+            _id: `category_${index + 1}`,
+            id: item.category_id || 1,
+            brand: item.category?.brand || "Unknown Brand",
+            type: item.category?.type || "General",
+            __v: 0,
+          },
+          inventory: item.inventory || null,
+          availability:
+            item.availability !== undefined ? item.availability : true,
+          current_qty: item.current_qty || item.quantity || 0,
+          stock_price: item.stock_price || item.price || 0,
+          retail_price:
+            item.retail_price || item.selling_price || item.stock_price || 0,
+          batch_code: item.batch_code || `BATCH_${item.sku || index + 1}`,
+          expire_date: item.expire_date || item.expiry_date || "2025-12-31",
+          status:
+            item.status || (item.availability ? "In Stock" : "Out of Stock"),
+        }));
+
+        setItems(transformedItems);
+
+        console.log("Loaded data:", {
+          categories: data.categories?.length || 0,
+          items: transformedItems.length,
+          sampleItem: transformedItems[0],
+        });
+      } catch (error) {
+        console.error("Failed to load data:", error);
+        setDataError(error.message || "Failed to load data");
+        // Keep items as empty array on error
+        setCategories([]);
+        setItems([]);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Generate unique category types from API categories
+  const uniqueCategoryTypes = useMemo(() => {
+    if (!categories || categories.length === 0) {
+      // Fallback to item categories if API categories are not available
+      const itemCategories = items
+        .map((item) => item.category?.type)
+        .filter(Boolean);
+      return [...new Set(itemCategories)];
+    }
+
+    const types = categories.map((category) => category.type).filter(Boolean);
+    return [...new Set(types)];
+  }, [categories, items]);
+
+  // Generate unique brands from API categories
+  const uniqueBrands = useMemo(() => {
+    if (!categories || categories.length === 0) {
+      const itemBrands = items
+        .map((item) => item.category?.brand)
+        .filter(Boolean);
+      return [...new Set(itemBrands)];
+    }
+
+    const brands = categories.map((category) => category.brand).filter(Boolean);
+    return [...new Set(brands)];
+  }, [categories, items]);
+
+  // Get current date for default return date
+  const getCurrentDate = () => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  };
+
   // Memoized filtered items for performance (Right section)
   const filteredItems = useMemo(() => {
-    return SAMPLE_ITEMS.filter((item) => {
+    return items.filter((item) => {
       const matchesSearch =
         searchTerm === "" ||
         item.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -238,7 +219,7 @@ function ReturnItem() {
         item.batch_code?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesCategory =
-        selectedCategory === "" || item.category.type === selectedCategory;
+        selectedCategory === "" || item.category?.type === selectedCategory;
 
       const matchesAvailability =
         selectedAvailability === "All" ||
@@ -247,9 +228,9 @@ function ReturnItem() {
 
       return matchesSearch && matchesCategory && matchesAvailability;
     });
-  }, [searchTerm, selectedCategory, selectedAvailability]);
+  }, [searchTerm, selectedCategory, selectedAvailability, items]);
 
-  // NEW: Add item to mid section table from right section
+  // Add item to mid section table from right section
   const addItemToTable = useCallback((item) => {
     setSelectedItemsForTable((prev) => {
       // Check if item already exists
@@ -261,7 +242,7 @@ function ReturnItem() {
     });
   }, []);
 
-  // NEW: Remove item from mid section table
+  // Remove item from mid section table
   const removeItemFromTable = useCallback(
     (itemId) => {
       setSelectedItemsForTable((prev) =>
@@ -278,7 +259,7 @@ function ReturnItem() {
     [selectedItemForDetails]
   );
 
-  // NEW: Select item for left section details from mid section table
+  // Select item for left section details from mid section table
   const selectItemForDetails = useCallback((item) => {
     setSelectedItemForDetails(item);
 
@@ -291,6 +272,12 @@ function ReturnItem() {
       retail_price: item.retail_price?.toString() || "",
       availability: item.availability?.toString() || "",
       expired_datetime: item.expire_date || "",
+    }));
+
+    // Auto-populate return form with current date
+    setFormDataReturnItem((prev) => ({
+      ...prev,
+      return_date: getCurrentDate(),
     }));
 
     console.log("Selected item for details:", item);
@@ -408,6 +395,10 @@ function ReturnItem() {
       errors.return_description = "Return description is required";
     }
 
+    if (!formDataReturnItem.return_date.trim()) {
+      errors.return_date = "Return date is required";
+    }
+
     setFormReturnErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -456,7 +447,7 @@ function ReturnItem() {
     setSelectedItemsForTable([]);
   }, []);
 
-  // NEW: Get display item for left section (N/A if no selection)
+  // Get display item for left section (N/A if no selection)
   const getDisplayItem = () => {
     if (!selectedItemForDetails) {
       return {
@@ -514,6 +505,12 @@ function ReturnItem() {
                       </p>
                       <p className="text-sm text-gray-700">
                         {displayItem?.category?.type}
+                      </p>
+                      <p className="text-sm font-semibold text-gray-800">
+                        Current Qty
+                      </p>
+                      <p className="text-sm text-gray-700">
+                        {displayItem?.current_qty} {displayItem?.uom?.symbol}
                       </p>
                     </div>
                   </div>
@@ -771,17 +768,6 @@ function ReturnItem() {
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center mt-4">
-                    <p className="font-semibold">Recent Batch Code Changes</p>
-                    <button
-                      onClick={handleStockSubmit}
-                      disabled={submitLoading || !selectedItemForDetails}
-                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      {submitLoading ? "Updating..." : "Update Stock"}
-                    </button>
-                  </div>
-
                   <div className="flex flex-col gap-3 overflow-y-scroll overflow-x-hidden h-[10rem] -mr-4">
                     {stockEntries.length === 0 ? (
                       <div className="text-gray-500">No recent batches</div>
@@ -842,10 +828,21 @@ function ReturnItem() {
             {openFormBlock === "return" && (
               <div className="px-4 bg-white pb-5">
                 <div className="">
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Quantity
+                        SKU
+                      </label>
+                      <input
+                        type="text"
+                        value={selectedItemForDetails?.sku || "N/A"}
+                        disabled
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] opacity-50 cursor-not-allowed focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Return Quantity
                       </label>
                       <input
                         type="number"
@@ -878,7 +875,35 @@ function ReturnItem() {
                       )}
                     </div>
                   </div>
-                  <div className="mt-1">
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Return Date
+                    </label>
+                    <input
+                      type="date"
+                      name="return_date"
+                      value={formDataReturnItem.return_date}
+                      onChange={handleReturnItemInputChange}
+                      disabled={!selectedItemForDetails}
+                      className={`w-full px-3 py-2 bg-[#F8F8F8] border ${
+                        formReturnErrors.return_date
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-[#EBEBEB] focus:ring-blue-500"
+                      } focus:outline-none focus:ring-2 focus:border-transparent ${
+                        !selectedItemForDetails
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
+                    />
+                    {formReturnErrors.return_date && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {formReturnErrors.return_date}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-4">
                     <label className="block text-sm font-medium text-gray-400 mb-1">
                       Description
                     </label>
@@ -914,12 +939,6 @@ function ReturnItem() {
                       className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
                     >
                       {submitLoading ? "Processing..." : "Process Return"}
-                    </button>
-                    <button
-                      onClick={resetForms}
-                      className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-                    >
-                      Reset
                     </button>
                   </div>
                 </div>
@@ -963,7 +982,7 @@ function ReturnItem() {
           </button>
         </div>
 
-        {/* NEW: Display message when no items selected */}
+        {/* Display message when no items selected */}
         {selectedItemsForTable.length === 0 && (
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
             <p className="text-lg mb-2">No items selected for return</p>
@@ -1113,17 +1132,20 @@ function ReturnItem() {
             </button>
           </div>
 
-          {/* Filter section */}
+          {/* Filter section - UPDATED with API categories */}
           <div className="flex flex-col gap-4">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB] rounded"
+              disabled={loadingData}
+              className="w-full h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB] rounded disabled:opacity-50"
             >
-              <option value="">All Categories</option>
-              {SAMPLE_CATEGORIES.map((category) => (
-                <option key={category.id} value={category.name}>
-                  {category.name}
+              <option value="">
+                {loadingData ? "Loading categories..." : "All Categories"}
+              </option>
+              {uniqueCategoryTypes.map((category) => (
+                <option key={category} value={category}>
+                  {category}
                 </option>
               ))}
             </select>
@@ -1142,14 +1164,25 @@ function ReturnItem() {
 
           <div className="h-[calc(100vh-15rem)] overflow-y-scroll bg-transparent">
             <div className="grid grid-cols-1 gap-6 p-4">
-              {isLoading || searchLoading ? (
+              {loadingData ? (
                 <div className="col-span-full flex flex-col items-center justify-center">
                   <div className="flex flex-col items-center mt-32">
                     <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
                     <span className="text-gray-700 text-xl mt-1">
-                      Please wait...
+                      Loading items...
                     </span>
                   </div>
+                </div>
+              ) : dataError ? (
+                <div className="col-span-full flex flex-col items-center justify-center text-red-500 text-lg">
+                  <p className="mb-2">Error loading items</p>
+                  <p className="text-sm text-gray-500">{dataError}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    Retry
+                  </button>
                 </div>
               ) : filteredItems.length === 0 ? (
                 <div
@@ -1157,6 +1190,11 @@ function ReturnItem() {
                   style={{ minHeight: "50vh" }}
                 >
                   <span>No items found!</span>
+                  {items.length === 0 && (
+                    <p className="text-sm mt-2">
+                      No items available in inventory
+                    </p>
+                  )}
                 </div>
               ) : (
                 filteredItems.map((item) => {
