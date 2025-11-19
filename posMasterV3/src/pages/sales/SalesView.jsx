@@ -3,7 +3,7 @@ import SalesItemCard from "../../components/SalesItemCard";
 import { apiClient } from "../../api/client";
 import {ChevronDown, ChevronUp } from "lucide-react";
 import ToastContext from "../toasts/ToastService.jsx";
-import BillDocument from "./BillDocument";
+
 import { pdf } from '@react-pdf/renderer';
 //image imports
 import barcodeImg from "../../assets/barcode.png";
@@ -14,9 +14,13 @@ import sidebarPaymentBtnImg from "../../assets/sales_proceed_payment.png";
 import profileImg from "../../assets/user_profile_image.png";
 import { transformStockData } from "../../util/blockConverter.jsx";
 
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
+import BillContent from "./layout/BillContent.jsx"; // Import the separate off-screen component for bill printing 
 
 export default function SalesView({ isActive }) {
 
+  const billRef = useRef(null); //used to store bill pdf format
   const toast = useContext(ToastContext);
   const [openItemFormBlock, setopenItemFormBlock] = useState('item'); //item || stock || supplier || 
   const [openStockFormBlock, setopenStockFormBlock] = useState('stock'); //item || stock || supplier || 
@@ -77,7 +81,7 @@ export default function SalesView({ isActive }) {
   //populate table from card list
     const loadItemtoList = (item) => {
       return; //this has errors
-    if (true) {
+
       const newRegItem = {
         _id: item._id,
         id: item.id,
@@ -134,7 +138,7 @@ export default function SalesView({ isActive }) {
           ? prev 
           : [...prev, newRegItem]
       );
-    }
+
   };
 
 
@@ -177,10 +181,6 @@ export default function SalesView({ isActive }) {
       unitType: item.unit,
     };
     setSelectedTableItem(displayItem);
-  };
-
-  const handleOpenProceedPayment = () => {
-
   };
 
 
@@ -305,19 +305,22 @@ export default function SalesView({ isActive }) {
       if (response.data.status === "success") {
         //convert default response object to get each detailed stock items(detach stock item object and create a new obj with parent attributes)
         const transformed = transformStockData(response.data);
-        //setInventoryItems(transformed);
+        setInventoryItems(transformed);
       }
       } catch (error) {
-          console.error("Error fetching items:", error);
+          console.error("Error fetching items:", error.message);
       } finally {
           setIsLoading(false);
       }
     };
-    // Fetch items from API
+    // Fetch items from API only when this section is active
     useEffect(() => {
       // Fetch items after UOMs are loaded to properly map uomName
       // if (!loadingUoms) {
+      if(isActive){
         fetchItems();
+      }
+        console.log(inventoryItems);
         //console.log("sales view section api triggered to active section");
       // }
     //}, [loadingUoms]);
@@ -392,35 +395,113 @@ const filteredItems = inventoryItems.filter((item) => {
 
 
 
-  const generatePdf = async (action) => {
+  const generateBillPdf = async () => {
     try {
-      console.log("printing started");
-      const instance = pdf(<BillDocument/>);
-console.log("printing complete");
-      const blob = await instance.toBlob();
-      if (action === 'print') {
-        const arrayBuffer = await blob.arrayBuffer();
-        window.electronAPI.sendPrintSilent(arrayBuffer);
-      } else if (action === 'download') {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `barcode-${barcodeValue}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      if (!billRef.current) {
+        console.error("Bill ref is null");
+        return;
       }
+
+      // Capture the full HTML content as a single canvas
+      const canvas = await html2canvas(billRef.current, {
+        scale: 2, // Higher scale for better quality
+        useCORS: true, // If including external images
+        logging: true, // For debugging
+      });
+
+      // Create jsPDF document with custom size (11cm x 10cm converted to points)
+      const widthPt = 311.81; // 11 cm in points
+      const heightPt = 283.46; // 10 cm in points
+      const doc = new jsPDF({ unit: "pt", format: [widthPt, heightPt] });
+
+      // Define margins and calculate max width/height per page in PDF units
+      const margin = 10;
+      const pdfWidth = doc.internal.pageSize.getWidth() - 2 * margin;
+      const pdfPageHeight = doc.internal.pageSize.getHeight() - 2 * margin;
+
+      // Calculate the scaling ratio (canvas is in pixels, PDF in pt)
+      const scaleRatio = pdfWidth / canvas.width;
+
+      // Start adding pages
+      let positionY = 0; // Track vertical position in the original canvas (pixels)
+      let pageNumber = 1;
+
+      while (positionY < canvas.height) {
+        // Calculate remaining height in pixels
+        const remainingHeightPx = canvas.height - positionY;
+
+        // Height for this slice in pixels (don't exceed page height)
+        const sliceHeightPx = Math.min(
+          remainingHeightPx,
+          pdfPageHeight / scaleRatio
+        );
+
+        // Create a new canvas for this slice
+        const sliceCanvas = document.createElement("canvas");
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceHeightPx;
+        const ctx = sliceCanvas.getContext("2d");
+        if (!ctx) {
+          throw new Error("Failed to get 2D context");
+        }
+        ctx.drawImage(
+          canvas,
+          0,
+          positionY,
+          canvas.width,
+          sliceHeightPx,
+          0,
+          0,
+          canvas.width,
+          sliceHeightPx
+        );
+
+        // Get the slice as PNG data URL
+        const sliceData = sliceCanvas.toDataURL("image/png");
+
+        // Calculate slice height in PDF units
+        const slicePdfHeight = sliceHeightPx * scaleRatio;
+
+        // If not the first page, add a new page
+        if (pageNumber > 1) {
+          doc.addPage();
+        }
+
+        // Add the slice image to the current page
+        doc.addImage(
+          sliceData,
+          "PNG",
+          margin,
+          margin,
+          pdfWidth,
+          slicePdfHeight
+        );
+
+        // Move to the next slice
+        positionY += sliceHeightPx;
+        pageNumber++;
+      }
+
+      // Save the PDF(for react)
+      //doc.save("multi-page-pdf.pdf");
+      //Get ArrayBuffer for silent printing
+      const arrayBuffer = doc.output("arraybuffer");
+
+      //Send to Electron API()
+      window.electronAPI.sendPrintSilent(arrayBuffer);
+
+      console.log("Multi-page PDF generated");
     } catch (error) {
-      console.error('Error:', error);
-      //alert('Failed to generate PDF');
-      toast.open("Failed to generate PDF", 4000, 'Pdf Failed', 'error');
+      console.error("generatePdf error:", error);
     }
   };
 
   return (
     <div className="flex h-screen bg-[#EBEBEB]">
-
+            {/* Off-screen bill content using the separate component */}
+      <div className="absolute top-[-9999px] left-[-9999px]">
+        <BillContent ref={billRef} />
+      </div>
       {/* Main Content */}
       <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)] bg-[#EBEBEB] w-full">
 
@@ -841,7 +922,7 @@ console.log("printing complete");
 
                   <button 
                     //onClick={handleOpenProceedPayment}
-                    onClick={() => generatePdf('print')}
+                    onClick={() => generateBillPdf()}
                     className="flex-1 w-1/2 px-4 py-3 bg-[#1A318C] text-white text-sm hover:bg-blue-700 transition-all flex items-center justify-center"
                   >
                     <img src={sidebarPaymentBtnImg} alt="Proceed Payment" className="w-4 h-4 mr-2" />
