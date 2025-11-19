@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
-import bananaImg from "../../assets/Inventory_banana.png";
 import SalesItemCard from "../../components/SalesItemCard";
 import { apiClient } from "../../api/client";
 import {ChevronDown, ChevronUp } from "lucide-react";
@@ -13,9 +12,10 @@ import clearBtnImg from "../../assets/sales_clear.png";
 import sidebarHoldOrderBtnImg from "../../assets/sales_hold_order.png";
 import sidebarPaymentBtnImg from "../../assets/sales_proceed_payment.png";
 import profileImg from "../../assets/user_profile_image.png";
+import { transformStockData } from "../../util/blockConverter.jsx";
 
 
-export default function SalesView() {
+export default function SalesView({ isActive }) {
 
   const toast = useContext(ToastContext);
   const [openItemFormBlock, setopenItemFormBlock] = useState('item'); //item || stock || supplier || 
@@ -70,9 +70,72 @@ export default function SalesView() {
 
     const [rightActiveSection, setRightActiveSection] = useState("buttons"); // "buttons" | "items"
 
+    const removeItemFromList = (id) => {
+      setSelectedItems(prev => prev.filter(item => item.id !== id));
+    }
 
+  //populate table from card list
+    const loadItemtoList = (item) => {
+      return; //this has errors
+    if (true) {
+      const newRegItem = {
+        _id: item._id,
+        id: item.id,
+        stock_trace: item.stock_trace,
+        item_name: item.item_name,
+        item_image_url: item.item_image_url,
+        maximum_capacity: item.maximum_capacity,
+        uom_id: item.uom_id,
+        category_id: item.category_id,
+        // inventory_id: item.inventory_id,
+        // item_update_datetime: item.item_update_datetime,
+        // item_created_datetime: item.item_created_datetime,
+        // __v: item.__v,
+        // inventory: item.inventory,
 
+        batch_code: "",
+        //need to make them zeros and empty when loading to table for the first tiem
+        // sku: formDataRegItem.sku,
+        // quantity: parseFloat(formDataStock.quantity) || 0,
+        // threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
+        // stock_price: parseFloat(formDataStock.stock_price) || 0,
+        // retail_price: parseFloat(formDataStock.retail_price) || 0,
+        // expired_datetime: formDataStock.expired_datetime,
+        // availability: formDataStock.availability,
 
+        uom: {
+        id: item.uom.id,
+        symbol: item.uom.symbol,
+        unit_name: item.uom.unit_name,
+      },
+      category: {
+        id: item.category.id,
+        brand: item.category.brand,
+        type: item.category.type,
+      },
+
+        sku: item.sku,
+        quantity: 0,
+        threshold_limit: 0,
+        stock_price: 0,
+        retail_price: 0,
+        expired_datetime: "",
+        availability: true,
+
+        item_discount_amt: 0,
+
+        uom_symbol: formDataStock.uom?.uom_symbol
+      };
+      console.log(newRegItem);
+      //setSelectedStockItemList(prev => [...prev, newRegItem]);
+      //TODO: do a validation first: if item already exists, don't add it(can be changed to update mulitple items with different batch codes)
+      setSelectedItems(prev => 
+        prev.some(item => item.id === newRegItem.id) 
+          ? prev 
+          : [...prev, newRegItem]
+      );
+    }
+  };
 
 
 
@@ -85,30 +148,6 @@ export default function SalesView() {
       quantity: 30,
       unit: "pcs",
       total: 11300.0,
-    },
-    {
-      id: 2,
-      code: "XLR9590565",
-      unitPrice: 3200.0,
-      quantity: 1,
-      unit: "pcs",
-      total: 12300.0,
-    },
-    {
-      id: 3,
-      code: "XLR9590565",
-      unitPrice: 3200.0,
-      quantity: 200,
-      unit: "ml",
-      total: 12300.0,
-    },
-    {
-      id: 4,
-      code: "XLR9590565",
-      unitPrice: 3200.0,
-      quantity: 3.5,
-      unit: "kg",
-      total: 12300.0,
     },
   ]);
 
@@ -142,12 +181,11 @@ export default function SalesView() {
 
   const handleOpenProceedPayment = () => {
 
-};
+  };
 
 
 
 
-//right section controls
   const [inventoryItems, setInventoryItems] = useState([
         // {
         //     _id: '688136391a56f324f917f98f',
@@ -163,7 +201,7 @@ export default function SalesView() {
         //     uom_id: 21,
         //     category_id: 45,
         //     inventory_id: 1,
-        //     unit_price: 111,
+        //     retail_price: 111,
         //     stock_update_datetime: '2025-07-23T19:21:29.406Z',
         //     stock_created_datetime: '2025-07-23T19:21:29.406Z',
         //     __v: 0,
@@ -197,7 +235,7 @@ export default function SalesView() {
             uom_id: 22,
             category_id: 90,
             inventory_id: 1,
-            unit_price: 25.5,
+            retail_price: 25.5,
             stock_update_datetime: '2025-07-26T04:00:47.273Z',
             stock_created_datetime: '2025-07-26T04:00:47.273Z',
             __v: 0,
@@ -223,15 +261,22 @@ export default function SalesView() {
             stock_trace: [1],
             item_name: 'Mobile Data cable',
             item_image_url: null,
-            batch_code: 'SKU-32452DA15822',
-            sku: 'SKU-32452',
-            quantity: 54,
             threshold_limit: 40,
             maximum_capacity: 60,
             uom_id: 22,
             category_id: 158,
             inventory_id: 1,
-            unit_price: 155,
+            
+            //assign some from stockData object 
+            sku: 'SKU-32452',
+            batch_code: 'SKU-32452DA15822',
+            quantity: 54,
+            stock_price: 155,
+            retail_price: 155,
+            discount_price: 100,
+            exp_date: "2025-11-14T22:45:52.014Z",
+            stock_availability: true, //use availability attribute from stockData object
+
             stock_update_datetime: '2025-07-26T04:31:07.861Z',
             stock_created_datetime: '2025-07-26T04:31:07.861Z',
             __v: 0,
@@ -252,27 +297,31 @@ export default function SalesView() {
             inventory: null
         }
     ]
-  );
+);
+
   const fetchItems = async () => {
     try {
-      const response = await apiClient.get("api/itemRegistry/extended");
+      const response = await apiClient.get("api/restocks/stock-items");
       if (response.data.status === "success") {
-        setInventoryItems(response.data.data);
+        //convert default response object to get each detailed stock items(detach stock item object and create a new obj with parent attributes)
+        const transformed = transformStockData(response.data);
+        //setInventoryItems(transformed);
       }
-    } catch (error) {
-      console.error("Error fetching items:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      } catch (error) {
+          console.error("Error fetching items:", error);
+      } finally {
+          setIsLoading(false);
+      }
+    };
     // Fetch items from API
     useEffect(() => {
       // Fetch items after UOMs are loaded to properly map uomName
       // if (!loadingUoms) {
         fetchItems();
+        //console.log("sales view section api triggered to active section");
       // }
     //}, [loadingUoms]);
-    }, []);
+    }, [isActive]);
 
   const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
     // Fetch Categories from API and create mapping
@@ -302,7 +351,6 @@ export default function SalesView() {
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
   const [searchAvailability, setSearchAvailability] = useState("All");
-  const [viewMode, setViewMode] = useState("grid"); // or "list"
   const [isSearching, setIsSearching] = useState(false);
 
   // Search handler
@@ -707,6 +755,9 @@ console.log("printing complete");
                         <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
                           Total
                         </th>
+                        <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
+                          
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white">
@@ -723,11 +774,36 @@ console.log("printing complete");
                             {item.code}
                           </td>
                           <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                            {item.unitPrice}
+                          </td>
+                          <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
                             {item.quantity || 30}(pcs)
                           </td>
                           <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
                             {item.total.toFixed(2)}
                           </td>
+                  <td>
+                    <button
+                      type="button"
+                      onClick={() => removeItemFromList(item.id)}
+                      aria-label="Close notification"
+                      className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
+                    >
+                      <svg
+                        className="w-4 h-4 text-white"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </td>
                         </tr>
                       ))}
                     </tbody>
@@ -876,7 +952,7 @@ console.log("printing complete");
                   </div>
                 ) : (
                   filteredItems.map((item) => (
-                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={()=>loadItemtoForm(item)} />
+                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={()=>loadItemtoList(item)} />
                   ))
                 )}
               </div>
@@ -959,7 +1035,7 @@ console.log("printing complete");
                       </div>
                     </div>
                     {/* transaction list */}
-                    <div className="h-[21rem] bg-red-500 overflow-y-scroll gap-3">
+                    <div className="h-[21rem] bg-white overflow-y-scroll gap-3">
 
                     {/* transaction card */}
                     <div className="bg-[#F5F5F5] h-24 items-center gap-8 flex flex-row px-6">
@@ -1025,58 +1101,3 @@ const BackIcon = () => (
     />
   </svg>
 );
-// Alternative approach: Combined fetch function
-// const fetchInventoryAndCategories = async () => {
-//   try {
-//     setIsSearching(true);
-
-//     // Fetch inventory items
-//     const inventoryResponse = await apiClient.get('/api/items/extended');
-//     const inventoryData = inventoryResponse.data;
-
-//     if (inventoryData && inventoryData.data && Array.isArray(inventoryData.data)) {
-//       // Transform inventory items
-//       const transformedItems = inventoryData.data.map(item => ({
-//         id: item.id,
-//         name: item.item_name,
-//         category: item.category?.type || "Uncategorized",
-//         price: item.unit_price.toFixed(2),
-//         unit: item.uom?.symbol || "pcs",
-//         sku: item.sku,
-//         stock: `${item.quantity} ${item.uom?.unit_name || "Units"}`,
-//         image: item.item_image_url || bananaImg,
-//         brand: item.category?.brand || "",
-//         batchCode: item.batch_code
-//       }));
-
-//       setInventoryItems(transformedItems);
-//       setFilteredItems(transformedItems);
-
-//       // Extract unique categories
-//       const categoryMap = new Map();
-//       inventoryData.data.forEach(item => {
-//         if (item.category && item.category.type) {
-//           const categoryKey = item.category.id || item.category._id;
-//           if (!categoryMap.has(categoryKey)) {
-//             categoryMap.set(categoryKey, {
-//               id: item.category.id,
-//               type: item.category.type,
-//               brand: item.category.brand || "Various",
-//               _id: item.category._id
-//             });
-//           }
-//         }
-//       });
-
-//       setCategories(Array.from(categoryMap.values()));
-//     }
-
-//   } catch (error) {
-//     console.error("Error fetching data:", error);
-//     setInventoryItems([]);
-//     setFilteredItems([]);
-//     setCategories([]);
-//   } finally {
-//     setIsSearching(false);
-//   }
-// };
