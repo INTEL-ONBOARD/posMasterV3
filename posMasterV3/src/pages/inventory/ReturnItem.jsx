@@ -45,8 +45,9 @@ function ReturnItem() {
   // Form section state
   const [openFormBlock, setOpenFormBlock] = useState("item");
 
-  // Search and filter state
-  const [searchTerm, setSearchTerm] = useState("");
+  // Search and filter state - SEPARATED for right section and mid section
+  const [searchTerm, setSearchTerm] = useState(""); // For right section (available items)
+  const [tableSearchTerm, setTableSearchTerm] = useState(""); // For mid section (selected items table)
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedAvailability, setSelectedAvailability] = useState("All");
 
@@ -60,9 +61,10 @@ function ReturnItem() {
   const [selectedItemsForTable, setSelectedItemsForTable] = useState([]); // Mid section table items
   const [selectedItemForDetails, setSelectedItemForDetails] = useState(null); // Left section details
 
-  // Loading states
+  // Loading states - SEPARATED for different search bars
   const [isLoading, setIsLoading] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false); // For right section search
+  const [tableSearchLoading, setTableSearchLoading] = useState(false); // For mid section search
   const [submitLoading, setSubmitLoading] = useState(false);
 
   // Success state
@@ -212,7 +214,7 @@ function ReturnItem() {
     return today.toISOString().split("T")[0];
   };
 
-  // Memoized filtered items for performance (Right section)
+  // Memoized filtered items for performance (Right section - available items)
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       const matchesSearch =
@@ -232,6 +234,22 @@ function ReturnItem() {
       return matchesSearch && matchesCategory && matchesAvailability;
     });
   }, [searchTerm, selectedCategory, selectedAvailability, items]);
+
+  // NEW: Memoized filtered table items for performance (Mid section - selected items table)
+  const filteredTableItems = useMemo(() => {
+    return selectedItemsForTable.filter((item) => {
+      const matchesSearch =
+        tableSearchTerm === "" ||
+        item.item_name.toLowerCase().includes(tableSearchTerm.toLowerCase()) ||
+        item.sku.toLowerCase().includes(tableSearchTerm.toLowerCase()) ||
+        item.batch_code
+          ?.toLowerCase()
+          .includes(tableSearchTerm.toLowerCase()) ||
+        item.status.toLowerCase().includes(tableSearchTerm.toLowerCase());
+
+      return matchesSearch;
+    });
+  }, [tableSearchTerm, selectedItemsForTable]);
 
   // Add item to mid section table from right section
   const addItemToTable = useCallback((item) => {
@@ -325,12 +343,21 @@ function ReturnItem() {
     [formReturnErrors]
   );
 
+  // UPDATED: Separate search handlers for right section and mid section
   const handleSearch = useCallback(() => {
     setSearchLoading(true);
-    // Simulate API call delay
+    // Simulate API call delay for right section search
     setTimeout(() => {
       setSearchLoading(false);
     }, 1000);
+  }, []);
+
+  const handleTableSearch = useCallback(() => {
+    setTableSearchLoading(true);
+    // Simulate search delay for mid section table search
+    setTimeout(() => {
+      setTableSearchLoading(false);
+    }, 500);
   }, []);
 
   // Form validation functions
@@ -506,6 +533,7 @@ function ReturnItem() {
 
     // Reset search and filter states to default
     setSearchTerm("");
+    setTableSearchTerm(""); // ADDED: Clear table search term
     setSelectedCategory("");
     setSelectedAvailability("All");
 
@@ -514,6 +542,7 @@ function ReturnItem() {
 
     // Reset loading states
     setSearchLoading(false);
+    setTableSearchLoading(false); // ADDED: Reset table search loading
     setSubmitLoading(false);
 
     // Reset success state
@@ -1050,18 +1079,18 @@ function ReturnItem() {
 
       {/* Mid Section */}
       <div className="flex-1 bg-gray-50 p-6 shadow-md rounded-md">
-        {/* Search bar */}
+        {/* UPDATED: Search bar for table items only */}
         <div className="flex items-center border-b border-[#EDEDED] h-12 gap-3 mb-5">
           <input
             type="text"
-            placeholder="Search selected items"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search selected items in table"
+            value={tableSearchTerm}
+            onChange={(e) => setTableSearchTerm(e.target.value)}
             className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
           />
           <button
-            onClick={handleSearch}
-            disabled={searchLoading}
+            onClick={handleTableSearch}
+            disabled={tableSearchLoading}
             className="flex items-center px-3 py-2 bg-[#1A318C] text-white disabled:opacity-50 flex-shrink-0"
           >
             <svg
@@ -1077,7 +1106,7 @@ function ReturnItem() {
                 d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"
               />
             </svg>
-            {searchLoading ? "..." : "Search"}
+            {tableSearchLoading ? "..." : "Search"}
           </button>
         </div>
 
@@ -1090,6 +1119,17 @@ function ReturnItem() {
             </p>
           </div>
         )}
+
+        {/* UPDATED: Show message when table search has no results */}
+        {selectedItemsForTable.length > 0 &&
+          filteredTableItems.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+              <p className="text-lg mb-2">No items found in table</p>
+              <p className="text-sm">
+                Try adjusting your search term: "{tableSearchTerm}"
+              </p>
+            </div>
+          )}
 
         {/* Save and clear buttons - MID SECTION - ONLY SHOW WHEN THERE IS DATA */}
         {selectedItemsForTable.length > 0 && (
@@ -1116,8 +1156,8 @@ function ReturnItem() {
           </div>
         )}
 
-        {/* Table View - Updated with reference styling */}
-        {selectedItemsForTable.length > 0 && (
+        {/* UPDATED: Table View - Now uses filteredTableItems instead of selectedItemsForTable */}
+        {selectedItemsForTable.length > 0 && filteredTableItems.length > 0 && (
           <div className="overflow-x-auto h-[28rem] p-2 lg:p-4">
             <table className="w-full min-w-[500px]">
               <thead className="bg-gray-700 text-[#848484]">
@@ -1143,7 +1183,7 @@ function ReturnItem() {
                 </tr>
               </thead>
               <tbody className="bg-white">
-                {selectedItemsForTable.map((item, index) => {
+                {filteredTableItems.map((item, index) => {
                   const isSelectedForDetails =
                     selectedItemForDetails?.id === item.id;
                   return (
@@ -1217,7 +1257,7 @@ function ReturnItem() {
       {/* Right Section */}
       <div className=" bg-white border-l border-gray-200">
         <div className="flex flex-col justify-between py-4 px-6 bg-white gap-6 mb-4">
-          {/* Right section search bar */}
+          {/* UPDATED: Right section search bar - for available items */}
           <div className="flex items-center border-b border-[#EDEDED] h-12 gap-3 mt-1">
             {/* Comment -> Remove back button temporary */}
             {/* <button
