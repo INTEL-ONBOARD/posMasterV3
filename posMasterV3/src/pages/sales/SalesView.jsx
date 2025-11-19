@@ -26,19 +26,20 @@ export default function SalesView({ isActive }) {
   const [openStockFormBlock, setopenStockFormBlock] = useState('stock'); //item || stock || supplier || 
   //left section controls
     const [formDataRegItem, setFormDataRegItem] = useState({
-      _id: "",
+
+      sku: "",
+
       id: 0,
       stock_trace: [0],
       item_name: "fdsaf",
       item_image_url: "",
-      batch_code: "fdsaf",
       maximum_capacity: 10,
       uom_id: 10,
       category_id: 10,
       inventory_id: 11,
       item_update_datetime: "2025-12-31T23:59:59",
       item_created_datetime: "2025-12-31T23:59:59",
-      __v: 0,
+
       uom: {
         _id: "",
         id: 0,
@@ -56,20 +57,26 @@ export default function SalesView({ isActive }) {
       inventory: null,
       availability: true
     });
-    //no input change for this for now(because of readonly in ui)
+    //no input change for this except for customer_quantity(because of readonly in ui)
     const [formDataStock, setFormDataStock] = useState({
-      sku: "skupsps",
+      batch_code: "skupsps",
       quantity: 150,
       threshold_limit: 20,
       stock_price: 20.0,
       retail_price: 35.0,
       expired_datetime: "2025-12-31T23:59:59",
-      availability: true
+      availability: true,
+      //to give away quantity for customer
+      customer_quantity: 0,
+      //retail discount for individual item
+      discount_price: 0,
+      //additional discount given for customer
+      customer_discount: 0
     });
     const handleStockInputChange = (e) => {
       const { name, value } = e.target;
       console.log(name +": "+ value);
-      setFormStockData(prev => ({ ...prev, [name]: value }));
+      setFormDataStock(prev => ({ ...prev, [name]: value }));
     };
 
     const [rightActiveSection, setRightActiveSection] = useState("buttons"); // "buttons" | "items"
@@ -79,10 +86,12 @@ export default function SalesView({ isActive }) {
     }
 
   //populate table from card list
-    const loadItemtoList = (item) => {
-      return; //this has errors
+  const loadItemtoList = (item) => {
+    //return; //this has errors
+    
+    const newRegItem = {
+        sku: item.sku,
 
-      const newRegItem = {
         _id: item._id,
         id: item.id,
         stock_trace: item.stock_trace,
@@ -91,44 +100,36 @@ export default function SalesView({ isActive }) {
         maximum_capacity: item.maximum_capacity,
         uom_id: item.uom_id,
         category_id: item.category_id,
-        // inventory_id: item.inventory_id,
-        // item_update_datetime: item.item_update_datetime,
-        // item_created_datetime: item.item_created_datetime,
-        // __v: item.__v,
-        // inventory: item.inventory,
-
-        batch_code: "",
-        //need to make them zeros and empty when loading to table for the first tiem
-        // sku: formDataRegItem.sku,
-        // quantity: parseFloat(formDataStock.quantity) || 0,
-        // threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
-        // stock_price: parseFloat(formDataStock.stock_price) || 0,
-        // retail_price: parseFloat(formDataStock.retail_price) || 0,
-        // expired_datetime: formDataStock.expired_datetime,
-        // availability: formDataStock.availability,
+        inventory_id: item.inventory_id,
+      
+        batch_code: item.batch_code,
+        //how many available in the stock currently
+        quantity: parseFloat(item.quantity) || 0,
+        //this is missing hmmm
+        threshold_limit: parseFloat(item.threshold_limit) || 0,
+        stock_price: parseFloat(item.stock_price) || 0,
+        retail_price: parseFloat(item.retail_price) || 0,
+        discount_price: parseFloat(item.discount_price) || 0,
+        expired_datetime: item.exp_date,
+        availability: item.stock_availability,
 
         uom: {
-        id: item.uom.id,
-        symbol: item.uom.symbol,
-        unit_name: item.uom.unit_name,
-      },
-      category: {
-        id: item.category.id,
-        brand: item.category.brand,
-        type: item.category.type,
-      },
+          id: 1,
+          symbol: "pts",
+          unit_name: "pints",
+        },
+        category: {
+          id: 1,
+          brand: "lux",
+          type: "soap",
+        },
 
-        sku: item.sku,
-        quantity: 0,
-        threshold_limit: 0,
-        stock_price: 0,
-        retail_price: 0,
-        expired_datetime: "",
-        availability: true,
-
-        item_discount_amt: 0,
-
-        uom_symbol: formDataStock.uom?.uom_symbol
+        //individual discount given for customer
+        customer_discount: 0,
+        //newly added to place how much quantiy customer wants
+        customer_quantity: 0,
+        //do i use this somewhere? delete if not
+        uom_symbol: item.uom?.uom_symbol
       };
       console.log(newRegItem);
       //setSelectedStockItemList(prev => [...prev, newRegItem]);
@@ -141,46 +142,193 @@ export default function SalesView({ isActive }) {
 
   };
 
+  //adding an item from form back to the item table row based on ret/reg item
+  const addNewRegItem = () => {
+
+      //prevent adding items without selecting table rows
+      if(formDataRegItem.id===0){
+        return;
+      }
+  
+      //check if it already exists on the item list first
+    const newRegItem = {
+        sku: formDataRegItem.sku,
+
+        id: formDataRegItem.id,
+        stock_trace: formDataRegItem.stock_trace,
+        item_name: formDataRegItem.item_name,
+        item_image_url: formDataRegItem.item_image_url,
+        maximum_capacity: formDataRegItem.maximum_capacity,
+        uom_id: formDataRegItem.uom_id,
+        category_id: formDataRegItem.category_id,
+        inventory_id: formDataRegItem.inventory_id,
+      
+        batch_code:formDataStock.batch_code,
+        //how many available in the stock currently
+        quantity: parseFloat(formDataStock.quantity) || 0,
+        //this is missing hmmm
+        threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
+        stock_price: parseFloat(formDataStock.stock_price) || 0,
+        retail_price: parseFloat(formDataStock.retail_price) || 0,
+        discount_price: parseFloat(formDataStock.discount_price) || 0,
+        expired_datetime: formDataStock.exp_date,
+        availability: formDataStock.availability,
+
+        uom: {
+          id: 1,
+          symbol: "pts",
+          unit_name: "pints",
+        },
+        category: {
+          id: 1,
+          brand: "lux",
+          type: "soap",
+        },
+
+        //individual discount given for customer
+        customer_discount: formDataStock.customer_discount,
+        //newly added to place how much quantiy customer wants
+        customer_quantity: formDataStock.customer_quantity,
+        //do i use this somewhere? delete if not
+        uom_symbol: formDataRegItem.uom?.symbol
+      };
+        
+        console.log(newRegItem);
+  
+        // Update existing item by id instead of adding new item
+        setSelectedItems(prev => 
+          prev.map(prevItem => 
+            prevItem.id === formDataRegItem.id ? newRegItem : prevItem
+          )
+        );
+  
+        //finally clear inputs
+        //clearFormInput();
+        
+        // //also clear the recent batch code changes
+        // setStockEntries([]);
+  
+
+
+    }
 
 
 // mid section controls
     const [selectedItems, setSelectedItems] = useState([
-    {
-      id: 1,
-      code: "XLR9590565",
-      unitPrice: 3200.0,
-      quantity: 30,
-      unit: "pcs",
-      total: 11300.0,
-    },
+        {
+            _id: '688452ef1ddc1d25637c9a47',
+            id: 31,
+            stock_trace: [1],
+            item_name: 'Water Bottle',
+            item_image_url: null,
+            batch_code: 'SKU2263WA901',
+            sku: 'SKU2263',
+            quantity: 50,
+            threshold_limit: 120,
+            maximum_capacity: 400,
+            uom_id: 22,
+            category_id: 90,
+            inventory_id: 1,
+            retail_price: 25.5,
+            stock_update_datetime: '2025-07-26T04:00:47.273Z',
+            stock_created_datetime: '2025-07-26T04:00:47.273Z',
+            __v: 0,
+            uom: {
+                _id: '687720ad798018e0851599a0',
+                id: 22,
+                symbol: 'pcs',
+                unit_name: 'Piece',
+                __v: 0
+            },
+            category: {
+                _id: '68775a921edd62f9c8128e0d',
+                id: 90,
+                brand: 'Reebok',
+                type: 'Sportswear',
+                __v: 0
+            },
+            inventory: null
+        },
   ]);
 
 
-
-  const totalAmount = selectedItems.reduce((sum, item) => sum + item.total, 0);
   const discountAmount = 450.0;
-  const changeAmount = 450.0;
 
-  const [selectedTableItem, setSelectedTableItem] = useState(null);
+
+    // Calculate total for selectedItems with discount deduction
+    const stockTotal = selectedItems.reduce((total, item) => {
+      const discountedPrice = item.retail_price - (item.customer_discount || 0);
+      return total + (discountedPrice * item.customer_quantity);
+    }, 0);
+  
+    //Just in case for wenuja
+    // Calculate total discount amounts for display
+    // const totalStockDiscount = selectedItems.reduce((total, item) => {
+    //   return total + ((item.customer_discount || 0) * item.customer_quantity);
+    // }, 0);
+  
+    // State for form inputs
+    const [cashAmount, setCashAmount] = useState(0);
+    const [finalDiscount, setFinalDiscount] = useState(0);
+    // Calculate the main totals(for table bottom content area)
+    const totalAmount = (stockTotal) - parseFloat(finalDiscount || 0);
+    const changeAmount = parseFloat(cashAmount || 0) - totalAmount;
 
 
 
 
   const handleTableRowClick = (item) => {
-    // Convert scanned item format to inventory item format for display
-    const displayItem = {
+
+    setFormDataRegItem({
+
+      sku: item.sku,
+
+      _id: item._id,
       id: item.id,
-      name: "Banana", // You can map this to actual product name based on item.code
-      category: "Fruit", // You can map this to actual category
-      price: item.unitPrice.toFixed(2),
-      unit: "1KG", // You can map this to actual unit
-      sku: item.code,
-      stock: `${item.quantity} Units`, // Current quantity in cart
-      image: bananaImg, // You can map this to actual product image
-      currentQuantity: item.quantity, // Current quantity in the cart
-      unitType: item.unit,
-    };
-    setSelectedTableItem(displayItem);
+      stock_trace: item.stock_trace,
+      item_name: item.item_name,
+      item_image_url: item.item_image_url,
+      maximum_capacity: item.maximum_capacity,
+      uom_id: item.uom_id,
+      category_id: item.category_id,
+      inventory_id: item.inventory_id,
+      item_update_datetime: item.item_update_datetime,
+      item_created_datetime: item.item_created_datetime,
+      __v: 0,
+      uom: {
+        _id: item.uom?._id || 2,
+        id: item.uom?._id || 2,
+        symbol: item.uom?._id || "uni",
+        unit_name: item.uom?._id || "units",
+      },
+      category: {
+        _id: item.category?._id || 2,
+        id: item.category?.id || 2,
+        brand: item.category?.brand || "lifebouy",
+        type: item.category?.type || "soap",
+      },
+      inventory: null,
+      //setting this as true for now
+      availability: true
+    }
+    );
+    setFormDataStock(
+      {
+        batch_code: item.batch_code,
+        quantity: item.quantity,
+        threshold_limit: item.threshold_limit,
+        stock_price: item.stock_price,
+        retail_price: item.retail_price,
+        expired_datetime: item.exp_date,
+        availability: item.stock_availability,
+        //to give away quantity for customer
+        customer_quantity: item.customer_quantity,
+        //retail discount for individual item
+        discount_price: item.discount_price,
+        //additional discount given for customer
+        customer_discount: item.customer_discount
+      }
+    );
   };
 
 
@@ -553,7 +701,7 @@ const filteredItems = inventoryItems.filter((item) => {
           <div className="border">
             <button
               // onClick={() => setOpenStock(!openStock)}
-              openFormBlock
+              //openFormBlock
               onClick={() => setopenStockFormBlock('stock')}
               className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
             >
@@ -571,8 +719,9 @@ const filteredItems = inventoryItems.filter((item) => {
                       </label>
                       <input
                         type="text"
-                        name="sku"
-                        value={formDataStock.sku}
+                        name="batch_code"
+                        readOnly={true}
+                        value={formDataStock.batch_code}
                         onChange={handleStockInputChange}
                         placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -580,15 +729,14 @@ const filteredItems = inventoryItems.filter((item) => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Quantity
+                        Customer Quantity
                       </label>
                       <input
                         type="number"
-                        name="quantity"
-                        value={formDataStock.quantity}
+                        name="customer_quantity"
+                        value={formDataStock.customer_quantity}
                         onChange={handleStockInputChange}
-                        placeholder=""
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border-2 bg-[#ffffff] border-[#000000] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -600,6 +748,7 @@ const filteredItems = inventoryItems.filter((item) => {
                       <input
                         type="text"
                         name="threshold_limit"
+                        readOnly={true}
                         value={formDataStock.threshold_limit}
                         onChange={handleStockInputChange}
                         placeholder=""
@@ -608,10 +757,11 @@ const filteredItems = inventoryItems.filter((item) => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Availability
+                        Stock Availability
                       </label>
                       <select
                         name="availability"
+                        disabled={true}
                         value={formDataStock.availability}
                         onChange={handleStockInputChange}
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
@@ -629,8 +779,9 @@ const filteredItems = inventoryItems.filter((item) => {
                       </label>
                       <input
                         type="number"
+                        readOnly={true}
                         name="stock_price"
-                        value={formDataStock.stock_price}
+                        value={formDataStock.discount_price}
                         onChange={handleStockInputChange}
                         placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -643,6 +794,7 @@ const filteredItems = inventoryItems.filter((item) => {
                       <input
                         type="number"
                         name="retail_price"
+                        readOnly={true}
                         value={formDataStock.retail_price}
                         onChange={handleStockInputChange}
                         placeholder=""
@@ -669,6 +821,7 @@ const filteredItems = inventoryItems.filter((item) => {
                         </div>
                           <input
                             type="date"
+                            readOnly={true}
                             id="expired_datetime"
                             value={formDataStock.expired_datetime ? formDataStock.expired_datetime.split('T')[0] : ''}
                             onChange={(e) => {
@@ -700,7 +853,8 @@ const filteredItems = inventoryItems.filter((item) => {
                       <input
                         type="number"
                         name="retail_price"
-                        value={formDataStock.retail_price}
+                        readOnly={true}
+                        value={formDataStock.discount_price}
                         onChange={handleStockInputChange}
                         placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -749,6 +903,40 @@ const filteredItems = inventoryItems.filter((item) => {
           </div>
 
           </div>
+        {/* Bottom bar */}
+        <div className="flex flex-row w-full mt-[10rem] gap-2">
+          {/* <button
+            className="flex items-center flex-1 min-w-0 h-10 px-2 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors text-sm"
+            // onClick={() => generatePdf('print')}
+          >
+            <Printer className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="truncate">Print Barcode</span>
+          </button> */}
+          <button
+            onClick={() => {
+              //clearing only stock form block for now
+              //should i also clear reg item data also?: yess
+              //clearFormInput();
+              //setReturnItemSelected(false);
+              //also clear the recent batch code changes
+              //setStockEntries([]);
+
+              //switch from update item button to add item button
+            }}
+            className="flex-1 min-w-0 h-10 px-3 py-2 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors text-sm"
+          >
+            <span className="truncate">Cancel</span>
+          </button>
+          {/* switch between update and add button functions based on item card selection and clear form button click */}
+          <button
+            onClick={addNewRegItem}
+            disabled={formDataRegItem.id === 0}
+            className="flex-1 min-w-0 h-10 px-3 py-2 bg-blue-600 text-white enabled:hover:bg-[#1A318C] transition-colors text-sm disabled:bg-gray-400 disabled:text-gray-200 disabled:cursor-not-allowed"
+          >
+            <span className="truncate">Add Item</span>
+          </button>
+
+        </div>
             </div>
 
             {/* item table section(mid) */}
@@ -845,23 +1033,24 @@ const filteredItems = inventoryItems.filter((item) => {
                       {selectedItems.map((item, index) => (
                         <tr
                           key={item.id}
-                          className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors`}
+                          className={`${item.id === formDataRegItem.id && item.item_name === formDataRegItem.item_name ? 'border-4 border-blue-500' : 'border-b border-gray-200'} hover:bg-gray-50 cursor-pointer transition-colors`}
                           onClick={() => handleTableRowClick(item)}
                         >
                           <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
                             {index+1}
                           </td>
                           <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                            {item.code}
+                            {item.sku}
                           </td>
                           <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                            {item.unitPrice}
+                            {(item.retail_price).toFixed(2)}
+                            {/* {(item.stock_price).toFixed(2) - (item.item_discount_amt).toFixed(2)} */}
                           </td>
                           <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                            {item.quantity || 30}(pcs)
+                            {item.customer_quantity}
                           </td>
                           <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                            {item.total.toFixed(2)}
+                            {(item.retail_price * item.customer_quantity).toFixed(2)}
                           </td>
                   <td>
                     <button
@@ -897,13 +1086,29 @@ const filteredItems = inventoryItems.filter((item) => {
                 {/* Amounts */}
                 <div className="grid grid-cols-2 p-2 lg:p-3">
                   <div className="p-2 bg-[#5C5C5C] text-sm lg:text-base text-gray-500">Amount</div>
-                  <div className="p-2 bg-[#5C5C5C] text-lg lg:text-xl font-semibold text-white text-right">RS.{totalAmount.toFixed(2)}</div>
+                  <div className="p-2 bg-[#5C5C5C] text-lg lg:text-xl font-semibold text-white text-right">RS.{stockTotal.toFixed(2)}</div>
                   <div className="p-2 bg-[#D9D9D9] text-sm lg:text-base text-gray-500">Discount Amount</div>
-                  <div className="p-2 bg-[#D9D9D9] text-lg lg:text-xl font-normal text-gray-800 text-right">RS.{discountAmount.toFixed(2)}</div>
+                  <div className="p-2 bg-[#D9D9D9] text-lg lg:text-xl font-normal text-gray-800 text-right">
+                  <input
+                    type="number"
+                    value={finalDiscount}
+                    onChange={(e) => setFinalDiscount(e.target.value)}
+                    className="w-full px-3 py-1 bg-[#F8F8F8] border border-[#EBEBEB] text-right rounded"
+                    placeholder="0.00"
+                  />
+                  </div>
                   <div className="p-2 bg-[#5C5C5C] text-sm lg:text-base text-gray-500">Total Amount</div>
                   <div className="p-2 bg-[#5C5C5C] text-lg lg:text-xl font-semibold text-white text-right">RS.{totalAmount.toFixed(2)}</div>
                   <div className="p-2 bg-white text-sm lg:text-base text-gray-500 h-16">Customer Gave</div>
-                  <div className="p-2 bg-white text-lg lg:text-3xl font-semibold text-[#737373] text-right  h-16 border-b-2 ">RS.20000</div>
+                  <div className="p-2 bg-white text-lg lg:text-3xl font-semibold text-[#737373] text-right  h-16 border-b-2 ">
+                  <input
+                    type="number"
+                    value={cashAmount}
+                    onChange={(e) => setCashAmount(e.target.value)}
+                    className="w-full px-3 py-1 bg-[#F8F8F8] border border-[#EBEBEB] text-right rounded"
+                    placeholder="0.00"
+                  />
+                  </div>
                   <div className="p-2 bg-[#F8F8F8] text-sm lg:text-base text-gray-500">Change Amount</div>
                   <div className="p-2 bg-[#F8F8F8] text-lg lg:text-xl font-normal text-gray-800 text-right">RS.{changeAmount.toFixed(2)}</div>
 
@@ -1092,16 +1297,16 @@ const filteredItems = inventoryItems.filter((item) => {
                       <div className="flex gap-10">
                         <img src={profileImg} className="w-12 h-12 bg-gray-300 rounded-full" />
                         <div>
-                          <h2 className="text-blue-800 font-bold">MR. Harischandra Silva</h2>
-                          <p className="text-md font-semibold">MEMBER: 2345</p>
-                          <p className="text-xs text-gray-600">PRE-MEMBER: 2345</p>
+                          <h2 className="text-blue-800 font-bold">-</h2>
+                          <p className="text-md font-semibold">MEMBER: -</p>
+                          <p className="text-xs text-gray-600">PRE-MEMBER: -</p>
                         </div>
                       </div>
                     </div>
                     {/* income details */}
                     <div className="bg-[#E2E2E2] flex items-center justify-around border-black p-4">
                       <div className="text-center">
-                        <div className="text-lg font-bold">RS. 20000</div>
+                        <div className="text-lg font-bold">RS. 0</div>
                         <div className="text-sm text-gray-600">Income</div>
                       </div>  
                       {/* vertical divider */}
@@ -1111,7 +1316,7 @@ const filteredItems = inventoryItems.filter((item) => {
                         className="w-px h-8 bg-white"
                       />
                       <div className="text-center">
-                        <div className="text-lg font-bold">RS. 20000</div>
+                        <div className="text-lg font-bold">RS. 0</div>
                         <div className="text-sm text-gray-600">Credits</div>
                       </div>
                     </div>
@@ -1127,9 +1332,9 @@ const filteredItems = inventoryItems.filter((item) => {
                         </svg>
                       </div>
                       <div className="">
-                        <div className="text-xl text-[#979797] font-bold">2024-06-03</div>
+                        <div className="text-xl text-[#979797] font-bold">yyyy-mm-dd</div>
                         <div className="text-[#979797] font-regular">Total Amount:</div>
-                        <div><span className="text-2xl text-[#979797] font-bold">Rs. 23000.00</span><span className="ml-3 text-[#2DAA44] font-bold">CASH</span></div>
+                        <div><span className="text-2xl text-[#979797] font-bold">Rs. 0.00</span><span className="ml-3 text-[#2DAA44] font-bold">CASH</span></div>
                       </div>
                     </div>
                     </div>
