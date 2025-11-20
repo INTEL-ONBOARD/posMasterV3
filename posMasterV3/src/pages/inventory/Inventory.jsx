@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from "react";
 import InventorySidebar from "./Inventory_sidebar";
-import ItemCard from "../../components/ItemCard.jsx";
-import SpinnerDot from "../../frontend/components/SpinnerDot";
-import bananaImg from "../../assets/Inventory_banana.png";
 import AddItem from "./AddItem.jsx";
 import NotFound from "../../assets/nonicons_not-found-16.png";
 import InventoryConfig from "./InventoryConfig";

@@ -6,10 +6,20 @@ function Startup() {
   const [currentPage, setCurrentPage] = useState("initialLoading");
   const [formData, setFormData] = useState({
     outlet: "",
-    filePath: "",
+    filePath: "", // Default folder path will be set here on load
   });
+  const [message, setMessage] = useState("");
   const [selecting, setSelecting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const navigate = useNavigate();
+
+  const isConfirmEnabled = formData.filePath && formData.outlet;
+
+  // Set default folder path when the component is mounted
+  useEffect(() => {
+    const defaultFolderPath = window.electronAPI.getDefaultFolderPath();
+    setFormData((prev) => ({ ...prev, filePath: defaultFolderPath }));
+  }, []);
 
   // Auto-timers for loading pages
   useEffect(() => {
@@ -28,38 +38,53 @@ function Startup() {
     }
   }, [currentPage, navigate]);
 
-  // Handle folder selection & sample.json validation/creation
+  // Handle folder selection
   const handleSelectFolder = async () => {
     setSelecting(true);
+    setMessage(""); // Clear any previous messages
     try {
-      if (
-        window.electronAPI &&
-        window.electronAPI.selectFolder &&
-        window.electronAPI.ensureSampleJson
-      ) {
+      if (window.electronAPI && window.electronAPI.selectFolder) {
         const folderPath = await window.electronAPI.selectFolder();
         if (folderPath) {
-          // Ensure sample.json exists and is correct
-          await window.electronAPI.ensureSampleJson(folderPath);
           setFormData((prev) => ({ ...prev, filePath: folderPath }));
+          setMessage(`Folder selected: ${folderPath}`);
         }
       } else {
         alert("Electron API not available!");
       }
     } catch (e) {
-      alert(
-        "Failed to select folder or create sample.json: " +
-        (e && e.message ? e.message : e)
-      );
+      alert("Failed to select folder: " + (e && e.message ? e.message : e));
     } finally {
       setSelecting(false);
     }
   };
 
-  // Confirm handler
-  const handleConfirm = () => {
-    // You can add further validation here if needed
-    setCurrentPage("finalLoading");
+  // Handle confirmation (create files)
+  const handleConfirm = async () => {
+    setConfirming(true);
+    setMessage(""); // Clear any previous messages
+    try {
+      if (window.electronAPI && window.electronAPI.createFiles) {
+        const result = await window.electronAPI.createFiles(
+          formData.filePath,
+          formData.outlet
+        );
+        if (result.success) {
+          setMessage(
+            `Files created successfully:\n- temp.json: ${result.tempFilePath}\n- config.json: ${result.configFilePath}`
+          );
+          setCurrentPage("finalLoading");
+        } else {
+          alert("Failed to create files: " + result.error);
+        }
+      } else {
+        alert("Electron API not available!");
+      }
+    } catch (e) {
+      alert("Failed to create files: " + (e && e.message ? e.message : e));
+    } finally {
+      setConfirming(false);
+    }
   };
 
   return (
@@ -92,7 +117,7 @@ function Startup() {
       {currentPage === "setup" && (
         <div className="w-full max-w-md p-6 flex flex-col items-center justify-center">
           <p className="mb-4 text-2xl text-gray-700">
-            Please provide following details
+            Please provide the following details
           </p>
 
           {/* Temp File Path */}
@@ -101,7 +126,7 @@ function Startup() {
               htmlFor="filePath"
               className="block text-sm text-[#D3D3D3] mb-1"
             >
-              Temp file path
+              Configuration folder path
             </label>
             <div className="flex gap-2">
               <input
@@ -115,8 +140,9 @@ function Startup() {
               <button
                 onClick={handleSelectFolder}
                 disabled={selecting}
-                className={`px-4 py-2 bg-gray-500 text-white rounded-lg ${selecting ? "opacity-60" : ""
-                  }`}
+                className={`px-4 py-2 bg-gray-500 text-white rounded-lg ${
+                  selecting ? "opacity-60" : ""
+                }`}
               >
                 {selecting ? "Selecting..." : "Select"}
               </button>
@@ -146,13 +172,15 @@ function Startup() {
             </select>
           </div>
 
-          {/* Confirm Button */}
           <div className="w-full flex justify-between items-center">
             <button
               onClick={handleConfirm}
-              className="px-6 py-2 h-10 w-full bg-[#00489A] text-white rounded-md hover:bg-[#003B7A] transition-colors"
+              disabled={!isConfirmEnabled || confirming}
+              className={`px-6 py-2 h-10 w-full bg-[#00489A] text-white rounded-md hover:bg-[#003B7A] transition-colors ${
+                !isConfirmEnabled ? "opacity-60 cursor-not-allowed" : ""
+              }`}
             >
-              Confirm
+              {confirming ? "Processing..." : "Confirm"}
             </button>
           </div>
         </div>
