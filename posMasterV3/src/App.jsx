@@ -18,7 +18,10 @@ import Notification from './pages/notification/Notification.jsx';
 
 import InventoryConfig from './pages/inventory/InventoryConfig.jsx';
 import Sales from './pages/sales/Sales.jsx';
+
 import Startup from './pages/Startup.jsx';
+import Users from './pages/users/users.jsx';
+
 
 
 function App() {
@@ -86,13 +89,14 @@ function App() {
           <Route path="startup" element={<Startup />} />
           <Route path="login" element={<Login />} />
 
-          <Route path="dashboard" element={<Dashboard />} >
-            <Route index element={<Notification />} />
-            <Route path="inventory/*" element={<Inventory />} />
-            <Route path="inventory-config" element={<InventoryConfig />} />
-            <Route path="settings/*" element={<Settings />} />
-            <Route path="notifications" element={<Notification />} />
-            <Route path="sales" element={<Sales />} />
+          <Route path="dashboard"             element={<Dashboard />} >
+            <Route index                      element={<Notification />} />
+            <Route path="inventory/*"         element={<Inventory />} />
+            <Route path="inventory-config"    element={<InventoryConfig />} />
+            <Route path="settings/*"          element={<Settings />} />
+            <Route path="notifications"       element={<Notification />} />
+            <Route path="sales"               element={<Sales />} />
+            <Route path="users"           element={<Users/>} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
