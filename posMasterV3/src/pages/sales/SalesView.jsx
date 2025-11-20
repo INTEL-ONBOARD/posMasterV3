@@ -3,7 +3,7 @@ import SalesItemCard from "../../components/SalesItemCard";
 import { apiClient } from "../../api/client";
 import {ChevronDown, ChevronUp } from "lucide-react";
 import ToastContext from "../toasts/ToastService.jsx";
-import BillDocument from "./BillDocument";
+
 import { pdf } from '@react-pdf/renderer';
 //image imports
 import barcodeImg from "../../assets/barcode.png";
@@ -14,27 +14,32 @@ import sidebarPaymentBtnImg from "../../assets/sales_proceed_payment.png";
 import profileImg from "../../assets/user_profile_image.png";
 import { transformStockData } from "../../util/blockConverter.jsx";
 
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
+import BillContent from "./layout/BillContent.jsx"; // Import the separate off-screen component for bill printing 
 
-export default function SalesView() {
+export default function SalesView({ isActive }) {
 
+  const billRef = useRef(null); //used to store bill pdf format
   const toast = useContext(ToastContext);
   const [openItemFormBlock, setopenItemFormBlock] = useState('item'); //item || stock || supplier || 
   const [openStockFormBlock, setopenStockFormBlock] = useState('stock'); //item || stock || supplier || 
   //left section controls
     const [formDataRegItem, setFormDataRegItem] = useState({
-      _id: "",
+
+      sku: "",
+
       id: 0,
       stock_trace: [0],
-      item_name: "fdsaf",
+      item_name: "",
       item_image_url: "",
-      batch_code: "fdsaf",
       maximum_capacity: 10,
       uom_id: 10,
       category_id: 10,
       inventory_id: 11,
-      item_update_datetime: "2025-12-31T23:59:59",
-      item_created_datetime: "2025-12-31T23:59:59",
-      __v: 0,
+      item_update_datetime: "",
+      item_created_datetime: "",
+
       uom: {
         _id: "",
         id: 0,
@@ -52,20 +57,26 @@ export default function SalesView() {
       inventory: null,
       availability: true
     });
-    //no input change for this for now(because of readonly in ui)
+    //no input change for this except for customer_quantity(because of readonly in ui)
     const [formDataStock, setFormDataStock] = useState({
-      sku: "skupsps",
-      quantity: 150,
-      threshold_limit: 20,
-      stock_price: 20.0,
-      retail_price: 35.0,
-      expired_datetime: "2025-12-31T23:59:59",
-      availability: true
+      batch_code: "",
+      quantity: 0,
+      threshold_limit: 0,
+      stock_price: 0,
+      retail_price: 0,
+      expired_datetime: "",
+      availability: true,
+      //to give away quantity for customer
+      customer_quantity: 0,
+      //retail discount for individual item
+      discount_price: 0,
+      //additional discount given for customer
+      customer_discount: 0
     });
     const handleStockInputChange = (e) => {
       const { name, value } = e.target;
       console.log(name +": "+ value);
-      setFormStockData(prev => ({ ...prev, [name]: value }));
+      setFormDataStock(prev => ({ ...prev, [name]: value }));
     };
 
     const [rightActiveSection, setRightActiveSection] = useState("buttons"); // "buttons" | "items"
@@ -75,10 +86,12 @@ export default function SalesView() {
     }
 
   //populate table from card list
-    const loadItemtoList = (item) => {
-      return; //this has errors
-    if (true) {
-      const newRegItem = {
+  const loadItemtoList = (item) => {
+    //return; //this has errors
+    
+    const newRegItem = {
+        sku: item.sku,
+
         _id: item._id,
         id: item.id,
         stock_trace: item.stock_trace,
@@ -87,44 +100,36 @@ export default function SalesView() {
         maximum_capacity: item.maximum_capacity,
         uom_id: item.uom_id,
         category_id: item.category_id,
-        // inventory_id: item.inventory_id,
-        // item_update_datetime: item.item_update_datetime,
-        // item_created_datetime: item.item_created_datetime,
-        // __v: item.__v,
-        // inventory: item.inventory,
-
-        batch_code: "",
-        //need to make them zeros and empty when loading to table for the first tiem
-        // sku: formDataRegItem.sku,
-        // quantity: parseFloat(formDataStock.quantity) || 0,
-        // threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
-        // stock_price: parseFloat(formDataStock.stock_price) || 0,
-        // retail_price: parseFloat(formDataStock.retail_price) || 0,
-        // expired_datetime: formDataStock.expired_datetime,
-        // availability: formDataStock.availability,
+        inventory_id: item.inventory_id,
+      
+        batch_code: item.batch_code,
+        //how many available in the stock currently
+        quantity: parseFloat(item.quantity) || 0,
+        //this is missing hmmm
+        threshold_limit: parseFloat(item.threshold_limit) || 0,
+        stock_price: parseFloat(item.stock_price) || 0,
+        retail_price: parseFloat(item.retail_price) || 0,
+        discount_price: parseFloat(item.discount_price) || 0,
+        expired_datetime: item.exp_date,
+        availability: item.stock_availability,
 
         uom: {
-        id: item.uom.id,
-        symbol: item.uom.symbol,
-        unit_name: item.uom.unit_name,
-      },
-      category: {
-        id: item.category.id,
-        brand: item.category.brand,
-        type: item.category.type,
-      },
+          id: 1,
+          symbol: "",
+          unit_name: "",
+        },
+        category: {
+          id: 1,
+          brand: "",
+          type: "",
+        },
 
-        sku: item.sku,
-        quantity: 0,
-        threshold_limit: 0,
-        stock_price: 0,
-        retail_price: 0,
-        expired_datetime: "",
-        availability: true,
-
-        item_discount_amt: 0,
-
-        uom_symbol: formDataStock.uom?.uom_symbol
+        //individual discount given for customer
+        customer_discount: 0,
+        //newly added to place how much quantiy customer wants
+        customer_quantity: 0,
+        //do i use this somewhere? delete if not
+        uom_symbol: item.uom?.uom_symbol
       };
       console.log(newRegItem);
       //setSelectedStockItemList(prev => [...prev, newRegItem]);
@@ -134,53 +139,196 @@ export default function SalesView() {
           ? prev 
           : [...prev, newRegItem]
       );
-    }
+
   };
 
+  //adding an item from form back to the item table row based on ret/reg item
+  const addNewRegItem = () => {
+
+      //prevent adding items without selecting table rows
+      if(formDataRegItem.id===0){
+        return;
+      }
+  
+      //check if it already exists on the item list first
+    const newRegItem = {
+        sku: formDataRegItem.sku,
+
+        id: formDataRegItem.id,
+        stock_trace: formDataRegItem.stock_trace,
+        item_name: formDataRegItem.item_name,
+        item_image_url: formDataRegItem.item_image_url,
+        maximum_capacity: formDataRegItem.maximum_capacity,
+        uom_id: formDataRegItem.uom_id,
+        category_id: formDataRegItem.category_id,
+        inventory_id: formDataRegItem.inventory_id,
+      
+        batch_code:formDataStock.batch_code,
+        //how many available in the stock currently
+        quantity: parseFloat(formDataStock.quantity) || 0,
+        //this is missing hmmm
+        threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
+        stock_price: parseFloat(formDataStock.stock_price) || 0,
+        retail_price: parseFloat(formDataStock.retail_price) || 0,
+        discount_price: parseFloat(formDataStock.discount_price) || 0,
+        expired_datetime: formDataStock.exp_date,
+        availability: formDataStock.availability,
+
+        uom: {
+          id: 1,
+          symbol: "pts",
+          unit_name: "pints",
+        },
+        category: {
+          id: 1,
+          brand: "lux",
+          type: "soap",
+        },
+
+        //individual discount given for customer
+        customer_discount: formDataStock.customer_discount,
+        //newly added to place how much quantiy customer wants
+        customer_quantity: formDataStock.customer_quantity,
+        //do i use this somewhere? delete if not
+        uom_symbol: formDataRegItem.uom?.symbol
+      };
+        
+        console.log(newRegItem);
+  
+        // Update existing item by id instead of adding new item
+        setSelectedItems(prev => 
+          prev.map(prevItem => 
+            prevItem.id === formDataRegItem.id ? newRegItem : prevItem
+          )
+        );
+  
+        //finally clear inputs
+        //clearFormInput();
+        
+        // //also clear the recent batch code changes
+        // setStockEntries([]);
+  
+
+
+    }
 
 
 // mid section controls
     const [selectedItems, setSelectedItems] = useState([
-    {
-      id: 1,
-      code: "XLR9590565",
-      unitPrice: 3200.0,
-      quantity: 30,
-      unit: "pcs",
-      total: 11300.0,
-    },
+        // {
+        //     _id: '688452ef1ddc1d25637c9a47',
+        //     id: 31,
+        //     stock_trace: [1],
+        //     item_name: 'Water Bottle',
+        //     item_image_url: null,
+        //     batch_code: 'SKU2263WA901',
+        //     sku: 'SKU2263',
+        //     quantity: 50,
+        //     threshold_limit: 120,
+        //     maximum_capacity: 400,
+        //     uom_id: 22,
+        //     category_id: 90,
+        //     inventory_id: 1,
+        //     retail_price: 25.5,
+        //     stock_update_datetime: '2025-07-26T04:00:47.273Z',
+        //     stock_created_datetime: '2025-07-26T04:00:47.273Z',
+        //     __v: 0,
+        //     uom: {
+        //         _id: '687720ad798018e0851599a0',
+        //         id: 22,
+        //         symbol: 'pcs',
+        //         unit_name: 'Piece',
+        //         __v: 0
+        //     },
+        //     category: {
+        //         _id: '68775a921edd62f9c8128e0d',
+        //         id: 90,
+        //         brand: 'Reebok',
+        //         type: 'Sportswear',
+        //         __v: 0
+        //     },
+        //     inventory: null
+        // },
   ]);
 
 
 
-  const totalAmount = selectedItems.reduce((sum, item) => sum + item.total, 0);
-  const discountAmount = 450.0;
-  const changeAmount = 450.0;
 
-  const [selectedTableItem, setSelectedTableItem] = useState(null);
+
+    // Calculate total for selectedItems with discount deduction
+    const stockTotal = selectedItems.reduce((total, item) => {
+      const discountedPrice = item.retail_price - (item.customer_discount || 0);
+      return total + (discountedPrice * item.customer_quantity);
+    }, 0);
+  
+    //Just in case for wenuja
+    // Calculate total discount amounts for display
+    // const totalStockDiscount = selectedItems.reduce((total, item) => {
+    //   return total + ((item.customer_discount || 0) * item.customer_quantity);
+    // }, 0);
+  
+    // State for form inputs
+    const [cashAmount, setCashAmount] = useState(0);
+    const [finalDiscount, setFinalDiscount] = useState(0);
+    // Calculate the main totals(for table bottom content area)
+    const totalAmount = (stockTotal) - parseFloat(finalDiscount || 0);
+    const changeAmount = parseFloat(cashAmount || 0) - totalAmount;
 
 
 
 
   const handleTableRowClick = (item) => {
-    // Convert scanned item format to inventory item format for display
-    const displayItem = {
+
+    setFormDataRegItem({
+
+      sku: item.sku,
+
+      _id: item._id,
       id: item.id,
-      name: "Banana", // You can map this to actual product name based on item.code
-      category: "Fruit", // You can map this to actual category
-      price: item.unitPrice.toFixed(2),
-      unit: "1KG", // You can map this to actual unit
-      sku: item.code,
-      stock: `${item.quantity} Units`, // Current quantity in cart
-      image: bananaImg, // You can map this to actual product image
-      currentQuantity: item.quantity, // Current quantity in the cart
-      unitType: item.unit,
-    };
-    setSelectedTableItem(displayItem);
-  };
-
-  const handleOpenProceedPayment = () => {
-
+      stock_trace: item.stock_trace,
+      item_name: item.item_name,
+      item_image_url: item.item_image_url,
+      maximum_capacity: item.maximum_capacity,
+      uom_id: item.uom_id,
+      category_id: item.category_id,
+      inventory_id: item.inventory_id,
+      item_update_datetime: item.item_update_datetime,
+      item_created_datetime: item.item_created_datetime,
+      __v: 0,
+      uom: {
+        _id: item.uom?._id || 2,
+        id: item.uom?._id || 2,
+        symbol: item.uom?._id || "uni",
+        unit_name: item.uom?._id || "units",
+      },
+      category: {
+        _id: item.category?._id || 2,
+        id: item.category?.id || 2,
+        brand: item.category?.brand || "lifebouy",
+        type: item.category?.type || "soap",
+      },
+      inventory: null,
+      //setting this as true for now
+      availability: true
+    }
+    );
+    setFormDataStock(
+      {
+        batch_code: item.batch_code,
+        quantity: item.quantity,
+        threshold_limit: item.threshold_limit,
+        stock_price: item.stock_price,
+        retail_price: item.retail_price,
+        expired_datetime: item.exp_date,
+        availability: item.stock_availability,
+        //to give away quantity for customer
+        customer_quantity: item.customer_quantity,
+        //retail discount for individual item
+        discount_price: item.discount_price,
+        //additional discount given for customer
+        customer_discount: item.customer_discount
+      }
+    );
   };
 
 
@@ -221,81 +369,81 @@ export default function SalesView() {
         //     },
         //     inventory: null
         // },
-        {
-            _id: '688452ef1ddc1d25637c9a47',
-            id: 31,
-            stock_trace: [1],
-            item_name: 'Water Bottle',
-            item_image_url: null,
-            batch_code: 'SKU2263WA901',
-            sku: 'SKU2263',
-            quantity: 50,
-            threshold_limit: 120,
-            maximum_capacity: 400,
-            uom_id: 22,
-            category_id: 90,
-            inventory_id: 1,
-            retail_price: 25.5,
-            stock_update_datetime: '2025-07-26T04:00:47.273Z',
-            stock_created_datetime: '2025-07-26T04:00:47.273Z',
-            __v: 0,
-            uom: {
-                _id: '687720ad798018e0851599a0',
-                id: 22,
-                symbol: 'pcs',
-                unit_name: 'Piece',
-                __v: 0
-            },
-            category: {
-                _id: '68775a921edd62f9c8128e0d',
-                id: 90,
-                brand: 'Reebok',
-                type: 'Sportswear',
-                __v: 0
-            },
-            inventory: null
-        },
-        {
-            _id: '68845a0b8767fec474faa590',
-            id: 32,
-            stock_trace: [1],
-            item_name: 'Mobile Data cable',
-            item_image_url: null,
-            threshold_limit: 40,
-            maximum_capacity: 60,
-            uom_id: 22,
-            category_id: 158,
-            inventory_id: 1,
+        // {
+        //     _id: '688452ef1ddc1d25637c9a47',
+        //     id: 31,
+        //     stock_trace: [1],
+        //     item_name: 'Water Bottle',
+        //     item_image_url: null,
+        //     batch_code: 'SKU2263WA901',
+        //     sku: 'SKU2263',
+        //     quantity: 50,
+        //     threshold_limit: 120,
+        //     maximum_capacity: 400,
+        //     uom_id: 22,
+        //     category_id: 90,
+        //     inventory_id: 1,
+        //     retail_price: 25.5,
+        //     stock_update_datetime: '2025-07-26T04:00:47.273Z',
+        //     stock_created_datetime: '2025-07-26T04:00:47.273Z',
+        //     __v: 0,
+        //     uom: {
+        //         _id: '687720ad798018e0851599a0',
+        //         id: 22,
+        //         symbol: 'pcs',
+        //         unit_name: 'Piece',
+        //         __v: 0
+        //     },
+        //     category: {
+        //         _id: '68775a921edd62f9c8128e0d',
+        //         id: 90,
+        //         brand: 'Reebok',
+        //         type: 'Sportswear',
+        //         __v: 0
+        //     },
+        //     inventory: null
+        // },
+        // {
+        //     _id: '68845a0b8767fec474faa590',
+        //     id: 32,
+        //     stock_trace: [1],
+        //     item_name: 'Mobile Data cable',
+        //     item_image_url: null,
+        //     threshold_limit: 40,
+        //     maximum_capacity: 60,
+        //     uom_id: 22,
+        //     category_id: 158,
+        //     inventory_id: 1,
             
-            //assign some from stockData object 
-            sku: 'SKU-32452',
-            batch_code: 'SKU-32452DA15822',
-            quantity: 54,
-            stock_price: 155,
-            retail_price: 155,
-            discount_price: 100,
-            exp_date: "2025-11-14T22:45:52.014Z",
-            stock_availability: true, //use availability attribute from stockData object
+        //     //assign some from stockData object 
+        //     sku: 'SKU-32452',
+        //     batch_code: 'SKU-32452DA15822',
+        //     quantity: 54,
+        //     stock_price: 155,
+        //     retail_price: 155,
+        //     discount_price: 100,
+        //     exp_date: "2025-11-14T22:45:52.014Z",
+        //     stock_availability: true, //use availability attribute from stockData object
 
-            stock_update_datetime: '2025-07-26T04:31:07.861Z',
-            stock_created_datetime: '2025-07-26T04:31:07.861Z',
-            __v: 0,
-            uom: {
-                _id: '687720ad798018e0851599a0',
-                id: 22,
-                symbol: 'pcs',
-                unit_name: 'Piece',
-                __v: 0
-            },
-            category: {
-                _id: '687765bb1edd62f9c8129017',
-                id: 158,
-                brand: 'Hp',
-                type: 'Computers',
-                __v: 0
-            },
-            inventory: null
-        }
+        //     stock_update_datetime: '2025-07-26T04:31:07.861Z',
+        //     stock_created_datetime: '2025-07-26T04:31:07.861Z',
+        //     __v: 0,
+        //     uom: {
+        //         _id: '687720ad798018e0851599a0',
+        //         id: 22,
+        //         symbol: 'pcs',
+        //         unit_name: 'Piece',
+        //         __v: 0
+        //     },
+        //     category: {
+        //         _id: '687765bb1edd62f9c8129017',
+        //         id: 158,
+        //         brand: 'Hp',
+        //         type: 'Computers',
+        //         __v: 0
+        //     },
+        //     inventory: null
+        // }
     ]
 );
 
@@ -305,22 +453,26 @@ export default function SalesView() {
       if (response.data.status === "success") {
         //convert default response object to get each detailed stock items(detach stock item object and create a new obj with parent attributes)
         const transformed = transformStockData(response.data);
-        //setInventoryItems(transformed);
+        setInventoryItems(transformed);
       }
       } catch (error) {
-          console.error("Error fetching items:", error);
+          console.error("Error fetching items:", error.message);
       } finally {
           setIsLoading(false);
       }
     };
-    // Fetch items from API
+    // Fetch items from API only when this section is active
     useEffect(() => {
       // Fetch items after UOMs are loaded to properly map uomName
       // if (!loadingUoms) {
+      if(isActive){
         fetchItems();
+      }
+        console.log(inventoryItems);
+        //console.log("sales view section api triggered to active section");
       // }
     //}, [loadingUoms]);
-    }, []);
+    }, [isActive]);
 
   const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
     // Fetch Categories from API and create mapping
@@ -350,7 +502,6 @@ export default function SalesView() {
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
   const [searchAvailability, setSearchAvailability] = useState("All");
-  const [viewMode, setViewMode] = useState("grid"); // or "list"
   const [isSearching, setIsSearching] = useState(false);
 
   // Search handler
@@ -359,6 +510,17 @@ export default function SalesView() {
     setSearch(e.target.value);
     setTimeout(() => setSearchLoading(false), 600);
   };
+
+
+
+    const today = new Date();
+
+  const year = today.getFullYear();
+  // Month is zero-indexed, so +1. Then pad to 2-digits:
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  const formattedDate = `${year}-${month}-${day}`;
 
 //helper method for item availability filtering
   const interpretAvailability = (item) => {
@@ -392,35 +554,135 @@ const filteredItems = inventoryItems.filter((item) => {
 
 
 
-  const generatePdf = async (action) => {
+  const generateBillPdf = async () => {
     try {
-      console.log("printing started");
-      const instance = pdf(<BillDocument/>);
-console.log("printing complete");
-      const blob = await instance.toBlob();
-      if (action === 'print') {
-        const arrayBuffer = await blob.arrayBuffer();
-        window.electronAPI.sendPrintSilent(arrayBuffer);
-      } else if (action === 'download') {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `barcode-${barcodeValue}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      if (!billRef.current) {
+        console.error("Bill ref is null");
+        return;
       }
+
+      // Capture the full HTML content as a single canvas
+      const canvas = await html2canvas(billRef.current, {
+        scale: 2, // Higher scale for better quality
+        useCORS: true, // If including external images
+        logging: true, // For debugging
+      });
+
+      // Create jsPDF document with custom size (11cm x 10cm converted to points)
+      const widthPt = 311.81; // 11 cm in points
+      const heightPt = 311.81; // 10 cm in points
+      const doc = new jsPDF({ unit: "pt", format: [widthPt, heightPt] });
+
+      // Define margins and calculate max width/height per page in PDF units
+      const margin = 40;
+      const pdfWidth = doc.internal.pageSize.getWidth() - 2 * margin;
+      const pdfPageHeight = doc.internal.pageSize.getHeight() - 2 * margin;
+
+      // Calculate the scaling ratio (canvas is in pixels, PDF in pt)
+      const scaleRatio = pdfWidth / canvas.width;
+
+      // Start adding pages
+      let positionY = 0; // Track vertical position in the original canvas (pixels)
+      let pageNumber = 1;
+
+      while (positionY < canvas.height) {
+        // Calculate remaining height in pixels
+        const remainingHeightPx = canvas.height - positionY;
+
+        // Height for this slice in pixels (don't exceed page height)
+        const sliceHeightPx = Math.min(
+          remainingHeightPx,
+          pdfPageHeight / scaleRatio
+        );
+
+        // Create a new canvas for this slice
+        const sliceCanvas = document.createElement("canvas");
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceHeightPx;
+        const ctx = sliceCanvas.getContext("2d");
+        if (!ctx) {
+          throw new Error("Failed to get 2D context");
+        }
+        ctx.drawImage(
+          canvas,
+          0,
+          positionY,
+          canvas.width,
+          sliceHeightPx,
+          0,
+          0,
+          canvas.width,
+          sliceHeightPx
+        );
+
+        // Get the slice as PNG data URL
+        const sliceData = sliceCanvas.toDataURL("image/png");
+
+        // Calculate slice height in PDF units
+        const slicePdfHeight = sliceHeightPx * scaleRatio;
+
+        // If not the first page, add a new page
+        if (pageNumber > 1) {
+          doc.addPage();
+        }
+
+        // Add the slice image to the current page
+        doc.addImage(
+          sliceData,
+          "PNG",
+          margin,
+          margin,
+          pdfWidth,
+          slicePdfHeight
+        );
+
+        // Move to the next slice
+        positionY += sliceHeightPx;
+        pageNumber++;
+      }
+
+      // Save the PDF(for react)
+      //doc.save("multi-page-pdf.pdf");
+      //Get ArrayBuffer for silent printing
+      const arrayBuffer = doc.output("arraybuffer");
+
+      //Send to Electron API()
+      window.electronAPI.sendPrintSilent(arrayBuffer);
+
+      console.log("Multi-page PDF generated");
     } catch (error) {
-      console.error('Error:', error);
-      //alert('Failed to generate PDF');
-      toast.open("Failed to generate PDF", 4000, 'Pdf Failed', 'error');
+      console.error("generatePdf error:", error);
     }
+  };
+
+    // Convert selectedItems → stock_items with total_price
+  const stock_items = selectedItems.map((item) => ({
+    ...item,
+    total_price: item.retail_price * item.customer_quantity,
+  }));
+  
+    // Plain object to pass as prop
+  const billData = {
+    invoiceNo: "INV-2025-0001",
+    cashier_name: "-",
+    payment_method: "Cash",
+    date_time: formattedDate,
+    member_no: "-",
+    //get items form the selectedItems useState
+    stock_items: stock_items,
+    totalAmount: stockTotal,
+    discountAmount: finalDiscount,
+    finalAmount: totalAmount,
+    cashAmount: cashAmount,
+    changeAmount: changeAmount,
   };
 
   return (
     <div className="flex h-screen bg-[#EBEBEB]">
-
+            {/* Off-screen bill content using the separate component */}
+      <div className="absolute top-[-9999px] left-[-9999px]">
+        <BillContent ref={billRef} billData={billData} />
+      </div>
       {/* Main Content */}
       <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)] bg-[#EBEBEB] w-full">
 
@@ -472,7 +734,7 @@ console.log("printing complete");
           <div className="border">
             <button
               // onClick={() => setOpenStock(!openStock)}
-              openFormBlock
+              //openFormBlock
               onClick={() => setopenStockFormBlock('stock')}
               className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
             >
@@ -490,8 +752,9 @@ console.log("printing complete");
                       </label>
                       <input
                         type="text"
-                        name="sku"
-                        value={formDataStock.sku}
+                        name="batch_code"
+                        readOnly={true}
+                        value={formDataStock.batch_code}
                         onChange={handleStockInputChange}
                         placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -499,15 +762,14 @@ console.log("printing complete");
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Quantity
+                        Customer Quantity
                       </label>
                       <input
                         type="number"
-                        name="quantity"
-                        value={formDataStock.quantity}
+                        name="customer_quantity"
+                        value={formDataStock.customer_quantity}
                         onChange={handleStockInputChange}
-                        placeholder=""
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border-2 bg-[#ffffff] border-[#000000] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -519,6 +781,7 @@ console.log("printing complete");
                       <input
                         type="text"
                         name="threshold_limit"
+                        readOnly={true}
                         value={formDataStock.threshold_limit}
                         onChange={handleStockInputChange}
                         placeholder=""
@@ -527,10 +790,11 @@ console.log("printing complete");
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Availability
+                        Stock Availability
                       </label>
                       <select
                         name="availability"
+                        disabled={true}
                         value={formDataStock.availability}
                         onChange={handleStockInputChange}
                         className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
@@ -548,8 +812,9 @@ console.log("printing complete");
                       </label>
                       <input
                         type="number"
+                        readOnly={true}
                         name="stock_price"
-                        value={formDataStock.stock_price}
+                        value={formDataStock.discount_price}
                         onChange={handleStockInputChange}
                         placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -562,6 +827,7 @@ console.log("printing complete");
                       <input
                         type="number"
                         name="retail_price"
+                        readOnly={true}
                         value={formDataStock.retail_price}
                         onChange={handleStockInputChange}
                         placeholder=""
@@ -588,6 +854,7 @@ console.log("printing complete");
                         </div>
                           <input
                             type="date"
+                            readOnly={true}
                             id="expired_datetime"
                             value={formDataStock.expired_datetime ? formDataStock.expired_datetime.split('T')[0] : ''}
                             onChange={(e) => {
@@ -619,7 +886,8 @@ console.log("printing complete");
                       <input
                         type="number"
                         name="retail_price"
-                        value={formDataStock.retail_price}
+                        readOnly={true}
+                        value={formDataStock.discount_price}
                         onChange={handleStockInputChange}
                         placeholder=""
                         className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -668,6 +936,40 @@ console.log("printing complete");
           </div>
 
           </div>
+        {/* Bottom bar */}
+        <div className="flex flex-row w-full mt-[10rem] gap-2">
+          {/* <button
+            className="flex items-center flex-1 min-w-0 h-10 px-2 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors text-sm"
+            // onClick={() => generatePdf('print')}
+          >
+            <Printer className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="truncate">Print Barcode</span>
+          </button> */}
+          <button
+            onClick={() => {
+              //clearing only stock form block for now
+              //should i also clear reg item data also?: yess
+              //clearFormInput();
+              //setReturnItemSelected(false);
+              //also clear the recent batch code changes
+              //setStockEntries([]);
+
+              //switch from update item button to add item button
+            }}
+            className="flex-1 min-w-0 h-10 px-3 py-2 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors text-sm"
+          >
+            <span className="truncate">Cancel</span>
+          </button>
+          {/* switch between update and add button functions based on item card selection and clear form button click */}
+          <button
+            onClick={addNewRegItem}
+            disabled={formDataRegItem.id === 0}
+            className="flex-1 min-w-0 h-10 px-3 py-2 bg-blue-600 text-white enabled:hover:bg-[#1A318C] transition-colors text-sm disabled:bg-gray-400 disabled:text-gray-200 disabled:cursor-not-allowed"
+          >
+            <span className="truncate">Add Item</span>
+          </button>
+
+        </div>
             </div>
 
             {/* item table section(mid) */}
@@ -684,9 +986,9 @@ console.log("printing complete");
                     <div className="w-2/3">
                       <div>
                       <p>Member</p>
-                      <p className="font-semibold text-xl">Nimal Gamage Rathnayake(12344)</p>
+                      <p className="font-semibold text-xl">Guest</p>
                       </div>
-                                          <div>
+                    <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
                         Payment Method
                       </label>
@@ -722,10 +1024,10 @@ console.log("printing complete");
                     {/* right */}
                     <div className="w-1/3 flex flex-col gap-3">
                       <div>
-                      <p>Member ID</p><p className="font-semibold text-lg">1232423</p>
+                      <p>Member ID</p><p className="font-semibold text-lg">-</p>
                       </div>
                       <div>
-                      <p>Date</p><p className="font-semibold text-lg">2025-07-11</p>
+                      <p>Date</p><p className="font-semibold text-lg">{formattedDate}</p>
                       </div>
                       <div>
                       <p>Invoice No</p><p className="font-semibold text-lg">RECPC21321</p>
@@ -764,23 +1066,24 @@ console.log("printing complete");
                       {selectedItems.map((item, index) => (
                         <tr
                           key={item.id}
-                          className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors`}
+                          className={`${item.id === formDataRegItem.id && item.item_name === formDataRegItem.item_name ? 'border-4 border-blue-500' : 'border-b border-gray-200'} hover:bg-gray-50 cursor-pointer transition-colors`}
                           onClick={() => handleTableRowClick(item)}
                         >
                           <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
                             {index+1}
                           </td>
                           <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                            {item.code}
+                            {item.sku}
                           </td>
                           <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                            {item.unitPrice}
+                            {(item.retail_price).toFixed(2)}
+                            {/* {(item.stock_price).toFixed(2) - (item.item_discount_amt).toFixed(2)} */}
                           </td>
                           <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                            {item.quantity || 30}(pcs)
+                            {item.customer_quantity}
                           </td>
                           <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                            {item.total.toFixed(2)}
+                            {(item.retail_price * item.customer_quantity).toFixed(2)}
                           </td>
                   <td>
                     <button
@@ -816,13 +1119,29 @@ console.log("printing complete");
                 {/* Amounts */}
                 <div className="grid grid-cols-2 p-2 lg:p-3">
                   <div className="p-2 bg-[#5C5C5C] text-sm lg:text-base text-gray-500">Amount</div>
-                  <div className="p-2 bg-[#5C5C5C] text-lg lg:text-xl font-semibold text-white text-right">RS.{totalAmount.toFixed(2)}</div>
+                  <div className="p-2 bg-[#5C5C5C] text-lg lg:text-xl font-semibold text-white text-right">RS.{stockTotal.toFixed(2)}</div>
                   <div className="p-2 bg-[#D9D9D9] text-sm lg:text-base text-gray-500">Discount Amount</div>
-                  <div className="p-2 bg-[#D9D9D9] text-lg lg:text-xl font-normal text-gray-800 text-right">RS.{discountAmount.toFixed(2)}</div>
+                  <div className="p-2 bg-[#D9D9D9] text-lg lg:text-xl font-normal text-gray-800 text-right">
+                  <input
+                    type="number"
+                    value={finalDiscount}
+                    onChange={(e) => setFinalDiscount(e.target.value)}
+                    className="w-full px-3 py-1 bg-[#F8F8F8] border border-[#EBEBEB] text-right rounded"
+                    placeholder="0.00"
+                  />
+                  </div>
                   <div className="p-2 bg-[#5C5C5C] text-sm lg:text-base text-gray-500">Total Amount</div>
                   <div className="p-2 bg-[#5C5C5C] text-lg lg:text-xl font-semibold text-white text-right">RS.{totalAmount.toFixed(2)}</div>
                   <div className="p-2 bg-white text-sm lg:text-base text-gray-500 h-16">Customer Gave</div>
-                  <div className="p-2 bg-white text-lg lg:text-3xl font-semibold text-[#737373] text-right  h-16 border-b-2 ">RS.20000</div>
+                  <div className="p-2 bg-white text-lg lg:text-3xl font-semibold text-[#737373] text-right  h-16 border-b-2 ">
+                  <input
+                    type="number"
+                    value={cashAmount}
+                    onChange={(e) => setCashAmount(e.target.value)}
+                    className="w-full px-3 py-1 bg-[#F8F8F8] border border-[#EBEBEB] text-right rounded"
+                    placeholder="0.00"
+                  />
+                  </div>
                   <div className="p-2 bg-[#F8F8F8] text-sm lg:text-base text-gray-500">Change Amount</div>
                   <div className="p-2 bg-[#F8F8F8] text-lg lg:text-xl font-normal text-gray-800 text-right">RS.{changeAmount.toFixed(2)}</div>
 
@@ -841,7 +1160,7 @@ console.log("printing complete");
 
                   <button 
                     //onClick={handleOpenProceedPayment}
-                    onClick={() => generatePdf('print')}
+                    onClick={() => generateBillPdf()}
                     className="flex-1 w-1/2 px-4 py-3 bg-[#1A318C] text-white text-sm hover:bg-blue-700 transition-all flex items-center justify-center"
                   >
                     <img src={sidebarPaymentBtnImg} alt="Proceed Payment" className="w-4 h-4 mr-2" />
@@ -941,13 +1260,13 @@ console.log("printing complete");
                     className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg"
                     style={{ minHeight: "50vh" }}
                   >
-                    {NotFoundImg ? (
+                    {/* {NotFoundImg ? (
                       <img
                         src={NotFoundImg}
                         alt="No items found!"
                         className="w-12 h-12 mb-2 opacity-70"
                       />
-                    ) : null}
+                    ) : null} */}
                     <span>No items found!</span>
                   </div>
                 ) : (
@@ -1011,16 +1330,16 @@ console.log("printing complete");
                       <div className="flex gap-10">
                         <img src={profileImg} className="w-12 h-12 bg-gray-300 rounded-full" />
                         <div>
-                          <h2 className="text-blue-800 font-bold">MR. Harischandra Silva</h2>
-                          <p className="text-md font-semibold">MEMBER: 2345</p>
-                          <p className="text-xs text-gray-600">PRE-MEMBER: 2345</p>
+                          <h2 className="text-blue-800 font-bold">-</h2>
+                          <p className="text-md font-semibold">MEMBER: -</p>
+                          <p className="text-xs text-gray-600">PRE-MEMBER: -</p>
                         </div>
                       </div>
                     </div>
                     {/* income details */}
                     <div className="bg-[#E2E2E2] flex items-center justify-around border-black p-4">
                       <div className="text-center">
-                        <div className="text-lg font-bold">RS. 20000</div>
+                        <div className="text-lg font-bold">RS. 0</div>
                         <div className="text-sm text-gray-600">Income</div>
                       </div>  
                       {/* vertical divider */}
@@ -1030,7 +1349,7 @@ console.log("printing complete");
                         className="w-px h-8 bg-white"
                       />
                       <div className="text-center">
-                        <div className="text-lg font-bold">RS. 20000</div>
+                        <div className="text-lg font-bold">RS. 0</div>
                         <div className="text-sm text-gray-600">Credits</div>
                       </div>
                     </div>
@@ -1046,9 +1365,9 @@ console.log("printing complete");
                         </svg>
                       </div>
                       <div className="">
-                        <div className="text-xl text-[#979797] font-bold">2024-06-03</div>
+                        <div className="text-xl text-[#979797] font-bold">yyyy-mm-dd</div>
                         <div className="text-[#979797] font-regular">Total Amount:</div>
-                        <div><span className="text-2xl text-[#979797] font-bold">Rs. 23000.00</span><span className="ml-3 text-[#2DAA44] font-bold">CASH</span></div>
+                        <div><span className="text-2xl text-[#979797] font-bold">Rs. 0.00</span><span className="ml-3 text-[#2DAA44] font-bold">CASH</span></div>
                       </div>
                     </div>
                     </div>
