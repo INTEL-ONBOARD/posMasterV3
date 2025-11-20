@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import bananaImg from "../../assets/Inventory_banana.png";
 
 export default function InventoryReport() {
   const [reportType, setReportType] = useState("basic");
