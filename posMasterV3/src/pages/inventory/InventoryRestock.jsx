@@ -15,14 +15,16 @@ import failedImage from '../../assets/Failed.png';
 import { appendCurrentTimeToDate, extractDateOnly, getCurrentDate, getCurrentDateTime } from "../../util/date";
 import { validateReturnForm, validateStockForm } from "../../util/validate";
 
-function InventoryRestock() {
+function InventoryRestock({ isActive }) {
 
   // modal state: { open: boolean, type: 'success' | 'failed' | null }
   const [modal, setModal] = useState({ open: false, type: null });
   const closeModal = () => setModal({ open: false, type: null });
   // Fetch Categories from API and create mapping
   const [suppliers, setSuppliers] = useState([]);
+  // Refetch when section becomes active
   useEffect(() => {
+    if (isActive) {
     // user list(to populate dropdowns)
     const fetchSuppliers = async () => {
       try {
@@ -41,11 +43,14 @@ function InventoryRestock() {
     };
 
     fetchSuppliers();
-  }, []);
+  }
+  }, [isActive]);
 
   // Fetch Categories from API and create mapping
   const [users, setUsers] = useState([]);
+  // Refetch when section becomes active
   useEffect(() => {
+    if (isActive) {
     // user list(to populate dropdowns)
     const fetchUsers = async () => {
       try {
@@ -63,7 +68,8 @@ function InventoryRestock() {
     };
 
     fetchUsers();
-  }, []);
+  }
+  }, [isActive]);
 
   // right section controls
   const [rightActiveSection, setRightActiveSection] = useState("buttons"); // "buttons" | "dispose" | "add" | "return"
@@ -84,13 +90,19 @@ function InventoryRestock() {
     }
   };
   // Fetch items from API
+  // Refetch when section becomes active
   useEffect(() => {
+    if (isActive) {
+      console.log('items are fetching when active with right active section?');
     fetchItems();
+    }
   }, [rightActiveSection]);
 
 
   // Fetch Categories from API and create mapping
+  // Refetch when section becomes active
   useEffect(() => {
+    if (isActive) {
     const fetchCategories = async () => {
       try {
         const response = await apiClient.get("api/categories");
@@ -105,7 +117,8 @@ function InventoryRestock() {
     };
 
     fetchCategories();
-  }, []);
+  }
+  }, [isActive]);
 
   // State for category/brand mapping
   const [itemCategories, setItemCategories] = useState([
@@ -896,12 +909,15 @@ function InventoryRestock() {
   };
 
   // useEffect to set current date on component mount
+  // Refetch when section becomes active
   useEffect(() => {
+    if (isActive) {
     // Only set if not already set (e.g., for editing existing data)
     // if (!formDataStock.expired_datetime) {
     setCurrentDateToExpired();
     // }
-  }, []); // Empty dependency array to run once on mount
+    }
+  }, [isActive]); // Empty dependency array to run once on mount
 
 
 

@@ -5,7 +5,7 @@ import { apiClient } from "../../api/client.jsx";
 import {ChevronDown, ChevronUp } from "lucide-react";
 import { transformStockData } from "../../util/blockConverter.jsx";
 
-function InventoryView() {
+function InventoryView({ isActive }) {
   const [inventoryItems, setInventoryItems] = useState([]);
 
   const fetchItems = async () => {
@@ -24,18 +24,17 @@ function InventoryView() {
     };
     // Fetch items from API
     useEffect(() => {
-      // Fetch items after UOMs are loaded to properly map uomName
-      // if (!loadingUoms) {
-        fetchItems();
-      // }
-    //}, [loadingUoms]);
-    }, []);
+      if (isActive) {
+          fetchItems();
+      }
+     }, [isActive]);
 
 
   //category dropdown population(search and item form)
   const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
     // Fetch Categories from API and create mapping
     useEffect(() => {
+      if (isActive) {
       const fetchCategories = async () => {
         setIsSearching(true);
         try {
@@ -54,7 +53,8 @@ function InventoryView() {
       };
   
       fetchCategories();
-    }, []);
+      }
+     }, [isActive]);
 
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
