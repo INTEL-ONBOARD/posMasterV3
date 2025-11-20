@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function InventoryReport() {
+export default function InventoryReport({ isActive }) {
   const [reportType, setReportType] = useState("basic");
   // Example inventory data
 const [inventoryItems, setInventoryItems] = useState([

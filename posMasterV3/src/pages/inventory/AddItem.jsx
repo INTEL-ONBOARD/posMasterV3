@@ -13,11 +13,13 @@ import JsBarcode from 'jsbarcode';
 import registerItemService from "../../api/services/inventory/registerItemService.jsx";
 
 
-function AddItem() {
+function AddItem({ isActive }) {
   const toast = useContext(ToastContext);
 
   // Fetch UOMs from API
+  // Reset form when section becomes active
   useEffect(() => {
+    if (isActive) {
     const fetchUoms = async () => {
       try {
         const response = await apiClient.get("api/uoms");
@@ -32,10 +34,12 @@ function AddItem() {
     };
 
     fetchUoms();
-  }, []);
+    }
+  }, [isActive]);
 
   // Fetch Categories from API and create mapping
   useEffect(() => {
+    if (isActive) {
     const fetchCategories = async () => {
       try {
         const response = await apiClient.get("api/categories");
@@ -50,7 +54,8 @@ function AddItem() {
     };
 
     fetchCategories();
-  }, []);
+  }
+  }, [isActive]);
 
   const [inventoryItems, setInventoryItems] = useState([]);
 
@@ -229,12 +234,15 @@ function AddItem() {
   };
   // Fetch items from API
   useEffect(() => {
+    if (isActive) {
+            console.log('Add items: items are fetching when active');
     // Fetch items after UOMs are loaded to properly map uomName
     // if (!loadingUoms) {
     fetchItems();
     // }
     //}, [loadingUoms]);
-  }, []);
+    }
+  }, [isActive]);
 
   // to switch between add and update api call via button switching
   const [isUserEditting, setUserEditing] = useState(false);
