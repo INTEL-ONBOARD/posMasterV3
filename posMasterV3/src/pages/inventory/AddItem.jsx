@@ -3,7 +3,7 @@ import { apiClient } from "../../api/client";
 import { useNavigate } from "react-router-dom";
 import { X, Printer, ChevronDown, ChevronUp } from "lucide-react";
 import AddItemCard from "../../components/AddItemCard.jsx";
-import ConfirmDeleteModal from "../../frontend/components/ConfirmDeleteModal";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal.jsx";
 import barcodeImg from "../../assets/barcode.png";
 import ToastContext from "../toasts/ToastService.jsx";
 

@@ -4,7 +4,7 @@ import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import { apiClient } from "../../api/client.jsx";
 import {ChevronDown, ChevronUp } from "lucide-react";
 
-function ViewSaleInventory() {
+function ViewSaleInventory({ isActive }) {
   const [inventoryItems, setInventoryItems] = useState([
         // {
         //     _id: '688136391a56f324f917f98f',
