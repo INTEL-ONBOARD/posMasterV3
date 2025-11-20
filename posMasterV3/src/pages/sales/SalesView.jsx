@@ -31,14 +31,14 @@ export default function SalesView({ isActive }) {
 
       id: 0,
       stock_trace: [0],
-      item_name: "fdsaf",
+      item_name: "",
       item_image_url: "",
       maximum_capacity: 10,
       uom_id: 10,
       category_id: 10,
       inventory_id: 11,
-      item_update_datetime: "2025-12-31T23:59:59",
-      item_created_datetime: "2025-12-31T23:59:59",
+      item_update_datetime: "",
+      item_created_datetime: "",
 
       uom: {
         _id: "",
@@ -59,12 +59,12 @@ export default function SalesView({ isActive }) {
     });
     //no input change for this except for customer_quantity(because of readonly in ui)
     const [formDataStock, setFormDataStock] = useState({
-      batch_code: "skupsps",
-      quantity: 150,
-      threshold_limit: 20,
-      stock_price: 20.0,
-      retail_price: 35.0,
-      expired_datetime: "2025-12-31T23:59:59",
+      batch_code: "",
+      quantity: 0,
+      threshold_limit: 0,
+      stock_price: 0,
+      retail_price: 0,
+      expired_datetime: "",
       availability: true,
       //to give away quantity for customer
       customer_quantity: 0,
@@ -115,13 +115,13 @@ export default function SalesView({ isActive }) {
 
         uom: {
           id: 1,
-          symbol: "pts",
-          unit_name: "pints",
+          symbol: "",
+          unit_name: "",
         },
         category: {
           id: 1,
-          brand: "lux",
-          type: "soap",
+          brand: "",
+          type: "",
         },
 
         //individual discount given for customer
@@ -215,40 +215,40 @@ export default function SalesView({ isActive }) {
 
 // mid section controls
     const [selectedItems, setSelectedItems] = useState([
-        {
-            _id: '688452ef1ddc1d25637c9a47',
-            id: 31,
-            stock_trace: [1],
-            item_name: 'Water Bottle',
-            item_image_url: null,
-            batch_code: 'SKU2263WA901',
-            sku: 'SKU2263',
-            quantity: 50,
-            threshold_limit: 120,
-            maximum_capacity: 400,
-            uom_id: 22,
-            category_id: 90,
-            inventory_id: 1,
-            retail_price: 25.5,
-            stock_update_datetime: '2025-07-26T04:00:47.273Z',
-            stock_created_datetime: '2025-07-26T04:00:47.273Z',
-            __v: 0,
-            uom: {
-                _id: '687720ad798018e0851599a0',
-                id: 22,
-                symbol: 'pcs',
-                unit_name: 'Piece',
-                __v: 0
-            },
-            category: {
-                _id: '68775a921edd62f9c8128e0d',
-                id: 90,
-                brand: 'Reebok',
-                type: 'Sportswear',
-                __v: 0
-            },
-            inventory: null
-        },
+        // {
+        //     _id: '688452ef1ddc1d25637c9a47',
+        //     id: 31,
+        //     stock_trace: [1],
+        //     item_name: 'Water Bottle',
+        //     item_image_url: null,
+        //     batch_code: 'SKU2263WA901',
+        //     sku: 'SKU2263',
+        //     quantity: 50,
+        //     threshold_limit: 120,
+        //     maximum_capacity: 400,
+        //     uom_id: 22,
+        //     category_id: 90,
+        //     inventory_id: 1,
+        //     retail_price: 25.5,
+        //     stock_update_datetime: '2025-07-26T04:00:47.273Z',
+        //     stock_created_datetime: '2025-07-26T04:00:47.273Z',
+        //     __v: 0,
+        //     uom: {
+        //         _id: '687720ad798018e0851599a0',
+        //         id: 22,
+        //         symbol: 'pcs',
+        //         unit_name: 'Piece',
+        //         __v: 0
+        //     },
+        //     category: {
+        //         _id: '68775a921edd62f9c8128e0d',
+        //         id: 90,
+        //         brand: 'Reebok',
+        //         type: 'Sportswear',
+        //         __v: 0
+        //     },
+        //     inventory: null
+        // },
   ]);
 
 
@@ -369,81 +369,81 @@ export default function SalesView({ isActive }) {
         //     },
         //     inventory: null
         // },
-        {
-            _id: '688452ef1ddc1d25637c9a47',
-            id: 31,
-            stock_trace: [1],
-            item_name: 'Water Bottle',
-            item_image_url: null,
-            batch_code: 'SKU2263WA901',
-            sku: 'SKU2263',
-            quantity: 50,
-            threshold_limit: 120,
-            maximum_capacity: 400,
-            uom_id: 22,
-            category_id: 90,
-            inventory_id: 1,
-            retail_price: 25.5,
-            stock_update_datetime: '2025-07-26T04:00:47.273Z',
-            stock_created_datetime: '2025-07-26T04:00:47.273Z',
-            __v: 0,
-            uom: {
-                _id: '687720ad798018e0851599a0',
-                id: 22,
-                symbol: 'pcs',
-                unit_name: 'Piece',
-                __v: 0
-            },
-            category: {
-                _id: '68775a921edd62f9c8128e0d',
-                id: 90,
-                brand: 'Reebok',
-                type: 'Sportswear',
-                __v: 0
-            },
-            inventory: null
-        },
-        {
-            _id: '68845a0b8767fec474faa590',
-            id: 32,
-            stock_trace: [1],
-            item_name: 'Mobile Data cable',
-            item_image_url: null,
-            threshold_limit: 40,
-            maximum_capacity: 60,
-            uom_id: 22,
-            category_id: 158,
-            inventory_id: 1,
+        // {
+        //     _id: '688452ef1ddc1d25637c9a47',
+        //     id: 31,
+        //     stock_trace: [1],
+        //     item_name: 'Water Bottle',
+        //     item_image_url: null,
+        //     batch_code: 'SKU2263WA901',
+        //     sku: 'SKU2263',
+        //     quantity: 50,
+        //     threshold_limit: 120,
+        //     maximum_capacity: 400,
+        //     uom_id: 22,
+        //     category_id: 90,
+        //     inventory_id: 1,
+        //     retail_price: 25.5,
+        //     stock_update_datetime: '2025-07-26T04:00:47.273Z',
+        //     stock_created_datetime: '2025-07-26T04:00:47.273Z',
+        //     __v: 0,
+        //     uom: {
+        //         _id: '687720ad798018e0851599a0',
+        //         id: 22,
+        //         symbol: 'pcs',
+        //         unit_name: 'Piece',
+        //         __v: 0
+        //     },
+        //     category: {
+        //         _id: '68775a921edd62f9c8128e0d',
+        //         id: 90,
+        //         brand: 'Reebok',
+        //         type: 'Sportswear',
+        //         __v: 0
+        //     },
+        //     inventory: null
+        // },
+        // {
+        //     _id: '68845a0b8767fec474faa590',
+        //     id: 32,
+        //     stock_trace: [1],
+        //     item_name: 'Mobile Data cable',
+        //     item_image_url: null,
+        //     threshold_limit: 40,
+        //     maximum_capacity: 60,
+        //     uom_id: 22,
+        //     category_id: 158,
+        //     inventory_id: 1,
             
-            //assign some from stockData object 
-            sku: 'SKU-32452',
-            batch_code: 'SKU-32452DA15822',
-            quantity: 54,
-            stock_price: 155,
-            retail_price: 155,
-            discount_price: 100,
-            exp_date: "2025-11-14T22:45:52.014Z",
-            stock_availability: true, //use availability attribute from stockData object
+        //     //assign some from stockData object 
+        //     sku: 'SKU-32452',
+        //     batch_code: 'SKU-32452DA15822',
+        //     quantity: 54,
+        //     stock_price: 155,
+        //     retail_price: 155,
+        //     discount_price: 100,
+        //     exp_date: "2025-11-14T22:45:52.014Z",
+        //     stock_availability: true, //use availability attribute from stockData object
 
-            stock_update_datetime: '2025-07-26T04:31:07.861Z',
-            stock_created_datetime: '2025-07-26T04:31:07.861Z',
-            __v: 0,
-            uom: {
-                _id: '687720ad798018e0851599a0',
-                id: 22,
-                symbol: 'pcs',
-                unit_name: 'Piece',
-                __v: 0
-            },
-            category: {
-                _id: '687765bb1edd62f9c8129017',
-                id: 158,
-                brand: 'Hp',
-                type: 'Computers',
-                __v: 0
-            },
-            inventory: null
-        }
+        //     stock_update_datetime: '2025-07-26T04:31:07.861Z',
+        //     stock_created_datetime: '2025-07-26T04:31:07.861Z',
+        //     __v: 0,
+        //     uom: {
+        //         _id: '687720ad798018e0851599a0',
+        //         id: 22,
+        //         symbol: 'pcs',
+        //         unit_name: 'Piece',
+        //         __v: 0
+        //     },
+        //     category: {
+        //         _id: '687765bb1edd62f9c8129017',
+        //         id: 158,
+        //         brand: 'Hp',
+        //         type: 'Computers',
+        //         __v: 0
+        //     },
+        //     inventory: null
+        // }
     ]
 );
 
@@ -510,6 +510,17 @@ export default function SalesView({ isActive }) {
     setSearch(e.target.value);
     setTimeout(() => setSearchLoading(false), 600);
   };
+
+
+
+    const today = new Date();
+
+  const year = today.getFullYear();
+  // Month is zero-indexed, so +1. Then pad to 2-digits:
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  const formattedDate = `${year}-${month}-${day}`;
 
 //helper method for item availability filtering
   const interpretAvailability = (item) => {
@@ -631,7 +642,7 @@ const filteredItems = inventoryItems.filter((item) => {
       }
 
       // Save the PDF(for react)
-      doc.save("multi-page-pdf.pdf");
+      //doc.save("multi-page-pdf.pdf");
       //Get ArrayBuffer for silent printing
       const arrayBuffer = doc.output("arraybuffer");
 
@@ -655,7 +666,7 @@ const filteredItems = inventoryItems.filter((item) => {
     invoiceNo: "INV-2025-0001",
     cashier_name: "-",
     payment_method: "Cash",
-    date_time: "2025-11-20 10:30",
+    date_time: formattedDate,
     member_no: "-",
     //get items form the selectedItems useState
     stock_items: stock_items,
@@ -975,9 +986,9 @@ const filteredItems = inventoryItems.filter((item) => {
                     <div className="w-2/3">
                       <div>
                       <p>Member</p>
-                      <p className="font-semibold text-xl">Nimal Gamage Rathnayake(12344)</p>
+                      <p className="font-semibold text-xl">Guest</p>
                       </div>
-                                          <div>
+                    <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
                         Payment Method
                       </label>
@@ -1013,10 +1024,10 @@ const filteredItems = inventoryItems.filter((item) => {
                     {/* right */}
                     <div className="w-1/3 flex flex-col gap-3">
                       <div>
-                      <p>Member ID</p><p className="font-semibold text-lg">1232423</p>
+                      <p>Member ID</p><p className="font-semibold text-lg">-</p>
                       </div>
                       <div>
-                      <p>Date</p><p className="font-semibold text-lg">2025-07-11</p>
+                      <p>Date</p><p className="font-semibold text-lg">{formattedDate}</p>
                       </div>
                       <div>
                       <p>Invoice No</p><p className="font-semibold text-lg">RECPC21321</p>
@@ -1249,13 +1260,13 @@ const filteredItems = inventoryItems.filter((item) => {
                     className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg"
                     style={{ minHeight: "50vh" }}
                   >
-                    {NotFoundImg ? (
+                    {/* {NotFoundImg ? (
                       <img
                         src={NotFoundImg}
                         alt="No items found!"
                         className="w-12 h-12 mb-2 opacity-70"
                       />
-                    ) : null}
+                    ) : null} */}
                     <span>No items found!</span>
                   </div>
                 ) : (
