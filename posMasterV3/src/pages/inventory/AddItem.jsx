@@ -3,17 +3,17 @@ import { apiClient } from "../../api/client";
 import { useNavigate } from "react-router-dom";
 import { X, Printer, ChevronDown, ChevronUp } from "lucide-react";
 import AddItemCard from "../../components/AddItemCard.jsx";
-import ConfirmDeleteModal from "../../frontend/components/ConfirmDeleteModal";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal.jsx";
 import barcodeImg from "../../assets/barcode.png";
-import validateItem from "../../util/validate.jsx";
 import ToastContext from "../toasts/ToastService.jsx";
 
 import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './SimpleDocument';
 import JsBarcode from 'jsbarcode';
+import registerItemService from "../../api/services/inventory/registerItemService.jsx";
+
 
 function AddItem() {
-  const navigate = useNavigate();
   const toast = useContext(ToastContext);
 
   // Fetch UOMs from API
@@ -55,27 +55,27 @@ function AddItem() {
   const [inventoryItems, setInventoryItems] = useState([]);
 
   const [uoms, setUoms] = useState([
-    {
-      _id: "687720ad798018e0851599a0",
-      id: 22,
-      symbol: "pcs",
-      unit_name: "Piece",
-      __v: 0
-    },
-    {
-      _id: "6877207b798018e085159998",
-      id: 20,
-      symbol: "L",
-      unit_name: "Liter",
-      __v: 0
-    },
-    {
-      _id: "687720a0798018e08515999c",
-      id: 21,
-      symbol: "mL",
-      unit_name: "Milliliter",
-      __v: 0
-    },
+    // {
+    //   _id: "687720ad798018e0851599a0",
+    //   id: 22,
+    //   symbol: "pcs",
+    //   unit_name: "Piece",
+    //   __v: 0
+    // },
+    // {
+    //   _id: "6877207b798018e085159998",
+    //   id: 20,
+    //   symbol: "L",
+    //   unit_name: "Liter",
+    //   __v: 0
+    // },
+    // {
+    //   _id: "687720a0798018e08515999c",
+    //   id: 21,
+    //   symbol: "mL",
+    //   unit_name: "Milliliter",
+    //   __v: 0
+    // },
   ]);
 
   //holds the selected UOM id from the dropdown
@@ -95,11 +95,11 @@ function AddItem() {
 
   // State for category/brand mapping
   const [itemCategories, setItemCategories] = useState([
-    { id: 145, brand: "Close-Up", type: "Oral Care" },
-    { id: 94, brand: "Clogard", type: "Oral Care" },
-    { id: 15, brand: "Colgate", type: "Oral Care" },
-    { id: 26, brand: "Pepsi", type: "Beverages" },
-    { id: 7, brand: "Coca-Cola", type: "Beverages" },
+    // { id: 145, brand: "Close-Up", type: "Oral Care" },
+    // { id: 94, brand: "Clogard", type: "Oral Care" },
+    // { id: 15, brand: "Colgate", type: "Oral Care" },
+    // { id: 26, brand: "Pepsi", type: "Beverages" },
+    // { id: 7, brand: "Coca-Cola", type: "Beverages" },
   ]);
 
   //to select the brand option from category
@@ -155,7 +155,7 @@ function AddItem() {
   });
 
   // Barcode generation
-  const barcodeValue = formData.batch_code || "SKU-123456";
+  const barcodeValue = formData.sku || "-";
 
   const generateBarcode = () => {
     return new Promise((resolve) => {
@@ -218,6 +218,7 @@ function AddItem() {
     try {
       const response = await apiClient.get("api/itemRegistry/extended");
       if (response.data.status === "success") {
+        console.log(response.data.data);
         setInventoryItems(response.data.data);
       }
     } catch (error) {
@@ -239,84 +240,117 @@ function AddItem() {
   const [isUserEditting, setUserEditing] = useState(false);
 
   // Create new item
-  const createItem = async (e) => {
-    setFormStatus("loading");
-    e.preventDefault();
-    try {
-      const selectedCategory = itemCategories.find(c =>
-        c.type === formCategoryData.categoryType &&
-        c.brand === formCategoryData.brand
-      );
-      const requestData = {
-        sku: formData.sku,
-        item_name: formData.item_name,
-        quantity: Number(formData.quantity),
-        threshold_limit: Number(formData.threshold_limit),
-        maximum_capacity: Number(formData.maximum_capacity),
-        uom_id: formUOMData,
-        category_id: selectedCategory?.id ?? null, // look up id
-        inventory_id: 1, // Fixed value
-        item_image_url: formData.item_image_url || null,
-        batch_code: formData.batch_code,
-        stock_price: parseFloat(formData.stock_price),
-        retail_price: parseFloat(formData.retail_price),
-        expired_datetime: formData.expired_datetime,
-        availability: formData.availability,
-      };
-      if (!validateItem(requestData)) {
-        // on fail
-        setFormStatus("fail");
-        // after 4 seconds, flip back to the form
-        alert("validation failed")
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
-        return;
+  // const createItem = async (e) => {
+  //   setFormStatus("loading");
+  //   e.preventDefault();
+  //   try {
+  //     const selectedCategory = itemCategories.find(c =>
+  //       c.type === formCategoryData.categoryType &&
+  //       c.brand === formCategoryData.brand
+  //     );
+  //     const requestData = {
+  //       sku: formData.sku,  
+  //       item_name: formData.item_name,
+  //       quantity: Number(formData.quantity),
+  //       threshold_limit: Number(formData.threshold_limit),
+  //       maximum_capacity: Number(formData.maximum_capacity),
+  //       uom_id: formUOMData,
+  //       category_id: selectedCategory?.id ?? null, // look up id
+  //       inventory_id: 1, // Fixed value
+  //       item_image_url: formData.item_image_url || null,
+  //       batch_code: formData.batch_code,
+  //       stock_price: parseFloat(formData.stock_price),
+  //       retail_price: parseFloat(formData.retail_price),
+  //       expired_datetime: formData.expired_datetime,
+  //       availability: formData.availability,
+  //     };
+  //     if (!validateItem(requestData)) {
+  //       // on fail
+  //       setFormStatus("fail");
+  //       // after 4 seconds, flip back to the form
+  //       alert("validation failed")
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //       return;
+  //     }
+
+  //     const response = await apiClient.post("api/items/add", requestData);
+
+  //     if (response.data.status === "success") {
+  //       // Add new item to local state
+  //       //alert("Item created successfully!");
+  //       //toast.open("Item created successfully", 4000, 'Success', 'success');
+  //       //clear data upon successful response
+  //       setFormStatus("success");
+  //       // after 4 seconds, flip back to the form
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //       clearUserInput();
+  //     } else {
+  //       //alert(response.data.message || "Failed to create item");
+  //       //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
+  //       setFormStatus("fail");
+  //       // after 4 seconds, flip back to the form
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //     }
+  //   } catch (err) {
+  //     console.error("Create item error:", err);
+  //     //alert("Error creating item"+err.message);
+  //     setFormStatus("fail");
+  //       // after 4 seconds, flip back to the form
+  //       timerRef.current = window.setTimeout(() => {
+  //         setFormStatus("form");
+  //         timerRef.current = null;
+  //       }, 4000);
+  //     toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
+  //   }
+  //   finally {
+  //     //repopulate items
+  //     fetchItems();
+  //   }
+  // };
+
+    // Create new item
+
+    const isRequestDataValid = (requestData) => {
+      // Check string fields
+      if (
+        !requestData.item_name?.trim() ||
+        !requestData.sku?.trim() ||
+        (requestData.item_image_url && !requestData.item_image_url.trim()) || // Optional, but validate if provided
+        (typeof requestData.availability === 'string' && !requestData.availability.trim()) // If string
+      ) {
+        console.log("Basic item info missing");
+        return false;
       }
 
-      const response = await apiClient.post("api/items/add", requestData);
-
-      if (response.data.status === "success") {
-        // Add new item to local state
-        //alert("Item created successfully!");
-        //toast.open("Item created successfully", 4000, 'Success', 'success');
-        //clear data upon successful response
-        setFormStatus("success");
-        // after 4 seconds, flip back to the form
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
-        clearUserInput();
-      } else {
-        //alert(response.data.message || "Failed to create item");
-        //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
-        setFormStatus("fail");
-        // after 4 seconds, flip back to the form
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
+      // Check boolean availability (if it's a boolean, just check truthiness)
+      if (typeof requestData.availability === 'boolean' && !requestData.availability) {
+        console.log("Availability missing");
+        return false;
       }
-    } catch (err) {
-      console.error("Create item error:", err);
-      //alert("Error creating item"+err.message);
-      setFormStatus("fail");
-      // after 4 seconds, flip back to the form
-      timerRef.current = window.setTimeout(() => {
-        setFormStatus("form");
-        timerRef.current = null;
-      }, 4000);
-      toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
-    }
-    finally {
-      //repopulate items
-      fetchItems();
-    }
-  };
 
-  // Create new item
+      // Check numeric fields
+      if (
+        Number.isNaN(requestData.maximum_capacity) || requestData.maximum_capacity <= 0 ||
+        Number.isNaN(requestData.uom_id) || requestData.uom_id <= 0 ||
+        (requestData.category_id !== null && (Number.isNaN(requestData.category_id) || requestData.category_id <= 0)) // Optional, validate if provided
+      ) {
+        console.log("Numeric fields invalid");
+        return false;
+      }
+
+      // Fixed fields are always valid
+      return true;
+    };
+
   const registerItem = async (e) => {
     setFormStatus("loading");
     e.preventDefault();
@@ -327,8 +361,10 @@ function AddItem() {
       );
       const requestData = {
         item_name: formData.item_name,
-        item_image_url: formData.item_image_url || null,
-        batch_code: formData.batch_code,
+        //changed to recent production quick fix
+        //item_image_url: formData.item_image_url || null,
+        item_code: formData.item_code,
+        sku: formData.sku,
         maximum_capacity: Number(formData.maximum_capacity),
         uom_id: formUOMData,
         category_id: selectedCategory?.id ?? null, // look up id
@@ -336,91 +372,12 @@ function AddItem() {
         availability: formData.availability,
         stock_trace: [101] // Fixed value
       };
-      console.log("registering item: " + requestData);
-      const response = await apiClient.post("api/itemRegistry/add", requestData);
-
-      // Create new item
-      const registerItem = async (e) => {
-        setFormStatus("loading");
-        e.preventDefault();
-        try {
-          const selectedCategory = itemCategories.find(c =>
-            c.type === formCategoryData.categoryType &&
-            c.brand === formCategoryData.brand
-          );
-          const requestData = {
-            item_name: formData.item_name,
-            item_image_url: formData.item_image_url || null,
-            batch_code: formData.batch_code,
-            maximum_capacity: Number(formData.maximum_capacity),
-            uom_id: formUOMData,
-            category_id: selectedCategory?.id ?? null, // look up id
-            inventory_id: 1, // Fixed value
-            availability: formData.availability,
-            stock_trace: [101] // Fixed value
-          };
-          // "item_name": "Sample Item(3)",
-          // "item_image_url": null,
-          // "batch_code": "SI03",
-          // "maximum_capacity": 500,
-          // "uom_id": 1,
-          // "category_id": 2,
-          // "inventory_id": 3,
-          // "availability": true,
-          // "stock_trace": [101, 102]
-          // if (!validateItem(requestData)) {
-          //   // on fail
-          //   setFormStatus("fail");
-          //   // after 4 seconds, flip back to the form
-          //   alert("validation failed")
-          //   timerRef.current = window.setTimeout(() => {
-          //     setFormStatus("form");
-          //     timerRef.current = null;
-          //   }, 4000);
-          //   return;
-          // }
-          console.log("registering item: " + requestData);
-          const response = await apiClient.post("api/itemRegistry/add", requestData);
-
-          if (response.data.status === "success") {
-            // Add new item to local state
-            //alert("Item created successfully!");
-            //toast.open("Item created successfully", 4000, 'Success', 'success');
-            //clear data upon successful response
-            setFormStatus("success");
-            // after 4 seconds, flip back to the form
-            timerRef.current = window.setTimeout(() => {
-              setFormStatus("form");
-              timerRef.current = null;
-            }, 4000);
-            clearUserInput();
-          } else {
-            //alert(response.data.message || "Failed to create item");
-            //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
-            setFormStatus("fail");
-            // after 4 seconds, flip back to the form
-            timerRef.current = window.setTimeout(() => {
-              setFormStatus("form");
-              timerRef.current = null;
-            }, 4000);
-          }
-        } catch (err) {
-          console.error("Create item error:", err);
-          //alert("Error creating item"+err.message);
-          setFormStatus("fail");
-          // after 4 seconds, flip back to the form
-          timerRef.current = window.setTimeout(() => {
-            setFormStatus("form");
-            timerRef.current = null;
-          }, 4000);
-          toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
-        }
-        finally {
-          //repopulate items
-          fetchItems();
-        }
-      };
-      if (response.data.status === "success") {
+      console.log("create inventory request");
+      console.log(requestData);
+      //const response = await apiClient.post("api/itemRegistry/add", requestData);
+      const response = await registerItemService.registerItem(requestData);
+      console.log(response);
+      if (response.status === "success") {
         // Add new item to local state
         //alert("Item created successfully!");
         //toast.open("Item created successfully", 4000, 'Success', 'success');
@@ -446,11 +403,11 @@ function AddItem() {
       console.error("Create item error:", err);
       //alert("Error creating item"+err.message);
       setFormStatus("fail");
-      // after 4 seconds, flip back to the form
-      timerRef.current = window.setTimeout(() => {
-        setFormStatus("form");
-        timerRef.current = null;
-      }, 4000);
+        // after 4 seconds, flip back to the form
+        timerRef.current = window.setTimeout(() => {
+          setFormStatus("form");
+          timerRef.current = null;
+        }, 4000);
       toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
     }
     finally {
@@ -535,8 +492,9 @@ function AddItem() {
       );
       const requestData = {
         item_name: formData.item_name,
-        item_image_url: formData.item_image_url || null,
-        batch_code: formData.batch_code,
+        //item_image_url: formData.item_image_url || null,
+        item_code: formData.item_code,
+        sku: formData.sku,
         maximum_capacity: Number(formData.maximum_capacity),
         uom_id: formUOMData,
         category_id: selectedCategory?.id ?? null, // look up id
@@ -545,9 +503,10 @@ function AddItem() {
         stock_trace: [101], // Fixed value
       };
 
-      const response = await apiClient.put(`api/itemRegistry/${formData.id}`, requestData);
-
-      if (response.data.status === "success") {
+      //const response = await apiClient.put(`api/itemRegistry/${formData.id}`, requestData);
+      const response =registerItemService.updateItem(formData.id, requestData);
+      
+      if (response.status === "success") {
         //alert("Item created successfully!");
         setFormStatus("success");
         // after 4 seconds, flip back to the form
@@ -660,9 +619,13 @@ function AddItem() {
       (searchAvailability === "Available" && isAvailable) ||
       (searchAvailability === "Unavailable" && !isAvailable);
 
+    // Item name or batch code text search match
+    const searchTerm = (search || "").toLowerCase();
     // text search match
     const matchesSearch =
-      (item?.item_name || "").toLowerCase().includes((search || "").toLowerCase());
+      (item?.item_name || "").toLowerCase().includes(searchTerm) ||
+      (item?.batch_code || "").toLowerCase().includes(searchTerm) ||
+      (item?.sku || "").toLowerCase().includes(searchTerm);
 
     return matchesCategory && matchesAvailability && matchesSearch;
   });
@@ -689,192 +652,209 @@ function AddItem() {
     <div className="flex flex-row">
       {/* Item form (left) */}
       {formStatus === "form" ? (
-        // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-between">
-        // <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] overflow-y-scroll">
-        <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 z-10 flex flex-col justify-between">
-          <div className="flex flex-col h-[45rem] gap-3">
-            {/* ▼ Basic info block ▼ */}
-            <div className="border rounded bg-white">
-              <button
-                onClick={() => setOpenBasic(!openBasic)}
-                className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
-              >
-                <span className="text-gray-400">Barcode & SKU</span>
-                {openBasic ? <ChevronUp /> : <ChevronDown />}
-              </button>
-              {openBasic && (
-                <div className="bg-white mx-4">
-                  <div className="flex flex-row px-4 items-center max-h-[12rem]">
-                    <div className="w-36 h-36 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center mb-4 hover:border-gray-400 transition-colors">
-                      {formData.item_image_url ? (
-                        <div>
-                          <input
-                            type="file"
-                            id="imageUpload"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={handleImageUpload}
-                          />
-                          <label htmlFor="imageUpload" className="block w-full h-full cursor-pointer">
-                            <img
-                              src={formData.item_image_url}
-                              alt="Item"
-                              className="w-full h-full object-contain"
-                            />
-                          </label>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mb-2">
-                            <X className="w-6 h-6 text-red-500" />
-                          </div>
-                          <span className="text-gray-500">No image</span>
-                        </>
-                      )}
-                    </div>
-                    {/* Vertical black line separator */}
-                    {/* <div className="w-0.5 bg-black self-stretch"></div> */}
-                    <div className="flex flex-col m-10">
+      // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-between">
+      // <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] overflow-y-scroll">
+      <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 z-10 flex flex-col justify-between">
+        <div className="flex flex-col h-[45rem] gap-3">
+          {/* ▼ Basic info block ▼ */}
+          <div className="border rounded bg-white">
+            <button
+              onClick={() => setOpenBasic(!openBasic)}
+              className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
+            >
+              <span className="text-gray-400">Barcode & SKU</span>
+              {openBasic ? <ChevronUp /> : <ChevronDown />}
+            </button>
+            {openBasic && (
+              <div className="bg-white mx-4">
+                <div className="flex flex-row px-4 items-center max-h-[12rem]">
+                  <div className="w-36 h-36 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center mb-4 hover:border-gray-400 transition-colors">
+                    {formData.item_image_url ? (
                       <div>
-                        <img src={barcodeImg} alt="Barcode" className="w-[100px] object-contain" />
-                        {/* <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p> */}
-                        <p className="text-sm font-semibold text-gray-800">BATCHCODE: {formData.batch_code}</p>
+                        <input
+                          type="file"
+                          id="imageUpload"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={handleImageUpload}
+                        />
+                        <label htmlFor="imageUpload" className="block w-full h-full cursor-pointer">
+                          <img
+                            src={formData.item_image_url}
+                            alt="Item"
+                            className="w-full h-full object-contain"
+                          />
+                        </label>
                       </div>
+                    ) : (
+                      <>
+                        <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mb-2">
+                          <X className="w-6 h-6 text-red-500" />
+                        </div>
+                        <span className="text-gray-500">No image</span>
+                      </>
+                    )}
+                  </div>
+                  {/* Vertical black line separator */}
+                  {/* <div className="w-0.5 bg-black self-stretch"></div> */}
+                  <div className="flex flex-col m-10">
+                    <div>
+                      <img src={barcodeImg} alt="Barcode" className="w-[100px] object-contain" />
+                      {/* <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p> */}
+                      <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p>
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
 
-            {/* ▼ Primary description block ▼ */}
-            <div className="border">
-              <button
-                onClick={() => setOpenPrimary(!openPrimary)}
-                className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
-              >
-                <span className="text-gray-400">Primary Description</span>
-                {openPrimary ? <ChevronUp /> : <ChevronDown />}
-              </button>
-              {openPrimary && (
-                <div className="px-4 bg h-[20rem] bg-white">
-                  {/*primary description block  */}
-                  <div className="">
-                    <div className="pt-2">
+          {/* ▼ Primary description block ▼ */}
+          <div className="border">
+            <button
+              onClick={() => setOpenPrimary(!openPrimary)}
+              className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
+            >
+              <span className="text-gray-400">Primary Description</span>
+              {openPrimary ? <ChevronUp /> : <ChevronDown />}
+            </button>
+            {openPrimary && (
+              <div className="px-4 bg h-[25rem] bg-white">
+                {/*primary description block  */}
+                <div className="">
+                  <div className="pt-2">
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Item Name
+                    </label>
+                    <input
+                      type="text"
+                      name="item_name"
+                      value={formData.item_name}
+                      onChange={handleInputChange}
+                      placeholder="Enter item name"
+                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 mt-2 gap-4">
+                  <div className="pt-2">
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Product Code
+                    </label>
+                    <input
+                      type="text"
+                      name="item_code"
+                      value={formData.item_code}
+                      onChange={handleInputChange}
+                      placeholder="Enter item name"
+                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  </div>
+
+                  <div className="grid grid-cols-2 mt-2 gap-4">
+                    <div>
                       <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Item Name
+                  Category
+                </label>
+                      <select
+                        // name="category"
+                        // value={formData.category}
+                        // onChange={handleInputChange}
+                        name="categoryType"
+                        value={formCategoryData.categoryType}
+                        onChange={handleCategoryChange}
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
+                      >
+                        <option value="">-- select category --</option>
+                        {uniqueCategoryTypes.map(type => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                  Brand
+                </label>
+                      <select
+                        // name="brand"
+                        // value={formData.brand}
+                        // onChange={handleInputChange}
+                        name="brand"
+                        value={formCategoryData.brand}
+                        onChange={handleBrandChange}
+                        disabled={!brandOptions.length}
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
+                      >
+                        <option value="">-- select brand --</option>
+                        {brandOptions.map(brand => (
+                          <option key={brand} value={brand}>
+                            {brand}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 mt-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        SKU
                       </label>
                       <input
                         type="text"
-                        name="item_name"
-                        value={formData.item_name}
+                        name="sku"
+                        value={formData.sku}
                         onChange={handleInputChange}
-                        placeholder="Enter item name"
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        //placeholder=""
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
-                    <div className="grid grid-cols-2 mt-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                          Category
-                        </label>
-                        <select
-                          // name="category"
-                          // value={formData.category}
-                          // onChange={handleInputChange}
-                          name="categoryType"
-                          value={formCategoryData.categoryType}
-                          onChange={handleCategoryChange}
-                          className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
-                        >
-                          <option value="">-- select category --</option>
-                          {uniqueCategoryTypes.map(type => (
-                            <option key={type} value={type}>
-                              {type}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                          Brand
-                        </label>
-                        <select
-                          // name="brand"
-                          // value={formData.brand}
-                          // onChange={handleInputChange}
-                          name="brand"
-                          value={formCategoryData.brand}
-                          onChange={handleBrandChange}
-                          disabled={!brandOptions.length}
-                          className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
-                        >
-                          <option value="">-- select brand --</option>
-                          {brandOptions.map(brand => (
-                            <option key={brand} value={brand}>
-                              {brand}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Maximum Capacity
+                      </label>
+                      <input
+                        type="number"
+                        name="maximum_capacity"
+                        value={formData.maximum_capacity}
+                        onChange={handleInputChange}
+                        // placeholder=""
+                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
                     </div>
-                    <div className="grid grid-cols-2 mt-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                          Batch Code
-                        </label>
-                        <input
-                          type="text"
-                          name="batch_code"
-                          value={formData.batch_code}
-                          onChange={handleInputChange}
-                          //placeholder=""
-                          className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                          Maximum Capacity
-                        </label>
-                        <input
-                          type="number"
-                          name="maximum_capacity"
-                          value={formData.maximum_capacity}
-                          onChange={handleInputChange}
-                          // placeholder=""
-                          className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        UOM
+                      </label>
+                      <select
+                        name="uom"
+                        value={formUOMData ?? ""}               // show the selected id
+                        onChange={handleUOMChange}              // hook up your new handler
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">-- select unit --</option>
+                        {uoms.map(uom => (
+                          <option key={uom.id} value={uom.id}>
+                            {uom.unit_name} ({uom.symbol})
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                          UOM
-                        </label>
-                        <select
-                          name="uom"
-                          value={formUOMData ?? ""}               // show the selected id
-                          onChange={handleUOMChange}              // hook up your new handler
-                          className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">-- select unit --</option>
-                          {uoms.map(uom => (
-                            <option key={uom.id} value={uom.id}>
-                              {uom.unit_name} ({uom.symbol})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                          Availability
-                        </label>
-                        <select
-                          name="availability"
-                          value={formData.availability}               // show the selected id
-                          onChange={handleInputChange}              // hook up your new handler
-                          className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option>-- select availability --</option>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Availability
+                      </label>
+                      <select
+                        name="availability"
+                        value={formData.availability}               // show the selected id
+                        onChange={handleInputChange}              // hook up your new handler
+                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option>-- select availability --</option>
                           <option value={true}>Available</option>
                           <option value={false}>Unavailable</option>
 
@@ -1141,8 +1121,11 @@ const INITIAL_FORM_DATA = {
   id: 0,
   stock_trace: [0],
   item_name: "",
+
+  item_code: "",
+
   item_image_url: "",
-  batch_code: "",
+  sku: "",
   maximum_capacity: 0,
   uom_id: 0,
   category_id: 0,
@@ -1167,145 +1150,3 @@ const INITIAL_FORM_DATA = {
   inventory: null,
   availability: true
 };
-// {
-//       "_id": "68afba2b039b3743594090b3",
-//       "id": 5,
-//       "item_update_datetime": "2025-08-28T02:15:13.000Z",
-//       "item_created_datetime": "2025-08-28T02:08:43.000Z",
-//       "stock_trace": [
-//         101,
-//         102
-//       ],
-//       "item_name": "Sample Item",
-//       "item_image_url": null,
-//       "batch_code": "SI01sdw4w",
-//       "maximum_capacity": 500,
-//       "uom_id": 22,
-//       "category_id": 1364,
-//       "inventory_id": 1,
-//       "availability": true,
-//       "__v": 0,
-//       "uom": {
-//         "_id": "687720ad798018e0851599a0",
-//         "id": 22,
-//         "symbol": "pcs",
-//         "unit_name": "Piece",
-//         "__v": 0
-//       },
-//       "category": {
-//         "_id": "687fb2b7d9b1c944cfddf226",
-//         "id": 1364,
-//         "brand": "Battler",
-//         "type": "Tea",
-//         "__v": 0
-//       },
-//       "inventory": null
-//     }
-// const INITIAL_FORM_DATA = {
-//   _id: "",
-//   id: 0,
-//   stock_trace: [0],
-//   item_name: "",
-//   item_image_url: "",
-//   batch_code: "",
-//   sku: "",
-//   quantity: 0,
-//   threshold_limit: 0,
-//   maximum_capacity: 0,
-//   uom_id: 0,
-//   category_id: 0,
-//   inventory_id: 1,
-//   stock_price: 0,
-//   retail_price: 0,
-//   stock_update_datetime: "",
-//   stock_created_datetime: "",
-//   __v: 0,
-//   uom: {
-//     _id: "",
-//     id: 0,
-//     symbol: "",
-//     unit_name: "",
-//     __v: 0
-//   },
-//   category: {
-//     _id: "",
-//     id: 0,
-//     brand: "",
-//     type: "",
-//     __v: 0
-//   },
-//   inventory: null,
-//   expired_datetime: null,
-//   initiate_datetime: "",
-//   availability: true,
-// };
-
-//inventory dummy data (old api)
-// {
-//   _id: "6877751e6d4492e44dbb403b",
-//   id: 19,
-//   stock_trace: [1],
-//   item_name: "test toothbrush",
-//   item_image_url: "/src/assets/Inventory_banana.png",
-//   batch_code: "bar237645TE1522",
-//   sku: "bar237645",
-//   quantity: 30,
-//   threshold_limit: 20,
-//   maximum_capacity: 40,
-//   uom_id: 22,
-//   category_id: 15,
-//   inventory_id: 1,
-//   unit_price: 110,
-//   stock_update_datetime: "2025-07-16T09:47:10.682Z",
-//   stock_created_datetime: "2025-07-16T09:47:10.682Z",
-//   __v: 0,
-//   uom: {
-//     _id: "687720ad798018e0851599a0",
-//     id: 22,
-//     symbol: "pcs",
-//     unit_name: "Piece",
-//     __v: 0
-//   },
-//   category: {
-//     _id: "68773ebf1edd62f9c8128b58",
-//     id: 15,
-//     brand: "Colgate",
-//     type: "Oral Care",
-//     __v: 0
-//   },
-//   inventory: null
-// },
-// {
-//   _id: "687775746d4492e44dbb404f",
-//   id: 22,
-//   stock_trace: [1],
-//   item_name: "test toothbrush2",
-//   item_image_url: "/src/assets/Inventory_banana.png",
-//   batch_code: "fubar237645TE1522",
-//   sku: "fubar237645",
-//   quantity: 30,
-//   threshold_limit: 20,
-//   maximum_capacity: 40,
-//   uom_id: 22,
-//   category_id: 15,
-//   inventory_id: 1,
-//   unit_price: 110,
-//   stock_update_datetime: "2025-07-16T09:48:36.213Z",
-//   stock_created_datetime: "2025-07-16T09:48:36.213Z",
-//   __v: 0,
-//   uom: {
-//     _id: "687720ad798018e0851599a0",
-//     id: 22,
-//     symbol: "pcs",
-//     unit_name: "Piece",
-//     __v: 0
-//   },
-//   category: {
-//     _id: "68773ebf1edd62f9c8128b58",
-//     id: 15,
-//     brand: "Colgate",
-//     type: "Oral Care",
-//     __v: 0
-//   },
-//   inventory: null
-// },

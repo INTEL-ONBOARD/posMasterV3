@@ -1,124 +1,20 @@
 import React, { useState, useEffect } from "react";
-import InventorySidebar from "./Inventory_sidebar";
 import ItemCard from "../../components/ItemCard.jsx";
-import SpinnerDot from "../../frontend/components/SpinnerDot";
-import bananaImg from "../../assets/Inventory_banana.png";
 import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import { apiClient } from "../../api/client.jsx";
 import {ChevronDown, ChevronUp } from "lucide-react";
+import { transformStockData } from "../../util/blockConverter.jsx";
 
 function InventoryView() {
-  const [inventoryItems, setInventoryItems] = useState([
-        // {
-        //     _id: '688136391a56f324f917f98f',
-        //     id: 29,
-        //     stock_trace: [1],
-        //     item_name: 'dsds1',
-        //     item_image_url: null,
-        //     batch_code: '2424DS4521',
-        //     sku: '2424',
-        //     quantity: 11,
-        //     threshold_limit: 11,
-        //     maximum_capacity: 111,
-        //     uom_id: 21,
-        //     category_id: 45,
-        //     inventory_id: 1,
-        //     unit_price: 111,
-        //     stock_update_datetime: '2025-07-23T19:21:29.406Z',
-        //     stock_created_datetime: '2025-07-23T19:21:29.406Z',
-        //     __v: 0,
-        //     uom: {
-        //         _id: '687720a0798018e08515999c',
-        //         id: 21,
-        //         symbol: 'mL',
-        //         unit_name: 'Milliliter',
-        //         __v: 0
-        //     },
-        //     category: {
-        //         _id: '687740d91edd62f9c8128bd0',
-        //         id: 45,
-        //         brand: 'Axe',
-        //         type: 'Deodorants',
-        //         __v: 0
-        //     },
-        //     inventory: null
-        // },
-        {
-            _id: '688452ef1ddc1d25637c9a47',
-            id: 31,
-            stock_trace: [1],
-            item_name: 'Water Bottle',
-            item_image_url: null,
-            batch_code: 'SKU2263WA901',
-            sku: 'SKU2263',
-            quantity: 50,
-            threshold_limit: 120,
-            maximum_capacity: 400,
-            uom_id: 22,
-            category_id: 90,
-            inventory_id: 1,
-            unit_price: 25.5,
-            stock_update_datetime: '2025-07-26T04:00:47.273Z',
-            stock_created_datetime: '2025-07-26T04:00:47.273Z',
-            __v: 0,
-            uom: {
-                _id: '687720ad798018e0851599a0',
-                id: 22,
-                symbol: 'pcs',
-                unit_name: 'Piece',
-                __v: 0
-            },
-            category: {
-                _id: '68775a921edd62f9c8128e0d',
-                id: 90,
-                brand: 'Reebok',
-                type: 'Sportswear',
-                __v: 0
-            },
-            inventory: null
-        },
-        {
-            _id: '68845a0b8767fec474faa590',
-            id: 32,
-            stock_trace: [1],
-            item_name: 'Mobile Data cable',
-            item_image_url: null,
-            batch_code: 'SKU-32452DA15822',
-            sku: 'SKU-32452',
-            quantity: 54,
-            threshold_limit: 40,
-            maximum_capacity: 60,
-            uom_id: 22,
-            category_id: 158,
-            inventory_id: 1,
-            unit_price: 155,
-            stock_update_datetime: '2025-07-26T04:31:07.861Z',
-            stock_created_datetime: '2025-07-26T04:31:07.861Z',
-            __v: 0,
-            uom: {
-                _id: '687720ad798018e0851599a0',
-                id: 22,
-                symbol: 'pcs',
-                unit_name: 'Piece',
-                __v: 0
-            },
-            category: {
-                _id: '687765bb1edd62f9c8129017',
-                id: 158,
-                brand: 'Hp',
-                type: 'Computers',
-                __v: 0
-            },
-            inventory: null
-        }
-    ]
-);
+  const [inventoryItems, setInventoryItems] = useState([]);
 
   const fetchItems = async () => {
     try {
-      const response = await apiClient.get("api/items/extended");
+      const response = await apiClient.get("api/restocks/stock-items");
       if (response.data.status === "success") {
-            setInventoryItems(response.data.data);
+            const transformed = transformStockData(response.data);
+            //convert default response object to get each detailed stock items(detach stock item object and create a new obj with parent attributes)
+            setInventoryItems(transformed);
       }
       } catch (error) {
           console.error("Error fetching items:", error);
@@ -135,14 +31,6 @@ function InventoryView() {
     //}, [loadingUoms]);
     }, []);
 
-  // //if more control over categories needed later, use this State for category/brand mapping
-//   const [itemCategories, setItemCategories] = useState([
-//     { id: 145, brand: "Close-Up",   type: "Oral Care" },
-//     { id:  94, brand: "Clogard",    type: "Oral Care" },
-//     { id:  15, brand: "Colgate",    type: "Oral Care" },
-//     { id:  26, brand: "Pepsi",      type: "Beverages" },
-//     { id:   7, brand: "Coca-Cola",  type: "Beverages" },
-//   ]);
 
   //category dropdown population(search and item form)
   const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
@@ -167,17 +55,11 @@ function InventoryView() {
   
       fetchCategories();
     }, []);
-    
-    //if more control over categories needed later, use this
-    //   useEffect(() => {
-    //     const types = Array.from(new Set(itemCategories.map(c => c.type)));
-    //     setUniqueCategoryTypes(types);
-    //   }, [itemCategories]);
 
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
-  const [viewMode, setViewMode] = useState("grid"); // or "list"
   const [isSearching, setIsSearching] = useState(false);
+  const [searchAvailability, setSearchAvailability] = useState("All");
 
   // search handler to set loading state:
   const handleSearch = (e) => {
@@ -189,11 +71,38 @@ function InventoryView() {
     }, 600); // 600ms delay for demo
   };
 
-  const filteredItems = inventoryItems.filter(
-    (item) =>
-      (searchCategory === "All" || item.category.type === searchCategory) &&
-      item.item_name.toLowerCase().includes(search.toLowerCase())
-  );
+  //helper method for item availability filtering
+  const interpretAvailability = (item) => {
+    // handle boolean, string, numeric types defensively
+    const a = item?.availability;
+    if (typeof a === "boolean") return a;
+    if (typeof a === "string") return a.toLowerCase() === "true";
+    return Boolean(a); // numbers (1/0) or other truthy/falsy
+  };
+
+  // Filter items based on search item name, batch code, category and availability
+  const filteredItems = inventoryItems.filter((item) => {
+    // Category match: either "All" or item.category.type equals selected
+    const matchesCategory =
+      searchCategory === "All" ||
+      (item?.category && item.category.type === searchCategory);
+
+    // Availability match: "All", Available (true), Unavailable (false)
+    const isAvailable = interpretAvailability(item);
+    const matchesAvailability =
+      searchAvailability === "All" ||
+      (searchAvailability === "Available" && isAvailable) ||
+      (searchAvailability === "Unavailable" && !isAvailable);
+
+    // Item name or batch code text search match
+    const searchTerm = (search || "").toLowerCase();
+    const matchesSearch =
+      (item?.item_name || "").toLowerCase().includes(searchTerm) ||
+      (item?.batch_code || "").toLowerCase().includes(searchTerm) ||
+      (item?.sku || "").toLowerCase().includes(searchTerm);
+
+    return matchesCategory && matchesAvailability && matchesSearch;
+  });
 
   //right filter section controls
   const [openFilter, setOpenFilter] = useState(true);

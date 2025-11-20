@@ -758,8 +758,7 @@ function SupplierReg() {
                 <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">#</th>
                 <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Name</th>
                 <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Status</th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Current Amount</th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Previous Amount</th>
+                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Contact</th>
                 {/* <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Due Amount</th> */}
                 <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm"></th>
               </tr>
@@ -768,25 +767,31 @@ function SupplierReg() {
             <tbody className="bg-white">
               {isLoading ? (
                 // single row that spans all columns and centers the spinner vertically/horizontally
-                <tr className='flex flex-row'>
-                  <td colSpan={7} className="h-[22rem] w-full flex items-center justify-center">
-                    <div className="flex flex-col items-center">
-                      <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12"></div>
-                      <span className="mt-3 text-gray-700 text-lg">Loading table...</span>
+                <tr>
+                  <td colSpan={7}>
+                    <div className="h-[22rem] w-full flex items-center justify-center">
+                      <div className="flex flex-col items-center">
+                        <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12"></div>
+                        <span className="mt-3 text-gray-700 text-lg">Loading table...</span>
+                      </div>
                     </div>
                   </td>
                 </tr>
               ) : searchLoading ? (
                 <tr>
-                  <td colSpan={7} className="h-[22rem] w-full flex flex-col items-center justify-center">
-                    <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
-                    <span className="text-gray-700 text-xl mt-1">Please wait...</span>
+                  <td colSpan={7}>
+                    <div className="h-[22rem] w-full flex flex-col items-center justify-center">
+                      <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
+                      <span className="text-gray-700 text-xl mt-1">Please wait...</span>
+                    </div>
                   </td>
                 </tr>
               ) : filteredSuppliers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="h-[18rem] w-full flex items-center justify-center text-gray-500 text-lg">
-                    No suppliers found!
+                  <td colSpan={7}>
+                    <div className="h-[18rem] w-full flex items-center justify-center">
+                      <span className="text-gray-500 text-lg">No suppliers found!</span>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -805,10 +810,7 @@ function SupplierReg() {
                       {supplier.basic_info.status ? "Available" : "Unavailable"}
                     </td>
                     <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                      {supplier.financial_info.current_amount.toFixed(2)}
-                    </td>
-                    <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                      {supplier.financial_info.previous_amount.toFixed(2)}
+                      {supplier.basic_info.contact}
                     </td>
                     {/* <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
               {(supplier.financial_info.previous_amount - supplier.financial_info.current_amount).toFixed(2)}
