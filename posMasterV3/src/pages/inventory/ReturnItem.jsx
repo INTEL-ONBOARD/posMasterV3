@@ -23,8 +23,7 @@ const INITIAL_RETURN_FORM = {
   return_date: "",
 };
 
-function ReturnItem() {
-  // Form section state
+function ReturnItem({ isActive }) {
   const [openFormBlock, setOpenFormBlock] = useState("item");
 
   // Search and filter state - SEPARATED for right section and mid section
