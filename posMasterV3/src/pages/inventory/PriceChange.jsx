@@ -3,7 +3,7 @@ import barcodeImg from "../../assets/barcode.png";
 import { ChevronDown, Printer, ChevronUp } from "lucide-react";
 import AddItemCard from "../../components/AddItemCard.jsx";
 
-function PriceChange() {
+function PriceChange({ isActive }) {
   const [openFormBlock, setOpenFormBlock] = useState("item");
 
   return (
