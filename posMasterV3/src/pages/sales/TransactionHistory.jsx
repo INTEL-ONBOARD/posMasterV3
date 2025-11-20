@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
 import React, { useState } from "react";
 
-export default function TransactionHistory() {
+export default function TransactionHistory({ isActive }) {
   //left section controls
   const [openTransactionFormBlock, setopenTransactionFormBlock] = useState("item");
   const [formDataTransaction, setFormDataTransaction] = useState("item");
