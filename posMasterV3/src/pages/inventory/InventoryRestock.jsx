@@ -1,11 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { apiClient } from "../../api/client";
-import { ChevronDown, Printer, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import AddRegitemsImg from "../../assets/add_reg_items.png";
 
 import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import ReturnItemsImg from "../../assets/return_items.png";
-import DisposeItemsImg from "../../assets/dispose_items.png";
 import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
 import { generateUniqueString } from "../../util/generate";
@@ -16,14 +15,16 @@ import failedImage from '../../assets/Failed.png';
 import { appendCurrentTimeToDate, extractDateOnly, getCurrentDate, getCurrentDateTime } from "../../util/date";
 import { validateReturnForm, validateStockForm } from "../../util/validate";
 
-function InventoryRestock() {
+function InventoryRestock({ isActive }) {
 
   // modal state: { open: boolean, type: 'success' | 'failed' | null }
   const [modal, setModal] = useState({ open: false, type: null });
   const closeModal = () => setModal({ open: false, type: null });
   // Fetch Categories from API and create mapping
   const [suppliers, setSuppliers] = useState([]);
+  // Refetch when section becomes active
   useEffect(() => {
+    if (isActive) {
     // user list(to populate dropdowns)
     const fetchSuppliers = async () => {
       try {
@@ -42,11 +43,14 @@ function InventoryRestock() {
     };
 
     fetchSuppliers();
-  }, []);
+  }
+  }, [isActive]);
 
   // Fetch Categories from API and create mapping
   const [users, setUsers] = useState([]);
+  // Refetch when section becomes active
   useEffect(() => {
+    if (isActive) {
     // user list(to populate dropdowns)
     const fetchUsers = async () => {
       try {
@@ -64,7 +68,8 @@ function InventoryRestock() {
     };
 
     fetchUsers();
-  }, []);
+  }
+  }, [isActive]);
 
   // right section controls
   const [rightActiveSection, setRightActiveSection] = useState("buttons"); // "buttons" | "dispose" | "add" | "return"
@@ -85,13 +90,19 @@ function InventoryRestock() {
     }
   };
   // Fetch items from API
+  // Refetch when section becomes active
   useEffect(() => {
+    if (isActive) {
+      console.log('items are fetching when active with right active section?');
     fetchItems();
+    }
   }, [rightActiveSection]);
 
 
   // Fetch Categories from API and create mapping
+  // Refetch when section becomes active
   useEffect(() => {
+    if (isActive) {
     const fetchCategories = async () => {
       try {
         const response = await apiClient.get("api/categories");
@@ -106,7 +117,8 @@ function InventoryRestock() {
     };
 
     fetchCategories();
-  }, []);
+  }
+  }, [isActive]);
 
   // State for category/brand mapping
   const [itemCategories, setItemCategories] = useState([
@@ -198,120 +210,10 @@ function InventoryRestock() {
   }, [invoiceGenerate]);
 
 
-  // const [selectedSupplier, setselectedSupplier] = useState({});
-  // const [selectedEmpPrep, setSelectedEmpPrep] = useState({});
-  // const [selectedEmpAuth, setSeleselectedEmpAuth] = useState({});
-
-  //storing additional data from api just in case(form data is maintained seperately)
-  //const [selectedRegItem, setSelectedRegItem] = useState({});
-  //const [selectedReturnItem, setselectedReturnItem] = useState({});
-
   //item list for the mid section table
-  const [selectedStockItemList, setSelectedStockItemList] = useState([
-    {
-      _id: "",
-      id: 0,
-      stock_trace: [0],
-      item_name: "fdsaf",
-      item_image_url: "",
-      batch_code: "fdsaf",
-      maximum_capacity: 10,
-      uom_id: 10,
-      category_id: 10,
-      inventory_id: 11,
-      item_update_datetime: "2025-12-31T23:59:59",
-      item_created_datetime: "2025-12-31T23:59:59",
-      __v: 0,
-      inventory: null,
-      sku: "1skupsps",
-      quantity: 3,
-      threshold_limit: 20,
-      stock_price: 20,
-      retail_price: 30,
-      expired_datetime: "2025-12-31T23:59:59",
-      availability: true,
+  const [selectedStockItemList, setSelectedStockItemList] = useState([]);
 
-      item_discount_amt: 10,
-
-      uom_symbol: "pcs"
-    },
-    {
-      _id: "",
-      id: 1,
-      stock_trace: [0],
-      item_name: "fdsaf",
-      item_image_url: "",
-      batch_code: "fdsaf",
-      maximum_capacity: 10,
-      uom_id: 10,
-      category_id: 10,
-      inventory_id: 11,
-      item_update_datetime: "2025-12-31T23:59:59",
-      item_created_datetime: "2025-12-31T23:59:59",
-      __v: 0,
-      inventory: null,
-      sku: "2skupsps",
-      quantity: 3,
-      threshold_limit: 20,
-      stock_price: 20,
-      retail_price: 30,
-      expired_datetime: "2025-12-31T23:59:59",
-      availability: true,
-
-      item_discount_amt: 0,
-
-      uom_symbol: "pcs"
-    }
-  ]);
-
-  const [selectedReturnItemList, setSelectedReturnItemList] = useState([
-    {
-      _id: "",
-      id: 0,
-      stock_trace: [0],
-      item_name: "fdsaf return",
-      item_image_url: "",
-      batch_code: "fdsaf",
-      maximum_capacity: 10,
-      uom_id: 10,
-      category_id: 10,
-      inventory_id: 11,
-      item_update_datetime: "2025-12-31T23:59:59",
-      item_created_datetime: "2025-12-31T23:59:59",
-      __v: 0,
-      // uom: {
-      //   _id: "",
-      //   id: 0,
-      //   symbol: "",
-      //   unit_name: "",
-      //   __v: 0
-      // },
-      // category: {
-      //   _id: "",
-      //   id: 0,
-      //   brand: "",
-      //   type: "",
-      //   __v: 0
-      // },
-      inventory: null,
-      // availability: true
-
-      sku: "skupsps",
-      quantity: 1,
-      threshold_limit: 20,
-      stock_price: 20,
-      retail_price: 35,
-      expired_datetime: "2025-12-31T23:59:59",
-      availability: true,
-
-      uom_symbol: "pcs",
-
-      item_discount_amt: 0,
-
-      return_quantity: 0,
-      return_description: "damaged goods"
-    }
-  ]);
+  const [selectedReturnItemList, setSelectedReturnItemList] = useState([]);
 
   // Calculate total for selectedStockItemList with discount deduction
   const stockTotal = selectedStockItemList.reduce((total, item) => {
@@ -345,10 +247,6 @@ function InventoryRestock() {
   //select table rows and load form sections
   const addRegItemToForm = (item) => {
     console.log(item.batch_code+"  mmmmm");
-
-  //not sure what are these
-  //const { valid, errors: validationErrors } = validateStockForm(formDataStock);
-  //setErrors(validationErrors);
 
     //to make left section's return item block invisible or removed only after selecting a return item from the table
     setReturnItemSelected(false);
@@ -561,7 +459,6 @@ function InventoryRestock() {
       //   console.warn("Return validation failed", validationErrors);
       //   return; // don't proceed if invalid
       // }
-
 
       const newRetItem = {
 
@@ -908,21 +805,8 @@ function InventoryRestock() {
         maximum_capacity: item.maximum_capacity,
         uom_id: item.uom_id,
         category_id: item.category_id,
-        // inventory_id: item.inventory_id,
-        // item_update_datetime: item.item_update_datetime,
-        // item_created_datetime: item.item_created_datetime,
-        // __v: item.__v,
-        // inventory: item.inventory,
 
         batch_code: "",
-        //need to make them zeros and empty when loading to table for the first tiem
-        // sku: formDataRegItem.sku,
-        // quantity: parseFloat(formDataStock.quantity) || 0,
-        // threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
-        // stock_price: parseFloat(formDataStock.stock_price) || 0,
-        // retail_price: parseFloat(formDataStock.retail_price) || 0,
-        // expired_datetime: formDataStock.expired_datetime,
-        // availability: formDataStock.availability,
 
         uom: {
         id: item.uom.id,
@@ -971,11 +855,6 @@ function InventoryRestock() {
         maximum_capacity: item.maximum_capacity,
         uom_id: item.uom_id,
         category_id: item.category_id,
-        //inventory_id: item.inventory_id,
-        //item_update_datetime: item.item_update_datetime,
-        //item_created_datetime: item.item_created_datetime,
-        //__v: item.__v,
-        //inventory: item.inventory,
         
         sku: item.sku,
         threshold_limit: 0,
@@ -1003,78 +882,6 @@ function InventoryRestock() {
           : [...prev, newRetItem]
       );
     }
-    
-    //load item basic details(loaded for all item types-reg, return...etc)
-    // setFormDataRegItem({
-    //   sku: item.sku,
-
-    //   _id: item._id,
-    //   id: item.id,
-    //   stock_trace: item.stock_trace,
-    //   item_name: item.item_name,
-    //   item_image_url: item.item_image_url,
-    //   //batch_code: item.batch_code,
-    //   maximum_capacity: item.maximum_capacity,
-    //   uom_id: item.uom_id,
-    //   category_id: item.category_id,
-    //   inventory_id: item.inventory_id,
-    //   item_update_datetime: item.item_update_datetime,
-    //   item_created_datetime: item.item_created_datetime,
-    //   __v: item._v,
-    //   uom: {
-    //     _id: item.uom?._id,
-    //     id: item.uom?._id.id,
-    //     symbol: item.uom?.symbol,
-    //     unit_name: item.uom?.unit_name,
-    //     __v: item.uom?._v,
-    //   },
-    //   category: {
-    //     _id: item.category?._id,
-    //     id: item.category?.id,
-    //     brand: item.category?.brand,
-    //     type: item.category?.type,
-    //     __v: item.category?._v,
-    //   },
-    //   inventory: item.inventory,
-    //   availability: item.availability
-    // });
-
-    // // setFormDataStock({
-    // //   sku: "skupsps",
-    // //   quantity: 150,
-    // //   threshold_limit: 20,
-    // //   stock_price: 20.0,
-    // //   retail_price: 35.0,
-    // //   expired_datetime: "2025-12-31T23:59:59",
-    // //   availability: true
-    // // });
-    // //load item into bucket just in case
-    // //setSelectedRegItem(item);
-
-    // setFormDataRegItem(fd => ({ ...fd, ...item }));
-    // //fetch stock list for item sku
-    // fetchStockEntries(item.sku);
-
-
-
-
-
-    // //**________________________________________________________________________________________________________________________________
-    // // 2. extract its category & brand:
-    // const { type, brand } = item.category;
-    // // 3a. set the category‐dropdown state (this also fires your useEffect to populate brandOptions)
-    // setSelectedCategoryType(type);
-    // // 3b. explicitly set the form’s dropdown values:
-    // setFormCategoryData({
-    //   categoryType: type,
-    //   brand,
-    // });
-    // //set unit of measure in the dropdown
-    // // 3. pre‐select the UOM dropdown
-    // setFormUOMData(item.uom.id);
-    // // and keep formData.uom_id correct:
-    // setFormData(fd => ({ ...fd, uom_id: item.uom.id, uom: item.uom }));
-    // //**________________________________________________________________________________________________________________________________
 
 
   };
@@ -1102,12 +909,15 @@ function InventoryRestock() {
   };
 
   // useEffect to set current date on component mount
+  // Refetch when section becomes active
   useEffect(() => {
+    if (isActive) {
     // Only set if not already set (e.g., for editing existing data)
     // if (!formDataStock.expired_datetime) {
     setCurrentDateToExpired();
     // }
-  }, []); // Empty dependency array to run once on mount
+    }
+  }, [isActive]); // Empty dependency array to run once on mount
 
 
 
@@ -1139,16 +949,6 @@ function InventoryRestock() {
       }));
     };
 
-    //     {
-    //   sku: "SKU102",
-    //   batch_code: "BATCH456",
-    //   qty: 10,
-    //   description: "Damaged item"
-    // }
-
-
-    //setFormStatus("loading");
-    //e.preventDefault();
     try {
       const requestData = {
         sup_id: transactionData.supplier_id,
@@ -1170,39 +970,6 @@ function InventoryRestock() {
         added_items: transformToAddedItems(), //contatins a list
         return_items: transformToReturnedItems() //contains a list
       };
-      //       const requestData = {
-      //   sup_id: 1,
-      //   prep_agent_id: 2,
-      //   auth_agent_id: 3,
-      //   invoice_no: "INdVd005",
-      //   bill_no: "BIdLLd005",
-      //   payment_method: "cash",
-      //   discount: 5.00,
-      //   expenses: 10.00,
-      //   current_amount: 100.00,
-      //   cash_amount: 95.00,
-      //   change_amount: 5.00,
-      //   total_amount: 105.00,
-      //   exe_level: "medium",
-      //   added_items: [
-      //     {
-      //       sku: "SKU101",
-      //       qty: 50,
-      //       stock_price: 1.50,
-      //       retail_price: 2.00,
-      //       exp_date: "2025-12-31T00:00:00.000Z",
-      //       batch_code: "BATCH123"
-      //     }
-      //   ],
-      //   return_items: [
-      //     {
-      //       sku: "SKU102",
-      //       batch_code: "BATCH456",
-      //       qty: 1,
-      //       description: "Damaged item"
-      //     }
-      //   ]
-      // };
       console.log(requestData);
       const response = await apiClient.post("api/restocks", requestData);
 
@@ -1274,15 +1041,6 @@ function InventoryRestock() {
               {openFormBlock == 'item' ? <ChevronUp /> : <ChevronDown />}
             </button>
             {(openFormBlock == 'item') && (
-              /* 
-                            onClick={() => setOpenItem(!openItem)}
-                            className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
-                          >
-                            <span className="text-gray-400">ITEM DESCIRPTION</span>
-                            {openItem ? <ChevronUp /> : <ChevronDown />}
-                          </button>
-                          {openItem && (*/
-
               <div className="mx-4">
                 <div className="flex flex-row px-4 items-center max-h-[12rem]">
                   <div className="">
