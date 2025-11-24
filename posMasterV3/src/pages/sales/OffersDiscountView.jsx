@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-function ItemSection() {
+function ItemSection({ isActive }) {
   return (
     <div className="p-6">
       <h2 className="text-xl font-bold mb-4">Item Discounts</h2>
