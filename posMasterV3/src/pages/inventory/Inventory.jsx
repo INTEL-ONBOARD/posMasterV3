@@ -51,48 +51,48 @@ function Inventory() {
       <main className="flex-1 bg-[#F3F3F3] h-[calc(100vh-2rem)] relative">
         {/* View Inventory */}
         <div className={isVisible("view-inventory")}>
-          <InventoryView />
+          <InventoryView isActive={activeSection === "view-inventory"} />
         </div>
         {/* Add Item */}
         <div className={isVisible("add-item")}>
-          <AddItem />
+          <AddItem isActive={activeSection === "add-item"} />
         </div>
         {/* Inventory Restock */}
         <div className={isVisible("inventory-restock")}>
-          <InventoryRestock />
+          <InventoryRestock isActive={activeSection === "view-restock"} />
         </div>
         {/* Return Item */}
         <div className={isVisible("return-item")}>
-          <ReturnItem />
+          <ReturnItem isActive={activeSection === "return-item"} />
         </div>
         {/* Dispose Item */}
         <div className={isVisible("dispose-item")}>
-          <DisposeItem />
+          <DisposeItem isActive={activeSection === "dispose-item"} />
         </div>
         {/* Supplier Reg */}
         <div className={isVisible("supplier-registration")}>
-          <SupplierReg />
+          <SupplierReg isActive={activeSection === "supplier-registration"} />
         </div>
         {/* Price Change */}
         <div className={isVisible("price-change")}>
-          <PriceChange />
+          <PriceChange isActive={activeSection === "price-change"} />
         </div>
         {/* Check History */}
         <div className={isVisible("check-history")}>
-          <CheckHistory />
+          <CheckHistory isActive={activeSection === "check-history"} />
         </div>
         {/* Dispose Item */}
         <div className={isVisible("dispose-item")}>
-          <DisposeItem />
+          <DisposeItem isActive={activeSection === "dispose-item"} />
         </div>
         {/* Inventory Config */}
         <div className={isVisible("inventory-config")}>
-          <InventoryConfig />
+          <InventoryConfig isActive={activeSection === "inventory-config"} />
           {/* …your config UI here… */}
         </div>
         {/* Inventory Report */}
         <div className={isVisible("inventory-report")}>
-          <InventoryReport />
+          <InventoryReport isActive={activeSection === "inventory-report"} />
         </div>
       </main>
     </div>

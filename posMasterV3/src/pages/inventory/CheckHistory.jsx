@@ -3,7 +3,7 @@ import {ChevronDown, ChevronUp } from "lucide-react";
 import { apiClient } from '../../api/client';
 import { extractDateOnly } from '../../util/date';
 
-function CheckHistory() {
+function CheckHistory({isAcitve}) {
   // right section controls
   const [leftActiveSection, setLeftActiveSection] = useState("transactions"); // "items"(default) | "transactions"
   //right filter section controls(for supplier transaction table)
