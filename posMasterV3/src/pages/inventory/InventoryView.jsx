@@ -3,7 +3,7 @@ import ItemCard from "../../components/ItemCard.jsx";
 import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import { apiClient } from "../../api/client.jsx";
 import {ChevronDown, ChevronUp } from "lucide-react";
-import { transformStockData } from "../../util/blockConverter.jsx";
+import { transformStockData } from "../../util/common/blockConverter.jsx";
 
 function InventoryView({ isActive }) {
   const [inventoryItems, setInventoryItems] = useState([]);
