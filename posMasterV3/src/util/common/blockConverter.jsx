@@ -5,6 +5,10 @@
  * @param {Object} apiResponse - The original API response object
  * @returns {Array} - Array of transformed objects
  */
+
+//converts the restock data response data from the API and returns seperate items by merging common register item objects with stock item objects
+//
+//eg: {regItem1{StockItem1, stockItem2, stockItem3}} ----> stockItem1Detailed1, stockItem2Detailed2, stockItem3Detailed3}
 export const transformStockData = (apiResponse) => {
   if (!apiResponse || !apiResponse.data || !Array.isArray(apiResponse.data)) {
     console.warn('Invalid API response format');

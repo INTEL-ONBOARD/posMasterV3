@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 
 
-// utils/stockValidation.js
+// validate restocking items in inventory restock form
 export function validateStockForm(formDataStock = {}) {
   const formErrors = {};
 
@@ -54,7 +54,7 @@ export function validateStockForm(formDataStock = {}) {
   return { valid, formErrors };
 }
 
-
+// validate return items in inventory restock form
 export function validateReturnForm(formDataReturnItem = {}) {
   const formReturnErrors = {};
 
@@ -85,7 +85,7 @@ export function validateReturnForm(formDataReturnItem = {}) {
 
 
 
-
+//is is a still using function?
 export function validateItem(item) {
 
   const requiredFields = [
