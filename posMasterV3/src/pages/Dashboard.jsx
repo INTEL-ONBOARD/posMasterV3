@@ -4,37 +4,11 @@ import { Outlet, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar.jsx";
 
 function Dashboard() {
-  const [hoveredCard, setHoveredCard] = useState(null);
   const [activeSection, setActiveSection] = useState(null);
   const toast = useContext(ToastContext);
-  const navigate = useNavigate();
-
-  const handleComponentClick = (componentName) => {
-    if (componentName === "notifications") {
-      toast.open("You have new notifications!");
-    }
-    if (componentName === "logout") {
-      navigate("/");
-    }
-    if (componentName === "inventory") {
-      navigate("/dashboard/inventory");
-    }
-
-    // Add other click logic as needed
-  };
-
-  // Helper to get blur class
-  const getBlurClass = (cardName) =>
-    hoveredCard && hoveredCard !== cardName
-      ? "blur-sm transition-all duration-300"
-      : "transition-all duration-300";
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header - fixed at top */}
-      {/* <header className="fixed top-0 left-0 right-0 z-50">
-      <Header activeSection={activeSection} />
-    </header> */}
 
       {/* Main content area removed mt-16 for header removal */}
       <div className="flex flex-1">
