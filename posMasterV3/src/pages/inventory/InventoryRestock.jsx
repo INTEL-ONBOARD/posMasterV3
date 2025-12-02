@@ -7,13 +7,13 @@ import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import ReturnItemsImg from "../../assets/return_items.png";
 import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
-import { generateUniqueString } from "../../util/generate";
+import { generateUniqueString } from "../../util/common/generate";
 
 //modal images
 import successImage from '../../assets/Success.png';
 import failedImage from '../../assets/Failed.png';
-import { appendCurrentTimeToDate, extractDateOnly, getCurrentDate, getCurrentDateTime } from "../../util/date";
-import { validateReturnForm, validateStockForm } from "../../util/validate";
+import { appendCurrentTimeToDate, extractDateOnly, getCurrentDate, getCurrentDateTime } from "../../util/common/date";
+import { validateReturnForm, validateStockForm } from "../../util/inventory/validate";
 
 function InventoryRestock({ isActive }) {
 

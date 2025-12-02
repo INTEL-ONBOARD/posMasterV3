@@ -12,7 +12,7 @@ import clearBtnImg from "../../assets/sales_clear.png";
 import sidebarHoldOrderBtnImg from "../../assets/sales_hold_order.png";
 import sidebarPaymentBtnImg from "../../assets/sales_proceed_payment.png";
 import profileImg from "../../assets/user_profile_image.png";
-import { transformStockData } from "../../util/blockConverter.jsx";
+import { transformStockData } from "../../util/common/blockConverter.jsx";
 
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
