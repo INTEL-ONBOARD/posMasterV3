@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import {ChevronDown, ChevronUp } from "lucide-react";
 import { apiClient } from '../../api/client';
-import { extractDateOnly } from '../../util/date';
+import { extractDateOnly } from '../../util/common/date';
 
 function CheckHistory({isAcitve}) {
   // right section controls
