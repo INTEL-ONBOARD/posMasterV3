@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -6,11 +6,9 @@ function Intro() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      //navigate("/startup");
-      navigate("/login");
-    }, 3000);
-    return () => clearTimeout(timer);
+    // Backend is already initialized before React loads
+    // Navigate to login immediately
+    navigate("/login");
   }, [navigate]);
 
   return (
@@ -58,7 +56,7 @@ function Intro() {
           className="text-center"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.2, duration: 0.5 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
         >
           <p className="text-gray-500 text-sm">Please Wait...</p>
         </motion.div>

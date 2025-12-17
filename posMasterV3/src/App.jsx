@@ -7,20 +7,21 @@ import {
 
 import './App.css';
 
-import Intro from './pages/Intro.jsx';
-import Login from './pages/Login.jsx';
-import Dashboard from './pages/Dashboard.jsx';
-import NotFound from './pages/NotFound.jsx';
-import Inventory from './pages/inventory/Inventory.jsx';
-import ToastProvider from './pages/toasts/ToastProvider.jsx';
-import Settings from './pages/settings/Settings.jsx';
-import Notification from './pages/notification/Notification.jsx';
+// Frontend page imports
+import Intro from './frontend/pages/Intro.jsx';
+import Login from './frontend/pages/Login.jsx';
+import Dashboard from './frontend/pages/Dashboard.jsx';
+import NotFound from './frontend/pages/NotFound.jsx';
+import Inventory from './frontend/pages/inventory/Inventory.jsx';
+import ToastProvider from './frontend/pages/toasts/ToastProvider.jsx';
+import Settings from './frontend/pages/settings/Settings.jsx';
+import Notification from './frontend/pages/notification/Notification.jsx';
 
-import InventoryConfig from './pages/inventory/InventoryConfig.jsx';
-import Sales from './pages/sales/Sales.jsx';
+import InventoryConfig from './frontend/pages/inventory/InventoryConfig.jsx';
+import Sales from './frontend/pages/sales/Sales.jsx';
 
-import Startup from './pages/Startup.jsx';
-import Users from './pages/users/users.jsx';
+import Startup from './frontend/pages/Startup.jsx';
+import Users from './frontend/pages/users/users.jsx';
 
 
 
