@@ -4,8 +4,15 @@ import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import { apiClient } from "../../api/client.jsx";
 import {ChevronDown, ChevronUp } from "lucide-react";
 import { transformStockData } from "../../util/common/blockConverter.jsx";
+import ViewItemModal from "./modals/ViewItemModal.jsx";
 
 function InventoryView({ isActive }) {
+  
+  // modal state: { open: boolean, type: 'success' | 'failed' | null }
+  const [modal, setModal] = useState(false);
+  const closeModal = () => setModal(false);
+  const [selectedItem, setSelectedItem] = useState({});
+
   const [inventoryItems, setInventoryItems] = useState([]);
 
   const fetchItems = async () => {
@@ -166,6 +173,10 @@ function InventoryView({ isActive }) {
                   <ItemCard
                     key={item.id}
                     item={item}
+                    onOpen={()=>{
+                      setModal(true)
+                      setSelectedItem(item)
+                    }}
                   />
                 ))
               )}
@@ -294,6 +305,11 @@ function InventoryView({ isActive }) {
           <div className="bg-white h-full"></div>
         </div>
       </div>
+      <ViewItemModal 
+        isOpen={modal}
+        closeModal={closeModal}
+        item={selectedItem}
+      />
         </div>
   )
 }
