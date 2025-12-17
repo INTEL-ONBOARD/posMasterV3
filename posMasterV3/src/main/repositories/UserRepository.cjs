@@ -6,7 +6,7 @@
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
-const { v4: uuidv4 } = require('uuid');
+const { generateUUID } = require('../utils/helpers.cjs');
 
 class UserRepository extends BaseRepository {
     constructor() {
@@ -20,7 +20,7 @@ class UserRepository extends BaseRepository {
      */
     create(userData) {
         const user = {
-            id: userData.id || uuidv4(),
+            id: userData.id || generateUUID(),
             cloud_id: userData.cloud_id || userData._id || null,
             username: userData.username,
             email: userData.email,
