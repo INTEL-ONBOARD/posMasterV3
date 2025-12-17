@@ -5,7 +5,7 @@ const fs = require("fs").promises;
 const printer = require("pdf-to-printer");
 
 // Backend initialization
-const { initializeBackend, shutdownBackend, getBackendStatus } = require("./src/main/backend.cjs");
+const { initializeBackend, shutdownBackend, getBackendStatus } = require("./src/backend/backend.cjs");
 
 // Load the version from package.json
 const appVersion = require(path.join(__dirname, "package.json")).version;
@@ -22,6 +22,7 @@ const dtoPaths = {
   temp: path.join(
     __dirname,
     "src",
+    "frontend",
     "templates",
     "dtos",
     "config",
@@ -30,6 +31,7 @@ const dtoPaths = {
   config: path.join(
     __dirname,
     "src",
+    "frontend",
     "templates",
     "dtos",
     "config",
@@ -371,7 +373,7 @@ const performLogoutAndQuit = async () => {
 };
 
 async function createWindow() {
-  const iconPath = path.join(__dirname, "src", "assets", "icon.ico");
+  const iconPath = path.join(__dirname, "src", "frontend", "assets", "icon.ico");
 
   mainWindow = new BrowserWindow({
     width: 1024,
@@ -523,6 +525,8 @@ ipcMain.on("print-silent", async (event, arrayBuffer) => {
 
 app.whenReady().then(async () => {
   // Initialize the backend (database, migrations, IPC handlers)
+
+  createWindow();
   console.log("[Electron] Initializing backend...");
   const backendResult = initializeBackend(defaultFolderPath);
   if (backendResult.success) {
@@ -530,8 +534,6 @@ app.whenReady().then(async () => {
   } else {
     console.error("[Electron] Backend initialization failed:", backendResult.message);
   }
-
-  createWindow();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
