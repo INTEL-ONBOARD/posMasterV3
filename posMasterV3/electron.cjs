@@ -4,6 +4,9 @@ const axios = require("axios");
 const fs = require("fs").promises;
 const printer = require("pdf-to-printer");
 
+// Backend initialization
+const { initializeBackend, shutdownBackend, getBackendStatus } = require("./src/main/backend.cjs");
+
 // Load the version from package.json
 const appVersion = require(path.join(__dirname, "package.json")).version;
 
@@ -518,7 +521,16 @@ ipcMain.on("print-silent", async (event, arrayBuffer) => {
   }
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Initialize the backend (database, migrations, IPC handlers)
+  console.log("[Electron] Initializing backend...");
+  const backendResult = initializeBackend(defaultFolderPath);
+  if (backendResult.success) {
+    console.log("[Electron] Backend initialized:", backendResult.dbPath);
+  } else {
+    console.error("[Electron] Backend initialization failed:", backendResult.message);
+  }
+
   createWindow();
 
   app.on("activate", () => {
@@ -528,9 +540,20 @@ app.whenReady().then(() => {
   });
 });
 
+// IPC handler for backend status
+ipcMain.handle("backend:status", async () => {
+  return getBackendStatus();
+});
+
 // Quit when all windows are closed, except on macOS
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+// Cleanup on app quit
+app.on("will-quit", () => {
+  console.log("[Electron] Shutting down backend...");
+  shutdownBackend();
 });
