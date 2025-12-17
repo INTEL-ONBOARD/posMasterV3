@@ -1,0 +1,68 @@
+/**
+ * Service Index
+ *
+ * Central export for all services.
+ * Services contain business logic and orchestrate repository operations.
+ */
+
+const AuthService = require('./AuthService.cjs');
+const UserService = require('./UserService.cjs');
+const SyncService = require('./SyncService.cjs');
+
+// Singleton instances
+let authService = null;
+let userService = null;
+let syncService = null;
+
+/**
+ * Get Auth Service instance (singleton)
+ * @returns {AuthService}
+ */
+function getAuthService() {
+    if (!authService) {
+        authService = new AuthService();
+    }
+    return authService;
+}
+
+/**
+ * Get User Service instance (singleton)
+ * @returns {UserService}
+ */
+function getUserService() {
+    if (!userService) {
+        userService = new UserService();
+    }
+    return userService;
+}
+
+/**
+ * Get Sync Service instance (singleton)
+ * @param {string} cloudUrl - Optional cloud URL override
+ * @returns {SyncService}
+ */
+function getSyncService(cloudUrl) {
+    if (!syncService) {
+        syncService = new SyncService(cloudUrl);
+    }
+    return syncService;
+}
+
+/**
+ * Reset all service instances (useful for testing)
+ */
+function resetServices() {
+    authService = null;
+    userService = null;
+    syncService = null;
+}
+
+module.exports = {
+    AuthService,
+    UserService,
+    SyncService,
+    getAuthService,
+    getUserService,
+    getSyncService,
+    resetServices
+};

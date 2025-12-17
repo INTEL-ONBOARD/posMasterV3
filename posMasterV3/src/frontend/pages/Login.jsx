@@ -55,50 +55,101 @@ function Login() {
     e.preventDefault();
     setIsLoading(true);
     console.log("Submitting login for:", formData.email);
+
     try {
-      const response = await apiClient.post("api/users/login", {
-        email: formData.email,
-        password: formData.password
-      });
+      // Try local SQLite login first (offline-first approach)
+      let loginSuccess = false;
+      let userData = null;
+      let token = null;
 
+      // Check if electronAPI is available (running in Electron)
+      if (window.electronAPI && window.electronAPI.auth) {
+        console.log("Attempting local login...");
+        const localResult = await window.electronAPI.auth.login(
+          formData.email,
+          formData.password
+        );
 
-      if (response.data.status === "success") {
-        console.log("Login successful:", response.data.data.email + " " + response.data.data._id);
-        if (response.data.data.email && response.data.data._id) {
-          const userData = response.data.data;
-          // Persist user fields explicitly so other parts of the app can read them
-          localStorage.setItem("user", JSON.stringify(userData));
-          if (response.data.token !== undefined && response.data.token !== null) {
-            localStorage.setItem("token", response.data.token);
-          } else {
-            console.warn('Login: token is undefined/null', response.data.token);
-            localStorage.removeItem('token');
-          }
-          // common keys used across app
-          localStorage.setItem('username', userData.username ?? userData.email ?? '');
-          localStorage.setItem('email', userData.email ?? '');
-          localStorage.setItem('_id', userData._id ?? '');
-          // Send user data to main process for logout handling
-          //window.electronAPI.sendUserData(response.data.data.email, response.data.data._id);
+        console.log("Local login result:", localResult);
+
+        if (localResult.success) {
+          loginSuccess = true;
+          userData = localResult.data;
+          token = localResult.token;
+          console.log("Local login successful!");
+        } else {
+          console.log("Local login failed:", localResult.message);
+          // If local login fails, try cloud login as fallback
+          console.log("Attempting cloud login fallback...");
         }
-        // window.electronAPI.sendUserData("user@example.com", "token123");
-        console.log("Renderer: sent user data");
+      }
+
+      // Fall back to cloud API if local login failed or not in Electron
+      if (!loginSuccess) {
+        const response = await apiClient.post("api/users/login", {
+          email: formData.email,
+          password: formData.password
+        });
+
+        if (response.data.status === "success") {
+          loginSuccess = true;
+          userData = response.data.data;
+          token = response.data.token;
+
+          // Import cloud user to local database for offline access
+          if (window.electronAPI && window.electronAPI.auth) {
+            try {
+              await window.electronAPI.auth.importFromCloud(userData, formData.password);
+              console.log("User imported to local database for offline access");
+            } catch (importError) {
+              console.warn("Failed to import user locally:", importError);
+            }
+          }
+        } else {
+          toast.open(`${response.data.message}`, 4000, 'Login Failed', 'warning');
+          return;
+        }
+      }
+
+      // Handle successful login
+      if (loginSuccess && userData) {
+        console.log("Login successful:", userData.email || userData.username);
+
+        // Persist user fields explicitly so other parts of the app can read them
+        localStorage.setItem("user", JSON.stringify(userData));
+
+        if (token !== undefined && token !== null) {
+          localStorage.setItem("token", token);
+        } else {
+          console.warn('Login: token is undefined/null');
+          localStorage.removeItem('token');
+        }
+
+        // common keys used across app
+        localStorage.setItem('username', userData.username ?? userData.email ?? '');
+        localStorage.setItem('email', userData.email ?? '');
+        localStorage.setItem('_id', userData._id ?? userData.id ?? '');
+
+        // Send user data to main process for logout handling
+        if (window.electronAPI && window.electronAPI.sendUserData) {
+          window.electronAPI.sendUserData(userData.email, token);
+        }
+
+        console.log("Renderer: login complete, navigating to dashboard");
         navigate("/dashboard");
-      } else {
-        toast.open(`${response.data.message}`, 4000, 'Login Failed', 'warning');
       }
     } catch (error) {
+      console.error("Login error:", error);
       // Handle different error types
       if (error.response) {
         // Server responded with error status (4xx/5xx)
-        // toast.open(`Login error: ${error.response.data.message || "Unknown server error"}`);
         toast.open(`${error.response.data.message}`, 4000, 'Login Error', 'error');
       } else if (error.request) {
-        // No response received
+        // No response received - but local login may have worked
         toast.open("Network error: Please check your connection", 4000, 'Login Failed', 'warning');
       } else {
         // Other errors
-        toast.open("Login error: Please try again", 4000, 'Login Failed', 'warning');
+        toast.open(error.message || "Login error: Please try again", 4000, 'Login Failed', 'warning');
       }
     } finally {
       setIsLoading(false);  // Ensure loading state is reset

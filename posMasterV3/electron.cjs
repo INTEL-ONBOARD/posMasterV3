@@ -4,6 +4,9 @@ const axios = require("axios");
 const fs = require("fs").promises;
 const printer = require("pdf-to-printer");
 
+// Backend initialization
+const { initializeBackend, shutdownBackend, getBackendStatus } = require("./src/backend/backend.cjs");
+
 // Load the version from package.json
 const appVersion = require(path.join(__dirname, "package.json")).version;
 
@@ -19,6 +22,7 @@ const dtoPaths = {
   temp: path.join(
     __dirname,
     "src",
+    "frontend",
     "templates",
     "dtos",
     "config",
@@ -27,6 +31,7 @@ const dtoPaths = {
   config: path.join(
     __dirname,
     "src",
+    "frontend",
     "templates",
     "dtos",
     "config",
@@ -367,8 +372,8 @@ const performLogoutAndQuit = async () => {
   }
 };
 
-async function createWindow() {
-  const iconPath = path.join(__dirname, "src", "assets", "icon.ico");
+async function createWindow(showImmediately = false) {
+  const iconPath = path.join(__dirname, "src", "frontend", "assets", "icon.ico");
 
   mainWindow = new BrowserWindow({
     width: 1024,
@@ -376,6 +381,8 @@ async function createWindow() {
     autoHideMenuBar: true,
     titleBarOverlay: true,
     icon: iconPath,
+    show: showImmediately, // Show immediately if requested
+    backgroundColor: "#ffffff", // White background while loading
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       nodeIntegration: false,
@@ -383,7 +390,15 @@ async function createWindow() {
     },
   });
 
-  mainWindow.maximize();
+  if (showImmediately) {
+    mainWindow.maximize();
+  } else {
+    // Show window once DOM is ready
+    mainWindow.once("ready-to-show", () => {
+      mainWindow.maximize();
+      mainWindow.show();
+    });
+  }
 
   // In development, prefer loading the Vite dev server for HMR.
   const envUrl = process.env.VITE_DEV_SERVER_URL;
@@ -518,8 +533,199 @@ ipcMain.on("print-silent", async (event, arrayBuffer) => {
   }
 });
 
-app.whenReady().then(() => {
-  createWindow();
+// IPC handler for backend status - register early so it's available before backend init
+ipcMain.handle("backend:status", async () => {
+  return getBackendStatus();
+});
+
+app.whenReady().then(async () => {
+  const iconPath = path.join(__dirname, "src", "frontend", "assets", "icon.ico");
+
+  // Create window and show immediately with splash screen
+  console.log("[Electron] Creating window with splash...");
+  mainWindow = new BrowserWindow({
+    width: 1024,
+    height: 768,
+    autoHideMenuBar: true,
+    titleBarOverlay: true,
+    icon: iconPath,
+    show: true,
+    backgroundColor: "#ffffff",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.cjs"),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  mainWindow.maximize();
+
+  // Load splash screen HTML immediately (matches Intro.jsx styling)
+  const splashHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          height: 100vh;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: #ffffff;
+        }
+        .container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 2rem;
+        }
+        .title {
+          font-size: 1.875rem;
+          font-weight: bold;
+          margin-bottom: 0.5rem;
+        }
+        .pos { color: #00489A; font-weight: bold; }
+        .master { color: #111827; }
+        .version { color: #374151; }
+        .spinner-container {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 0.5rem;
+        }
+        .spinner {
+          position: relative;
+          width: 2rem;
+          height: 2rem;
+        }
+        .spinner-bg {
+          width: 2rem;
+          height: 2rem;
+          border: 2px solid #E5E7EB;
+          border-radius: 50%;
+        }
+        .spinner-fg {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 2rem;
+          height: 2rem;
+          border: 2px solid #2563EB;
+          border-top-color: transparent;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        .status {
+          color: #6B7280;
+          font-size: 0.875rem;
+        }
+        .footer {
+          position: absolute;
+          bottom: 1rem;
+          width: 100%;
+          text-align: center;
+          color: #9CA3AF;
+          font-size: 0.75rem;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1 class="title">
+          <span class="pos">POS</span>
+          <span class="master"> MASTER</span>
+          <span class="version">.3</span>
+        </h1>
+        <div class="spinner-container">
+          <div class="spinner">
+            <div class="spinner-bg"></div>
+            <div class="spinner-fg"></div>
+          </div>
+        </div>
+        <p class="status">Initializing...</p>
+      </div>
+      <div class="footer">
+        Copyright © 2025 SLTC ®
+      </div>
+    </body>
+    </html>
+  `;
+
+  await mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(splashHtml)}`);
+
+  // Now initialize backend (user sees splash during this)
+  console.log("[Electron] Starting backend initialization...");
+  const backendResult = initializeBackend(defaultFolderPath);
+  if (backendResult.success) {
+    console.log("[Electron] Backend initialized:", backendResult.dbPath);
+  } else {
+    console.error("[Electron] Backend initialization failed:", backendResult.message);
+  }
+
+  // Now load the React app (backend is ready, Intro will navigate to login quickly)
+  console.log("[Electron] Loading React app...");
+  const envUrl = process.env.VITE_DEV_SERVER_URL;
+  const candidateUrls = envUrl
+    ? [envUrl]
+    : ["http://localhost:5173", "http://localhost:5174"];
+
+  if (!app.isPackaged) {
+    let loaded = false;
+    for (const url of candidateUrls) {
+      const ok = await waitForDevServer(url, 5000);
+      if (ok) {
+        await mainWindow.loadURL(url);
+        console.log("Loaded renderer from dev server:", url);
+        mainWindow.webContents.openDevTools();
+        loaded = true;
+        break;
+      }
+    }
+    if (!loaded) {
+      console.warn("Dev server not available, falling back to built files");
+      await mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
+    }
+  } else {
+    await mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
+  }
+
+  async function waitForDevServer(url, timeoutMs = 15000) {
+    const { URL } = require("url");
+    const parsed = new URL(url);
+    const http = parsed.protocol === "https:" ? require("https") : require("http");
+    const start = Date.now();
+
+    return new Promise((resolve) => {
+      const tryOnce = () => {
+        const req = http.request(
+          {
+            method: "HEAD",
+            host: parsed.hostname,
+            port: parsed.port,
+            path: parsed.pathname,
+            timeout: 2000,
+          },
+          () => resolve(true)
+        );
+        req.on("error", () => {
+          if (Date.now() - start >= timeoutMs) return resolve(false);
+          setTimeout(tryOnce, 500);
+        });
+        req.on("timeout", () => {
+          req.destroy();
+          if (Date.now() - start >= timeoutMs) return resolve(false);
+          setTimeout(tryOnce, 500);
+        });
+        req.end();
+      };
+      tryOnce();
+    });
+  }
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -533,4 +739,10 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+// Cleanup on app quit
+app.on("will-quit", () => {
+  console.log("[Electron] Shutting down backend...");
+  shutdownBackend();
 });
