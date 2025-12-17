@@ -2,8 +2,11 @@ import React, { useRef, useState, useEffect } from "react";
 import barcodeImg from "../assets/barcode.png";
 import placeholderImg from "../assets/card_placeholder_img.png";
 
-export default function ItemCard({ item }) {
+//onOpen is the callback for opening the details for card
+// onremove is the callback for for deleting a card
+export default function ItemCard({ item, onOpen, onRemove }) {
   const nameRef = useRef(null);
+  //for marquee effect in item name text
   const [overflowing, setOverflowing] = useState(false);
 
   useEffect(() => {
@@ -26,6 +29,7 @@ export default function ItemCard({ item }) {
 
   return (
     <div
+      onClick={() => onOpen()}
       className="relative flex w-[24rem] h-[12rem] bg-white border border-gray-300 overflow-hidden cursor-pointer hover:shadow-md transform transition-transform duration-300 ease-in-out hover:scale-105"
       tabIndex={0}
     >
@@ -70,8 +74,22 @@ export default function ItemCard({ item }) {
 
       {/* Right Section */}
       <div className="relative w-[25%] overflow-hidden">
+        <button
+          className="absolute top-2 right-2 p-0.5 bg-black rounded-full hover:bg-gray-800 flex items-center justify-center"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove?.(item.id);
+          }}
+          aria-label="Close"
+          type="button"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+          </svg>
+        </button>
         <img src={imageSrc} alt={item.item_name} className="w-full h-full object-cover" />
       </div>
+
 
       {/* Status Indicator Circle */}
       <div

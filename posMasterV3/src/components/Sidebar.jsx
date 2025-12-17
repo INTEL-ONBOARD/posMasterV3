@@ -83,9 +83,10 @@ function Sidebar() {
 
   return (
     // removet pt-20 for header removal
+    //z index set to 20 to show popupups and status messages without overshadwoing popup
     <aside
       id="logo-sidebar"
-      className="fixed top-0 bottom-0 h-screen bg-white border-r"
+      className="fixed top-0 bottom-0 z-30 h-screen bg-white border-r"
       aria-label="Sidebar"
     >
       <div className="h-full overflow-hidden bg-white">
