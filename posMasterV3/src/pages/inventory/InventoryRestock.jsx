@@ -12,14 +12,17 @@ import { generateUniqueString } from "../../util/common/generate";
 //modal images
 import successImage from '../../assets/Success.png';
 import failedImage from '../../assets/Failed.png';
+//date conversions
 import { appendCurrentTimeToDate, extractDateOnly, getCurrentDate, getCurrentDateTime } from "../../util/common/date";
+//form validations
 import { validateReturnForm, validateStockForm } from "../../util/inventory/validate";
+import StatusModal from "./modals/StatusModal";
 
 function InventoryRestock({ isActive }) {
 
-  // modal state: { open: boolean, type: 'success' | 'failed' | null }
-  const [modal, setModal] = useState({ open: false, type: null });
-  const closeModal = () => setModal({ open: false, type: null });
+  // success/fail modal state: { open: boolean, type: 'success' | 'failed' | null }
+  const [modal, setModal] = useState({ open: false, type: null, description: "" });
+  const closeModal = () => setModal({ open: false, type: null,  description: ""});
   // Fetch Categories from API and create mapping
   const [suppliers, setSuppliers] = useState([]);
   // Refetch when section becomes active
@@ -134,7 +137,7 @@ function InventoryRestock({ isActive }) {
     setUniqueCategoryTypes(types);
   }, [itemCategories]);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
@@ -628,23 +631,11 @@ function InventoryRestock({ isActive }) {
   //to validate and
   const [formErrors, setFormErrors] = useState({});
   
-  
-  //date for batch code item cards
-  const formatDateSafe = (dateStr) => {
-    if (!dateStr) return '';
-    try {
-      const d = new Date(dateStr);
-      if (Number.isNaN(d.getTime())) return '';
-      return d.toISOString().split('T')[0];
-    } catch (err) {
-      console.error('formatDateSafe error for', dateStr, err);
-      return '';
-    }
-  };
-  
+
+  //to populate recent batch code changes
   const [stockEntries, setStockEntries] = useState([]);
   // fetch stock entries for a given SKU
-  const fetchStockEntries = async (sku, isStockItem) => {
+  const fetchStockEntries = async (sku) => {
     if (!sku) return;
     try {
       const response = await apiClient.get(`api/restocks/stock-data/${sku}`);
@@ -922,8 +913,6 @@ function InventoryRestock({ isActive }) {
 
 
   const registerTransaction = async (e) => {
-    //setModal({ open: true, type: 'success' });
-    //return;
 
     //create reg item list for req data
     // Function to transform selected items to the required format
@@ -978,44 +967,15 @@ function InventoryRestock({ isActive }) {
         setInvoiceGenerate(invoiceGenerate + 1);
 
         setModal({ open: true, type: 'success' });
-        // Add new item to local state
-        //alert("Item created successfully!");
-        //toast.open("Item created successfully", 4000, 'Success', 'success');
-        //clear data upon successful response
-        //setFormStatus("success");
         console.log(response.data.data.message);
-        // after 4 seconds, flip back to the form
-        // timerRef.current = window.setTimeout(() => {
-        //   setFormStatus("form");
-        //   timerRef.current = null;
-        // }, 4000);
-        // clearUserInput();
       } else {
         setModal({ open: true, type: 'failed' });
-        //setModal({ open: true, type: 'failed' });
         console.log(response.data.data.message);
-        //alert(response.data.message || "Failed to create item");
-        //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
-        //setFormStatus("fail");
-
-        // after 4 seconds, flip back to the form
-        // timerRef.current = window.setTimeout(() => {
-        //   setFormStatus("form");
-        //   timerRef.current = null;
-        // }, 4000);
       }
     } catch (err) {
       //console.log(response.data.data.message);
       console.error("Create item error:", err);
-      console.error("Create item error:", err.message);
-      // //alert("Error creating item"+err.message);
-      // setFormStatus("fail");
-      //   // after 4 seconds, flip back to the form
-      //   timerRef.current = window.setTimeout(() => {
-      //     setFormStatus("form");
-      //     timerRef.current = null;
-      //   }, 4000);
-      // toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
+      setModal({ open: true, type: 'failed' });
     }
     finally {
       //repopulate items
@@ -1190,15 +1150,6 @@ function InventoryRestock({ isActive }) {
                       </label>
                       <div className="relative max-w-sm">
                         <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
-                          {/* <svg
-                            className="w-4 h-4 text-gray-500 dark:text-gray-400"
-                            aria-hidden="true"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
-                          </svg> */}
                         </div>
                         <input
                           type="date"
@@ -1265,7 +1216,7 @@ function InventoryRestock({ isActive }) {
                           </div>
                           <div className="flex flex-col">
                             <span className="text-gray-400 font-bold">{s.qty} units</span>
-                            <span className="text-gray-400">{s.exp_date ? formatDateSafe(s.exp_date) : ''} Exp</span>
+                            <span className="text-gray-400">{s.exp_date ? extractDateOnly(s.exp_date) : ''} Exp</span>
                           </div>
                         </div>
                       ))
@@ -1460,7 +1411,7 @@ function InventoryRestock({ isActive }) {
                           </div>
                           <div className="flex flex-col">
                             <span className="text-gray-400 font-bold">{s.qty} units</span>
-                            <span className="text-gray-400">{s.exp_date ? formatDateSafe(s.exp_date) : ''} Exp</span>
+                            <span className="text-gray-400">{s.exp_date ? extractDateOnly(s.exp_date) : ''} Exp</span>
                           </div>
                         </div>
                       ))
@@ -1515,8 +1466,9 @@ function InventoryRestock({ isActive }) {
       </div>
 
       {/* they don't pay me enough for this😞 */}
-      {/* main transaction section (mid) */}
+      {/* main transaction section (mid) with loading state and content*/}
       <div className="bg-white w-[calc(45rem)] h-[calc(100vh-2rem)]">
+        <div></div>
         {/* supplier details section*/}
         <div className="p-5">
           <div className="flex flex-row gap-12">
@@ -2038,55 +1990,10 @@ function InventoryRestock({ isActive }) {
 
       {/* integrage this modal later */}
       {/* MODAL OVERLAY */}
-      {modal.open && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center"
-          role="dialog"
-          aria-modal="true"
-        >
-          {/* backdrop (click to close) */}
-          <div
-            className="absolute inset-0 bg-black opacity-60"
-            //style={{ backgroundColor: 'rgba(255,255,255,0.55)' }}
-            onClick={closeModal}
-          />
-
-          {/* close button top-left */}
-          <button
-            onClick={closeModal}
-            className="absolute top-6 right-6 w-8 h-8 rounded-full bg-black/90 text-white flex items-center justify-center z-[10001]"
-            aria-label="Close"
-            title="Close"
-          >
-            ✕
-          </button>
-
-          {/* modal content */}
-          <div
-            className="relative z-[10000] flex flex-col items-center justify-center text-center p-6"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              transition: 'transform 160ms ease, opacity 160ms ease'
-            }}
-          >
-            <img
-              src={modal.type === 'success' ? successImage : failedImage}
-              alt={modal.type === 'success' ? 'Success' : 'Failed'}
-              className="w-24 h-24 object-contain"
-              style={{ filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.08))' }}
-            />
-
-            <h3 className="mt-4 text-2xl font-bold text-black">
-              {modal.type === 'success' ? 'Success!' : 'Failed!'}
-            </h3>
-            <p className="mt-1 text-sm text-gray-600">
-              {modal.type === 'success'
-                ? 'Transaction Complete.'
-                : 'Something went wrong, Try again.'}
-            </p>
-          </div>
-        </div>
-      )}
+        <StatusModal 
+          isOpen={modal.open}
+          closeModal={closeModal}
+          type={modal.type}/>
 
     </div>
   );

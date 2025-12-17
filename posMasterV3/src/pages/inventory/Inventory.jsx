@@ -59,7 +59,7 @@ function Inventory() {
         </div>
         {/* Inventory Restock */}
         <div className={isVisible("inventory-restock")}>
-          <InventoryRestock isActive={activeSection === "view-restock"} />
+          <InventoryRestock isActive={activeSection === "inventory-restock"} />
         </div>
         {/* Return Item */}
         <div className={isVisible("return-item")}>
