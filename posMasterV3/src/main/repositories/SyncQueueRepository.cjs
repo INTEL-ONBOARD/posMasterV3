@@ -6,7 +6,7 @@
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
-const { v4: uuidv4 } = require('uuid');
+const { generateUUID } = require('../utils/helpers.cjs');
 
 class SyncQueueRepository extends BaseRepository {
     constructor() {
@@ -20,7 +20,7 @@ class SyncQueueRepository extends BaseRepository {
      */
     enqueue(data) {
         const item = {
-            id: data.id || uuidv4(),
+            id: data.id || generateUUID(),
             entity_type: data.entity_type,
             entity_id: data.entity_id,
             operation: data.operation,

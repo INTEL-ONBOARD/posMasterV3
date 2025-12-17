@@ -4,13 +4,22 @@
  * Handles IPC communication for synchronization operations.
  */
 
-const { ipcMain } = require('electron');
 const { getSyncService } = require('../services/index.cjs');
+
+// Lazy load ipcMain to ensure electron is ready
+let _ipcMain = null;
+function getIpcMain() {
+    if (!_ipcMain) {
+        _ipcMain = require('electron').ipcMain;
+    }
+    return _ipcMain;
+}
 
 /**
  * Register all sync IPC handlers
  */
 function registerSyncHandlers() {
+    const ipcMain = getIpcMain();
     const syncService = getSyncService();
 
     /**
@@ -160,6 +169,7 @@ function registerSyncHandlers() {
  * Unregister all sync IPC handlers
  */
 function unregisterSyncHandlers() {
+    const ipcMain = getIpcMain();
     const channels = [
         'sync:status',
         'sync:check-connectivity',

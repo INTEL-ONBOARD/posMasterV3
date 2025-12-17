@@ -5,13 +5,22 @@
  * This is the "API layer" for the Electron main process.
  */
 
-const { ipcMain } = require('electron');
 const { getAuthService } = require('../services/index.cjs');
+
+// Lazy load ipcMain to ensure electron is ready
+let _ipcMain = null;
+function getIpcMain() {
+    if (!_ipcMain) {
+        _ipcMain = require('electron').ipcMain;
+    }
+    return _ipcMain;
+}
 
 /**
  * Register all authentication IPC handlers
  */
 function registerAuthHandlers() {
+    const ipcMain = getIpcMain();
     const authService = getAuthService();
 
     /**
@@ -183,6 +192,7 @@ function registerAuthHandlers() {
  * Unregister all authentication IPC handlers (for cleanup/testing)
  */
 function unregisterAuthHandlers() {
+    const ipcMain = getIpcMain();
     const channels = [
         'auth:login',
         'auth:register',

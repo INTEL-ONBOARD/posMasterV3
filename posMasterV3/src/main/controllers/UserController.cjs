@@ -4,13 +4,22 @@
  * Handles IPC communication for user management operations.
  */
 
-const { ipcMain } = require('electron');
 const { getUserService } = require('../services/index.cjs');
+
+// Lazy load ipcMain to ensure electron is ready
+let _ipcMain = null;
+function getIpcMain() {
+    if (!_ipcMain) {
+        _ipcMain = require('electron').ipcMain;
+    }
+    return _ipcMain;
+}
 
 /**
  * Register all user management IPC handlers
  */
 function registerUserHandlers() {
+    const ipcMain = getIpcMain();
     const userService = getUserService();
 
     /**
@@ -194,6 +203,7 @@ function registerUserHandlers() {
  * Unregister all user management IPC handlers
  */
 function unregisterUserHandlers() {
+    const ipcMain = getIpcMain();
     const channels = [
         'users:get-all',
         'users:get-by-id',

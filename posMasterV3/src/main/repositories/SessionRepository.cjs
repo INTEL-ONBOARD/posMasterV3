@@ -6,7 +6,7 @@
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
-const { v4: uuidv4 } = require('uuid');
+const { generateUUID } = require('../utils/helpers.cjs');
 
 class SessionRepository extends BaseRepository {
     constructor() {
@@ -20,7 +20,7 @@ class SessionRepository extends BaseRepository {
      */
     create(sessionData) {
         const session = {
-            id: sessionData.id || uuidv4(),
+            id: sessionData.id || generateUUID(),
             user_id: sessionData.user_id,
             token: sessionData.token || this._generateToken(),
             device_info: sessionData.device_info || null,
