@@ -31,6 +31,7 @@
 
 const { initializeDatabase, closeDatabase, getDatabasePath } = require('./database/connection.cjs');
 const { runMigrations, getStatus } = require('./database/migrator.cjs');
+const { runSeeders } = require('./database/seeder.cjs');
 const { registerAllHandlers, unregisterAllHandlers } = require('./controllers/index.cjs');
 const { getSessionRepository } = require('./repositories/index.cjs');
 
@@ -66,12 +67,16 @@ function initializeBackend(configPath) {
             console.error('[Backend] Migration errors:', migrationResult.errors);
         }
 
-        // Step 3: Register IPC handlers
-        console.log('[Backend] Step 3: Registering IPC handlers...');
+        // Step 3: Run seeders (create default admin if no users exist)
+        console.log('[Backend] Step 3: Running database seeders...');
+        runSeeders();
+
+        // Step 4: Register IPC handlers
+        console.log('[Backend] Step 4: Registering IPC handlers...');
         registerAllHandlers();
 
-        // Step 4: Start session cleanup interval
-        console.log('[Backend] Step 4: Starting maintenance tasks...');
+        // Step 5: Start session cleanup interval
+        console.log('[Backend] Step 5: Starting maintenance tasks...');
         startMaintenanceTasks();
 
         isInitialized = true;
