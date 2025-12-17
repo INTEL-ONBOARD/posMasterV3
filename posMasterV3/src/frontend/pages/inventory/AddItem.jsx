@@ -8,7 +8,7 @@ import barcodeImg from "../../assets/barcode.png";
 import ToastContext from "../toasts/ToastService.jsx";
 
 import { pdf } from '@react-pdf/renderer';
-import SimpleDocument from './layout/BarcodeBulk.jsx';
+import SimpleDocument from '../../../pages/inventory/layout/BarcodeBulk.jsx';
 import JsBarcode from 'jsbarcode';
 import registerItemService from "../../api/services/inventory/registerItemService.jsx";
 
