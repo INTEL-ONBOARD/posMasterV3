@@ -33,10 +33,10 @@ export function validateStockForm(formDataStock = {}) {
   // if (!formDataStock.expired_datetime) { //commented assuming some items doesn't have expiration dates 
   //   formErrors.expired_datetime = "Expiration date is required.";
   // } else {
-    const d = new Date(formDataStock.expired_datetime);
-    if (Number.isNaN(d.getTime())) {
-      formErrors.expired_datetime = "Invalid expiration date.";
-    }
+    // const d = new Date(formDataStock.expired_datetime);
+    // if (Number.isNaN(d.getTime())) {
+    //   formErrors.expired_datetime = "Invalid expiration date.";
+    // }
     // optional future-check:
     // else if (d < new Date()) { formErrors.expired_datetime = "Expiration date must be in the future."; }
   //}
