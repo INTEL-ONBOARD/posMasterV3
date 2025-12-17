@@ -30,16 +30,16 @@ export function validateStockForm(formDataStock = {}) {
     formErrors.retail_price = "Retail price must be greater than 0.";
   }
 
-  if (!formDataStock.expired_datetime) {
-    formErrors.expired_datetime = "Expiration date is required.";
-  } else {
+  // if (!formDataStock.expired_datetime) { //commented assuming some items doesn't have expiration dates 
+  //   formErrors.expired_datetime = "Expiration date is required.";
+  // } else {
     const d = new Date(formDataStock.expired_datetime);
     if (Number.isNaN(d.getTime())) {
       formErrors.expired_datetime = "Invalid expiration date.";
     }
     // optional future-check:
     // else if (d < new Date()) { formErrors.expired_datetime = "Expiration date must be in the future."; }
-  }
+  //}
 
   const discount = parseFloat(formDataStock.discount);
   if (!Number.isNaN(discount) && discount < 0) {

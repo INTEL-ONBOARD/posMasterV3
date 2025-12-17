@@ -87,7 +87,8 @@ function InventorySidebar({
   ];
 
   return (
-    <aside className="bg-[#F3F3F3] border-r border-gray-200 h-screen">
+    //z index set to 20 to show popupups and status messages without overshadwoing popup
+    <aside className="bg-[#F3F3F3] border-r z-20 border-gray-200 h-screen">
       <div className="flex flex-col">
         {sidebarItems.map((item) => {
           const isActive = activeSection === item.id;
