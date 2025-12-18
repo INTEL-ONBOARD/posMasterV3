@@ -3,8 +3,14 @@ import ItemCard from "../../components/ItemCard.jsx";
 import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import { itemApi, categoryApi } from "../../api/localApi";
 import {ChevronDown, ChevronUp } from "lucide-react";
+import ViewItemModal from "./modals/ViewItemModal.jsx";
 
 function ViewSaleInventory({ isActive }) {
+
+  const [modal, setModal] = useState(false);
+  const closeModal = () => setModal(false);
+  const [selectedItem, setSelectedItem] = useState({});
+
   const [inventoryItems, setInventoryItems] = useState([
         // {
         //     _id: '688136391a56f324f917f98f',
@@ -253,7 +259,11 @@ function ViewSaleInventory({ isActive }) {
                 filteredItems.map((item) => (
                   <ItemCard
                     key={item.id}
-                    item={item}
+                  item={item}
+                  onOpen={() => {
+                    setModal(true)
+                    setSelectedItem(item)
+                  }}
                   />
                 ))
               )}
@@ -382,6 +392,11 @@ function ViewSaleInventory({ isActive }) {
           <div className="bg-white h-full"></div>
         </div>
       </div>
+            <ViewItemModal
+        isOpen={modal}
+        closeModal={closeModal}
+        item={selectedItem}
+      />
         </div>
   )
 }
