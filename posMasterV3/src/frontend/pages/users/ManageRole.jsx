@@ -52,7 +52,6 @@ function ManageRole() {
           inventory_reports: true,
         },
         UserAccess: { user_manage: true, user_role_manage: true },
-        ReportAccess: { view_reports: true, generate_reports: true, export_reports: true },
       }
     },
     {
@@ -83,7 +82,6 @@ function ManageRole() {
           inventory_reports: true,
         },
         UserAccess: { user_manage: true, user_role_manage: false },
-        ReportAccess: { view_reports: true, generate_reports: true, export_reports: true },
       }
     },
     {
@@ -114,7 +112,6 @@ function ManageRole() {
           inventory_reports: false,
         },
         UserAccess: { user_manage: false, user_role_manage: false },
-        ReportAccess: { view_reports: true, generate_reports: false, export_reports: false },
       }
     },
     {
@@ -145,7 +142,6 @@ function ManageRole() {
           inventory_reports: false,
         },
         UserAccess: { user_manage: false, user_role_manage: false },
-        ReportAccess: { view_reports: false, generate_reports: false, export_reports: false },
       }
     }
   ];
@@ -176,11 +172,6 @@ function ManageRole() {
     UserAccess: {
       user_manage: false,
       user_role_manage: false,
-    },
-    ReportAccess: {
-      view_reports: false,
-      generate_reports: false,
-      export_reports: false,
     },
   };
 
