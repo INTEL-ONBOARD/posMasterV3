@@ -48,9 +48,10 @@ const TABLES_TO_SYNC = [
 // Tables that shouldn't sync (local only)
 const LOCAL_ONLY_TABLES = ['sessions', 'sync_queue', 'migrations', 'price_change_history'];
 
-// Tables where cloud is the primary source (pull from cloud to local)
-// These tables sync: Cloud -> Local (cloud wins)
-const CLOUD_PRIMARY_TABLES = ['users', 'user_settings'];
+// Tables that use "push-first-then-pull" strategy
+// For these tables: Push local changes to cloud FIRST, then pull cloud updates to local
+// This ensures local user changes are always saved to cloud before syncing back
+const PUSH_FIRST_TABLES = ['users', 'user_settings'];
 
 class CloudSyncService {
     constructor() {
@@ -215,6 +216,12 @@ class CloudSyncService {
             try {
                 await this.syncSingleChange(change);
                 console.log(`[CloudSync] Real-time sync: ${operation} on ${tableName} (ID: ${recordId})`);
+
+                // For push-first tables, also pull updates after pushing
+                if (PUSH_FIRST_TABLES.includes(tableName)) {
+                    console.log(`[CloudSync] Push-first table ${tableName}: pulling updates after push...`);
+                    await this.pullFromCloud(tableName);
+                }
             } catch (error) {
                 console.error(`[CloudSync] Real-time sync failed, queuing:`, error.message);
                 this.pendingChanges.push(change);
@@ -350,8 +357,8 @@ class CloudSyncService {
 
     /**
      * Perform a full sync of all tables
-     * - Cloud-primary tables (users, user_settings): Pull from cloud to local
-     * - Local-primary tables: Push from local to cloud
+     * - Push-first tables (users, user_settings): Push local to cloud FIRST, then pull cloud to local
+     * - Other tables: Push from local to cloud
      */
     async performFullSync() {
         if (this.isSyncing) {
@@ -373,9 +380,22 @@ class CloudSyncService {
         const startTime = Date.now();
         const results = { uploaded: 0, downloaded: 0, errors: [] };
 
-        // Step 1: Pull cloud-primary tables (users, user_settings) from cloud to local
-        console.log('[CloudSync] Step 1: Pulling cloud-primary tables...');
-        for (const tableName of CLOUD_PRIMARY_TABLES) {
+        // Step 1: Push-first tables (users, user_settings) - Push local to cloud FIRST
+        console.log('[CloudSync] Step 1: Pushing user tables to cloud first...');
+        for (const tableName of PUSH_FIRST_TABLES) {
+            try {
+                const pushResult = await this.syncTable(tableName);
+                results.uploaded += pushResult.uploaded || 0;
+                console.log(`[CloudSync] Pushed ${pushResult.uploaded || 0} records to ${tableName}`);
+            } catch (error) {
+                console.error(`[CloudSync] Error pushing ${tableName}:`, error.message);
+                results.errors.push({ table: tableName, error: error.message, operation: 'push' });
+            }
+        }
+
+        // Step 2: Push-first tables - Now pull from cloud to get any updates from other devices
+        console.log('[CloudSync] Step 2: Pulling user tables from cloud...');
+        for (const tableName of PUSH_FIRST_TABLES) {
             try {
                 const pullResult = await this.pullFromCloud(tableName);
                 results.downloaded += pullResult.downloaded || 0;
@@ -386,11 +406,11 @@ class CloudSyncService {
             }
         }
 
-        // Step 2: Push local-primary tables to cloud
-        console.log('[CloudSync] Step 2: Pushing local-primary tables...');
+        // Step 3: Push all other local tables to cloud
+        console.log('[CloudSync] Step 3: Pushing other local tables to cloud...');
         for (const tableName of TABLES_TO_SYNC) {
-            // Skip cloud-primary tables (already handled above)
-            if (CLOUD_PRIMARY_TABLES.includes(tableName)) continue;
+            // Skip push-first tables (already handled above)
+            if (PUSH_FIRST_TABLES.includes(tableName)) continue;
 
             try {
                 const tableResult = await this.syncTable(tableName);
@@ -877,42 +897,66 @@ class CloudSyncService {
     }
 
     /**
-     * Pull users from cloud (cloud is primary source for users)
-     * Call this to refresh local users from cloud
+     * Sync users with cloud using push-first-then-pull strategy
+     * 1. Push local user changes to cloud first
+     * 2. Then pull any updates from cloud to local
      */
-    async pullUsers() {
+    async syncUsers() {
         if (!this.isOnline) {
-            return { status: 'offline', downloaded: 0 };
+            return { status: 'offline', uploaded: 0, downloaded: 0 };
         }
 
         if (!await testConnection()) {
-            return { status: 'connection_failed', downloaded: 0 };
+            return { status: 'connection_failed', uploaded: 0, downloaded: 0 };
         }
 
-        console.log('[CloudSync] Pulling users from cloud...');
+        console.log('[CloudSync] Syncing users (push-first-then-pull)...');
 
         try {
-            const usersResult = await this.pullFromCloud('users');
-            const settingsResult = await this.pullFromCloud('user_settings');
+            // Step 1: Push local users to cloud FIRST
+            console.log('[CloudSync] Step 1: Pushing local users to cloud...');
+            const usersPushResult = await this.syncTable('users');
+            const settingsPushResult = await this.syncTable('user_settings');
 
-            console.log(`[CloudSync] Pulled ${usersResult.downloaded} users and ${settingsResult.downloaded} user settings from cloud`);
+            const uploaded = (usersPushResult.uploaded || 0) + (settingsPushResult.uploaded || 0);
+            console.log(`[CloudSync] Pushed ${usersPushResult.uploaded || 0} users and ${settingsPushResult.uploaded || 0} user settings to cloud`);
+
+            // Step 2: Pull from cloud to get any updates from other devices
+            console.log('[CloudSync] Step 2: Pulling user updates from cloud...');
+            const usersPullResult = await this.pullFromCloud('users');
+            const settingsPullResult = await this.pullFromCloud('user_settings');
+
+            const downloaded = (usersPullResult.downloaded || 0) + (settingsPullResult.downloaded || 0);
+            console.log(`[CloudSync] Pulled ${usersPullResult.downloaded || 0} users and ${settingsPullResult.downloaded || 0} user settings from cloud`);
 
             return {
                 status: 'success',
-                users: usersResult.downloaded,
-                userSettings: settingsResult.downloaded
+                uploaded,
+                downloaded,
+                users: { pushed: usersPushResult.uploaded, pulled: usersPullResult.downloaded },
+                userSettings: { pushed: settingsPushResult.uploaded, pulled: settingsPullResult.downloaded }
             };
         } catch (error) {
-            console.error('[CloudSync] Failed to pull users:', error.message);
+            console.error('[CloudSync] Failed to sync users:', error.message);
             return { status: 'error', error: error.message };
         }
     }
 
     /**
-     * Push a user to cloud (for when user is created/updated locally)
-     * @param {object} user - User record
+     * @deprecated Use syncUsers() instead for push-first-then-pull strategy
+     * Pull users from cloud - kept for backward compatibility
      */
-    async pushUser(user) {
+    async pullUsers() {
+        console.log('[CloudSync] pullUsers() is deprecated. Using syncUsers() instead.');
+        return await this.syncUsers();
+    }
+
+    /**
+     * Push a user to cloud and then pull updates (push-first-then-pull strategy)
+     * @param {object} user - User record
+     * @param {boolean} pullAfter - Whether to pull updates after pushing (default: true)
+     */
+    async pushUser(user, pullAfter = true) {
         if (!this.isOnline || !this.mysqlInitialized) {
             // Queue for later
             this.pendingChanges.push({
@@ -926,15 +970,65 @@ class CloudSyncService {
         }
 
         try {
+            // Step 1: Push local user to cloud
             await this.syncSingleChange({
                 tableName: 'users',
                 operation: 'INSERT',
                 record: user,
                 recordId: user.id
             });
+            console.log(`[CloudSync] Pushed user ${user.id} to cloud`);
+
+            // Step 2: Pull updates from cloud (push-first-then-pull)
+            if (pullAfter) {
+                console.log('[CloudSync] Pulling user updates from cloud after push...');
+                await this.pullFromCloud('users');
+            }
+
             return { status: 'success' };
         } catch (error) {
             console.error('[CloudSync] Failed to push user:', error.message);
+            return { status: 'error', error: error.message };
+        }
+    }
+
+    /**
+     * Push user settings to cloud and then pull updates (push-first-then-pull strategy)
+     * @param {object} settings - User settings record
+     * @param {boolean} pullAfter - Whether to pull updates after pushing (default: true)
+     */
+    async pushUserSettings(settings, pullAfter = true) {
+        if (!this.isOnline || !this.mysqlInitialized) {
+            // Queue for later
+            this.pendingChanges.push({
+                tableName: 'user_settings',
+                operation: 'INSERT',
+                record: settings,
+                recordId: settings.id,
+                timestamp: nowISO()
+            });
+            return { status: 'queued' };
+        }
+
+        try {
+            // Step 1: Push local settings to cloud
+            await this.syncSingleChange({
+                tableName: 'user_settings',
+                operation: 'INSERT',
+                record: settings,
+                recordId: settings.id
+            });
+            console.log(`[CloudSync] Pushed user settings ${settings.id} to cloud`);
+
+            // Step 2: Pull updates from cloud (push-first-then-pull)
+            if (pullAfter) {
+                console.log('[CloudSync] Pulling user settings updates from cloud after push...');
+                await this.pullFromCloud('user_settings');
+            }
+
+            return { status: 'success' };
+        } catch (error) {
+            console.error('[CloudSync] Failed to push user settings:', error.message);
             return { status: 'error', error: error.message };
         }
     }
