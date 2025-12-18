@@ -14,6 +14,46 @@ class RestockRepository extends BaseRepository {
     }
 
     /**
+     * Find all restocks with supplier info
+     * @param {Object} options - Query options
+     * @returns {Array}
+     */
+    findAllWithSupplier(options = {}) {
+        const limit = options.limit || 100;
+        const offset = options.offset || 0;
+        const orderBy = options.orderBy || 'created_at';
+        const order = options.order || 'DESC';
+
+        const stmt = this.db.prepare(`
+            SELECT rt.*, s.basic_info as supplier_basic_info
+            FROM ${this.tableName} rt
+            LEFT JOIN suppliers s ON rt.supplier_id = s.id
+            ORDER BY rt.${orderBy} ${order}
+            LIMIT ? OFFSET ?
+        `);
+
+        const rows = stmt.all(limit, offset);
+
+        return rows.map(row => {
+            const { supplier_basic_info, ...restockData } = row;
+            let supplier = null;
+
+            if (supplier_basic_info) {
+                supplier = {
+                    basic_info: typeof supplier_basic_info === 'string'
+                        ? JSON.parse(supplier_basic_info)
+                        : supplier_basic_info
+                };
+            }
+
+            return {
+                ...restockData,
+                supplier
+            };
+        });
+    }
+
+    /**
      * Find restock by invoice number
      * @param {string} invoiceNo - Invoice number
      * @returns {Object|null}
@@ -78,9 +118,28 @@ class RestockRepository extends BaseRepository {
         `).all(id);
 
         // Get supplier info
-        const supplier = restock.supplier_id ? this.db.prepare(`
-            SELECT * FROM suppliers WHERE id = ?
-        `).get(restock.supplier_id) : null;
+        let supplier = null;
+        if (restock.supplier_id) {
+            const supplierRow = this.db.prepare(`
+                SELECT * FROM suppliers WHERE id = ?
+            `).get(restock.supplier_id);
+
+            if (supplierRow) {
+                // Parse JSON fields if stored as strings
+                supplier = {
+                    id: supplierRow.id,
+                    basic_info: typeof supplierRow.basic_info === 'string'
+                        ? JSON.parse(supplierRow.basic_info)
+                        : supplierRow.basic_info,
+                    contact_info: typeof supplierRow.contact_info === 'string'
+                        ? JSON.parse(supplierRow.contact_info)
+                        : supplierRow.contact_info,
+                    financial_info: typeof supplierRow.financial_info === 'string'
+                        ? JSON.parse(supplierRow.financial_info)
+                        : supplierRow.financial_info
+                };
+            }
+        }
 
         return {
             ...restock,

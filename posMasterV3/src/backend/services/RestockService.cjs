@@ -15,7 +15,7 @@ class RestockService {
      */
     getAll(options = {}) {
         try {
-            const restocks = restockRepository.findAll({
+            const restocks = restockRepository.findAllWithSupplier({
                 limit: options.limit || 100,
                 orderBy: 'created_at',
                 order: 'DESC'
