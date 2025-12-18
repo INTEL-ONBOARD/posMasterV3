@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import addItemImg from "../../assets/Inventory_addItem.png";
 import configImg from "../../assets/Inventory_settings.png";
 import reportImg from "../../assets/Inventory_report.png";
@@ -9,6 +9,8 @@ import checkHistoryImg from "../../assets/Inventory_history_check.png";
 import returnItemImg from "../../assets/return_stock_image.png";
 import disposeItemImg from "../../assets/dispose_items.png";
 import priceChangeImg from "../../assets/price_change.png";
+import { localAuth } from "../../api/services/localAuth";
+import { settingsApi } from "../../api/localApi";
 
 function InventorySidebar({
   activeSection,
@@ -23,68 +25,105 @@ function InventorySidebar({
   onDisposeItemClick,
   onPriceChangeClick,
 }) {
+  const [permissions, setPermissions] = useState(null);
+
+  // Load user permissions on mount
+  useEffect(() => {
+    const loadPermissions = async () => {
+      try {
+        const currentUser = await localAuth.getCurrentUser();
+        if (currentUser) {
+          const userId = currentUser.id || currentUser._id;
+          const response = await settingsApi.getUserSettings(userId);
+          if (response.status === "success" && response.data?.settings?.permissions?.InventoryAccess) {
+            setPermissions(response.data.settings.permissions.InventoryAccess);
+          }
+        }
+      } catch (error) {
+        console.error("[InventorySidebar] Error loading permissions:", error);
+      }
+    };
+    loadPermissions();
+  }, []);
+
+  // Check if user has specific permission
+  const hasPermission = (permKey) => {
+    if (!permissions) return true; // Show all until permissions load
+    return permissions[permKey] === true;
+  };
+
   const sidebarItems = [
     {
       id: "view-inventory",
       label: "View Inventory",
       icon: ViewInventoryImg,
       onClick: onViewInvClick,
+      permissionKey: "inventory_view",
     },
     {
       id: "add-item",
       label: "Add Item",
       icon: addItemImg,
       onClick: onAddItemClick,
+      permissionKey: "inventory_register_item",
     },
     {
       id: "inventory-restock",
       label: "Inventory Restock",
       icon: restockImg,
       onClick: onRestockClick,
+      permissionKey: "inventory_restock",
     },
     {
       id: "return-item",
       label: "Return Item",
       icon: returnItemImg,
       onClick: onReturnItemClick,
+      permissionKey: "inventory_return_list",
     },
     {
       id: "dispose-item",
       label: "Dispose Item",
       icon: disposeItemImg,
       onClick: onDisposeItemClick,
+      permissionKey: "inventory_dispose",
     },
     {
       id: "supplier-registration",
       label: "Supplier Registration",
       icon: SupplierRegImg,
       onClick: onSupplierRegClick,
+      permissionKey: "inventory_suppliers",
     },
     {
       id: "price-change",
       label: "Price Change",
       icon: priceChangeImg,
       onClick: onPriceChangeClick,
+      permissionKey: "inventory_price_change",
     },
     {
       id: "check-history",
       label: "Check History",
       icon: checkHistoryImg,
       onClick: onCheckHistoryClick,
+      permissionKey: "inventory_history",
     },
     {
       id: "inventory-config",
       label: "Inventory Configurations",
       icon: configImg,
       onClick: onConfigClick,
+      permissionKey: "inventory_configurations",
     },
     {
       id: "inventory-report",
       label: "Inventory report",
       icon: reportImg,
       onClick: onCReportClick,
+      permissionKey: "inventory_reports",
     },
-  ];
+  ].filter(item => hasPermission(item.permissionKey));
 
   return (
     //z index set to 20 to show popupups and status messages without overshadwoing popup
