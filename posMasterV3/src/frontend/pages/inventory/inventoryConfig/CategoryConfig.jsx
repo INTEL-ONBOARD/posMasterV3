@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { apiClient } from "../../../api/client";
+import { categoryApi } from "../../../api/localApi";
 import ToastContext from "../../toasts/ToastService";
 
 function CategoryConfig() {
@@ -24,12 +24,12 @@ function CategoryConfig() {
 
   const fetchCategories = async () => {
     try {
-      const response = await apiClient.get('api/categories/');
-      if (response.data.status === 'success') {
-        setCategories(response.data.data);
+      const response = await categoryApi.getAll();
+      if (response.status === 'success') {
+        setCategories(response.data || []);
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to fetch categories');
+      setError(error.message || 'Failed to fetch categories');
     }
   };
 
@@ -72,29 +72,20 @@ function CategoryConfig() {
     try {
       let response;
       if (editingId) {
-        response = await apiClient.put(`api/categories/${editingId}`, formData);
+        response = await categoryApi.update(editingId, formData);
       } else {
-        response = await apiClient.post('api/categories/add', formData);
+        response = await categoryApi.create(formData);
       }
 
-      if (response.data.status === "success") {
-        if (editingId) {
-
-        } else {
-
-        }
+      if (response.status === "success") {
         fetchCategories();
         handleClear();
       } else {
-        setError(response.data.message || "Operation failed");
-
+        setError(response.message || "Operation failed");
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message ||
-        error.message ||
-        "Network error, please try again";
+      const errorMessage = error.message || "Network error, please try again";
       setError(errorMessage);
-
     } finally {
       setIsPosting(false);
     }
@@ -105,14 +96,13 @@ function CategoryConfig() {
 
     if (window.confirm("Are you sure you want to delete this category?")) {
       try {
-        const response = await apiClient.delete(`api/categories/${id}`);
-        if (response.data.status === "success") {
-
+        const response = await categoryApi.delete(id);
+        if (response.status === "success") {
           setCategories(prev => prev.filter(cat => cat.id !== id));
           if (editingId === id) handleClear();
         }
       } catch (error) {
-        setError(error.response?.data?.message || 'Delete failed');
+        setError(error.message || 'Delete failed');
       }
     }
   };

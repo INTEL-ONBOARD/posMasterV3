@@ -4,7 +4,7 @@ import barcodeImg from "../../../assets/barcode.png";
 import placeholderImg from "../../../assets/card_placeholder_img.png";
 
 import { extractDateOnly } from "../../../util/common/date";
-import { apiClient } from "../../../api/client";
+import { restockApi } from "../../../api/localApi";
 
 function ViewItemModal({ isOpen, closeModal, item }) {
   if (!isOpen) return null;
@@ -23,21 +23,20 @@ function ViewItemModal({ isOpen, closeModal, item }) {
   const fetchStockEntries = async (sku) => {
     if (!sku) return;
     try {
-      const response = await apiClient.get(`api/restocks/stock-data/${sku}`);
-      const payload = response?.data;
-      console.log(response.data);
+      const response = await restockApi.getStockData(sku);
+      console.log(response);
 
-      if (payload) {
-        if (payload.status === 'success' && Array.isArray(payload.data)) {
-          setStockEntries(payload.data);
+      if (response) {
+        if (response.status === 'success' && Array.isArray(response.data)) {
+          setStockEntries(response.data);
           console.log(stockEntries);
-        } else if (Array.isArray(payload)) {
-          setStockEntries(payload);
-        } else if (Array.isArray(payload.data)) {
-          setStockEntries(payload.data);
+        } else if (Array.isArray(response)) {
+          setStockEntries(response);
+        } else if (Array.isArray(response.data)) {
+          setStockEntries(response.data);
         } else {
           setStockEntries([]);
-          //setStockFetchError(payload.message || 'Unexpected response shape');
+          //setStockFetchError(response.message || 'Unexpected response shape');
         }
 
       } else {

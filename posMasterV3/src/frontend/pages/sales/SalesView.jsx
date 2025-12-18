@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import SalesItemCard from "../../components/SalesItemCard";
-import { apiClient } from "../../api/client";
+import { restockApi, categoryApi } from "../../api/localApi";
 import {ChevronDown, ChevronUp } from "lucide-react";
 import ToastContext from "../toasts/ToastService.jsx";
 
@@ -456,10 +456,10 @@ export default function SalesView({ isActive }) {
 
   const fetchItems = async () => {
     try {
-      const response = await apiClient.get("api/restocks/stock-items");
-      if (response.data.status === "success") {
+      const response = await restockApi.getStockItems();
+      if (response.status === "success") {
         //convert default response object to get each detailed stock items(detach stock item object and create a new obj with parent attributes)
-        const transformed = transformStockData(response.data);
+        const transformed = transformStockData(response);
         setInventoryItems(transformed);
       }
       } catch (error) {
@@ -487,10 +487,10 @@ export default function SalesView({ isActive }) {
       const fetchCategories = async () => {
         setIsSearching(true);
         try {
-          const response = await apiClient.get("api/categories");
-          if (response.data.status === "success") {
-            //setItemCategories(response.data.data);
-            const types = Array.from(new Set(response.data.data.map(c => c.type)));
+          const response = await categoryApi.getAll();
+          if (response.status === "success") {
+            //setItemCategories(response.data);
+            const types = Array.from(new Set((response.data || []).map(c => c.type)));
             setUniqueCategoryTypes(types);
           }
         } catch (error) {
@@ -500,7 +500,7 @@ export default function SalesView({ isActive }) {
           setIsSearching(false);
         }
       };
-  
+
       fetchCategories();
     }, []);
 

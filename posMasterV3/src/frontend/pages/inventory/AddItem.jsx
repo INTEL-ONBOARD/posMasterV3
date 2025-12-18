@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
-import { apiClient } from "../../api/client";
+import { uomApi, categoryApi } from "../../api/localApi";
 import { useNavigate } from "react-router-dom";
 import { X, Printer, ChevronDown, ChevronUp } from "lucide-react";
 import AddItemCard from "../../components/AddItemCard.jsx";
@@ -22,9 +22,9 @@ function AddItem({ isActive }) {
     if (isActive) {
     const fetchUoms = async () => {
       try {
-        const response = await apiClient.get("api/uoms");
-        if (response.data.status === "success") {
-          setUoms(response.data.data);
+        const response = await uomApi.getAll();
+        if (response.status === "success") {
+          setUoms(response.data || []);
         }
       } catch (error) {
         console.error("Error fetching UOMs:", error);
@@ -42,9 +42,9 @@ function AddItem({ isActive }) {
     if (isActive) {
     const fetchCategories = async () => {
       try {
-        const response = await apiClient.get("api/categories");
-        if (response.data.status === "success") {
-          setItemCategories(response.data.data);
+        const response = await categoryApi.getAll();
+        if (response.status === "success") {
+          setItemCategories(response.data || []);
         }
       } catch (error) {
         console.error("Error fetching categories:", error);

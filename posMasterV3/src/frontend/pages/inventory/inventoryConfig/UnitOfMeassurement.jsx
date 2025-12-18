@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { apiClient } from "../../../api/client";
+import { uomApi } from "../../../api/localApi";
 import ToastContext from "../../toasts/ToastService";
 
 function UnitOfMeassurement() {
@@ -15,12 +15,12 @@ function UnitOfMeassurement() {
 
   const fetchUoms = async () => {
     try {
-      const response = await apiClient.get('api/uoms/');
-      if (response.data.status === 'success') {
-        setUnits(response.data.data);
+      const response = await uomApi.getAll();
+      if (response.status === 'success') {
+        setUnits(response.data || []);
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to fetch units');
+      setError(error.message || 'Failed to fetch units');
     }
   };
 
@@ -40,53 +40,37 @@ function UnitOfMeassurement() {
     try {
       let response;
       if (editingId) {
-        // Update existing unit
-        response = await apiClient.put(`api/uoms/${editingId}`, formData);
+        response = await uomApi.update(editingId, formData);
       } else {
-        // Add new unit
-        response = await apiClient.post('api/uoms/add', formData);
+        response = await uomApi.create(formData);
       }
 
-      if (response.data.status === "success") {
-        if (editingId) {
-
-        } else {
-
-        }
-        fetchUoms(); // Refresh the list
+      if (response.status === "success") {
+        fetchUoms();
         handleClear();
       } else {
-        setError(response.data.message || "Operation failed");
-
+        setError(response.message || "Operation failed");
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message ||
-        error.message ||
-        "Network error, please try again";
+      const errorMessage = error.message || "Network error, please try again";
       setError(errorMessage);
-      
     } finally {
       setIsPosting(false);
     }
   };
 
   const handleDelete = async (id, e) => {
-    e.stopPropagation(); // Prevent row click event
+    e.stopPropagation();
 
-    // if (window.confirm("Are you sure you want to delete this unit?")) {
     try {
-      const response = await apiClient.delete(`api/uoms/${id}`);
-      if (response.data.status === "success") {
+      const response = await uomApi.delete(id);
+      if (response.status === "success") {
         setUnits(prev => prev.filter(unit => unit.id !== id));
         if (editingId === id) handleClear();
       }
-      else {
-
-      }
     } catch (error) {
-      setError(error.response?.data?.message || 'Delete failed');
+      setError(error.message || 'Delete failed');
     }
-    // }
   };
 
   const handleRowClick = (unit) => {

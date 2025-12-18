@@ -1,9 +1,9 @@
-import apiClient from "../../../api/apiClient";
+import { restockApi } from "../../../api/localApi";
 
 export const fetchStockContext = async (sku) => {
   try {
     // Fetch batch code by SKU -> pass sku as parameter
-    const batchCodeRes = await apiClient.get(`/api/restocks/stock-data/${sku}`);
+    const batchCodeRes = await restockApi.getStockData(sku);
 
     return {
       batchCodes: batchCodeRes.data,
