@@ -5,6 +5,7 @@
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
+const { notifyDataChange } = require('../services/CloudSyncService.cjs');
 
 class SalesRepository extends BaseRepository {
     constructor() {
@@ -195,7 +196,17 @@ class SalesRepository extends BaseRepository {
                 }
             }
 
-            return this.getFullDetails(saleId);
+            const fullSale = this.getFullDetails(saleId);
+
+            // Notify CloudSync of the new sale
+            notifyDataChange('sales_transactions', 'INSERT', fullSale, saleId);
+
+            // Also notify for each sale item
+            for (const item of fullSale.items) {
+                notifyDataChange('sales_items', 'INSERT', item, item.id);
+            }
+
+            return fullSale;
         });
 
         return transaction();
