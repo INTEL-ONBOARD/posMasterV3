@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supplierApi, userApi, itemApi, categoryApi } from "../../api/localApi";
-import { ChevronDown, ChevronUp, Package, Layers, Building2, RotateCcw, Search, ArrowLeft, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, Package, Layers, Building2, RotateCcw, Search, ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
 import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
@@ -1729,74 +1729,106 @@ function InventoryRestock({ isActive }) {
         {/* BUTTONS BLOCK (default visible) */}
         {rightActiveSection === "buttons" && (
           <div className="flex flex-col h-full gap-3">
+            {/* Add Items Button */}
             <button
               onClick={() => setRightActiveSection("add")}
               className="flex-1 flex flex-col items-center justify-center bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-200 group"
             >
-              <div className="w-20 h-20 rounded-2xl bg-[#1A318C]/10 flex items-center justify-center mb-4 group-hover:bg-[#1A318C]/20 transition-colors">
-                <Package className="w-10 h-10 text-[#1A318C]" />
+              <div className="w-16 h-16 rounded-2xl bg-[#1A318C]/10 flex items-center justify-center mb-3 group-hover:bg-[#1A318C]/20 transition-colors">
+                <Package className="w-8 h-8 text-[#1A318C]" />
               </div>
               <span className="text-lg font-semibold text-gray-800">Add Items</span>
               <span className="text-sm text-gray-500 mt-1">Add registered items to stock</span>
             </button>
+
+            {/* Dispose Items Button */}
+            <button
+              onClick={() => setRightActiveSection("dispose")}
+              className="flex-1 flex flex-col items-center justify-center bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-200 group"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mb-3 group-hover:bg-amber-200 transition-colors">
+                <Trash2 className="w-8 h-8 text-amber-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-800">Dispose Items</span>
+              <span className="text-sm text-gray-500 mt-1">Remove damaged or expired items</span>
+            </button>
+
+            {/* Return Items Button */}
             <button
               onClick={() => setRightActiveSection("return")}
               className="flex-1 flex flex-col items-center justify-center bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-200 group"
             >
-              <div className="w-20 h-20 rounded-2xl bg-red-100 flex items-center justify-center mb-4 group-hover:bg-red-200 transition-colors">
-                <RotateCcw className="w-10 h-10 text-red-600" />
+              <div className="w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center mb-3 group-hover:bg-red-200 transition-colors">
+                <RotateCcw className="w-8 h-8 text-red-600" />
               </div>
               <span className="text-lg font-semibold text-gray-800">Return Items</span>
-              <span className="text-sm text-gray-500 mt-1">Process item returns</span>
+              <span className="text-sm text-gray-500 mt-1">Process item returns to supplier</span>
             </button>
           </div>
         )}
 
-        {/* DISPOSE ITEMS BLOCK */}
-        {/* {rightActiveSection === "dispose" && (
-          <div className="p-4">
-            <button
-              onClick={() => setRightActiveSection("buttons")}
-              aria-label="Back"
-              className="flex items-center justify-center w-8 h-8 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors mb-4"
-            >
-              <BackIcon />
-            </button>
-
-            <div className="p-4 bg-white rounded">
-              <h3 className="font-semibold mb-2">Dispose Items</h3>
-              <p className="text-sm text-gray-600">
-                This is the dispose items block. Add your UI here.
-              </p>
-            </div>
-          </div>
-        )} */}
-
-        {/* ADD REGISTERED ITEMS BLOCK */}
+        {/* ADD / DISPOSE / RETURN ITEMS BLOCK */}
         {(rightActiveSection === "add" || rightActiveSection === "dispose" || rightActiveSection === "return") && (
           <div className="flex flex-col h-full">
-            {/* Search Header */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-3 overflow-hidden">
-              <div className="p-4 border-b border-gray-100">
+            {/* Section Header with context-aware styling */}
+            <div className={`rounded-xl mb-3 overflow-hidden ${
+              rightActiveSection === "add"
+                ? "bg-gradient-to-r from-[#1A318C] to-[#2a4399]"
+                : rightActiveSection === "dispose"
+                  ? "bg-gradient-to-r from-amber-500 to-amber-400"
+                  : "bg-gradient-to-r from-red-500 to-red-400"
+            }`}>
+              <div className="p-4">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setRightActiveSection("buttons")}
-                    className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                    className="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
                   >
-                    <ArrowLeft className="w-5 h-5 text-gray-600" />
+                    <ArrowLeft className="w-5 h-5 text-white" />
                   </button>
-                  <div className="flex-1 relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Search className="h-4 w-4 text-gray-400" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                      {rightActiveSection === "add" && <Package className="w-5 h-5 text-white" />}
+                      {rightActiveSection === "dispose" && <Trash2 className="w-5 h-5 text-white" />}
+                      {rightActiveSection === "return" && <RotateCcw className="w-5 h-5 text-white" />}
                     </div>
-                    <input
-                      type="text"
-                      value={search}
-                      onChange={handleSearch}
-                      placeholder="Search items..."
-                      className="w-full h-10 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
-                    />
+                    <div>
+                      <h3 className="text-lg font-bold text-white">
+                        {rightActiveSection === "add" && "Add Items"}
+                        {rightActiveSection === "dispose" && "Dispose Items"}
+                        {rightActiveSection === "return" && "Return Items"}
+                      </h3>
+                      <p className="text-xs text-white/80">
+                        {rightActiveSection === "add" && "Select items to add to stock"}
+                        {rightActiveSection === "dispose" && "Select items to dispose"}
+                        {rightActiveSection === "return" && "Select items to return"}
+                      </p>
+                    </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Search Header */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-3 overflow-hidden">
+              <div className="p-4 border-b border-gray-100">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={handleSearch}
+                    placeholder="Search items by name, SKU..."
+                    className={`w-full h-10 pl-10 pr-4 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${
+                      rightActiveSection === "add"
+                        ? "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                        : rightActiveSection === "dispose"
+                          ? "border-gray-200 focus:ring-amber-500/20 focus:border-amber-500"
+                          : "border-gray-200 focus:ring-red-500/20 focus:border-red-500"
+                    }`}
+                  />
                 </div>
               </div>
 
@@ -1830,13 +1862,27 @@ function InventoryRestock({ isActive }) {
               <div className="grid grid-cols-1 gap-3">
                 {(isLoading || searchLoading) ? (
                   <div className="flex flex-col items-center justify-center py-20">
-                    <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
+                    <div className={`animate-spin rounded-full border-4 border-gray-200 h-12 w-12 mb-4 ${
+                      rightActiveSection === "add"
+                        ? "border-t-[#1A318C]"
+                        : rightActiveSection === "dispose"
+                          ? "border-t-amber-500"
+                          : "border-t-red-500"
+                    }`}></div>
                     <p className="text-gray-500">Loading items...</p>
                   </div>
                 ) : filteredItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20">
-                    <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
-                      <Package className="w-8 h-8 text-gray-300" />
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${
+                      rightActiveSection === "add"
+                        ? "bg-[#1A318C]/10"
+                        : rightActiveSection === "dispose"
+                          ? "bg-amber-100"
+                          : "bg-red-100"
+                    }`}>
+                      {rightActiveSection === "add" && <Package className="w-8 h-8 text-[#1A318C]/50" />}
+                      {rightActiveSection === "dispose" && <Trash2 className="w-8 h-8 text-amber-400" />}
+                      {rightActiveSection === "return" && <RotateCcw className="w-8 h-8 text-red-400" />}
                     </div>
                     <h3 className="text-lg font-semibold text-gray-800">No items found</h3>
                     <p className="text-sm text-gray-500 mt-1">Try adjusting your search</p>
@@ -1848,27 +1894,51 @@ function InventoryRestock({ isActive }) {
                 )}
               </div>
             </div>
-          </div>
-        )}
 
-        {/* RETURN ITEMS BLOCK */}
-        {/* {rightActiveSection === "return" && (
-          <div className="p-4">
-            <button
-              onClick={() => setRightActiveSection("buttons")}
-              className="flex items-center justify-center w-8 h-8 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors mb-4"
-            >
-              <BackIcon />
-            </button>
-
-            <div className="p-4 bg-white rounded">
-              <h3 className="font-semibold mb-2">Return Items</h3>
-              <p className="text-sm text-gray-600">
-                This is the return items block. Add return UI here.
-              </p>
+            {/* Action info bar */}
+            <div className={`mt-3 rounded-xl p-3 flex items-center gap-3 ${
+              rightActiveSection === "add"
+                ? "bg-[#1A318C]/5 border border-[#1A318C]/10"
+                : rightActiveSection === "dispose"
+                  ? "bg-amber-50 border border-amber-100"
+                  : "bg-red-50 border border-red-100"
+            }`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                rightActiveSection === "add"
+                  ? "bg-[#1A318C]/10"
+                  : rightActiveSection === "dispose"
+                    ? "bg-amber-100"
+                    : "bg-red-100"
+              }`}>
+                {rightActiveSection === "add" && <Package className="w-4 h-4 text-[#1A318C]" />}
+                {rightActiveSection === "dispose" && <Trash2 className="w-4 h-4 text-amber-600" />}
+                {rightActiveSection === "return" && <RotateCcw className="w-4 h-4 text-red-600" />}
+              </div>
+              <div className="flex-1">
+                <p className={`text-xs font-medium ${
+                  rightActiveSection === "add"
+                    ? "text-[#1A318C]"
+                    : rightActiveSection === "dispose"
+                      ? "text-amber-700"
+                      : "text-red-700"
+                }`}>
+                  {rightActiveSection === "add" && "Click on items to add them to the restock list"}
+                  {rightActiveSection === "dispose" && "Click on items to mark them for disposal"}
+                  {rightActiveSection === "return" && "Click on items to add them to the return list"}
+                </p>
+              </div>
+              <span className={`text-xs font-bold tabular-nums px-2 py-1 rounded-lg ${
+                rightActiveSection === "add"
+                  ? "bg-[#1A318C] text-white"
+                  : rightActiveSection === "dispose"
+                    ? "bg-amber-500 text-white"
+                    : "bg-red-500 text-white"
+              }`}>
+                {filteredItems.length} items
+              </span>
             </div>
           </div>
-        )} */}
+        )}
       </div>
 
 
