@@ -8,7 +8,7 @@ function ManageRole() {
 
   // Form section collapse controls
   const [openRoleInfo, setOpenRoleInfo] = useState(true);
-  const [openPermissions, setOpenPermissions] = useState(true);
+  const [openPermissions, setOpenPermissions] = useState(false);
 
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
