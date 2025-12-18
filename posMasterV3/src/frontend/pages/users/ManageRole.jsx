@@ -652,7 +652,7 @@ function ManageRole() {
               type="text"
               value={search}
               onChange={handleSearch}
-              placeholder="Search supplier name here"
+              placeholder="Search user name here"
               className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
             />
             <button
