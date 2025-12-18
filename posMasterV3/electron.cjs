@@ -538,6 +538,23 @@ ipcMain.handle("backend:status", async () => {
   return getBackendStatus();
 });
 
+// IPC handler for app restart (used when app_settings change)
+ipcMain.handle("app:restart", async () => {
+  console.log("[Electron] App restart requested - restarting application...");
+  app.relaunch();
+  app.exit(0);
+});
+
+// IPC handler to logout and restart (clears session and restarts)
+ipcMain.handle("app:logoutAndRestart", async () => {
+  console.log("[Electron] Logout and restart requested...");
+  // Clear stored user data
+  storedUser = null;
+  // Relaunch the app
+  app.relaunch();
+  app.exit(0);
+});
+
 app.whenReady().then(async () => {
   const iconPath = path.join(__dirname, "src", "frontend", "assets", "icon.ico");
 
