@@ -27,14 +27,18 @@ function seedDefaultAdmin() {
     const defaultPassword = '12345';
     const passwordHash = bcrypt.hashSync(defaultPassword, 10);
 
+    // Get first branch ID if exists
+    const branch = db.prepare('SELECT id FROM branches LIMIT 1').get();
+
     const adminUser = {
         id: generateUUID(),
         cloud_id: null,
         username: 'admin',
-        email: 'admin@posmaster',
+        email: 'admin@posmaster.com',
         password_hash: passwordHash,
         full_name: 'System Administrator',
-        roles: JSON.stringify(['admin', 'manager', 'cashier']),
+        roles: JSON.stringify(['admin']),
+        branch_id: branch?.id || null,
         is_active: 1,
         sync_status: 'local_only',
         created_at: nowISO(),
@@ -42,8 +46,8 @@ function seedDefaultAdmin() {
     };
 
     const stmt = db.prepare(`
-        INSERT INTO users (id, cloud_id, username, email, password_hash, full_name, roles, is_active, sync_status, created_at, updated_at)
-        VALUES (@id, @cloud_id, @username, @email, @password_hash, @full_name, @roles, @is_active, @sync_status, @created_at, @updated_at)
+        INSERT INTO users (id, cloud_id, username, email, password_hash, full_name, roles, branch_id, is_active, sync_status, created_at, updated_at)
+        VALUES (@id, @cloud_id, @username, @email, @password_hash, @full_name, @roles, @branch_id, @is_active, @sync_status, @created_at, @updated_at)
     `);
 
     stmt.run(adminUser);
@@ -466,11 +470,13 @@ function seedDefaultMember() {
 function runSeeders() {
     console.log('[Seeder] Running database seeders...');
 
+    // Order matters: branches must be seeded before admin (for branch_id assignment)
+    // and before items (for branch_id foreign key)
     const results = {
-        admin: seedDefaultAdmin(),
         uoms: seedDefaultUoms(),
         categories: seedDefaultCategories(),
         branches: seedDefaultBranch(),
+        admin: seedDefaultAdmin(),  // After branches so admin can be assigned to a branch
         suppliers: seedDefaultSuppliers(),
         members: seedDefaultMember(),
         items: seedDefaultItems()

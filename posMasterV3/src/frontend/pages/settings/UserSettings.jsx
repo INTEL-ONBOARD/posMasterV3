@@ -33,11 +33,37 @@ function UserSettings() {
   });
 
   const [permissions, setPermissions] = useState({
-    SaleAccess: true,
-    InventoryAccess: false,
-    ReportAccess: false,
-    UserManagerAccess: false,
-    DtAccess: false
+    SaleAccess: {
+      sale_process: false,
+      sale_history: false,
+      sale_view_inventory: false,
+      sale_reports: false,
+      sale_configurations: false,
+      sale_discounts: false,
+    },
+    InventoryAccess: {
+      inventory_view: false,
+      inventory_register_item: false,
+      inventory_restock: false,
+      inventory_return_list: false,
+      inventory_dispose: false,
+      inventory_suppliers: false,
+      inventory_discount: false,
+      inventory_price_change: false,
+      inventory_history: false,
+      inventory_configurations: false,
+      inventory_reports: false,
+    },
+    UserManagerAccess: {
+      create_user: false,
+      edit_user: false,
+      delete_user: false,
+    },
+    ReportAccess: {
+      view_reports: false,
+      generate_reports: false,
+      export_reports: false,
+    },
   });
 
   const [profileImage, setProfileImage] = useState(null);
@@ -83,13 +109,12 @@ function UserSettings() {
 
           // Populate permissions
           if (settings && settings.permissions) {
-            setPermissions({
-              SaleAccess: settings.permissions.SaleAccess ?? true,
-              InventoryAccess: settings.permissions.InventoryAccess ?? false,
-              ReportAccess: settings.permissions.ReportAccess ?? false,
-              UserManagerAccess: settings.permissions.UserManagerAccess ?? false,
-              DtAccess: settings.permissions.DtAccess ?? false
-            });
+            setPermissions(prev => ({
+              SaleAccess: settings.permissions.SaleAccess || prev.SaleAccess,
+              InventoryAccess: settings.permissions.InventoryAccess || prev.InventoryAccess,
+              UserManagerAccess: settings.permissions.UserManagerAccess || prev.UserManagerAccess,
+              ReportAccess: settings.permissions.ReportAccess || prev.ReportAccess,
+            }));
           }
 
           // Set profile image if available
@@ -115,31 +140,92 @@ function UserSettings() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handlePermissionChange = (permission) => {
-    setPermissions(prev => ({ ...prev, [permission]: !prev[permission] }));
+  const handlePermissionChange = (category, permission) => {
+    setPermissions(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [permission]: !prev[category][permission],
+      },
+    }));
+  };
+
+  // Helper to format permission keys for display
+  const formatPermissionLabel = (key) => {
+    return key
+      .replace(/^(sale_|inventory_)/, '')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  };
+
+  // Helper to check if any permission in a category is enabled
+  const hasCategoryAccess = (categoryPerms) => {
+    return Object.values(categoryPerms).some(v => v === true);
+  };
+
+  // Compress image to reduce storage size
+  const compressImage = (file, maxWidth = 200, maxHeight = 200, quality = 0.8) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate new dimensions while maintaining aspect ratio
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convert to base64 with compression
+          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedBase64);
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64Image = e.target.result;
-        setProfileImage(base64Image);
+      try {
+        // Compress image before storing (200x200, 80% quality)
+        const compressedImage = await compressImage(file, 200, 200, 0.8);
+        console.log('[UserSettings] Original size:', file.size, 'Compressed size:', compressedImage.length);
+
+        setProfileImage(compressedImage);
 
         // Save profile image to backend
         if (formData.id) {
-          try {
-            const response = await settingsApi.updateProfileImage(formData.id, base64Image);
-            if (response.status === 'success') {
-              toast.open('Profile image updated', 3000, 'Success', 'success');
-            }
-          } catch (err) {
-            console.error('[UserSettings] Image upload error:', err);
+          const response = await settingsApi.updateProfileImage(formData.id, compressedImage);
+          if (response.status === 'success') {
+            toast.open('Profile image updated', 3000, 'Success', 'success');
           }
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error('[UserSettings] Image upload error:', err);
+        toast.open('Failed to upload image', 3000, 'Error', 'error');
+      }
     }
   };
 
@@ -160,11 +246,37 @@ function UserSettings() {
 
     // Reset permissions to defaults
     setPermissions({
-      SaleAccess: true,
-      InventoryAccess: false,
-      ReportAccess: false,
-      UserManagerAccess: false,
-      DtAccess: false
+      SaleAccess: {
+        sale_process: true,
+        sale_history: false,
+        sale_view_inventory: false,
+        sale_reports: false,
+        sale_configurations: false,
+        sale_discounts: false,
+      },
+      InventoryAccess: {
+        inventory_view: false,
+        inventory_register_item: false,
+        inventory_restock: false,
+        inventory_return_list: false,
+        inventory_dispose: false,
+        inventory_suppliers: false,
+        inventory_discount: false,
+        inventory_price_change: false,
+        inventory_history: false,
+        inventory_configurations: false,
+        inventory_reports: false,
+      },
+      UserManagerAccess: {
+        create_user: false,
+        edit_user: false,
+        delete_user: false,
+      },
+      ReportAccess: {
+        view_reports: false,
+        generate_reports: false,
+        export_reports: false,
+      },
     });
 
     setProfileImage(null);
@@ -241,12 +353,11 @@ function UserSettings() {
     setSaving(true);
 
     try {
-      // Update user profile
+      // Update user profile (role is read-only, managed by admin)
       const profileData = {
         username: formData.username,
         email: formData.email,
-        full_name: formData.fullName,
-        roles: formData.role
+        full_name: formData.fullName
       };
 
       const profileResult = await settingsApi.updateUserProfile(formData.id, profileData);
@@ -257,12 +368,7 @@ function UserSettings() {
         return;
       }
 
-      // Update permissions
-      const permResult = await settingsApi.updateUserPermissions(formData.id, permissions);
-
-      if (permResult.status !== 'success') {
-        console.warn('[UserSettings] Permission update warning:', permResult.message);
-      }
+      // Note: Permissions are read-only and managed by administrators via ManageUser
 
       toast.open('Settings saved successfully', 3000, 'Success', 'success');
 
@@ -511,36 +617,38 @@ function UserSettings() {
         <div className="lg:col-span-5 space-y-6 ml-0 lg:ml-[-80px]">
           <div>
             <label className="block text-[16px] font-medium text-[#949494] mb-1">Role</label>
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleInputChange}
-              className="w-3/5 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">-- Select Role --</option>
-              <option value="Cashier">Cashier</option>
-              <option value="Manager">Manager</option>
-              <option value="Admin">Admin</option>
-            </select>
+            <div className="w-3/5 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] text-gray-700 capitalize">
+              {formData.role || 'No role assigned'}
+            </div>
+            <p className="text-xs text-gray-400 mt-1 italic">Role can only be changed by an administrator</p>
           </div>
 
           <div>
-            <label className="block text-[16px] font-medium text-[#949494] mb-5">Allowed Permissions</label>
-            <div className="space-y-4 w-3/5">
-              {Object.entries(permissions).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between py-0">
-                  <span className="text-sm font-bold text-[26px] text-gray-300">
-                    {key.replace('Access', '').replace(/([A-Z])/g, ' $1').trim()} access
-                  </span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={value}
-                      onChange={() => handlePermissionChange(key)}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
+            <label className="block text-[16px] font-medium text-[#949494] mb-2">Allowed Permissions</label>
+            <p className="text-xs text-gray-400 mb-3 italic">Permissions are based on your assigned role (read-only)</p>
+            <div className="space-y-4 w-full max-h-[20rem] overflow-y-auto pr-2">
+              {Object.entries(permissions).map(([category, perms]) => (
+                <div key={category} className="border-b border-gray-100 pb-3">
+                  <div className="flex items-center justify-between py-1 mb-2">
+                    <span className="text-sm font-bold text-gray-500">
+                      {category.replace('Access', '').replace(/([A-Z])/g, ' $1').trim()} Access
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-xs ${
+                      hasCategoryAccess(perms) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      {Object.values(perms).filter(v => v).length}/{Object.keys(perms).length}
+                    </span>
+                  </div>
+                  {Object.entries(perms).map(([perm, value]) => (
+                    <div key={perm} className="flex items-center justify-between py-1 pl-4">
+                      <span className="text-sm text-gray-400">
+                        {formatPermissionLabel(perm)}
+                      </span>
+                      <div className="relative inline-flex items-center">
+                        <div className={`w-9 h-5 rounded-full ${value ? 'bg-blue-600' : 'bg-gray-200'} after:content-[''] after:absolute after:top-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all ${value ? 'after:left-[18px]' : 'after:left-[2px]'}`}></div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
