@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
-import { uomApi, categoryApi } from "../../api/localApi";
+import { uomApi, categoryApi, itemApi } from "../../api/localApi";
 import { useNavigate } from "react-router-dom";
 import { X, Printer, ChevronDown, ChevronUp, Search, Package, Filter, SortAsc } from "lucide-react";
 import AddItemCard from "../../components/AddItemCard.jsx";
@@ -223,10 +223,10 @@ function AddItem({ isActive }) {
 
   const fetchItems = async () => {
     try {
-      const response = await apiClient.get("api/itemRegistry/extended");
-      if (response.data.status === "success") {
-        console.log(response.data.data);
-        setInventoryItems(response.data.data);
+      const response = await itemApi.getAllExtended();
+      if (response.status === "success") {
+        console.log(response.data);
+        setInventoryItems(response.data);
       }
     } catch (error) {
       console.error("Error fetching items:", error);
@@ -528,8 +528,8 @@ function AddItem({ isActive }) {
                     )}
                   </div>
                   <div className="flex flex-col items-center">
-                    <div className="bg-slate-800 rounded-xl p-3">
-                      <img src={barcodeImg} alt="Barcode" className="w-24 object-contain brightness-0 invert opacity-80" />
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                      <img src={barcodeImg} alt="Barcode" className="w-24 object-contain" />
                     </div>
                     <p className="text-xs font-medium text-gray-500 mt-2">SKU: <span className="font-bold text-gray-800 font-mono">{formData.sku || "N/A"}</span></p>
                   </div>
