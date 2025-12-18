@@ -6,6 +6,7 @@
 
 const BaseRepository = require('./BaseRepository.cjs');
 const { notifyDataChange } = require('../services/CloudSyncService.cjs');
+const { nowISO } = require('../utils/helpers.cjs');
 
 class RestockRepository extends BaseRepository {
     constructor() {
@@ -113,7 +114,7 @@ class RestockRepository extends BaseRepository {
                 change_amount: data.change_amount || 0,
                 execution_level: data.execution_level || 'medium',
                 status: 'completed',
-                created_at: new Date().toISOString(),
+                created_at: nowISO(),
                 sync_status: 'pending'
             };
 
@@ -163,7 +164,7 @@ class RestockRepository extends BaseRepository {
                 );
 
                 // Update stock
-                const now = new Date().toISOString();
+                const now = nowISO();
                 upsertStockStmt.run({
                     item_id: itemRecord.id,
                     batch_code: item.batch_code,
@@ -202,7 +203,7 @@ class RestockRepository extends BaseRepository {
                 // Decrease stock
                 decreaseStockStmt.run(
                     item.qty,
-                    new Date().toISOString(),
+                    nowISO(),
                     itemRecord.id,
                     item.batch_code
                 );

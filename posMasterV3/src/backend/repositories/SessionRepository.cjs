@@ -6,7 +6,7 @@
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
-const { generateUUID } = require('../utils/helpers.cjs');
+const { generateUUID, nowISO, getSriLankanDate } = require('../utils/helpers.cjs');
 
 class SessionRepository extends BaseRepository {
     constructor() {
@@ -27,8 +27,8 @@ class SessionRepository extends BaseRepository {
             ip_address: sessionData.ip_address || null,
             is_active: 1,
             expires_at: sessionData.expires_at || this._getDefaultExpiry(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            created_at: nowISO(),
+            updated_at: nowISO()
         };
 
         return super.create(session);
@@ -107,7 +107,7 @@ class SessionRepository extends BaseRepository {
             WHERE token = ?
         `);
 
-        const result = stmt.run(new Date().toISOString(), token);
+        const result = stmt.run(nowISO(), token);
         return result.changes > 0;
     }
 
@@ -123,7 +123,7 @@ class SessionRepository extends BaseRepository {
             WHERE user_id = ?
         `);
 
-        const result = stmt.run(new Date().toISOString(), userId);
+        const result = stmt.run(nowISO(), userId);
         return result.changes;
     }
 
@@ -197,14 +197,23 @@ class SessionRepository extends BaseRepository {
     }
 
     /**
-     * Get default session expiry (24 hours from now)
+     * Get default session expiry (24 hours from now in Sri Lankan time)
      * @returns {string}
      * @private
      */
     _getDefaultExpiry() {
-        const expiry = new Date();
+        const expiry = getSriLankanDate();
         expiry.setHours(expiry.getHours() + 24);
-        return expiry.toISOString();
+
+        const year = expiry.getFullYear();
+        const month = String(expiry.getMonth() + 1).padStart(2, '0');
+        const day = String(expiry.getDate()).padStart(2, '0');
+        const hours = String(expiry.getHours()).padStart(2, '0');
+        const minutes = String(expiry.getMinutes()).padStart(2, '0');
+        const seconds = String(expiry.getSeconds()).padStart(2, '0');
+        const ms = String(expiry.getMilliseconds()).padStart(3, '0');
+
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${ms}Z`;
     }
 }
 

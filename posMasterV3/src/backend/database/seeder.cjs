@@ -6,7 +6,7 @@
 
 const bcrypt = require('bcryptjs');
 const { getDatabase } = require('./connection.cjs');
-const { generateUUID } = require('../utils/helpers.cjs');
+const { generateUUID, nowISO } = require('../utils/helpers.cjs');
 
 /**
  * Seed default admin user
@@ -37,8 +37,8 @@ function seedDefaultAdmin() {
         roles: JSON.stringify(['admin', 'manager', 'cashier']),
         is_active: 1,
         sync_status: 'local_only',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        created_at: nowISO(),
+        updated_at: nowISO()
     };
 
     const stmt = db.prepare(`
@@ -102,7 +102,7 @@ function seedDefaultUoms() {
         VALUES (?, ?, ?, ?, 'local_only')
     `);
 
-    const now = new Date().toISOString();
+    const now = nowISO();
     const insertMany = db.transaction(() => {
         for (const uom of defaultUoms) {
             stmt.run(uom.symbol, uom.unit_name, now, now);
@@ -148,7 +148,7 @@ function seedDefaultCategories() {
         VALUES (?, ?, ?, ?, 'local_only')
     `);
 
-    const now = new Date().toISOString();
+    const now = nowISO();
     const insertMany = db.transaction(() => {
         for (const cat of defaultCategories) {
             stmt.run(cat.brand, cat.type, now, now);
@@ -162,7 +162,7 @@ function seedDefaultCategories() {
 }
 
 /**
- * Seed default branch
+ * Seed default branches
  * @returns {Object} Result of seeding
  */
 function seedDefaultBranch() {
@@ -176,21 +176,250 @@ function seedDefaultBranch() {
         return { seeded: false, message: 'Branches already exist' };
     }
 
-    const now = new Date().toISOString();
+    const now = nowISO();
+
+    const defaultBranches = [
+        { name: 'Morawakkorale Head Branch', address: 'Morawakkorale, Sri Lanka', contact: '075 0000000' },
+        { name: 'Allen Valley Branch', address: 'Allen Valley, Sri Lanka', contact: '071 0000000' }
+    ];
 
     const stmt = db.prepare(`
         INSERT INTO branches (name, address, contact, is_active, created_at, updated_at, sync_status)
         VALUES (?, ?, ?, 1, ?, ?, 'local_only')
     `);
 
-    stmt.run('Main Branch', 'Default Location', '', now, now);
+    const insertMany = db.transaction(() => {
+        for (const branch of defaultBranches) {
+            stmt.run(branch.name, branch.address, branch.contact, now, now);
+        }
+    });
 
-    console.log('[Seeder] Default branch created');
-    return { seeded: true, message: 'Default branch created' };
+    insertMany();
+
+    console.log('[Seeder] Default branches created:', defaultBranches.length);
+    return { seeded: true, message: `Created ${defaultBranches.length} branches` };
 }
 
 /**
- * Seed default member (Walk-in customer)
+ * Seed default suppliers
+ * @returns {Object} Result of seeding
+ */
+function seedDefaultSuppliers() {
+    const db = getDatabase();
+
+    // Check if suppliers already exist
+    const existingSupplier = db.prepare('SELECT id FROM suppliers LIMIT 1').get();
+
+    if (existingSupplier) {
+        console.log('[Seeder] Suppliers already exist, skipping seed');
+        return { seeded: false, message: 'Suppliers already exist' };
+    }
+
+    const now = nowISO();
+
+    const defaultSuppliers = [
+        {
+            supplier_name: 'Ceylon Distributors',
+            contact: '011 2345678',
+            type: 'Wholesale',
+            supplier_address: '123 Main Street, Colombo',
+            account_bank: 'BOC',
+            account_branch: 'Colombo Main',
+            account_number: '1234567890',
+            account_name: 'Ceylon Distributors Ltd'
+        },
+        {
+            supplier_name: 'Lanka Foods PVT',
+            contact: '011 3456789',
+            type: 'Manufacturer',
+            supplier_address: '45 Industrial Zone, Kelaniya',
+            account_bank: 'Commercial Bank',
+            account_branch: 'Kelaniya',
+            account_number: '9876543210',
+            account_name: 'Lanka Foods PVT Ltd'
+        },
+        {
+            supplier_name: 'Fresh Farm Produce',
+            contact: '077 1234567',
+            type: 'Local Supplier',
+            supplier_address: 'Dambulla Road, Matale',
+            account_bank: 'Peoples Bank',
+            account_branch: 'Matale',
+            account_number: '5678901234',
+            account_name: 'Fresh Farm Produce'
+        },
+        {
+            supplier_name: 'Global Imports Co',
+            contact: '011 4567890',
+            type: 'Importer',
+            supplier_address: '78 Port City, Colombo',
+            account_bank: 'HSBC',
+            account_branch: 'Colombo',
+            account_number: '1122334455',
+            account_name: 'Global Imports Company'
+        },
+        {
+            supplier_name: 'Hill Country Beverages',
+            contact: '052 2234567',
+            type: 'Manufacturer',
+            supplier_address: 'Tea Factory Road, Nuwara Eliya',
+            account_bank: 'Sampath Bank',
+            account_branch: 'Nuwara Eliya',
+            account_number: '6677889900',
+            account_name: 'Hill Country Beverages'
+        }
+    ];
+
+    const stmt = db.prepare(`
+        INSERT INTO suppliers (supplier_name, contact, type, supplier_address, status, account_bank, account_branch, account_number, account_name, created_at, updated_at, sync_status)
+        VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, 'local_only')
+    `);
+
+    const insertMany = db.transaction(() => {
+        for (const supplier of defaultSuppliers) {
+            stmt.run(
+                supplier.supplier_name,
+                supplier.contact,
+                supplier.type,
+                supplier.supplier_address,
+                supplier.account_bank,
+                supplier.account_branch,
+                supplier.account_number,
+                supplier.account_name,
+                now,
+                now
+            );
+        }
+    });
+
+    insertMany();
+
+    console.log('[Seeder] Default suppliers created:', defaultSuppliers.length);
+    return { seeded: true, message: `Created ${defaultSuppliers.length} suppliers` };
+}
+
+/**
+ * Seed default items with stock
+ * @returns {Object} Result of seeding
+ */
+function seedDefaultItems() {
+    const db = getDatabase();
+
+    // Check if items already exist
+    const existingItem = db.prepare('SELECT id FROM items LIMIT 1').get();
+
+    if (existingItem) {
+        console.log('[Seeder] Items already exist, skipping seed');
+        return { seeded: false, message: 'Items already exist' };
+    }
+
+    const now = nowISO();
+
+    // Get category and UOM IDs
+    const beveragesCat = db.prepare("SELECT id FROM categories WHERE type = 'Beverages' LIMIT 1").get();
+    const snacksCat = db.prepare("SELECT id FROM categories WHERE type = 'Snacks' LIMIT 1").get();
+    const dairyCat = db.prepare("SELECT id FROM categories WHERE type = 'Dairy' LIMIT 1").get();
+    const groceriesCat = db.prepare("SELECT id FROM categories WHERE type = 'Groceries' LIMIT 1").get();
+    const personalCareCat = db.prepare("SELECT id FROM categories WHERE type = 'Personal Care' LIMIT 1").get();
+
+    const pcsUom = db.prepare("SELECT id FROM units_of_measurement WHERE symbol = 'pcs' LIMIT 1").get();
+    const kgUom = db.prepare("SELECT id FROM units_of_measurement WHERE symbol = 'kg' LIMIT 1").get();
+    const LUom = db.prepare("SELECT id FROM units_of_measurement WHERE symbol = 'L' LIMIT 1").get();
+    const packUom = db.prepare("SELECT id FROM units_of_measurement WHERE symbol = 'pack' LIMIT 1").get();
+
+    // Get first branch (Morawakkorale Head Branch)
+    const branch = db.prepare("SELECT id FROM branches LIMIT 1").get();
+
+    const defaultItems = [
+        // Beverages
+        { sku: 'BEV001', item_name: 'Coca Cola 500ml', category_id: beveragesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 200, stock_price: 100, retail_price: 130 },
+        { sku: 'BEV002', item_name: 'Pepsi 500ml', category_id: beveragesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 200, stock_price: 95, retail_price: 125 },
+        { sku: 'BEV003', item_name: 'Sprite 500ml', category_id: beveragesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 150, stock_price: 100, retail_price: 130 },
+        { sku: 'BEV004', item_name: 'Elephant House Cream Soda 400ml', category_id: beveragesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 100, stock_price: 80, retail_price: 100 },
+        { sku: 'BEV005', item_name: 'Nestomalt 400g', category_id: beveragesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 50, stock_price: 450, retail_price: 550 },
+
+        // Snacks
+        { sku: 'SNK001', item_name: 'Munchee Lemon Puff', category_id: snacksCat?.id, uom_id: packUom?.id, maximum_capacity: 100, stock_price: 120, retail_price: 150 },
+        { sku: 'SNK002', item_name: 'Maliban Cream Cracker', category_id: snacksCat?.id, uom_id: packUom?.id, maximum_capacity: 80, stock_price: 180, retail_price: 220 },
+        { sku: 'SNK003', item_name: 'CBL Munchee Chocolate Biscuit', category_id: snacksCat?.id, uom_id: packUom?.id, maximum_capacity: 60, stock_price: 250, retail_price: 300 },
+        { sku: 'SNK004', item_name: 'Prima Instant Noodles', category_id: snacksCat?.id, uom_id: pcsUom?.id, maximum_capacity: 300, stock_price: 55, retail_price: 70 },
+
+        // Dairy
+        { sku: 'DRY001', item_name: 'Anchor Milk Powder 400g', category_id: dairyCat?.id, uom_id: pcsUom?.id, maximum_capacity: 50, stock_price: 750, retail_price: 890 },
+        { sku: 'DRY002', item_name: 'Highland Fresh Milk 1L', category_id: dairyCat?.id, uom_id: LUom?.id, maximum_capacity: 40, stock_price: 280, retail_price: 350 },
+        { sku: 'DRY003', item_name: 'Kotmale Curd 400g', category_id: dairyCat?.id, uom_id: pcsUom?.id, maximum_capacity: 30, stock_price: 150, retail_price: 190 },
+
+        // Groceries
+        { sku: 'GRC001', item_name: 'Astra Margarine 250g', category_id: groceriesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 60, stock_price: 220, retail_price: 280 },
+        { sku: 'GRC002', item_name: 'MD Coconut Oil 500ml', category_id: groceriesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 40, stock_price: 450, retail_price: 520 },
+        { sku: 'GRC003', item_name: 'Raigam Soya Meat 90g', category_id: groceriesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 100, stock_price: 85, retail_price: 110 },
+        { sku: 'GRC004', item_name: 'Red Rice 1kg', category_id: groceriesCat?.id, uom_id: kgUom?.id, maximum_capacity: 100, stock_price: 180, retail_price: 220 },
+        { sku: 'GRC005', item_name: 'White Rice 1kg', category_id: groceriesCat?.id, uom_id: kgUom?.id, maximum_capacity: 100, stock_price: 160, retail_price: 200 },
+
+        // Personal Care
+        { sku: 'PRC001', item_name: 'Signal Toothpaste 120g', category_id: personalCareCat?.id, uom_id: pcsUom?.id, maximum_capacity: 50, stock_price: 180, retail_price: 230 },
+        { sku: 'PRC002', item_name: 'Lifebuoy Soap 100g', category_id: personalCareCat?.id, uom_id: pcsUom?.id, maximum_capacity: 80, stock_price: 95, retail_price: 120 },
+        { sku: 'PRC003', item_name: 'Sunsilk Shampoo 180ml', category_id: personalCareCat?.id, uom_id: pcsUom?.id, maximum_capacity: 40, stock_price: 320, retail_price: 400 }
+    ];
+
+    const itemStmt = db.prepare(`
+        INSERT INTO items (sku, item_name, category_id, uom_id, branch_id, maximum_capacity, availability, created_at, updated_at, sync_status)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, 'local_only')
+    `);
+
+    const stockStmt = db.prepare(`
+        INSERT INTO stock (item_id, batch_code, quantity, threshold_limit, stock_price, retail_price, discount_price, expiry_date, availability, created_at, updated_at, sync_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 'local_only')
+    `);
+
+    // Generate expiry date 6 months from now
+    const expiryDate = new Date();
+    expiryDate.setMonth(expiryDate.getMonth() + 6);
+    const expiryDateStr = expiryDate.toISOString().split('T')[0];
+
+    const insertMany = db.transaction(() => {
+        for (const item of defaultItems) {
+            // Insert item
+            const result = itemStmt.run(
+                item.sku,
+                item.item_name,
+                item.category_id,
+                item.uom_id,
+                branch?.id,
+                item.maximum_capacity,
+                now,
+                now
+            );
+
+            // Insert initial stock for the item
+            const itemId = result.lastInsertRowid;
+            const batchCode = `BATCH-${item.sku}-001`;
+            const initialQty = Math.floor(item.maximum_capacity * 0.6); // 60% of max capacity
+            const threshold = Math.floor(item.maximum_capacity * 0.2); // 20% threshold
+
+            stockStmt.run(
+                itemId,
+                batchCode,
+                initialQty,
+                threshold,
+                item.stock_price,
+                item.retail_price,
+                0,
+                expiryDateStr,
+                now,
+                now
+            );
+        }
+    });
+
+    insertMany();
+
+    console.log('[Seeder] Default items and stock created:', defaultItems.length);
+    return { seeded: true, message: `Created ${defaultItems.length} items with stock` };
+}
+
+/**
+ * Seed default members
  * @returns {Object} Result of seeding
  */
 function seedDefaultMember() {
@@ -204,17 +433,31 @@ function seedDefaultMember() {
         return { seeded: false, message: 'Members already exist' };
     }
 
-    const now = new Date().toISOString();
+    const now = nowISO();
+
+    const defaultMembers = [
+        { member_no: 'MEM000001', full_name: 'Walk-in Customer', contact: '', address: '', member_type: 'regular' },
+        { member_no: 'MEM000002', full_name: 'Nimal Perera', contact: '077 1234567', address: '45 Galle Road, Colombo', member_type: 'regular' },
+        { member_no: 'MEM000003', full_name: 'Kumari Silva', contact: '071 2345678', address: '78 Kandy Road, Kurunegala', member_type: 'premium' },
+        { member_no: 'MEM000004', full_name: 'Sunil Fernando', contact: '076 3456789', address: '12 Station Road, Galle', member_type: 'regular' },
+        { member_no: 'MEM000005', full_name: 'Anura Bandara', contact: '078 4567890', address: '23 Temple Street, Kandy', member_type: 'premium' }
+    ];
 
     const stmt = db.prepare(`
         INSERT INTO members (member_no, full_name, contact, address, member_type, is_active, created_at, updated_at, sync_status)
         VALUES (?, ?, ?, ?, ?, 1, ?, ?, 'local_only')
     `);
 
-    stmt.run('MEM000001', 'Walk-in Customer', '', '', 'regular', now, now);
+    const insertMany = db.transaction(() => {
+        for (const member of defaultMembers) {
+            stmt.run(member.member_no, member.full_name, member.contact, member.address, member.member_type, now, now);
+        }
+    });
 
-    console.log('[Seeder] Default member (Walk-in Customer) created');
-    return { seeded: true, message: 'Default member created' };
+    insertMany();
+
+    console.log('[Seeder] Default members created:', defaultMembers.length);
+    return { seeded: true, message: `Created ${defaultMembers.length} members` };
 }
 
 /**
@@ -228,7 +471,9 @@ function runSeeders() {
         uoms: seedDefaultUoms(),
         categories: seedDefaultCategories(),
         branches: seedDefaultBranch(),
-        members: seedDefaultMember()
+        suppliers: seedDefaultSuppliers(),
+        members: seedDefaultMember(),
+        items: seedDefaultItems()
     };
 
     console.log('[Seeder] Seeding complete');
@@ -240,6 +485,8 @@ module.exports = {
     seedDefaultUoms,
     seedDefaultCategories,
     seedDefaultBranch,
+    seedDefaultSuppliers,
     seedDefaultMember,
+    seedDefaultItems,
     runSeeders
 };

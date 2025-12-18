@@ -5,6 +5,7 @@
  */
 
 const supplierRepository = require('../repositories/SupplierRepository.cjs');
+const { nowISO } = require('../utils/helpers.cjs');
 
 class SupplierService {
     /**
@@ -127,8 +128,8 @@ class SupplierService {
                 account_branch: accountInfo.account_branch || null,
                 account_name: accountInfo.account_name || null,
                 account_nickname: accountInfo.account_nickname || null,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
+                created_at: nowISO(),
+                updated_at: nowISO(),
                 sync_status: 'pending'
             };
 

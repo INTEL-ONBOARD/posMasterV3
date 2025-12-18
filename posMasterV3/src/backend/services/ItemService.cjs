@@ -5,6 +5,7 @@
  */
 
 const itemRepository = require('../repositories/ItemRepository.cjs');
+const { nowISO } = require('../utils/helpers.cjs');
 
 class ItemService {
     /**
@@ -184,8 +185,8 @@ class ItemService {
                 uom_id: data.uom_id || null,
                 branch_id: data.inventory_id || data.branch_id || null,
                 availability: data.availability !== undefined ? (data.availability ? 1 : 0) : 1,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
+                created_at: nowISO(),
+                updated_at: nowISO(),
                 sync_status: 'pending'
             };
 

@@ -6,6 +6,7 @@
 
 const BaseRepository = require('./BaseRepository.cjs');
 const { notifyDataChange } = require('../services/CloudSyncService.cjs');
+const { nowISO, getSriLankanDate } = require('../utils/helpers.cjs');
 
 class SalesRepository extends BaseRepository {
     constructor() {
@@ -124,7 +125,7 @@ class SalesRepository extends BaseRepository {
                 change_amount: data.change_amount || 0,
                 status: data.status || 'completed',
                 is_held: data.is_held ? 1 : 0,
-                created_at: new Date().toISOString(),
+                created_at: nowISO(),
                 sync_status: 'pending'
             };
 
@@ -168,7 +169,7 @@ class SalesRepository extends BaseRepository {
                 if (!data.is_held) {
                     decreaseStockStmt.run(
                         item.quantity,
-                        new Date().toISOString(),
+                        nowISO(),
                         item.stock_id
                     );
                 }
@@ -182,7 +183,7 @@ class SalesRepository extends BaseRepository {
                         updated_at = ?
                     WHERE id = ?
                 `);
-                updateMemberStmt.run(data.total_amount, new Date().toISOString(), data.member_id);
+                updateMemberStmt.run(data.total_amount, nowISO(), data.member_id);
 
                 // Handle credit payments
                 if (data.payment_method === 'credit') {
@@ -192,7 +193,7 @@ class SalesRepository extends BaseRepository {
                             updated_at = ?
                         WHERE id = ?
                     `);
-                    updateCreditsStmt.run(data.total_amount, new Date().toISOString(), data.member_id);
+                    updateCreditsStmt.run(data.total_amount, nowISO(), data.member_id);
                 }
             }
 
@@ -243,7 +244,7 @@ class SalesRepository extends BaseRepository {
             for (const item of items) {
                 decreaseStockStmt.run(
                     item.quantity,
-                    new Date().toISOString(),
+                    nowISO(),
                     item.stock_id
                 );
             }
@@ -273,7 +274,7 @@ class SalesRepository extends BaseRepository {
             for (const item of sale.items) {
                 restoreStockStmt.run(
                     item.quantity,
-                    new Date().toISOString(),
+                    nowISO(),
                     item.stock_id
                 );
             }
@@ -335,8 +336,11 @@ class SalesRepository extends BaseRepository {
      * @returns {string}
      */
     generateInvoiceNo(prefix = 'INV') {
-        const today = new Date();
-        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+        const today = getSriLankanDate();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const dateStr = `${year}${month}${day}`;
         const count = this.countWhere({}) + 1;
         const padded = String(count).padStart(6, '0');
         return `${prefix}${dateStr}${padded}`;
