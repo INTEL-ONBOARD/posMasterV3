@@ -8,8 +8,6 @@ import InventoryView from "./InventoryView.jsx";
 import InventoryRestock from "./InventoryRestock.jsx";
 import SupplierReg from "./SupplierReg.jsx";
 import CheckHistory from "./CheckHistory.jsx";
-import ReturnItem from "./ReturnItem.jsx";
-import DisposeItem from "./DisposeItem.jsx";
 import PriceChange from "./PriceChange.jsx";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
 
@@ -18,8 +16,6 @@ const sectionLabels = {
   "view-inventory": "View Inventory",
   "add-item": "Add Item",
   "inventory-restock": "Inventory Restock",
-  "return-item": "Return Item",
-  "dispose-item": "Dispose Item",
   "supplier-registration": "Supplier Registration",
   "price-change": "Price Change",
   "check-history": "Check History",
@@ -55,8 +51,6 @@ function Inventory() {
         onViewInvClick={() => handleSectionChange("view-inventory")}
         onAddItemClick={() => handleSectionChange("add-item")}
         onRestockClick={() => handleSectionChange("inventory-restock")}
-        onReturnItemClick={() => handleSectionChange("return-item")}
-        onDisposeItemClick={() => handleSectionChange("dispose-item")}
         onSupplierRegClick={() => handleSectionChange("supplier-registration")}
         onPriceChangeClick={() => handleSectionChange("price-change")}
         onCheckHistoryClick={() => handleSectionChange("check-history")}
@@ -77,14 +71,6 @@ function Inventory() {
         <div className={isVisible("inventory-restock")}>
           <InventoryRestock isActive={activeSection === "inventory-restock"} />
         </div>
-        {/* Return Item */}
-        <div className={isVisible("return-item")}>
-          <ReturnItem isActive={activeSection === "return-item"} />
-        </div>
-        {/* Dispose Item */}
-        <div className={isVisible("dispose-item")}>
-          <DisposeItem isActive={activeSection === "dispose-item"} />
-        </div>
         {/* Supplier Reg */}
         <div className={isVisible("supplier-registration")}>
           <SupplierReg isActive={activeSection === "supplier-registration"} />
@@ -96,10 +82,6 @@ function Inventory() {
         {/* Check History */}
         <div className={isVisible("check-history")}>
           <CheckHistory isActive={activeSection === "check-history"} />
-        </div>
-        {/* Dispose Item */}
-        <div className={isVisible("dispose-item")}>
-          <DisposeItem isActive={activeSection === "dispose-item"} />
         </div>
         {/* Inventory Config */}
         <div className={isVisible("inventory-config")}>

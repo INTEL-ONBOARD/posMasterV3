@@ -6,8 +6,6 @@ import restockImg from "../../assets/Inventory_restock.png";
 import ViewInventoryImg from "../../assets/View_inventory.png";
 import SupplierRegImg from "../../assets/Inventory_supplier_reg.png";
 import checkHistoryImg from "../../assets/Inventory_history_check.png";
-import returnItemImg from "../../assets/return_stock_image.png";
-import disposeItemImg from "../../assets/dispose_items.png";
 import priceChangeImg from "../../assets/price_change.png";
 import { localAuth } from "../../api/services/localAuth";
 import { settingsApi } from "../../api/localApi";
@@ -21,8 +19,6 @@ function InventorySidebar({
   onCheckHistoryClick,
   onConfigClick,
   onCReportClick,
-  onReturnItemClick,
-  onDisposeItemClick,
   onPriceChangeClick,
 }) {
   const [permissions, setPermissions] = useState(null);
@@ -73,20 +69,6 @@ function InventorySidebar({
       icon: restockImg,
       onClick: onRestockClick,
       permissionKey: "inventory_restock",
-    },
-    {
-      id: "return-item",
-      label: "Return Item",
-      icon: returnItemImg,
-      onClick: onReturnItemClick,
-      permissionKey: "inventory_return_list",
-    },
-    {
-      id: "dispose-item",
-      label: "Dispose Item",
-      icon: disposeItemImg,
-      onClick: onDisposeItemClick,
-      permissionKey: "inventory_dispose",
     },
     {
       id: "supplier-registration",
