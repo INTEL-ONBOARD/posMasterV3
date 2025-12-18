@@ -34,7 +34,7 @@ export default function TransactionHistory({ isActive }) {
                 <div className="flex flex-col gap-2 pb-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1">
-                      Batch Code
+                      Member ID
                     </label>
                     <input
                       type="text"
