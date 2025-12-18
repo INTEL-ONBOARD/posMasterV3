@@ -67,8 +67,6 @@ function seedDefaultAdmin() {
             inventory_view: true,
             inventory_register_item: true,
             inventory_restock: true,
-            inventory_return_list: true,
-            inventory_dispose: true,
             inventory_suppliers: true,
             inventory_discount: true,
             inventory_price_change: true,
