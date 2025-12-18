@@ -5,6 +5,7 @@
  */
 
 const uomRepository = require('../repositories/UomRepository.cjs');
+const { nowISO } = require('../utils/helpers.cjs');
 
 class UomService {
     /**
@@ -101,8 +102,8 @@ class UomService {
             const uomData = {
                 symbol: data.symbol,
                 unit_name: data.unit_name,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
+                created_at: nowISO(),
+                updated_at: nowISO(),
                 sync_status: 'pending'
             };
 

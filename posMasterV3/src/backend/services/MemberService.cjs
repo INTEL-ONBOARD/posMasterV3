@@ -5,6 +5,7 @@
  */
 
 const memberRepository = require('../repositories/MemberRepository.cjs');
+const { nowISO } = require('../utils/helpers.cjs');
 
 class MemberService {
     /**
@@ -187,8 +188,8 @@ class MemberService {
                 total_income: data.total_income || 0,
                 total_credits: data.total_credits || 0,
                 is_active: data.is_active !== undefined ? (data.is_active ? 1 : 0) : 1,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
+                created_at: nowISO(),
+                updated_at: nowISO(),
                 sync_status: 'pending'
             };
 

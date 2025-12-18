@@ -5,6 +5,7 @@
  */
 
 const categoryRepository = require('../repositories/CategoryRepository.cjs');
+const { nowISO } = require('../utils/helpers.cjs');
 
 class CategoryService {
     /**
@@ -112,8 +113,8 @@ class CategoryService {
             const categoryData = {
                 brand: data.brand,
                 type: data.type,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
+                created_at: nowISO(),
+                updated_at: nowISO(),
                 sync_status: 'pending'
             };
 

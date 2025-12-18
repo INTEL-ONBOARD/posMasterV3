@@ -22,6 +22,7 @@ const MemberController = require('./MemberController.cjs');
 const SalesController = require('./SalesController.cjs');
 const SettingsController = require('./SettingsController.cjs');
 const CloudSyncController = require('./CloudSyncController.cjs');
+const LoginHistoryController = require('./LoginHistoryController.cjs');
 
 /**
  * Register all IPC handlers
@@ -57,6 +58,10 @@ function registerAllHandlers() {
     // Cloud Sync handlers
     const cloudSyncController = new CloudSyncController();
     cloudSyncController.registerHandlers();
+
+    // Login History handlers
+    const loginHistoryController = new LoginHistoryController();
+    loginHistoryController.registerHandlers();
 
     console.log('[Controllers] All IPC handlers registered successfully');
 }
@@ -98,5 +103,6 @@ module.exports = {
     MemberController,
     SalesController,
     SettingsController,
-    CloudSyncController
+    CloudSyncController,
+    LoginHistoryController
 };

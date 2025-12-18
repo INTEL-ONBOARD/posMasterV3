@@ -6,7 +6,7 @@
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
-const { generateUUID } = require('../utils/helpers.cjs');
+const { generateUUID, nowISO } = require('../utils/helpers.cjs');
 
 class SyncQueueRepository extends BaseRepository {
     constructor() {
@@ -29,7 +29,7 @@ class SyncQueueRepository extends BaseRepository {
             retry_count: 0,
             max_retries: data.max_retries || 3,
             status: 'pending',
-            created_at: new Date().toISOString()
+            created_at: nowISO()
         };
 
         return super.create(item);
@@ -84,7 +84,7 @@ class SyncQueueRepository extends BaseRepository {
     markCompleted(id) {
         return this.update(id, {
             status: 'completed',
-            processed_at: new Date().toISOString()
+            processed_at: nowISO()
         });
     }
 
@@ -120,7 +120,7 @@ class SyncQueueRepository extends BaseRepository {
             AND retry_count >= max_retries
         `);
 
-        const result = stmt.run(new Date().toISOString());
+        const result = stmt.run(nowISO());
         return result.changes;
     }
 

@@ -5,6 +5,7 @@
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
+const { nowISO, getSriLankanDate } = require('../utils/helpers.cjs');
 
 class StockRepository extends BaseRepository {
     constructor() {
@@ -133,9 +134,9 @@ class StockRepository extends BaseRepository {
      * @returns {Array}
      */
     getExpiringStock(days = 30) {
-        const futureDate = new Date();
+        const futureDate = getSriLankanDate();
         futureDate.setDate(futureDate.getDate() + days);
-        const futureDateStr = futureDate.toISOString();
+        const futureDateStr = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}T23:59:59.999Z`;
 
         const stmt = this.db.prepare(`
             SELECT
@@ -234,8 +235,8 @@ class StockRepository extends BaseRepository {
             expiry_date: data.expiry_date,
             threshold_limit: data.threshold_limit || 0,
             availability: data.availability !== undefined ? data.availability : 1,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            created_at: nowISO(),
+            updated_at: nowISO(),
             sync_status: 'pending'
         });
     }
