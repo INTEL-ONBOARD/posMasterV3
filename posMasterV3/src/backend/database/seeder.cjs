@@ -52,7 +52,44 @@ function seedDefaultAdmin() {
 
     stmt.run(adminUser);
 
-    console.log('[Seeder] Default admin user created');
+    // Create full admin permissions for the admin user
+    const fullAdminPermissions = {
+        SaleAccess: {
+            sale_process: true,
+            sale_history: true,
+            sale_view_inventory: true,
+            sale_reports: true,
+            sale_configurations: true,
+            sale_discounts: true
+        },
+        InventoryAccess: {
+            inventory_view: true,
+            inventory_register_item: true,
+            inventory_restock: true,
+            inventory_return_list: true,
+            inventory_dispose: true,
+            inventory_suppliers: true,
+            inventory_price_change: true,
+            inventory_history: true,
+            inventory_configurations: true,
+            inventory_reports: true
+        },
+        UserAccess: {
+            user_manage: true,
+            user_role_manage: true
+        }
+    };
+
+    // Insert admin settings with full permissions
+    const settingsStmt = db.prepare(`
+        INSERT INTO user_settings (id, user_id, permissions, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+    `);
+
+    const settingsId = generateUUID();
+    settingsStmt.run(settingsId, adminUser.id, JSON.stringify(fullAdminPermissions), nowISO(), nowISO());
+
+    console.log('[Seeder] Default admin user created with full permissions');
     console.log('[Seeder] ================================');
     console.log('[Seeder] Username: admin');
     console.log('[Seeder] Password: 12345');

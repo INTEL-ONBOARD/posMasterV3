@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { localAuth } from "../api/services/localAuth";
+import { settingsApi } from "../api/localApi";
 import Dashboard_inventory from "../assets/Dashboard_inventory.png";
 import Dashboard_logout from "../assets/Dashboard_logout.png";
 import Dashboard_settings from "../assets/Dashboard_settings.png";
@@ -38,6 +39,56 @@ function Sidebar() {
   const currentPath = location.pathname;
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [permissions, setPermissions] = useState(null);
+
+  // Load user permissions on mount
+  useEffect(() => {
+    const loadPermissions = async () => {
+      try {
+        const currentUser = await localAuth.getCurrentUser();
+        if (currentUser) {
+          const userId = currentUser.id || currentUser._id;
+          const response = await settingsApi.getUserSettings(userId);
+
+          if (response.status === "success" && response.data?.settings?.permissions) {
+            setPermissions(response.data.settings.permissions);
+          } else {
+            // No permissions saved, set default based on role
+            setPermissions(null);
+          }
+        }
+      } catch (error) {
+        console.error("[Sidebar] Error loading permissions:", error);
+      }
+    };
+
+    loadPermissions();
+  }, []);
+
+  // Check if user has access to a specific section
+  const hasAccess = (section) => {
+    // If permissions not loaded yet or null, check user role for defaults
+    if (!permissions) {
+      return true; // Show all by default until permissions load
+    }
+
+    switch (section) {
+      case "inventory":
+        // Check if any inventory permission is enabled
+        return permissions.InventoryAccess &&
+          Object.values(permissions.InventoryAccess).some(v => v === true);
+      case "sales":
+        // Check if any sale permission is enabled
+        return permissions.SaleAccess &&
+          Object.values(permissions.SaleAccess).some(v => v === true);
+      case "users":
+        // Check if user management permission is enabled
+        return permissions.UserAccess &&
+          (permissions.UserAccess.user_manage === true || permissions.UserAccess.user_role_manage === true);
+      default:
+        return true; // Notifications, Settings, Logout are always accessible
+    }
+  };
 
   // Logout function
   const handleLogout = async () => {
@@ -79,28 +130,35 @@ function Sidebar() {
               to: "notifications",
               icon: Dashboard_notification,
               label: "Notifications",
+              alwaysVisible: true, // Always show
             },
             {
               to: "inventory",
               icon: Dashboard_inventory,
               label: "Inventory",
+              permissionKey: "inventory",
             },
             {
               to: "sales",
               icon: Dashboard_sales,
               label: "Sales",
+              permissionKey: "sales",
             },
             {
               to: "users",
               icon: Dashboard_users,
-              label: "users",
+              label: "Users",
+              permissionKey: "users",
             },
             {
               to: "settings",
               icon: Dashboard_settings,
               label: "Settings",
+              alwaysVisible: true, // Always show
             },
-          ].map((item, index) => (
+          ]
+            .filter((item) => item.alwaysVisible || hasAccess(item.permissionKey))
+            .map((item) => (
             <motion.li key={item.to} variants={tileVariant}>
               <Link
                 to={item.to}
