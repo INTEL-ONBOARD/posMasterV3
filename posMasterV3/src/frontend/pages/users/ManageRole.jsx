@@ -535,13 +535,16 @@ function ManageRole() {
             {/* Role Information Block */}
             <div className="bg-white">
               <button
-                onClick={() => setOpenRoleInfo(!openRoleInfo)}
+                onClick={() => {
+                  setOpenRoleInfo(!openRoleInfo)
+                  setOpenPermissions(!openPermissions)
+                }}
                 className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
               >
                 <span className="text-gray-400">ROLE INFORMATION</span>
-                {openRoleInfo ? <ChevronUp /> : <ChevronDown />}
+                {(openRoleInfo && !openPermissions) ? <ChevronUp /> : <ChevronDown />}
               </button>
-              {openRoleInfo && (
+              {(openRoleInfo && !openPermissions) && (
                 <div className="px-4 bg-white pb-5">
                   <div className="mb-3">
                     <label className="block text-sm font-medium text-gray-400 mb-1">
@@ -590,13 +593,16 @@ function ManageRole() {
             {/* Permissions Block */}
             <div className="bg-white">
               <button
-                onClick={() => setOpenPermissions(!openPermissions)}
+                onClick={() => {
+                  setOpenPermissions(!openPermissions)
+                  setOpenRoleInfo(!setOpenRoleInfo)
+                }}
                 className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
               >
                 <span className="text-gray-400">PERMISSIONS</span>
-                {openPermissions ? <ChevronUp /> : <ChevronDown />}
+                {(openPermissions && !openRoleInfo) ? <ChevronUp /> : <ChevronDown />}
               </button>
-              {openPermissions && (
+              {(openPermissions && !openRoleInfo) && (
                 <div className="px-4 bg-white pb-5">
                   <div className="space-y-4 max-h-[20rem] overflow-y-auto">
                     {Object.entries(permissions).map(([category, perms]) => {
