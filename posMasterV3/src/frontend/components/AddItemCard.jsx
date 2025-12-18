@@ -42,8 +42,8 @@ export default function AddItemCard({ item, onOpen, onRemove }) {
       <div className="flex flex-col justify-between p-4 flex-1">
         <div className="flex items-start justify-between">
           <div>
-            <div className="bg-slate-800 rounded-lg px-2 py-1 inline-block">
-              <img src={barcodeImg} alt="Barcode" className="w-14 object-contain brightness-0 invert opacity-80" />
+            <div className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 inline-block">
+              <img src={barcodeImg} alt="Barcode" className="w-14 object-contain" />
             </div>
             <p className="text-xs text-gray-400 mt-1 font-mono">SKU: {item.sku}</p>
           </div>

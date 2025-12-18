@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { supplierApi, userApi, itemApi, categoryApi } from "../../api/localApi";
+import { supplierApi, userApi, itemApi, categoryApi, restockApi } from "../../api/localApi";
 import { ChevronDown, ChevronUp, Package, Layers, Building2, RotateCcw, Search, ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
 import barcodeImg from "../../assets/barcode.png";
@@ -635,20 +635,19 @@ function InventoryRestock({ isActive }) {
   const fetchStockEntries = async (sku) => {
     if (!sku) return;
     try {
-      const response = await apiClient.get(`api/restocks/stock-data/${sku}`);
-      const payload = response?.data;
+      const response = await restockApi.getStockData(sku);
 
-      if (payload) {
-        if (payload.status === 'success' && Array.isArray(payload.data)) {
-          setStockEntries(payload.data);
+      if (response) {
+        if (response.status === 'success' && Array.isArray(response.data)) {
+          setStockEntries(response.data);
           console.log(stockEntries);
-        } else if (Array.isArray(payload)) {
-          setStockEntries(payload);
-        } else if (Array.isArray(payload.data)) {
-          setStockEntries(payload.data);
+        } else if (Array.isArray(response)) {
+          setStockEntries(response);
+        } else if (Array.isArray(response.data)) {
+          setStockEntries(response.data);
         } else {
           setStockEntries([]);
-          //setStockFetchError(payload.message || 'Unexpected response shape');
+          //setStockFetchError(response.message || 'Unexpected response shape');
         }
 
       } else {
@@ -956,9 +955,9 @@ function InventoryRestock({ isActive }) {
         added_items: transformToAddedItems(), //contatins a list
         return_items: transformToReturnedItems() //contains a list
       };
-      const response = await apiClient.post("api/restocks", requestData);
+      const response = await restockApi.create(requestData);
 
-      if (response.data.status === "success") {
+      if (response.status === "success") {
         //generate a new invoice number
         setInvoiceGenerate(invoiceGenerate + 1);
 
@@ -1003,8 +1002,8 @@ function InventoryRestock({ isActive }) {
               <div className="px-4 pb-4 border-t border-gray-100">
                 <div className="flex flex-row items-center gap-4 pt-4">
                   <div className="flex flex-col items-center">
-                    <div className="bg-slate-800 rounded-xl p-3">
-                      <img src={barcodeImg} alt="Barcode" className="w-20 object-contain brightness-0 invert opacity-70" />
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                      <img src={barcodeImg} alt="Barcode" className="w-20 object-contain" />
                     </div>
                     <p className="text-xs text-gray-500 mt-2 font-mono">{formDataRegItem.sku || 'No SKU'}</p>
                   </div>
