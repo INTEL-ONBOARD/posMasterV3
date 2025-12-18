@@ -2,7 +2,7 @@
  * Local Authentication Service
  *
  * Provides authentication services using the local SQLite backend.
- * Falls back to cloud API when needed.
+ * All operations use the local database only - no cloud fallback.
  *
  * Usage:
  * import { localAuth } from '../api/services/localAuth';
@@ -17,8 +17,6 @@
  * await localAuth.logout();
  */
 
-import { apiClient } from '../client';
-
 // Check if running in Electron
 const isElectron = () => {
     return typeof window !== 'undefined' && window.electronAPI;
@@ -29,90 +27,36 @@ const isElectron = () => {
  */
 export const localAuth = {
     /**
-     * Login with local database first, fallback to cloud
+     * Login with local database
      * @param {string} email - Email or username
      * @param {string} password - Password
      * @returns {Promise<Object>} Login result
      */
     async login(email, password) {
-        if (isElectron()) {
-            try {
-                // Try local login first
-                const localResult = await window.electronAPI.auth.login(email, password);
-
-                if (localResult.success) {
-                    // Store in localStorage for compatibility
-                    this._storeUserData(localResult);
-                    return localResult;
-                }
-
-                // If local user not found, try cloud and import
-                if (localResult.requiresCloudSync) {
-                    return await this._loginViaCloud(email, password);
-                }
-
-                return localResult;
-
-            } catch (error) {
-                console.error('[LocalAuth] Local login error:', error);
-                // Fallback to cloud
-                return await this._loginViaCloud(email, password);
-            }
-        }
-
-        // Not in Electron, use cloud directly
-        return await this._loginViaCloud(email, password);
-    },
-
-    /**
-     * Login via cloud API and import user locally
-     * @private
-     */
-    async _loginViaCloud(email, password) {
-        try {
-            const response = await apiClient.post('api/users/login', { email, password });
-
-            if (response.data.status === 'success') {
-                const userData = response.data.data;
-                const token = response.data.token;
-
-                // Import user to local database if in Electron
-                if (isElectron()) {
-                    try {
-                        await window.electronAPI.auth.importFromCloud(userData, password);
-                        console.log('[LocalAuth] User imported to local database');
-                    } catch (importError) {
-                        console.warn('[LocalAuth] Failed to import user locally:', importError);
-                    }
-                }
-
-                // Store in localStorage
-                this._storeUserData({
-                    data: userData,
-                    token
-                });
-
-                return {
-                    success: true,
-                    status: 'success',
-                    message: 'Login successful',
-                    data: userData,
-                    token
-                };
-            }
-
-            return {
-                success: false,
-                status: response.data.status,
-                message: response.data.message || 'Login failed'
-            };
-
-        } catch (error) {
-            const message = error.response?.data?.message || error.message || 'Login failed';
+        if (!isElectron()) {
             return {
                 success: false,
                 status: 'error',
-                message
+                message: 'Not running in Electron environment'
+            };
+        }
+
+        try {
+            const result = await window.electronAPI.auth.login(email, password);
+
+            if (result.success) {
+                // Store in localStorage for compatibility
+                this._storeUserData(result);
+            }
+
+            return result;
+
+        } catch (error) {
+            console.error('[LocalAuth] Login error:', error);
+            return {
+                success: false,
+                status: 'error',
+                message: 'Login failed: ' + error.message
             };
         }
     },
@@ -123,35 +67,23 @@ export const localAuth = {
      * @returns {Promise<Object>} Registration result
      */
     async register(userData) {
-        if (isElectron()) {
-            try {
-                // Register locally first
-                const result = await window.electronAPI.auth.register(userData);
-                return result;
-            } catch (error) {
-                console.error('[LocalAuth] Local registration error:', error);
-                return {
-                    success: false,
-                    status: 'error',
-                    message: 'Registration failed: ' + error.message
-                };
-            }
-        }
-
-        // Not in Electron, register via cloud directly
-        try {
-            const response = await apiClient.post('api/users/register', userData);
-            return {
-                success: response.data.status === 'success',
-                status: response.data.status,
-                message: response.data.message,
-                data: response.data.data
-            };
-        } catch (error) {
+        if (!isElectron()) {
             return {
                 success: false,
                 status: 'error',
-                message: error.response?.data?.message || 'Registration failed'
+                message: 'Not running in Electron environment'
+            };
+        }
+
+        try {
+            const result = await window.electronAPI.auth.register(userData);
+            return result;
+        } catch (error) {
+            console.error('[LocalAuth] Registration error:', error);
+            return {
+                success: false,
+                status: 'error',
+                message: 'Registration failed: ' + error.message
             };
         }
     },
@@ -167,7 +99,7 @@ export const localAuth = {
             try {
                 await window.electronAPI.auth.logout(token);
             } catch (error) {
-                console.warn('[LocalAuth] Local logout error:', error);
+                console.warn('[LocalAuth] Logout error:', error);
             }
         }
 
@@ -193,11 +125,11 @@ export const localAuth = {
                 return await window.electronAPI.auth.validateSession(token);
             } catch (error) {
                 console.error('[LocalAuth] Session validation error:', error);
+                return { valid: false, message: error.message };
             }
         }
 
-        // Fallback: check if token exists
-        return { valid: !!token };
+        return { valid: false, message: 'Not in Electron environment' };
     },
 
     /**
@@ -209,8 +141,9 @@ export const localAuth = {
 
         if (isElectron() && token) {
             try {
-                const user = await window.electronAPI.auth.getCurrentUser(token);
-                if (user) return user;
+                const result = await window.electronAPI.auth.getCurrentUser(token);
+                if (result && result.data) return result.data;
+                if (result) return result;
             } catch (error) {
                 console.error('[LocalAuth] Get current user error:', error);
             }
@@ -234,38 +167,39 @@ export const localAuth = {
             return { success: false, message: 'Not logged in' };
         }
 
-        if (isElectron()) {
-            try {
-                return await window.electronAPI.auth.changePassword(
-                    user.id || user._id,
-                    currentPassword,
-                    newPassword
-                );
-            } catch (error) {
-                return {
-                    success: false,
-                    status: 'error',
-                    message: 'Password change failed: ' + error.message
-                };
-            }
+        if (!isElectron()) {
+            return { success: false, message: 'Not in Electron environment' };
         }
 
-        // Cloud fallback
         try {
-            const response = await apiClient.post(`api/users/${user._id}/change-password`, {
-                current_password: currentPassword,
-                new_password: newPassword
-            });
-            return {
-                success: response.data.status === 'success',
-                message: response.data.message
-            };
+            return await window.electronAPI.auth.changePassword(
+                user.id || user._id,
+                currentPassword,
+                newPassword
+            );
         } catch (error) {
             return {
                 success: false,
-                message: error.response?.data?.message || 'Password change failed'
+                status: 'error',
+                message: 'Password change failed: ' + error.message
             };
         }
+    },
+
+    /**
+     * Check if user is logged in
+     * @returns {boolean}
+     */
+    isLoggedIn() {
+        return !!localStorage.getItem('token');
+    },
+
+    /**
+     * Get stored token
+     * @returns {string|null}
+     */
+    getToken() {
+        return localStorage.getItem('token');
     },
 
     /**
@@ -302,55 +236,23 @@ export const localAuth = {
 };
 
 /**
- * Sync Service Helper
+ * Database Status Service
  */
-export const syncService = {
+export const databaseService = {
     /**
-     * Get sync status
+     * Get database/backend status
      * @returns {Promise<Object>}
      */
     async getStatus() {
         if (!isElectron()) {
-            return { isOnline: true, isSyncing: false, queue: { pending: 0 } };
+            return { initialized: false, message: 'Not in Electron environment' };
         }
 
         try {
-            return await window.electronAPI.sync.getStatus();
+            return await window.electronAPI.database.getStatus();
         } catch (error) {
-            console.error('[SyncService] Get status error:', error);
-            return { isOnline: false, isSyncing: false, error: error.message };
-        }
-    },
-
-    /**
-     * Check cloud connectivity
-     * @returns {Promise<boolean>}
-     */
-    async isOnline() {
-        if (!isElectron()) return true;
-
-        try {
-            const result = await window.electronAPI.sync.checkConnectivity();
-            return result.online;
-        } catch (error) {
-            return false;
-        }
-    },
-
-    /**
-     * Trigger sync
-     * @returns {Promise<Object>}
-     */
-    async sync() {
-        if (!isElectron()) {
-            return { success: true, message: 'Not in Electron environment' };
-        }
-
-        try {
-            const token = localStorage.getItem('token');
-            return await window.electronAPI.sync.processQueue(token);
-        } catch (error) {
-            return { success: false, message: error.message };
+            console.error('[DatabaseService] Get status error:', error);
+            return { initialized: false, error: error.message };
         }
     }
 };

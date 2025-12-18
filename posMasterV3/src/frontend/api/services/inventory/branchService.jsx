@@ -1,37 +1,27 @@
 import ResponseDTO from "../../../templates/dtos/ResponseDTO";
-
-import { apiClient } from "../../client";
+import { branchApi } from "../../localApi";
 
 class BranchService {
 
     async getBranches() {
-        const response = await apiClient.get("api/inventories");
-        return ResponseDTO(response.data);
-        //return response.data.map((u) => new UserDTO(u));
+        const response = await branchApi.getAll();
+        return ResponseDTO(response);
     }
 
     async registerBranch(branch) {
-        const response = await apiClient.post("api/inventories/add", branch);
-        //return response;
-        return new ResponseDTO(response.data);
+        const response = await branchApi.create(branch);
+        return new ResponseDTO(response);
     }
 
     async updateBranch(branchId, branch) {
-        const response = await apiClient.put(`api/inventories/${branchId}`, branch);
-        //return response;
-        return new ResponseDTO(response.data);
+        const response = await branchApi.update(branchId, branch);
+        return new ResponseDTO(response);
     }
 
     async deleteDranch(branchId) {
-        const response = await apiClient.delete(`api/inventories/${branchId}`);
-        //return response;
-        return new ResponseDTO(response.data);
+        const response = await branchApi.delete(branchId);
+        return new ResponseDTO(response);
     }
-
-    // async getbranchById(id) {
-    //     const response = await apiClient.get(`api/branchRegistry/${id}`);
-    //     return new UserDTO(response.data);
-    // }
 
 }
 
