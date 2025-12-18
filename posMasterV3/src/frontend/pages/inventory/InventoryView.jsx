@@ -5,9 +5,11 @@ import { restockApi, categoryApi } from "../../api/localApi";
 import {ChevronDown, ChevronUp } from "lucide-react";
 import { transformStockData } from "../../util/common/blockConverter.jsx";
 import ViewItemModal from "./modals/ViewItemModal.jsx";
+import { useStatusLog } from "../../services/StatusLogService.jsx";
 
 function InventoryView({ isActive }) {
-  
+  const statusLog = useStatusLog();
+
   // modal state: { open: boolean, type: 'success' | 'failed' | null }
   const [modal, setModal] = useState(false);
   const closeModal = () => setModal(false);
@@ -16,15 +18,17 @@ function InventoryView({ isActive }) {
   const [inventoryItems, setInventoryItems] = useState([]);
 
   const fetchItems = async () => {
+    statusLog.database("Loading inventory items...", true);
     try {
       const response = await restockApi.getStockItems();
       if (response.status === "success") {
             const transformed = transformStockData(response);
             //convert default response object to get each detailed stock items(detach stock item object and create a new obj with parent attributes)
             setInventoryItems(transformed);
+            statusLog.success(`Loaded ${transformed.length} inventory items`);
       }
       } catch (error) {
-          console.error("Error fetching items:", error);
+          statusLog.error("Failed to load inventory items");
       } finally {
           //setIsLoading(false);
       }

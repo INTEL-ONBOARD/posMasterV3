@@ -5,10 +5,22 @@ import SalesView from "./SalesView";
 import OffersDiscountView from "./OffersDiscountView";
 import TransactionHistory from "./TransactionHistory";
 import ViewSaleInventory from "./ViewSaleInventory";
+import { useStatusLog } from "../../services/StatusLogService.jsx";
+
+// Section labels for status bar
+const sectionLabels = {
+  "sale-view": "Sale View",
+  "transaction-history": "Transaction History",
+  "view-inventory": "View Inventory",
+  "sales-report": "Sales Report",
+  "offers-discount": "Offers & Discounts",
+  "sales-config": "Sales Configuration",
+};
 
 export default function Sales() {
   const { setActiveSection } = useOutletContext();
   const [activeSection, setLocalActiveSection] = useState("sale-view");
+  const statusLog = useStatusLog();
 
   // Helper function to check visibility
   const isVisible = (section) =>
@@ -22,6 +34,7 @@ export default function Sales() {
   const handleSectionChange = (section) => {
     setLocalActiveSection(section);
     setActiveSection(section);
+    statusLog.info(`Sales: ${sectionLabels[section] || section}`);
   };
 
   return (

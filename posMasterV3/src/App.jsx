@@ -14,6 +14,7 @@ import Dashboard from './frontend/pages/Dashboard.jsx';
 import NotFound from './frontend/pages/NotFound.jsx';
 import Inventory from './frontend/pages/inventory/Inventory.jsx';
 import ToastProvider from './frontend/pages/toasts/ToastProvider.jsx';
+import { StatusLogProvider } from './frontend/services/StatusLogService.jsx';
 import Settings from './frontend/pages/settings/Settings.jsx';
 import Notification from './frontend/pages/notification/Notification.jsx';
 
@@ -84,25 +85,27 @@ function App() {
 
   return (
     <ToastProvider>
-      <HashRouter>
-        <Routes>
-          <Route index element={<Intro />} />
-          <Route path="startup" element={<Startup />} />
-          <Route path="login" element={<Login />} />
+      <StatusLogProvider>
+        <HashRouter>
+          <Routes>
+            <Route index element={<Intro />} />
+            <Route path="startup" element={<Startup />} />
+            <Route path="login" element={<Login />} />
 
-          <Route path="dashboard"             element={<Dashboard />} >
-            <Route index                      element={<Notification />} />
-            <Route path="inventory/*"         element={<Inventory />} />
-            <Route path="inventory-config"    element={<InventoryConfig />} />
-            <Route path="settings/*"          element={<Settings />} />
-            <Route path="notifications"       element={<Notification />} />
-            <Route path="sales"               element={<Sales />} />
-            <Route path="users"           element={<Users/>} />
-          </Route>
+            <Route path="dashboard" element={<Dashboard />}>
+              <Route index element={<Notification />} />
+              <Route path="inventory/*" element={<Inventory />} />
+              <Route path="inventory-config" element={<InventoryConfig />} />
+              <Route path="settings/*" element={<Settings />} />
+              <Route path="notifications" element={<Notification />} />
+              <Route path="sales" element={<Sales />} />
+              <Route path="users" element={<Users />} />
+            </Route>
 
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </HashRouter>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </HashRouter>
+      </StatusLogProvider>
     </ToastProvider>
   );
 }

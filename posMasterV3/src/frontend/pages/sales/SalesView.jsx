@@ -4,6 +4,7 @@ import { restockApi, categoryApi, settingsApi } from "../../api/localApi";
 import {ChevronDown, ChevronUp } from "lucide-react";
 import ToastContext from "../toasts/ToastService.jsx";
 import { localAuth } from "../../api/services/localAuth";
+import { useStatusLog } from "../../services/StatusLogService.jsx";
 
 //image imports
 import barcodeImg from "../../assets/barcode.png";
@@ -24,6 +25,7 @@ export default function SalesView({ isActive }) {
 
   const billRef = useRef(null); //used to store bill pdf format
   const toast = useContext(ToastContext);
+  const statusLog = useStatusLog();
   const [openItemFormBlock, setopenItemFormBlock] = useState('item'); //item || stock || supplier ||
   const [openStockFormBlock, setopenStockFormBlock] = useState('stock'); //item || stock || supplier ||
 
@@ -485,15 +487,17 @@ export default function SalesView({ isActive }) {
 );
 
   const fetchItems = async () => {
+    statusLog.database("Loading sales inventory...", true);
     try {
       const response = await restockApi.getStockItems();
       if (response.status === "success") {
         //convert default response object to get each detailed stock items(detach stock item object and create a new obj with parent attributes)
         const transformed = transformStockData(response);
         setInventoryItems(transformed);
+        statusLog.success(`Sales: Loaded ${transformed.length} items`);
       }
       } catch (error) {
-          console.error("Error fetching items:", error.message);
+          statusLog.error("Failed to load sales inventory");
       } finally {
           setIsLoading(false);
       }

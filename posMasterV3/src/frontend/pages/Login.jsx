@@ -4,6 +4,7 @@ import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 import ToastContext from "./toasts/ToastService";
 import { localAuth } from "../api/services/localAuth";
+import { useStatusLog } from "../services/StatusLogService.jsx";
 
 
 const containerVariants = {
@@ -42,6 +43,7 @@ const fadeUp = {
 function Login() {
   const navigate = useNavigate();
   const toast = useContext(ToastContext);
+  const statusLog = useStatusLog();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
@@ -54,19 +56,17 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    console.log("Submitting login for:", formData.email);
+    statusLog.loading("Authenticating user...");
 
     try {
       // Use local SQLite login only (no cloud fallback)
       const result = await localAuth.login(formData.email, formData.password);
 
-      console.log("Login result:", result);
-
       if (result.success) {
         const userData = result.data;
         const token = result.token;
 
-        console.log("Login successful:", userData.email || userData.username);
+        statusLog.success(`Welcome back, ${userData.full_name || userData.username}`);
 
         // Persist user fields explicitly so other parts of the app can read them
         localStorage.setItem("user", JSON.stringify(userData));
@@ -74,7 +74,6 @@ function Login() {
         if (token !== undefined && token !== null) {
           localStorage.setItem("token", token);
         } else {
-          console.warn('Login: token is undefined/null');
           localStorage.removeItem('token');
         }
 
@@ -88,13 +87,13 @@ function Login() {
           window.electronAPI.sendUserData(userData.email, token);
         }
 
-        console.log("Renderer: login complete, navigating to dashboard");
         navigate("/dashboard");
       } else {
+        statusLog.error("Login failed: Invalid credentials");
         toast.open(result.message || 'Login failed', 4000, 'Login Failed', 'warning');
       }
     } catch (error) {
-      console.error("Login error:", error);
+      statusLog.error("Login error occurred");
       toast.open(error.message || "Login error: Please try again", 4000, 'Login Failed', 'warning');
     } finally {
       setIsLoading(false);

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import InventorySidebar from "./Inventory_sidebar";
 import AddItem from "./AddItem.jsx";
-import NotFound from "../../assets/nonicons_not-found-16.png";
 import InventoryConfig from "./InventoryConfig";
 import InventoryReport from "./InventoryReport";
 import { useOutletContext } from "react-router-dom";
@@ -12,12 +11,28 @@ import CheckHistory from "./CheckHistory.jsx";
 import ReturnItem from "./ReturnItem.jsx";
 import DisposeItem from "./DisposeItem.jsx";
 import PriceChange from "./PriceChange.jsx";
+import { useStatusLog } from "../../services/StatusLogService.jsx";
+
+// Section labels for status bar
+const sectionLabels = {
+  "view-inventory": "View Inventory",
+  "add-item": "Add Item",
+  "inventory-restock": "Inventory Restock",
+  "return-item": "Return Item",
+  "dispose-item": "Dispose Item",
+  "supplier-registration": "Supplier Registration",
+  "price-change": "Price Change",
+  "check-history": "Check History",
+  "inventory-config": "Inventory Configuration",
+  "inventory-report": "Inventory Report",
+};
 
 function Inventory() {
   const { setActiveSection } = useOutletContext();
   const [activeSection, setLocalActiveSection] = useState("view-inventory");
-  // update incorr
-  // Update parent's activeSection whenever local activeSection changess
+  const statusLog = useStatusLog();
+
+  // Update parent's activeSection whenever local activeSection changes
   useEffect(() => {
     setActiveSection(activeSection);
   }, [activeSection, setActiveSection]);
@@ -25,6 +40,7 @@ function Inventory() {
   const handleSectionChange = (section) => {
     setLocalActiveSection(section);
     setActiveSection(section);
+    statusLog.info(`Inventory: ${sectionLabels[section] || section}`);
   };
 
   // helper function to toggle Tailwind visibility between sections
