@@ -47,22 +47,16 @@ function ManageUser() {
       inventory_configurations: false,
       inventory_reports: false,
     },
-    UserManagerAccess: {
-      create_user: false,
-      edit_user: false,
-      delete_user: false,
-    },
-    ReportAccess: {
-      view_reports: false,
-      generate_reports: false,
-      export_reports: false,
+    UserAccess: {
+      user_manage: false,
+      user_role_manage: false,
     },
   };
 
   // Helper to format permission keys for display
   const formatPermissionLabel = (key) => {
     return key
-      .replace(/^(sale_|inventory_)/, '')
+      .replace(/^(sale_|inventory_|user_)/, '')
       .replace(/_/g, ' ')
       .replace(/\b\w/g, c => c.toUpperCase());
   };
@@ -134,6 +128,7 @@ function ManageUser() {
   useEffect(() => {
     fetchUserList();
     fetchBranches();
+    loadRolePermissions();
   }, []);
 
   // Search handler with debounce
@@ -165,8 +160,8 @@ function ManageUser() {
     return matchesRole && matchesStatus && matchesSearch;
   });
 
-  // Role-based default permissions
-  const rolePermissions = {
+  // Default role-based permissions (fallback if not saved in settings)
+  const defaultRolePermissions = {
     admin: {
       SaleAccess: {
         sale_process: true, sale_history: true, sale_view_inventory: true,
@@ -178,8 +173,7 @@ function ManageUser() {
         inventory_discount: true, inventory_price_change: true, inventory_history: true,
         inventory_configurations: true, inventory_reports: true,
       },
-      UserManagerAccess: { create_user: true, edit_user: true, delete_user: true },
-      ReportAccess: { view_reports: true, generate_reports: true, export_reports: true },
+      UserAccess: { user_manage: true, user_role_manage: true },
     },
     manager: {
       SaleAccess: {
@@ -192,8 +186,7 @@ function ManageUser() {
         inventory_discount: true, inventory_price_change: true, inventory_history: true,
         inventory_configurations: false, inventory_reports: true,
       },
-      UserManagerAccess: { create_user: true, edit_user: true, delete_user: false },
-      ReportAccess: { view_reports: true, generate_reports: true, export_reports: true },
+      UserAccess: { user_manage: true, user_role_manage: false },
     },
     cashier: {
       SaleAccess: {
@@ -206,8 +199,7 @@ function ManageUser() {
         inventory_discount: false, inventory_price_change: false, inventory_history: false,
         inventory_configurations: false, inventory_reports: false,
       },
-      UserManagerAccess: { create_user: false, edit_user: false, delete_user: false },
-      ReportAccess: { view_reports: true, generate_reports: false, export_reports: false },
+      UserAccess: { user_manage: false, user_role_manage: false },
     },
     assistant: {
       SaleAccess: {
@@ -220,9 +212,30 @@ function ManageUser() {
         inventory_discount: false, inventory_price_change: false, inventory_history: false,
         inventory_configurations: false, inventory_reports: false,
       },
-      UserManagerAccess: { create_user: false, edit_user: false, delete_user: false },
-      ReportAccess: { view_reports: false, generate_reports: false, export_reports: false },
+      UserAccess: { user_manage: false, user_role_manage: false },
     },
+  };
+
+  // Role permissions state (can be modified by admin in ManageRole)
+  const [rolePermissions, setRolePermissions] = useState(defaultRolePermissions);
+
+  // Load role permissions from app_settings
+  const loadRolePermissions = async () => {
+    try {
+      const response = await settingsApi.getAppSettings();
+      if (response.status === "success" && response.data?.system_role_permissions) {
+        const savedPerms = response.data.system_role_permissions;
+        // Merge saved permissions with defaults
+        const mergedPerms = { ...defaultRolePermissions };
+        Object.keys(savedPerms).forEach(roleId => {
+          mergedPerms[roleId] = savedPerms[roleId];
+        });
+        setRolePermissions(mergedPerms);
+        console.log("[ManageUser] Loaded saved role permissions");
+      }
+    } catch (error) {
+      console.log("[ManageUser] Using default role permissions");
+    }
   };
 
   // Load user into form for editing
