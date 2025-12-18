@@ -8,7 +8,7 @@ function ManageUser() {
 
   // Form section collapse controls
   const [openUser, setOpenUser] = useState(true);
-  const [openPermission, setOpenPermission] = useState(true);
+  const [openPermission, setOpenPermission] = useState(false);
 
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
@@ -23,7 +23,7 @@ function ManageUser() {
     { value: "cashier", label: "Cashier" },
     { value: "assistant", label: "Assistant" }
   ]);
-
+  
   // Default permissions structure
   const defaultPermissions = {
     SaleAccess: {
@@ -639,19 +639,22 @@ function ManageUser() {
   return (
     <div className="flex bg-gray-300 w-full h-[calc(100vh-2rem)] relative">
       {formStatus === "form" ? (
-        <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 overflow-y-auto">
+        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-2">
           {/* Form section */}
           <div className="flex flex-col gap-3">
             {/* Primary Description Block */}
             <div className="bg-white">
               <button
-                onClick={() => setOpenUser(!openUser)}
+                onClick={() => {
+                  setOpenUser(!openUser)
+                  setOpenPermission(!openPermission)
+                }}
                 className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
               >
                 <span className="text-gray-400">USER INFORMATION</span>
-                {openUser ? <ChevronUp /> : <ChevronDown />}
+                {(openUser && !openPermission) ? <ChevronUp /> : <ChevronDown />}
               </button>
-              {openUser && (
+              {(openUser && !openPermission) && (
                 <div className="px-4 bg-white pb-5">
                   <div className="flex flex-col items-center mb-4">
                     {/* Profile image with upload */}
@@ -810,13 +813,16 @@ function ManageUser() {
             {/* Permission Description Block */}
             <div className="bg-white">
               <button
-                onClick={() => setOpenPermission(!openPermission)}
+                onClick={() => {
+                  setOpenPermission(!openPermission)
+                  setOpenUser(!openUser)
+                }}
                 className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
               >
-                <span className="text-gray-400">ROLE & PERMISSIONS</span>
-                {openPermission ? <ChevronUp /> : <ChevronDown />}
+                <span className="text-gray-400">ROLES & PERMISSIONS</span>
+                {(openPermission && !openUser) ? <ChevronUp /> : <ChevronDown />}
               </button>
-              {openPermission && (
+              {(openPermission && !openUser) && (
                 <div className="px-4 bg-white pb-5">
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-400 mb-1">
@@ -836,7 +842,7 @@ function ManageUser() {
                     </select>
                   </div>
 
-                  <div className="space-y-4 max-h-[20rem] overflow-y-auto">
+                  <div className="space-y-4 max-h-[30rem] overflow-y-auto">
                     <p className="text-xs text-gray-400 italic mb-2">
                       Permissions are based on the selected role (read-only)
                     </p>
@@ -889,6 +895,7 @@ function ManageUser() {
               </span>
             </button>
           </div>
+        {/* remove tag */}
         </div>
       ) : formStatus === "loading" ? (
         <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 flex flex-col justify-center items-center">
