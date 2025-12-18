@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import SalesItemCard from "../../components/SalesItemCard";
-import { restockApi, categoryApi } from "../../api/localApi";
+import { restockApi, categoryApi, settingsApi } from "../../api/localApi";
 import {ChevronDown, ChevronUp } from "lucide-react";
 import ToastContext from "../toasts/ToastService.jsx";
+import { localAuth } from "../../api/services/localAuth";
 
 //image imports
 import barcodeImg from "../../assets/barcode.png";
@@ -10,7 +11,7 @@ import AddRegitemsImg from "../../assets/add_reg_items.png";
 import clearBtnImg from "../../assets/sales_clear.png";
 import sidebarHoldOrderBtnImg from "../../assets/sales_hold_order.png";
 import sidebarPaymentBtnImg from "../../assets/sales_proceed_payment.png";
-import profileImg from "../../assets/user_profile_image.png";
+import defaultProfileImg from "../../assets/user_profile_image.png";
 import { transformStockData } from "../../util/common/blockConverter.jsx";
 
 import { jsPDF } from "jspdf";
@@ -23,13 +24,42 @@ export default function SalesView({ isActive }) {
 
   const billRef = useRef(null); //used to store bill pdf format
   const toast = useContext(ToastContext);
-  const [openItemFormBlock, setopenItemFormBlock] = useState('item'); //item || stock || supplier || 
-  const [openStockFormBlock, setopenStockFormBlock] = useState('stock'); //item || stock || supplier || 
+  const [openItemFormBlock, setopenItemFormBlock] = useState('item'); //item || stock || supplier ||
+  const [openStockFormBlock, setopenStockFormBlock] = useState('stock'); //item || stock || supplier ||
 
-  const [selectedMember, setSelectedMember] = useState(''); //item || stock || supplier || 
+  const [selectedMember, setSelectedMember] = useState(''); //item || stock || supplier ||
   // member popup modal open state
   const [modal, setModal] = useState(false);
   const closeModal = () => setModal(false);
+
+  // Current user state for profile image
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userProfileImage, setUserProfileImage] = useState(null);
+
+  // Fetch current user and profile image
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const user = await localAuth.getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
+          const userId = user.id || user._id;
+
+          // Fetch user settings to get profile image
+          const response = await settingsApi.getUserSettings(userId);
+          if (response.status === 'success' && response.data?.settings?.profile_image) {
+            setUserProfileImage(response.data.settings.profile_image);
+          }
+        }
+      } catch (error) {
+        console.error('[SalesView] Error fetching current user:', error);
+      }
+    };
+
+    if (isActive) {
+      fetchCurrentUser();
+    }
+  }, [isActive]);
 
   //left section controls
   const [formDataRegItem, setFormDataRegItem] = useState({
@@ -1339,7 +1369,7 @@ const filteredItems = inventoryItems.filter((item) => {
                     >
                         {/* member details */}
                       <div className="flex gap-10">
-                        <img src={profileImg} className="w-12 h-12 bg-gray-300 rounded-full" />
+                        <img src={userProfileImage || defaultProfileImg} className="w-12 h-12 bg-gray-300 rounded-full object-cover" />
                         <div>
                           <h2 className="text-blue-800 font-bold">-</h2>
                           <p className="text-md font-semibold">MEMBER: -</p>

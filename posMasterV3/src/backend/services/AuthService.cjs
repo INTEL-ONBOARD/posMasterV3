@@ -125,7 +125,7 @@ class AuthService {
      * @returns {Object} Registration result
      */
     async register(userData) {
-        const { username, email, password, full_name, roles } = userData;
+        const { username, email, password, full_name, roles, branch_id } = userData;
 
         // Validation
         if (!username || !email || !password) {
@@ -172,6 +172,7 @@ class AuthService {
                 password_hash,
                 full_name,
                 roles: roles || ['user'],
+                branch_id: branch_id || null,
                 sync_status: 'pending'
             });
 
@@ -185,6 +186,7 @@ class AuthService {
                     email: user.email,
                     full_name: user.full_name,
                     roles: user.roles,
+                    branch_id: user.branch_id,
                     // Note: We don't sync the password hash - cloud should handle its own auth
                     password: password  // Send plain password to cloud (over HTTPS)
                 },

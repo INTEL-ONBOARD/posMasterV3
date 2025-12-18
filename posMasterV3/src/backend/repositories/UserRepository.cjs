@@ -27,6 +27,7 @@ class UserRepository extends BaseRepository {
             password_hash: userData.password_hash,
             full_name: userData.full_name || null,
             roles: JSON.stringify(userData.roles || []),
+            branch_id: userData.branch_id || null,
             is_active: userData.is_active !== undefined ? userData.is_active : 1,
             created_at: nowISO(),
             updated_at: nowISO(),
