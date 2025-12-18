@@ -18,6 +18,7 @@ function SalesSidebar({
   onSalesConfigClick,
 }) {
   const [permissions, setPermissions] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Load user permissions on mount
   useEffect(() => {
@@ -25,6 +26,18 @@ function SalesSidebar({
       try {
         const currentUser = await localAuth.getCurrentUser();
         if (currentUser) {
+          // Check if user is admin
+          const userRoles = currentUser.roles || [];
+          const adminCheck = userRoles.some(role =>
+            ['admin', 'superadmin', 'Admin', 'SuperAdmin'].includes(role)
+          );
+          setIsAdmin(adminCheck);
+
+          // If admin, no need to load specific permissions - they have all access
+          if (adminCheck) {
+            return;
+          }
+
           const userId = currentUser.id || currentUser._id;
           const response = await settingsApi.getUserSettings(userId);
           if (response.status === "success" && response.data?.settings?.permissions?.SaleAccess) {
@@ -40,6 +53,8 @@ function SalesSidebar({
 
   // Check if user has specific permission
   const hasPermission = (permKey) => {
+    // Admin users have all permissions
+    if (isAdmin) return true;
     if (!permissions) return true; // Show all until permissions load
     return permissions[permKey] === true;
   };
