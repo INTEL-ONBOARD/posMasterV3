@@ -18,13 +18,13 @@ function Settings() {
   };
 
   return (
-    <div className="flex h-screen bg-[#EBEBEB]">
+    <div className="flex h-screen bg-gray-100">
       <SettingsSidebar
         activeSection={activeSection}
-        onSaleViewClick={() => setActiveSection("user-settings")}
-        onTransactionHistoryClick={() => setActiveSection("app-settings")}
+        onUserSettingsClick={() => setActiveSection("user-settings")}
+        onAppSettingsClick={() => setActiveSection("app-settings")}
       />
-      <div className="flex-1 overflow-y-auto bg-white p-0 m-0">
+      <div className="flex-1 overflow-y-auto bg-gray-100 p-0 m-0">
         {renderContent()}
       </div>
     </div>
