@@ -984,6 +984,118 @@ function InventoryRestock({ isActive }) {
     <div className="flex bg-gray-50 w-full h-[calc(100vh-2rem)] relative">
       {/* form section (left) */}
       <div className="bg-gray-100 w-[calc(28rem)] h-[calc(100vh-2rem)] p-3 z-10">
+
+
+
+          {/* ▼ supplier description block ▼ */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-3">
+            <button
+              onClick={() => setopenFormBlock('supplier')}
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <Building2 className="w-4 h-4 text-emerald-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Supplier</span>
+              </div>
+              {(openFormBlock == 'supplier') ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+            </button>
+            {(openFormBlock == 'supplier') && (
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="space-y-3 pt-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                      Supplier
+                    </label>
+                    <select
+                      name="supplier_name"
+                      value={formDataSupplier.supplier_name}
+                      onChange={(e) => {
+                        handleSupplierInputChange(e);
+                        const selectedSupplierName = e.target.value;
+                        const selectedSupplier = suppliers.find(supplier => supplier?.basic_info?.supplier_name === selectedSupplierName);
+                        if (selectedSupplier) {
+                          setTransactionData(prev => ({
+                            ...prev,
+                            supplier_id: selectedSupplier.id,
+                            supplierName: selectedSupplier?.basic_info?.supplier_name,
+                            previousAmount: selectedSupplier?.financial_info?.previous_amount
+                          }));
+                        }
+                      }}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="">Select supplier</option>
+                      {suppliers.map(supplier => (
+                        <option key={supplier.id} value={supplier?.basic_info?.supplier_name}>
+                          {supplier?.basic_info?.supplier_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Invoice No
+                      </label>
+                      <input
+                        type="text"
+                        name="invoice_no"
+                        value={formDataSupplier.invoice_no}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Bill No
+                      </label>
+                      <input
+                        type="text"
+                        name="bill_no"
+                        value={formDataSupplier.bill_no}
+                        onChange={handleSupplierInputChange}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Payment Method
+                      </label>
+                      <select
+                        name="payment_method"
+                        value={formDataSupplier.payment_method}
+                        onChange={handleSupplierInputChange}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                      >
+                        <option value="">Select method</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Expenses (Rs.)
+                      </label>
+                      <input
+                        type="number"
+                        name="expenses"
+                        value={formDataSupplier.expenses}
+                        onChange={handleSupplierInputChange}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
         <div className="flex flex-col h-[46rem] gap-3">
           {/* ▼ item description block ▼ */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -1217,116 +1329,6 @@ function InventoryRestock({ isActive }) {
                           </div>
                         ))
                       )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-
-          {/* ▼ supplier description block ▼ */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <button
-              onClick={() => setopenFormBlock('supplier')}
-              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                  <Building2 className="w-4 h-4 text-emerald-600" />
-                </div>
-                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Supplier</span>
-              </div>
-              {(openFormBlock == 'supplier') ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
-            </button>
-            {(openFormBlock == 'supplier') && (
-              <div className="px-4 pb-4 border-t border-gray-100">
-                <div className="space-y-3 pt-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
-                      Supplier
-                    </label>
-                    <select
-                      name="supplier_name"
-                      value={formDataSupplier.supplier_name}
-                      onChange={(e) => {
-                        handleSupplierInputChange(e);
-                        const selectedSupplierName = e.target.value;
-                        const selectedSupplier = suppliers.find(supplier => supplier?.basic_info?.supplier_name === selectedSupplierName);
-                        if (selectedSupplier) {
-                          setTransactionData(prev => ({
-                            ...prev,
-                            supplier_id: selectedSupplier.id,
-                            supplierName: selectedSupplier?.basic_info?.supplier_name,
-                            previousAmount: selectedSupplier?.financial_info?.previous_amount
-                          }));
-                        }
-                      }}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="">Select supplier</option>
-                      {suppliers.map(supplier => (
-                        <option key={supplier.id} value={supplier?.basic_info?.supplier_name}>
-                          {supplier?.basic_info?.supplier_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
-                        Invoice No
-                      </label>
-                      <input
-                        type="text"
-                        name="invoice_no"
-                        value={formDataSupplier.invoice_no}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
-                        Bill No
-                      </label>
-                      <input
-                        type="text"
-                        name="bill_no"
-                        value={formDataSupplier.bill_no}
-                        onChange={handleSupplierInputChange}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
-                        Payment Method
-                      </label>
-                      <select
-                        name="payment_method"
-                        value={formDataSupplier.payment_method}
-                        onChange={handleSupplierInputChange}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
-                      >
-                        <option value="">Select method</option>
-                        <option value="bank_transfer">Bank Transfer</option>
-                        <option value="cheque">Cheque</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
-                        Expenses (Rs.)
-                      </label>
-                      <input
-                        type="number"
-                        name="expenses"
-                        value={formDataSupplier.expenses}
-                        onChange={handleSupplierInputChange}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
-                      />
                     </div>
                   </div>
                 </div>
