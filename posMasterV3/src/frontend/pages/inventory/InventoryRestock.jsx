@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp, Package, Layers, Building2, RotateCcw, Search, 
 import { useStatusLog } from "../../services/StatusLogService.jsx";
 import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
-import { generateUniqueString } from "../../util/common/generate";
+import { generateUniqueString, generateBillNo } from "../../util/common/generate";
 
 //modal images
 import successImage from '../../assets/Success.png';
@@ -192,22 +192,67 @@ function InventoryRestock({ isActive }) {
 
   //mid section logic
 
-  //set invoice for both mid form and left supplier block
+  //set invoice and bill number for both mid form and left supplier block
   const [invoiceNo, setInvoiceNo] = useState("");
   const [invoiceGenerate, setInvoiceGenerate] = useState(1);
+
+  // Auto-generate invoice and bill numbers
   useEffect(() => {
-    const no = generateUniqueString();
-    //alert(no);
-    setInvoiceNo(no);
+    const newInvoiceNo = generateUniqueString();
+    const newBillNo = generateBillNo();
+
+    setInvoiceNo(newInvoiceNo);
     setTransactionData((prev) => ({
-      ...prev, // Spread the previous state to preserve other attributes
-      invoiceNo: no // Update only the color attribute
+      ...prev,
+      invoiceNo: newInvoiceNo
     }));
     setFormDataSupplier((prev) => ({
-      ...prev, // Spread the previous state to preserve other attributes
-      invoice_no: no // Update only the color attribute
+      ...prev,
+      invoice_no: newInvoiceNo,
+      bill_no: newBillNo
     }));
   }, [invoiceGenerate]);
+
+  // Transaction validation errors
+  const [transactionErrors, setTransactionErrors] = useState({});
+
+  // Validate transaction before submit
+  const validateTransaction = () => {
+    const errors = {};
+
+    // Validate supplier selection
+    if (!transactionData.supplier_id) {
+      errors.supplier = "Please select a supplier";
+    }
+
+    // Validate at least one item in list
+    if (selectedStockItemList.length === 0 && selectedReturnItemList.length === 0) {
+      errors.items = "Please add at least one item to the transaction";
+    }
+
+    // Validate prepared by
+    if (!transactionData.prep_id) {
+      errors.preparedBy = "Please select who prepared this transaction";
+    }
+
+    // Validate authorized by
+    if (!transactionData.auth_id) {
+      errors.authorizedBy = "Please select who authorized this transaction";
+    }
+
+    // Validate payment method
+    if (!formDataSupplier.payment_method) {
+      errors.paymentMethod = "Please select a payment method";
+    }
+
+    // Validate cash amount if positive total
+    if (totalAmount > 0 && parseFloat(cashAmount) <= 0) {
+      errors.cashAmount = "Please enter the cash amount";
+    }
+
+    setTransactionErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
 
   //item list for the mid section table
@@ -455,12 +500,13 @@ function InventoryRestock({ isActive }) {
     else {
       console.log("return item was selected");
 
-      // const { valid, formReturnErrors: validationErrors } = validateReturnForm(formDataReturnItem);
-      // setFormReturnErrors(validationErrors);
-      // if (!valid) {
-      //   console.warn("Return validation failed", validationErrors);
-      //   return; // don't proceed if invalid
-      // }
+      // Validate return form
+      const { valid, formReturnErrors: validationErrors } = validateReturnForm(formDataReturnItem);
+      setFormReturnErrors(validationErrors);
+      if (!valid) {
+        console.warn("Return validation failed", validationErrors);
+        return; // don't proceed if invalid
+      }
 
       const newRetItem = {
 
@@ -708,7 +754,7 @@ function InventoryRestock({ isActive }) {
     previous_amount: 0,
 
     invoice_no: invoiceNo,
-    bill_no: 0,
+    bill_no: "",
 
     payment_method: "",
     expenses: 0,
@@ -910,6 +956,13 @@ function InventoryRestock({ isActive }) {
 
 
   const registerTransaction = async (e) => {
+    // Validate transaction before proceeding
+    if (!validateTransaction()) {
+      statusLog.error("Please fix validation errors before submitting");
+      setModal({ open: true, type: 'failed', description: "Please fill in all required fields" });
+      return;
+    }
+
     statusLog.database("Processing restock transaction...", true);
 
     //create reg item list for req data
@@ -949,7 +1002,7 @@ function InventoryRestock({ isActive }) {
         current_amount: 0,
         cash_amount: cashAmount,
         change_amount: changeAmount,
-        total_amount: (returnTotal+stockTotal),
+        total_amount: totalAmount,
 
         exe_level: "medium",
 
@@ -983,12 +1036,11 @@ function InventoryRestock({ isActive }) {
 
     <div className="flex bg-gray-50 w-full h-[calc(100vh-2rem)] relative">
       {/* form section (left) */}
-      <div className="bg-gray-100 w-[calc(28rem)] h-[calc(100vh-2rem)] p-3 z-10">
-
-
-
+      <div className="bg-gray-100 w-[calc(28rem)] h-[calc(100vh-2rem)] p-3 z-10 flex flex-col">
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto space-y-3">
           {/* ▼ supplier description block ▼ */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-3">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <button
               onClick={() => setopenFormBlock('supplier')}
               className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
@@ -1022,9 +1074,19 @@ function InventoryRestock({ isActive }) {
                             supplierName: selectedSupplier?.basic_info?.supplier_name,
                             previousAmount: selectedSupplier?.financial_info?.previous_amount
                           }));
+                          // Clear supplier error when selected
+                          setTransactionErrors(prev => {
+                            const next = { ...prev };
+                            delete next.supplier;
+                            return next;
+                          });
                         }
                       }}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                      className={`w-full px-4 py-2.5 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all appearance-none cursor-pointer ${
+                        transactionErrors.supplier
+                          ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500'
+                          : 'border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]'
+                      }`}
                     >
                       <option value="">Select supplier</option>
                       {suppliers.map(supplier => (
@@ -1033,6 +1095,9 @@ function InventoryRestock({ isActive }) {
                         </option>
                       ))}
                     </select>
+                    {transactionErrors.supplier && (
+                      <p className="text-red-500 text-xs mt-1">{transactionErrors.supplier}</p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1069,14 +1134,31 @@ function InventoryRestock({ isActive }) {
                       <select
                         name="payment_method"
                         value={formDataSupplier.payment_method}
-                        onChange={handleSupplierInputChange}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                        onChange={(e) => {
+                          handleSupplierInputChange(e);
+                          if (e.target.value) {
+                            setTransactionErrors(prev => {
+                              const next = { ...prev };
+                              delete next.paymentMethod;
+                              return next;
+                            });
+                          }
+                        }}
+                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all appearance-none cursor-pointer ${
+                          transactionErrors.paymentMethod
+                            ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500'
+                            : 'border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]'
+                        }`}
                       >
                         <option value="">Select method</option>
+                        <option value="cash">Cash</option>
                         <option value="bank_transfer">Bank Transfer</option>
                         <option value="cheque">Cheque</option>
                         <option value="other">Other</option>
                       </select>
+                      {transactionErrors.paymentMethod && (
+                        <p className="text-red-500 text-xs mt-1">{transactionErrors.paymentMethod}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
@@ -1096,7 +1178,6 @@ function InventoryRestock({ isActive }) {
             )}
           </div>
 
-        <div className="flex flex-col h-[46rem] gap-3">
           {/* ▼ item description block ▼ */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <button
@@ -1418,9 +1499,10 @@ function InventoryRestock({ isActive }) {
 
 
 
+        {/* End of scrollable content area */}
         </div>
         {/* Bottom bar */}
-        <div className="flex flex-row w-full gap-2 mt-auto pt-3">
+        <div className="flex flex-row w-full gap-2 pt-3 flex-shrink-0">
           <button
             onClick={() => {
               clearFormInput();
@@ -1465,11 +1547,19 @@ function InventoryRestock({ isActive }) {
                       const selectedUsername = e.target.value;
                       const selectedUser = users.find(user => user.username === selectedUsername);
                       if (selectedUser) {
-                        console.log(selectedUser._id)
                         setTransactionData(prev => ({ ...prev, prep_id: selectedUser._id }));
+                        setTransactionErrors(prev => {
+                          const next = { ...prev };
+                          delete next.preparedBy;
+                          return next;
+                        });
                       }
                     }}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                    className={`w-full px-4 py-2.5 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all appearance-none cursor-pointer ${
+                      transactionErrors.preparedBy
+                        ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500'
+                        : 'border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]'
+                    }`}
                   >
                     <option value="">Select employee</option>
                     {users.map(user => (
@@ -1478,6 +1568,9 @@ function InventoryRestock({ isActive }) {
                       </option>
                     ))}
                   </select>
+                  {transactionErrors.preparedBy && (
+                    <p className="text-red-500 text-xs mt-1">{transactionErrors.preparedBy}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
@@ -1492,9 +1585,18 @@ function InventoryRestock({ isActive }) {
                       const selectedUser = users.find(user => user.username === selectedUsername);
                       if (selectedUser) {
                         setTransactionData(prev => ({ ...prev, auth_id: selectedUser._id }));
+                        setTransactionErrors(prev => {
+                          const next = { ...prev };
+                          delete next.authorizedBy;
+                          return next;
+                        });
                       }
                     }}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                    className={`w-full px-4 py-2.5 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all appearance-none cursor-pointer ${
+                      transactionErrors.authorizedBy
+                        ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500'
+                        : 'border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]'
+                    }`}
                   >
                     <option value="">Select employee</option>
                     {users.map(user => (
@@ -1503,6 +1605,9 @@ function InventoryRestock({ isActive }) {
                       </option>
                     ))}
                   </select>
+                  {transactionErrors.authorizedBy && (
+                    <p className="text-red-500 text-xs mt-1">{transactionErrors.authorizedBy}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1723,12 +1828,15 @@ function InventoryRestock({ isActive }) {
 
             {/* RIGHT: Total Amount */}
             <div className="w-56 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl p-5 flex flex-col justify-center items-center">
-              <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">Total Amount</p>
-              <p className="text-4xl font-bold text-white tabular-nums mt-2">Rs. {(returnTotal+stockTotal).toFixed(2)}</p>
+              <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">Net Amount</p>
+              <p className="text-4xl font-bold text-white tabular-nums mt-2">Rs. {totalAmount.toFixed(2)}</p>
               <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
                 <span className="px-2 py-0.5 bg-slate-600 rounded-full">Stock: {stockTotal.toFixed(0)}</span>
                 <span className="px-2 py-0.5 bg-red-500/20 text-red-300 rounded-full">-{returnTotal.toFixed(0)}</span>
               </div>
+              {parseFloat(finalDiscount) > 0 && (
+                <span className="mt-2 px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-full text-xs">-{parseFloat(finalDiscount).toFixed(0)} disc.</span>
+              )}
             </div>
           </div>
         </div>
