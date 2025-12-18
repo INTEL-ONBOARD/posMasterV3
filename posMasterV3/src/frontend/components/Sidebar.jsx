@@ -93,7 +93,7 @@ function Sidebar() {
             {
               to: "users",
               icon: Dashboard_users,
-              label: "Sales",
+              label: "users",
             },
             {
               to: "settings",
