@@ -1,37 +1,32 @@
 import ResponseDTO from "../../../templates/dtos/ResponseDTO";
-
-import { apiClient } from "../../client";
+import { supplierApi } from "../../localApi";
 
 class SupplierService {
 
     async getSuppliers() {
-        const response = await apiClient.get("api/suppliers");
-        return ResponseDTO(response.data);
-        //return response.data.map((u) => new UserDTO(u));
+        const response = await supplierApi.getAll();
+        return ResponseDTO(response);
     }
 
     async createSupplier(supplier) {
-        const response = await apiClient.post("api/suppliers/add", supplier);
-        //return response;
-        return new ResponseDTO(response.data);
+        const response = await supplierApi.create(supplier);
+        return new ResponseDTO(response);
     }
 
     async updatesupplier(supplierId, supplier) {
-        const response = await apiClient.put(`api/suppliers/${supplierId}`, supplier);
-        //return response;
-        return new ResponseDTO(response.data);
+        const response = await supplierApi.update(supplierId, supplier);
+        return new ResponseDTO(response);
     }
 
     async deletesupplier(supplierId) {
-        const response = await apiClient.delete(`api/suppliers/${supplierId}`);
-        //return response;
-        return new ResponseDTO(response.data);
+        const response = await supplierApi.delete(supplierId);
+        return new ResponseDTO(response);
     }
 
-    // async getsupplierById(id) {
-    //     const response = await apiClient.get(`api/supplierRegistry/${id}`);
-    //     return new UserDTO(response.data);
-    // }
+    async searchSuppliers(searchTerm) {
+        const response = await supplierApi.search(searchTerm);
+        return ResponseDTO(response);
+    }
 
 }
 
