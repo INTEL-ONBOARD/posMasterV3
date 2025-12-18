@@ -8,6 +8,7 @@
 const AuthService = require('./AuthService.cjs');
 const UserService = require('./UserService.cjs');
 const SyncService = require('./SyncService.cjs');
+const { CloudSyncService, getCloudSyncService, initializeCloudSync, notifyDataChange } = require('./CloudSyncService.cjs');
 
 // Singleton instances
 let authService = null;
@@ -61,8 +62,12 @@ module.exports = {
     AuthService,
     UserService,
     SyncService,
+    CloudSyncService,
     getAuthService,
     getUserService,
     getSyncService,
+    getCloudSyncService,
+    initializeCloudSync,
+    notifyDataChange,
     resetServices
 };
