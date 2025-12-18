@@ -5,6 +5,7 @@
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
+const { notifyDataChange } = require('../services/CloudSyncService.cjs');
 
 class RestockRepository extends BaseRepository {
     constructor() {
@@ -207,7 +208,20 @@ class RestockRepository extends BaseRepository {
                 );
             }
 
-            return this.getFullDetails(restockId);
+            const fullRestock = this.getFullDetails(restockId);
+
+            // Notify CloudSync of the new restock
+            notifyDataChange('restock_transactions', 'INSERT', fullRestock, restockId);
+
+            // Also notify for each restock item and stock update
+            for (const item of fullRestock.added_items) {
+                notifyDataChange('restock_items', 'INSERT', item, item.id);
+            }
+            for (const item of fullRestock.return_items) {
+                notifyDataChange('return_items', 'INSERT', item, item.id);
+            }
+
+            return fullRestock;
         });
 
         return transaction();

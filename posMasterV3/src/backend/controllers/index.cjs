@@ -21,6 +21,7 @@ const RestockController = require('./RestockController.cjs');
 const MemberController = require('./MemberController.cjs');
 const SalesController = require('./SalesController.cjs');
 const SettingsController = require('./SettingsController.cjs');
+const CloudSyncController = require('./CloudSyncController.cjs');
 
 /**
  * Register all IPC handlers
@@ -52,6 +53,10 @@ function registerAllHandlers() {
     // Settings handlers
     const settingsController = new SettingsController();
     settingsController.registerHandlers();
+
+    // Cloud Sync handlers
+    const cloudSyncController = new CloudSyncController();
+    cloudSyncController.registerHandlers();
 
     console.log('[Controllers] All IPC handlers registered successfully');
 }
@@ -92,5 +97,6 @@ module.exports = {
     RestockController,
     MemberController,
     SalesController,
-    SettingsController
+    SettingsController,
+    CloudSyncController
 };
