@@ -5,13 +5,13 @@
 
 const mysql = require('mysql2/promise');
 
-// MySQL Cloud Configuration (InfinityFree)
+// MySQL Cloud Configuration
 const MYSQL_CONFIG = {
-    host: 'sql203.infinityfree.com',
+    host: '162.241.24.242',
     port: 3306,
-    user: 'if0_40712273',
-    password: 'gnJSB1vNrPR62',
-    database: 'if0_40712273_posmaster_live',
+    user: 'toursurv_posdbuser',
+    password: 'Abc@1234#tea',
+    database: 'toursurv_posdb',
     waitForConnections: true,
     connectionLimit: 5,
     connectTimeout: 30000,
