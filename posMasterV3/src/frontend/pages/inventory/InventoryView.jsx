@@ -3,7 +3,6 @@ import ItemCard from "../../components/ItemCard.jsx";
 import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import { restockApi, categoryApi } from "../../api/localApi";
 import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Package, CheckCircle, AlertTriangle } from "lucide-react";
-import { transformStockData } from "../../util/common/blockConverter.jsx";
 import ViewItemModal from "./modals/ViewItemModal.jsx";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
 
@@ -22,12 +21,39 @@ function InventoryView({ isActive }) {
     try {
       const response = await restockApi.getStockItems();
       if (response.status === "success") {
-            const transformed = transformStockData(response);
-            //convert default response object to get each detailed stock items(detach stock item object and create a new obj with parent attributes)
-            setInventoryItems(transformed);
-            statusLog.success(`Loaded ${transformed.length} inventory items`);
+            // The API returns flat stock rows with joined item data
+            // Transform to the expected format for the UI
+            const items = (response.data || []).map(stock => ({
+              id: stock.id,
+              item_id: stock.item_id,
+              sku: stock.sku,
+              item_name: stock.item_name,
+              item_image_url: stock.item_image_url,
+              maximum_capacity: stock.maximum_capacity,
+              batch_code: stock.batch_code,
+              quantity: stock.quantity,
+              threshold_limit: stock.threshold_limit,
+              stock_price: stock.stock_price,
+              retail_price: stock.retail_price,
+              discount_price: stock.discount_price,
+              expiry_date: stock.expiry_date,
+              availability: stock.availability,
+              category: {
+                id: stock.category_id,
+                brand: stock.category_brand,
+                type: stock.category_type
+              },
+              uom: {
+                id: stock.uom_id,
+                symbol: stock.uom_symbol,
+                unit_name: stock.uom_unit_name
+              }
+            }));
+            setInventoryItems(items);
+            statusLog.success(`Loaded ${items.length} inventory items`);
       }
       } catch (error) {
+          console.error("Error fetching inventory items:", error);
           statusLog.error("Failed to load inventory items");
       } finally {
           //setIsLoading(false);
