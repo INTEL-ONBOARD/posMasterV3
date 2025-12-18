@@ -1,5 +1,5 @@
 import React, { useEffect, useContext, useRef, useState } from "react";
-import { X, ChevronDown, ChevronUp } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Upload } from "lucide-react";
 import { userApi, authApi, branchApi, settingsApi } from "../../api/localApi";
 import ToastContext from "../toasts/ToastService";
 
@@ -355,6 +355,76 @@ function ManageUser() {
     }));
   };
 
+  // Compress image to reduce storage size
+  const compressImage = (file, maxWidth = 200, maxHeight = 200, quality = 0.8) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate new dimensions while maintaining aspect ratio
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convert to base64 with compression
+          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedBase64);
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle profile image upload
+  const handleProfileImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      try {
+        // Compress image before storing (200x200, 80% quality)
+        const compressedImage = await compressImage(file, 200, 200, 0.8);
+        console.log('[ManageUser] Original size:', file.size, 'Compressed size:', compressedImage.length);
+
+        // Update form data with the new image
+        setFormData(prev => ({ ...prev, profile_image: compressedImage }));
+
+        // If editing an existing user, save immediately
+        if (isUserEditing && formData.id) {
+          const response = await settingsApi.updateProfileImage(formData.id, compressedImage);
+          if (response.status === 'success') {
+            toast.open('Profile image updated', 3000, 'Success', 'success');
+          } else {
+            toast.open('Failed to save profile image', 3000, 'Error', 'error');
+          }
+        }
+      } catch (err) {
+        console.error('[ManageUser] Image upload error:', err);
+        toast.open('Failed to upload image', 3000, 'Error', 'error');
+      }
+    }
+  };
+
   // Validate form data
   const validateFormData = () => {
     if (!formData.full_name?.trim()) {
@@ -424,9 +494,14 @@ function ManageUser() {
       const response = await authApi.register(userData);
 
       if (response.status === "success") {
-        // Save user permissions
+        // Save user permissions and profile image
         if (response.data?.id) {
           await settingsApi.updateUserPermissions(response.data.id, permissions);
+
+          // Save profile image if uploaded
+          if (formData.profile_image) {
+            await settingsApi.updateProfileImage(response.data.id, formData.profile_image);
+          }
         }
 
         setFormStatus("success");
@@ -578,8 +653,8 @@ function ManageUser() {
               </button>
               {openUser && (
                 <div className="px-4 bg-white pb-5">
-                  <div className="flex flex-row justify-around items-center mb-4">
-                    {/* Profile image placeholder */}
+                  <div className="flex flex-col items-center mb-4">
+                    {/* Profile image with upload */}
                     <div className={`w-24 h-24 ${formData.profile_image ? 'border-2 border-gray-200 bg-gray-100' : 'border-2 border-dashed border-gray-300'} flex flex-col items-center justify-center hover:border-gray-400 transition-colors rounded-full overflow-hidden`}>
                       {formData.profile_image ? (
                         <img
@@ -590,7 +665,6 @@ function ManageUser() {
                           onError={(e) => {
                             console.error("[ManageUser] Image failed to load:", e);
                             console.log("[ManageUser] Image src was:", formData.profile_image?.substring(0, 100));
-                            // Reset to show placeholder on error
                             e.target.style.display = 'none';
                           }}
                           onLoad={() => {
@@ -606,6 +680,21 @@ function ManageUser() {
                         </>
                       )}
                     </div>
+                    {/* Upload button */}
+                    <input
+                      type="file"
+                      id="profileImageUpload"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleProfileImageUpload}
+                    />
+                    <label
+                      htmlFor="profileImageUpload"
+                      className="mt-2 px-3 py-1 bg-[#A8A8A8] text-white text-xs rounded-md hover:bg-gray-600 transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Upload className="w-3 h-3" />
+                      Upload
+                    </label>
                   </div>
 
                   <div className="mb-3">
