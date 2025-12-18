@@ -172,6 +172,7 @@ class ItemRepository extends BaseRepository {
             sku: item.sku,
             item_name: item.item_name,
             item_image_url: item.item_image_url,
+            item_image_blob: item.item_image_blob,
             maximum_capacity: item.maximum_capacity,
             availability: item.availability === 1,
             category_id: item.category_id,
@@ -234,6 +235,26 @@ class ItemRepository extends BaseRepository {
         const timestamp = Date.now().toString(36).toUpperCase();
         const random = Math.random().toString(36).substring(2, 6).toUpperCase();
         return `${prefix}-${timestamp}-${random}`;
+    }
+
+    /**
+     * Get total stock quantity for an item
+     * @param {number} itemId - Item ID
+     * @returns {number} Total quantity in stock
+     */
+    getItemStockQuantity(itemId) {
+        try {
+            const stmt = this.db.prepare(`
+                SELECT COALESCE(SUM(quantity), 0) as total_quantity
+                FROM stock
+                WHERE item_id = ? AND availability = 1
+            `);
+            const result = stmt.get(itemId);
+            return result ? result.total_quantity : 0;
+        } catch (error) {
+            console.error('[ItemRepository] getItemStockQuantity error:', error);
+            return 0;
+        }
     }
 }
 
