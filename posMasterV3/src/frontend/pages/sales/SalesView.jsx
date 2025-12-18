@@ -27,8 +27,8 @@ export default function SalesView({ isActive }) {
   const [openStockFormBlock, setopenStockFormBlock] = useState('stock'); //item || stock || supplier || 
 
   const [selectedMember, setSelectedMember] = useState(''); //item || stock || supplier || 
-  // modal state: { open: boolean, type: 'success' | 'failed' | null }
-  const [modal, setModal] = useState(true);
+  // member popup modal open state
+  const [modal, setModal] = useState(false);
   const closeModal = () => setModal(false);
 
   //left section controls
