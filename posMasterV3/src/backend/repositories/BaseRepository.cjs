@@ -3,9 +3,11 @@
  *
  * Abstract base class for all repositories providing common CRUD operations.
  * Repositories handle direct database interactions and data mapping.
+ * Automatically notifies CloudSyncService on data changes for real-time sync.
  */
 
 const { getDatabase } = require('../database/connection.cjs');
+const { notifyDataChange } = require('../services/CloudSyncService.cjs');
 
 class BaseRepository {
     constructor(tableName) {
@@ -115,13 +117,22 @@ class BaseRepository {
 
         const result = stmt.run(...values);
 
-        // Return the created record
+        // Get the created record
+        let createdRecord;
         if (data.id) {
-            return this.findById(data.id);
+            createdRecord = this.findById(data.id);
+        } else {
+            // For auto-increment IDs
+            createdRecord = this.findById(result.lastInsertRowid);
         }
 
-        // For auto-increment IDs
-        return this.findById(result.lastInsertRowid);
+        // Notify CloudSync of the change
+        if (createdRecord) {
+            const recordId = createdRecord.id || result.lastInsertRowid;
+            notifyDataChange(this.tableName, 'INSERT', createdRecord, recordId);
+        }
+
+        return createdRecord;
     }
 
     /**
@@ -153,7 +164,14 @@ class BaseRepository {
         `);
 
         stmt.run(...values, id);
-        return this.findById(id);
+
+        // Get the updated record and notify CloudSync
+        const updatedRecord = this.findById(id);
+        if (updatedRecord) {
+            notifyDataChange(this.tableName, 'UPDATE', updatedRecord, id);
+        }
+
+        return updatedRecord;
     }
 
     /**
@@ -162,8 +180,17 @@ class BaseRepository {
      * @returns {boolean} Whether the record was deleted
      */
     delete(id) {
+        // Get the record before deleting for sync notification
+        const recordToDelete = this.findById(id);
+
         const stmt = this.db.prepare(`DELETE FROM ${this.tableName} WHERE id = ?`);
         const result = stmt.run(id);
+
+        // Notify CloudSync of the deletion
+        if (result.changes > 0 && recordToDelete) {
+            notifyDataChange(this.tableName, 'DELETE', recordToDelete, id);
+        }
+
         return result.changes > 0;
     }
 
