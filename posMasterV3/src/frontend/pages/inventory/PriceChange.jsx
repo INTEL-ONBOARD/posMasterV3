@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { ChevronDown, ChevronUp, Search, Package, DollarSign, Tag, Percent, Calendar, X, CheckCircle, Filter, AlertCircle } from "lucide-react";
 import barcodeImg from "../../assets/barcode.png";
-import { ChevronDown, ChevronUp } from "lucide-react";
 import SalesItemCard from "../../components/SalesItemCard";
 import { fetchCommonData } from "../../context/inventory/common/CommonContext";
 import { restockApi } from "../../api/localApi";
@@ -26,9 +26,9 @@ function PriceChange() {
   // Form section state
   const [openFormBlock, setOpenFormBlock] = useState("item");
 
-  // Search and filter state - SEPARATED for right section and mid section
-  const [searchTerm, setSearchTerm] = useState(""); // For right section (available items)
-  const [tableSearchTerm, setTableSearchTerm] = useState(""); // For mid section (selected items table)
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [tableSearchTerm, setTableSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedAvailability, setSelectedAvailability] = useState("All");
 
@@ -39,13 +39,12 @@ function PriceChange() {
   const [dataError, setDataError] = useState(null);
 
   // Separate states for different sections
-  const [selectedItemsForTable, setSelectedItemsForTable] = useState([]); // Mid section table items
-  const [selectedItemForDetails, setSelectedItemForDetails] = useState(null); // Left section details
+  const [selectedItemsForTable, setSelectedItemsForTable] = useState([]);
+  const [selectedItemForDetails, setSelectedItemForDetails] = useState(null);
 
-  // Loading states - SEPARATED for different search bars
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false); // For right section search
-  const [tableSearchLoading, setTableSearchLoading] = useState(false); // For mid section search
+  // Loading states
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [tableSearchLoading, setTableSearchLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
 
   // Success state
@@ -56,9 +55,7 @@ function PriceChange() {
   const [formErrors, setFormErrors] = useState({});
 
   // Price change form state
-  const [formDataPriceChange, setFormDataPriceChange] = useState(
-    INITIAL_PRICE_CHANGE_FORM
-  );
+  const [formDataPriceChange, setFormDataPriceChange] = useState(INITIAL_PRICE_CHANGE_FORM);
   const [formPriceChangeErrors, setFormPriceChangeErrors] = useState({});
 
   // Stock entries state
@@ -82,9 +79,6 @@ function PriceChange() {
             apiItems = data.items;
           } else if (data.items.data && Array.isArray(data.items.data)) {
             apiItems = data.items.data;
-          } else {
-            console.warn("Unexpected items structure:", data.items);
-            apiItems = [];
           }
         }
 
@@ -94,59 +88,28 @@ function PriceChange() {
           stock_trace: item.stock_trace || [item.id || index + 1],
           item_name: item.item_name || item.name || "Unknown Item",
           item_image_url: item.item_image_url || item.image_url || "",
+          item_image_blob: item.item_image_blob || null,
           sku: item.sku || `SKU_${index + 1}`,
           maximum_capacity: item.maximum_capacity || 0,
           uom_id: item.uom_id || 1,
           category_id: item.category_id || 1,
           inventory_id: item.inventory_id || 1,
-          item_update_datetime:
-            item.item_update_datetime ||
-            item.updated_at ||
-            new Date().toISOString(),
-          item_created_datetime:
-            item.item_created_datetime ||
-            item.created_at ||
-            new Date().toISOString(),
-          __v: item.__v || 0,
-          uom: item.uom || {
-            _id: `uom_${index + 1}`,
-            id: item.uom_id || 1,
-            symbol: item.uom?.symbol || "pcs",
-            unit_name: item.uom?.unit_name || "Pieces",
-            __v: 0,
-          },
-          category: item.category || {
-            _id: `category_${index + 1}`,
-            id: item.category_id || 1,
-            brand: item.category?.brand || "Unknown Brand",
-            type: item.category?.type || "General",
-            __v: 0,
-          },
+          uom: item.uom || { symbol: "pcs", unit_name: "Pieces" },
+          category: item.category || { brand: "Unknown", type: "General" },
           inventory: item.inventory || null,
-          availability:
-            item.availability !== undefined ? item.availability : true,
+          availability: item.availability !== undefined ? item.availability : true,
           current_qty: item.current_qty || item.quantity || 0,
           stock_price: item.stock_price || item.price || 0,
-          retail_price:
-            item.retail_price || item.selling_price || item.stock_price || 0,
+          retail_price: item.retail_price || item.selling_price || item.stock_price || 0,
           batch_code: item.batch_code || `BATCH_${item.sku || index + 1}`,
           expire_date: item.expire_date || item.expiry_date || "2025-12-31",
-          status:
-            item.status || (item.availability ? "In Stock" : "Out of Stock"),
+          status: item.status || (item.availability ? "In Stock" : "Out of Stock"),
         }));
 
         setItems(transformedItems);
-
-        console.log("Loaded data:", {
-          categories: data.categories?.length || 0,
-          items: transformedItems.length,
-          sampleItem: transformedItems[0],
-        });
       } catch (error) {
         console.error("Failed to load data:", error);
         setDataError(error.message || "Failed to load data");
-        setCategories([]);
-        setItems([]);
       } finally {
         setLoadingData(false);
       }
@@ -155,15 +118,13 @@ function PriceChange() {
     loadData();
   }, []);
 
-  // Fetch stock entries (batch codes) when an item is selected
+  // Fetch stock entries when an item is selected
   const fetchStockEntriesForItem = useCallback(async (sku) => {
     if (!sku) return;
 
     try {
       setLoadingStockEntries(true);
       setStockEntriesError(null);
-
-      console.log("Fetching stock entries for SKU:", sku);
 
       const response = await restockApi.getStockData(sku);
 
@@ -172,84 +133,58 @@ function PriceChange() {
         batchEntries = response.data.map((batch) => ({
           code: batch.batch_code || batch.code || "Unknown Batch",
           quantity: `${batch.quantity || 0} ${batch.uom_symbol || "pcs"}`,
-          expiry: batch.exp_date
-            ? new Date(batch.exp_date).toISOString().split("T")[0]
-            : "No expiry",
+          expiry: batch.exp_date ? new Date(batch.exp_date).toISOString().split("T")[0] : "No expiry",
           stock_price: batch.stock_price || 0,
           retail_price: batch.retail_price || 0,
-          availability:
-            batch.availability !== undefined ? batch.availability : true,
+          availability: batch.availability !== undefined ? batch.availability : true,
           threshold_limit: batch.threshold_limit || 0,
           discount: batch.discount_price || 0,
         }));
       }
 
       if (batchEntries.length === 0) {
-        batchEntries = [
-          {
-            code: `DEFAULT-${sku}`,
-            quantity: "0 pcs",
-            expiry: "No expiry",
-            stock_price: 0,
-            retail_price: 0,
-            availability: false,
-            threshold_limit: 0,
-            discount: 0,
-          },
-        ];
-      }
-
-      setStockEntries(batchEntries);
-
-      console.log("Loaded stock entries:", batchEntries);
-    } catch (error) {
-      console.error("Failed to fetch stock entries:", error);
-      setStockEntriesError(error.message || "Failed to load batch codes");
-
-      setStockEntries([
-        {
-          code: `ERROR-${sku}`,
+        batchEntries = [{
+          code: `DEFAULT-${sku}`,
           quantity: "0 pcs",
-          expiry: "Error loading",
+          expiry: "No expiry",
           stock_price: 0,
           retail_price: 0,
           availability: false,
           threshold_limit: 0,
           discount: 0,
-        },
-      ]);
+        }];
+      }
+
+      setStockEntries(batchEntries);
+    } catch (error) {
+      console.error("Failed to fetch stock entries:", error);
+      setStockEntriesError(error.message || "Failed to load batch codes");
+      setStockEntries([]);
     } finally {
       setLoadingStockEntries(false);
     }
   }, []);
 
-  // Generate unique category types from API categories
+  // Generate unique category types
   const uniqueCategoryTypes = useMemo(() => {
     if (!categories || categories.length === 0) {
-      const itemCategories = items
-        .map((item) => item.category?.type)
-        .filter(Boolean);
+      const itemCategories = items.map((item) => item.category?.type).filter(Boolean);
       return [...new Set(itemCategories)];
     }
-
     const types = categories.map((category) => category.type).filter(Boolean);
     return [...new Set(types)];
   }, [categories, items]);
 
-  // Memoized filtered items for performance (Right section - available items)
+  // Filtered items for right section
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      const matchesSearch =
-        searchTerm === "" ||
+      const matchesSearch = searchTerm === "" ||
         item.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.batch_code?.toLowerCase().includes(searchTerm.toLowerCase());
+        item.sku.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesCategory =
-        selectedCategory === "" || item.category?.type === selectedCategory;
+      const matchesCategory = selectedCategory === "" || item.category?.type === selectedCategory;
 
-      const matchesAvailability =
-        selectedAvailability === "All" ||
+      const matchesAvailability = selectedAvailability === "All" ||
         (selectedAvailability === "Available" && item.availability) ||
         (selectedAvailability === "Unavailable" && !item.availability);
 
@@ -257,289 +192,168 @@ function PriceChange() {
     });
   }, [searchTerm, selectedCategory, selectedAvailability, items]);
 
-  // Memoized filtered table items for performance (Mid section - selected items table)
+  // Filtered table items for mid section
   const filteredTableItems = useMemo(() => {
     return selectedItemsForTable.filter((item) => {
-      const matchesSearch =
-        tableSearchTerm === "" ||
+      return tableSearchTerm === "" ||
         item.item_name.toLowerCase().includes(tableSearchTerm.toLowerCase()) ||
-        item.sku.toLowerCase().includes(tableSearchTerm.toLowerCase()) ||
-        item.batch_code
-          ?.toLowerCase()
-          .includes(tableSearchTerm.toLowerCase()) ||
-        item.status.toLowerCase().includes(tableSearchTerm.toLowerCase());
-
-      return matchesSearch;
+        item.sku.toLowerCase().includes(tableSearchTerm.toLowerCase());
     });
   }, [tableSearchTerm, selectedItemsForTable]);
 
-  // Add item to mid section table from right section
+  // Add item to table
   const addItemToTable = useCallback((item) => {
     setSelectedItemsForTable((prev) => {
       const exists = prev.find((existingItem) => existingItem.id === item.id);
-      if (exists) {
-        return prev;
-      }
+      if (exists) return prev;
       return [...prev, item];
     });
   }, []);
 
-  // Remove item from mid section table
-  const removeItemFromTable = useCallback(
-    (itemId) => {
-      setSelectedItemsForTable((prev) =>
-        prev.filter((item) => item.id !== itemId)
-      );
+  // Remove item from table
+  const removeItemFromTable = useCallback((itemId) => {
+    setSelectedItemsForTable((prev) => prev.filter((item) => item.id !== itemId));
 
-      if (selectedItemForDetails?.id === itemId) {
-        setSelectedItemForDetails(null);
-        setFormDataStock(INITIAL_STOCK_FORM);
-        setFormDataPriceChange(INITIAL_PRICE_CHANGE_FORM);
-        setStockEntries([]);
-      }
-    },
-    [selectedItemForDetails]
-  );
+    if (selectedItemForDetails?.id === itemId) {
+      setSelectedItemForDetails(null);
+      setFormDataStock(INITIAL_STOCK_FORM);
+      setFormDataPriceChange(INITIAL_PRICE_CHANGE_FORM);
+      setStockEntries([]);
+    }
+  }, [selectedItemForDetails]);
 
-  // Select item for left section details from mid section table
-  const selectItemForDetails = useCallback(
-    (item) => {
-      setSelectedItemForDetails(item);
+  // Select item for details
+  const selectItemForDetails = useCallback((item) => {
+    setSelectedItemForDetails(item);
 
-      setFormDataStock((prev) => ({
-        ...prev,
-        batch_code: item.batch_code || "",
-        quantity: item.current_qty?.toString() || "",
-        stock_price: item.stock_price?.toString() || "",
-        retail_price: item.retail_price?.toString() || "",
-        availability: item.availability?.toString() || "",
-        expired_datetime: item.expire_date || "",
-      }));
+    setFormDataStock((prev) => ({
+      ...prev,
+      batch_code: item.batch_code || "",
+      quantity: item.current_qty?.toString() || "",
+      stock_price: item.stock_price?.toString() || "",
+      retail_price: item.retail_price?.toString() || "",
+      availability: item.availability?.toString() || "",
+      expired_datetime: item.expire_date || "",
+    }));
 
-      setFormDataPriceChange((prev) => ({
-        ...prev,
-        new_price: item.retail_price?.toString() || "",
-      }));
+    setFormDataPriceChange((prev) => ({
+      ...prev,
+      new_price: item.retail_price?.toString() || "",
+    }));
 
-      fetchStockEntriesForItem(item.sku);
+    fetchStockEntriesForItem(item.sku);
+  }, [fetchStockEntriesForItem]);
 
-      console.log("Selected item for details:", item);
-    },
-    [fetchStockEntriesForItem]
-  );
+  // Handle batch code selection
+  const handleBatchCodeSelect = useCallback((batchEntry) => {
+    if (!selectedItemForDetails) return;
 
-  // Handle batch code selection with all related data
-  const handleBatchCodeSelect = useCallback(
-    (batchEntry) => {
-      if (!selectedItemForDetails) return;
-
-      setFormDataStock((prev) => ({
-        ...prev,
-        batch_code: batchEntry.code,
-        stock_price: batchEntry.stock_price?.toString() || prev.stock_price,
-        retail_price: batchEntry.retail_price?.toString() || prev.retail_price,
-        availability: batchEntry.availability?.toString() || prev.availability,
-        expired_datetime:
-          batchEntry.expiry !== "No expiry" &&
-          batchEntry.expiry !== "Error loading"
-            ? batchEntry.expiry
-            : prev.expired_datetime,
-        threshold_limit:
-          batchEntry.threshold_limit?.toString() || prev.threshold_limit,
-        discount: batchEntry.discount?.toString() || prev.discount,
-      }));
-
-      console.log("Selected batch entry:", batchEntry);
-    },
-    [selectedItemForDetails]
-  );
+    setFormDataStock((prev) => ({
+      ...prev,
+      batch_code: batchEntry.code,
+      stock_price: batchEntry.stock_price?.toString() || prev.stock_price,
+      retail_price: batchEntry.retail_price?.toString() || prev.retail_price,
+      availability: batchEntry.availability?.toString() || prev.availability,
+      expired_datetime: batchEntry.expiry !== "No expiry" ? batchEntry.expiry : prev.expired_datetime,
+      threshold_limit: batchEntry.threshold_limit?.toString() || prev.threshold_limit,
+      discount: batchEntry.discount?.toString() || prev.discount,
+    }));
+  }, [selectedItemForDetails]);
 
   // Event handlers
-  const handleStockInputChange = useCallback(
-    (e) => {
-      const { name, value } = e.target;
-      setFormDataStock((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+  const handleStockInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormDataStock((prev) => ({ ...prev, [name]: value }));
+    if (formErrors[name]) {
+      setFormErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  }, [formErrors]);
 
-      if (formErrors[name]) {
-        setFormErrors((prev) => ({
-          ...prev,
-          [name]: "",
-        }));
-      }
-    },
-    [formErrors]
-  );
-
-  const handlePriceChangeInputChange = useCallback(
-    (e) => {
-      const { name, value } = e.target;
-      setFormDataPriceChange((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
-
-      if (formPriceChangeErrors[name]) {
-        setFormPriceChangeErrors((prev) => ({
-          ...prev,
-          [name]: "",
-        }));
-      }
-    },
-    [formPriceChangeErrors]
-  );
+  const handlePriceChangeInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormDataPriceChange((prev) => ({ ...prev, [name]: value }));
+    if (formPriceChangeErrors[name]) {
+      setFormPriceChangeErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  }, [formPriceChangeErrors]);
 
   // Search handlers
-  const handleSearch = useCallback(() => {
+  const handleSearch = (e) => {
     setSearchLoading(true);
-    setTimeout(() => {
-      setSearchLoading(false);
-    }, 1000);
-  }, []);
+    setSearchTerm(e.target.value);
+    setTimeout(() => setSearchLoading(false), 400);
+  };
 
-  const handleTableSearch = useCallback(() => {
+  const handleTableSearch = (e) => {
     setTableSearchLoading(true);
-    setTimeout(() => {
-      setTableSearchLoading(false);
-    }, 500);
-  }, []);
+    setTableSearchTerm(e.target.value);
+    setTimeout(() => setTableSearchLoading(false), 400);
+  };
 
-  // Form validation functions
+  // Form validation
   const validateStockForm = () => {
     const errors = {};
-
-    if (!formDataStock.batch_code.trim()) {
-      errors.batch_code = "Batch code is required";
-    }
-
-    if (!formDataStock.quantity.trim()) {
-      errors.quantity = "Quantity is required";
-    } else if (
-      isNaN(formDataStock.quantity) ||
-      parseFloat(formDataStock.quantity) <= 0
-    ) {
-      errors.quantity = "Quantity must be a positive number";
-    }
-
-    if (!formDataStock.stock_price.trim()) {
-      errors.stock_price = "Stock price is required";
-    } else if (
-      isNaN(formDataStock.stock_price) ||
-      parseFloat(formDataStock.stock_price) <= 0
-    ) {
-      errors.stock_price = "Stock price must be a positive number";
-    }
-
-    if (!formDataStock.retail_price.trim()) {
-      errors.retail_price = "Retail price is required";
-    } else if (
-      isNaN(formDataStock.retail_price) ||
-      parseFloat(formDataStock.retail_price) <= 0
-    ) {
-      errors.retail_price = "Retail price must be a positive number";
-    }
-
-    if (!formDataStock.availability) {
-      errors.availability = "Availability is required";
-    }
-
+    if (!formDataStock.batch_code.trim()) errors.batch_code = "Batch code is required";
+    if (!formDataStock.stock_price.trim()) errors.stock_price = "Stock price is required";
+    if (!formDataStock.retail_price.trim()) errors.retail_price = "Retail price is required";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  // Form submission handlers
+  // Form submission
   const handleStockSubmit = useCallback(() => {
     if (validateStockForm()) {
       setSubmitLoading(true);
       setSaveSuccess(false);
 
       setTimeout(() => {
-        console.log("Stock form submitted:", formDataStock);
-
         if (selectedItemForDetails) {
           const updatedItem = {
             ...selectedItemForDetails,
             batch_code: formDataStock.batch_code,
-            current_qty:
-              parseInt(formDataStock.quantity) ||
-              selectedItemForDetails.current_qty,
-            stock_price:
-              parseFloat(formDataStock.stock_price) ||
-              selectedItemForDetails.stock_price,
-            retail_price:
-              parseFloat(formDataStock.retail_price) ||
-              selectedItemForDetails.retail_price,
+            current_qty: parseInt(formDataStock.quantity) || selectedItemForDetails.current_qty,
+            stock_price: parseFloat(formDataStock.stock_price) || selectedItemForDetails.stock_price,
+            retail_price: parseFloat(formDataStock.retail_price) || selectedItemForDetails.retail_price,
             availability: formDataStock.availability === "true",
-            expire_date:
-              formDataStock.expired_datetime ||
-              selectedItemForDetails.expire_date,
+            expire_date: formDataStock.expired_datetime || selectedItemForDetails.expire_date,
             discount: parseFloat(formDataStock.discount) || 0,
-            threshold_limit:
-              parseFloat(formDataStock.threshold_limit) ||
-              selectedItemForDetails.threshold_limit,
-            status:
-              formDataStock.availability === "true"
-                ? "In Stock"
-                : "Out of Stock",
-            item_update_datetime: new Date().toISOString(),
+            status: formDataStock.availability === "true" ? "In Stock" : "Out of Stock",
           };
 
           setSelectedItemsForTable((prev) =>
-            prev.map((item) =>
-              item.id === selectedItemForDetails.id ? updatedItem : item
-            )
+            prev.map((item) => item.id === selectedItemForDetails.id ? updatedItem : item)
           );
           setSelectedItemForDetails(updatedItem);
           setItems((prev) =>
-            prev.map((item) =>
-              item.id === selectedItemForDetails.id ? updatedItem : item
-            )
+            prev.map((item) => item.id === selectedItemForDetails.id ? updatedItem : item)
           );
 
           setSaveSuccess(true);
-
           setTimeout(() => setSaveSuccess(false), 3000);
         }
-
         setSubmitLoading(false);
       }, 1500);
     }
-  }, [formDataStock, selectedItemForDetails, validateStockForm]);
+  }, [formDataStock, selectedItemForDetails]);
 
-  // Clear function for all clear buttons
+  // Reset forms
   const resetForms = useCallback(() => {
     setFormDataStock(INITIAL_STOCK_FORM);
     setFormDataPriceChange(INITIAL_PRICE_CHANGE_FORM);
-
     setFormErrors({});
     setFormPriceChangeErrors({});
-
     setSelectedItemForDetails(null);
     setSelectedItemsForTable([]);
-
     setSearchTerm("");
     setTableSearchTerm("");
     setSelectedCategory("");
     setSelectedAvailability("All");
-
     setOpenFormBlock("item");
-
-    setSearchLoading(false);
-    setTableSearchLoading(false);
-    setSubmitLoading(false);
-
     setSaveSuccess(false);
-
     setStockEntries([]);
-    setLoadingStockEntries(false);
-    setStockEntriesError(null);
-
-    console.log("All forms and states have been cleared");
   }, []);
 
-  // Get display item for left section (N/A if no selection)
+  // Get display item for left section
   const displayItem = selectedItemForDetails || {
     sku: "N/A",
     item_name: "N/A",
@@ -549,54 +363,43 @@ function PriceChange() {
   };
 
   return (
-    <div className="flex bg-white w-full h-[calc(100vh-2rem)] relative">
-      {/* Form section left */}
-      <div className="bg-gray-300 w-[calc(30.5rem)] h-[calc(100vh-2rem)] p-2 z-10">
-        <div className="flex flex-col h-[46rem] gap-3">
-          {/* ▼ item description block ▼ */}
-          <div className="border rounded bg-white">
+    <div className="flex bg-gray-50 w-full h-[calc(100vh-2rem)]">
+      {/* Left Form Section */}
+      <div className="bg-gray-100 w-[26rem] h-full p-3">
+        <div className="flex flex-col h-full gap-3">
+          {/* Item Description Block */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <button
-              onClick={() =>
-                setOpenFormBlock(openFormBlock === "item" ? "" : "item")
-              }
-              className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
+              onClick={() => setOpenFormBlock(openFormBlock === "item" ? "" : "item")}
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
             >
-              <span className="text-gray-400">ITEM DESCRIPTION</span>
-              {openFormBlock === "item" ? <ChevronUp /> : <ChevronDown />}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#1A318C]/10 flex items-center justify-center">
+                  <Package className="w-4 h-4 text-[#1A318C]" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Item Description</span>
+              </div>
+              {openFormBlock === "item" ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
             </button>
             {openFormBlock === "item" && (
-              <div className="mx-4">
-                <div className="flex flex-row px-4 items-center max-h-[12rem]">
-                  <div className="">
-                    <img
-                      src={barcodeImg}
-                      alt="Barcode"
-                      className="w-[100px] object-contain"
-                    />
-                    <p className="text-sm text-gray-800">
-                      SKU: {displayItem?.sku}
-                    </p>
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="flex items-center gap-4 pt-4">
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                    <img src={barcodeImg} alt="Barcode" className="w-20 object-contain" />
+                    <p className="text-xs text-gray-500 mt-1 text-center font-mono">{displayItem?.sku}</p>
                   </div>
-                  <div className="flex flex-col m-10">
-                    <div className="grid grid-cols-2 gap-x-1 gap-y-1">
-                      <p className="text-sm font-semibold text-gray-800">
-                        Name
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        {displayItem?.item_name}
-                      </p>
-                      <p className="text-sm font-semibold text-gray-800">
-                        Category
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        {displayItem?.category?.type}
-                      </p>
-                      <p className="text-sm font-semibold text-gray-800">
-                        Current Qty
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        {displayItem?.current_qty} {displayItem?.uom?.symbol}
-                      </p>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-400 uppercase">Name</span>
+                      <span className="text-sm font-semibold text-gray-800">{displayItem?.item_name}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-400 uppercase">Category</span>
+                      <span className="text-sm text-gray-600">{displayItem?.category?.type}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-400 uppercase">Current Qty</span>
+                      <span className="text-sm font-bold text-[#1A318C]">{displayItem?.current_qty} {displayItem?.uom?.symbol}</span>
                     </div>
                   </div>
                 </div>
@@ -604,722 +407,462 @@ function PriceChange() {
             )}
           </div>
 
-          {/* ▼ stock description block ▼ */}
-          <div className="border">
+          {/* Stock Description Block */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <button
-              onClick={() =>
-                setOpenFormBlock(openFormBlock === "stock" ? "" : "stock")
-              }
-              className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
+              onClick={() => setOpenFormBlock(openFormBlock === "stock" ? "" : "stock")}
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
             >
-              <span className="text-gray-400">STOCK DESCRIPTION</span>
-              {openFormBlock === "stock" ? <ChevronUp /> : <ChevronDown />}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Tag className="w-4 h-4 text-amber-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Stock Description</span>
+              </div>
+              {openFormBlock === "stock" ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
             </button>
             {openFormBlock === "stock" && (
-              <div className="px-4 bg h-[34rem] bg-white">
-                <div className="flex flex-col gap-2">
+              <div className="px-4 pb-4 border-t border-gray-100 overflow-auto max-h-[calc(100vh-28rem)]">
+                <div className="space-y-4 pt-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Batch Code
-                      </label>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Batch Code</label>
                       <input
                         type="text"
                         name="batch_code"
                         value={formDataStock.batch_code}
                         onChange={handleStockInputChange}
                         disabled={!selectedItemForDetails}
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.batch_code
-                            ? "border-red-500 focus:ring-red-500"
-                            : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
-                          !selectedItemForDetails
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }`}
+                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${formErrors.batch_code ? "border-red-300" : "border-gray-200"} ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
                       />
-                      {formErrors.batch_code && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {formErrors.batch_code}
-                        </p>
-                      )}
+                      {formErrors.batch_code && <p className="text-red-500 text-xs mt-1">{formErrors.batch_code}</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Quantity
-                      </label>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Quantity</label>
                       <input
                         type="number"
                         name="quantity"
                         value={formDataStock.quantity}
                         onChange={handleStockInputChange}
                         disabled={!selectedItemForDetails}
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.quantity
-                            ? "border-red-500 focus:ring-red-500"
-                            : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
-                          !selectedItemForDetails
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }`}
+                        className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
                       />
-                      {formErrors.quantity && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {formErrors.quantity}
-                        </p>
-                      )}
                     </div>
                   </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Lower Threshold Rate(%)
-                      </label>
-                      <input
-                        type="number"
-                        name="threshold_limit"
-                        value={formDataStock.threshold_limit}
-                        onChange={handleStockInputChange}
-                        disabled={!selectedItemForDetails}
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.threshold_limit
-                            ? "border-red-500 focus:ring-red-500"
-                            : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
-                          !selectedItemForDetails
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }`}
-                      />
-                      {formErrors.threshold_limit && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {formErrors.threshold_limit}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Availability
-                      </label>
-                      <select
-                        name="availability"
-                        value={formDataStock.availability}
-                        onChange={handleStockInputChange}
-                        disabled={!selectedItemForDetails}
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.availability
-                            ? "border-red-500 focus:ring-red-500"
-                            : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
-                          !selectedItemForDetails
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }`}
-                      >
-                        <option value="">-- select availability --</option>
-                        <option value="true">Available</option>
-                        <option value="false">Unavailable</option>
-                      </select>
-                      {formErrors.availability && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {formErrors.availability}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Stock Price
-                      </label>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Stock Price (Rs.)</label>
                       <input
                         type="number"
                         name="stock_price"
                         value={formDataStock.stock_price}
                         onChange={handleStockInputChange}
                         disabled={!selectedItemForDetails}
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.stock_price
-                            ? "border-red-500 focus:ring-red-500"
-                            : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
-                          !selectedItemForDetails
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }`}
+                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${formErrors.stock_price ? "border-red-300" : "border-gray-200"} ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
                       />
-                      {formErrors.stock_price && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {formErrors.stock_price}
-                        </p>
-                      )}
+                      {formErrors.stock_price && <p className="text-red-500 text-xs mt-1">{formErrors.stock_price}</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Retail Price
-                      </label>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Retail Price (Rs.)</label>
                       <input
                         type="number"
                         name="retail_price"
                         value={formDataStock.retail_price}
                         onChange={handleStockInputChange}
                         disabled={!selectedItemForDetails}
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.retail_price
-                            ? "border-red-500 focus:ring-red-500"
-                            : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
-                          !selectedItemForDetails
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }`}
+                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${formErrors.retail_price ? "border-red-300" : "border-gray-200"} ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
                       />
-                      {formErrors.retail_price && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {formErrors.retail_price}
-                        </p>
-                      )}
+                      {formErrors.retail_price && <p className="text-red-500 text-xs mt-1">{formErrors.retail_price}</p>}
                     </div>
                   </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Expiration Date
-                      </label>
-                      <div className="relative max-w-sm">
-                        <input
-                          type="date"
-                          id="expired_datetime"
-                          value={
-                            formDataStock.expired_datetime
-                              ? formDataStock.expired_datetime.split("T")[0]
-                              : ""
-                          }
-                          onChange={(e) => {
-                            const selectedDate = e.target.value;
-                            setFormDataStock({
-                              ...formDataStock,
-                              expired_datetime: selectedDate,
-                            });
-                          }}
-                          name="expired_datetime"
-                          disabled={!selectedItemForDetails}
-                          placeholder="Select date"
-                          className={`w-full px-3 py-2 border ${
-                            formErrors.expired_datetime
-                              ? "border-red-500 focus:ring-red-500"
-                              : "border-[#EBEBEB] focus:ring-blue-500"
-                          } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
-                            !selectedItemForDetails
-                              ? "opacity-50 cursor-not-allowed"
-                              : ""
-                          }`}
-                        />
-                        {formErrors.expired_datetime && (
-                          <p className="text-red-500 text-xs mt-1">
-                            {formErrors.expired_datetime}
-                          </p>
-                        )}
-                      </div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Threshold (%)</label>
+                      <input
+                        type="number"
+                        name="threshold_limit"
+                        value={formDataStock.threshold_limit}
+                        onChange={handleStockInputChange}
+                        disabled={!selectedItemForDetails}
+                        className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
+                      />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Discount (Rs/-)
-                      </label>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Availability</label>
+                      <select
+                        name="availability"
+                        value={formDataStock.availability}
+                        onChange={handleStockInputChange}
+                        disabled={!selectedItemForDetails}
+                        className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
+                      >
+                        <option value="">Select</option>
+                        <option value="true">Available</option>
+                        <option value="false">Unavailable</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Expiry Date</label>
+                      <input
+                        type="date"
+                        name="expired_datetime"
+                        value={formDataStock.expired_datetime ? formDataStock.expired_datetime.split("T")[0] : ""}
+                        onChange={handleStockInputChange}
+                        disabled={!selectedItemForDetails}
+                        className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Discount (Rs.)</label>
                       <input
                         type="number"
                         name="discount"
                         value={formDataStock.discount}
                         onChange={handleStockInputChange}
                         disabled={!selectedItemForDetails}
-                        placeholder=""
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.discount
-                            ? "border-red-500 focus:ring-red-500"
-                            : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent ${
-                          !selectedItemForDetails
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }`}
+                        className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
                       />
-                      {formErrors.discount && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {formErrors.discount}
-                        </p>
-                      )}
                     </div>
                   </div>
-                  <div className="pt-4">
-                    <span className="text-gray-500 text-sm font-bold mt-4 ml-1">
-                      Recent Batches{" "}
-                      {selectedItemForDetails &&
-                        `(SKU: ${selectedItemForDetails.sku})`}
-                    </span>
-                  </div>
 
-                  <div className="flex flex-col gap-3 overflow-y-scroll overflow-x-hidden h-[10rem] -mr-4">
-                    {loadingStockEntries ? (
-                      <div className="flex items-center justify-center py-4">
-                        <div className="animate-spin rounded-full border-2 border-gray-300 border-t-blue-600 h-6 w-6 mr-2"></div>
-                        <span className="text-gray-500">
-                          Loading batch codes...
-                        </span>
-                      </div>
-                    ) : stockEntriesError ? (
-                      <div className="text-red-500 text-sm p-2">
-                        Error loading batch codes: {stockEntriesError}
-                      </div>
-                    ) : stockEntries.length === 0 ? (
-                      <div className="text-gray-500 p-2">
-                        {selectedItemForDetails
-                          ? "No batch codes found for this item"
-                          : "Select an item to view batch codes"}
-                      </div>
-                    ) : (
-                      stockEntries.map((s, i) => (
-                        <div
-                          key={s.code + i}
-                          className={`${
-                            s.code === formDataStock.batch_code
-                              ? "border-4 border-blue-500"
-                              : "border border-gray-200"
-                          } flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px] cursor-pointer hover:bg-gray-200 transition-colors ${
-                            !selectedItemForDetails
-                              ? "opacity-50 cursor-not-allowed"
-                              : ""
-                          }`}
-                          onClick={() => {
-                            if (selectedItemForDetails) {
-                              handleBatchCodeSelect(s);
-                            }
-                          }}
-                        >
-                          <div className="flex flex-col">
-                            <span className="text-md font-bold">
-                              Batch Code:
-                            </span>
-                            <span className="text-gray-600">{s.code}</span>
-                          </div>
-                          <div className="flex flex-col text-right">
-                            <span className="text-gray-400 font-bold">
-                              {s.quantity}
-                            </span>
-                            <span className="text-gray-400 text-xs">
-                              {s.expiry}
-                            </span>
-                          </div>
+                  {/* Recent Batches */}
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                      Recent Batches {selectedItemForDetails && `(${selectedItemForDetails.sku})`}
+                    </p>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {loadingStockEntries ? (
+                        <div className="flex items-center justify-center py-4">
+                          <div className="animate-spin rounded-full border-2 border-gray-200 border-t-[#1A318C] h-6 w-6 mr-2"></div>
+                          <span className="text-gray-500 text-sm">Loading batches...</span>
                         </div>
-                      ))
-                    )}
+                      ) : stockEntries.length === 0 ? (
+                        <p className="text-gray-400 text-sm py-2">
+                          {selectedItemForDetails ? "No batches found" : "Select an item to view batches"}
+                        </p>
+                      ) : (
+                        stockEntries.map((s, i) => (
+                          <div
+                            key={s.code + i}
+                            onClick={() => selectedItemForDetails && handleBatchCodeSelect(s)}
+                            className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
+                              s.code === formDataStock.batch_code
+                                ? "bg-[#1A318C]/10 border-2 border-[#1A318C]"
+                                : "bg-gray-50 border border-gray-200 hover:border-gray-300"
+                            } ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
+                          >
+                            <div>
+                              <p className="text-sm font-semibold text-gray-800">{s.code}</p>
+                              <p className="text-xs text-gray-500">{s.expiry}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-bold text-[#1A318C]">{s.quantity}</p>
+                              <p className="text-xs text-gray-400">Rs.{s.retail_price}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* ▼ price change description block ▼ */}
-          <div className="bg-white">
+          {/* Price Change Block */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <button
-              onClick={() =>
-                setOpenFormBlock(
-                  openFormBlock === "pricechange" ? "" : "pricechange"
-                )
-              }
-              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+              onClick={() => setOpenFormBlock(openFormBlock === "pricechange" ? "" : "pricechange")}
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
             >
-              <span className="text-gray-400">PRICE CHANGE DESCRIPTION</span>
-              {openFormBlock === "pricechange" ? (
-                <ChevronUp />
-              ) : (
-                <ChevronDown />
-              )}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <DollarSign className="w-4 h-4 text-emerald-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Price Change</span>
+              </div>
+              {openFormBlock === "pricechange" ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
             </button>
             {openFormBlock === "pricechange" && (
-              <div className="px-4 bg-white pb-5">
-                <div className="">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-400 mb-1">
-                        New Price
-                      </label>
-                      <input
-                        type="number"
-                        name="new_price"
-                        value={formDataPriceChange.new_price}
-                        onChange={handlePriceChangeInputChange}
-                        disabled={!selectedItemForDetails}
-                        placeholder="Enter new price"
-                        className={`w-full px-3 py-2 bg-[#F8F8F8] border ${
-                          formPriceChangeErrors.new_price
-                            ? "border-red-500 focus:ring-red-500"
-                            : "border-[#EBEBEB] focus:ring-blue-500"
-                        } focus:outline-none focus:ring-2 focus:border-transparent ${
-                          !selectedItemForDetails
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }`}
-                      />
-                      {formPriceChangeErrors.new_price && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {formPriceChangeErrors.new_price}
-                        </p>
-                      )}
-                      {selectedItemForDetails && (
-                        <p className="text-gray-500 text-xs mt-1">
-                          Current Price: ${selectedItemForDetails.retail_price}
-                        </p>
-                      )}
-                    </div>
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="space-y-4 pt-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">New Price (Rs.)</label>
+                    <input
+                      type="number"
+                      name="new_price"
+                      value={formDataPriceChange.new_price}
+                      onChange={handlePriceChangeInputChange}
+                      disabled={!selectedItemForDetails}
+                      placeholder="Enter new price"
+                      className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
+                    />
+                    {selectedItemForDetails && (
+                      <p className="text-xs text-gray-400 mt-1">Current: Rs.{selectedItemForDetails.retail_price}</p>
+                    )}
                   </div>
-
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      Reason for Price Change
-                    </label>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Reason</label>
                     <textarea
                       name="price_change_description"
-                      type="text"
                       value={formDataPriceChange.price_change_description}
                       onChange={handlePriceChangeInputChange}
                       disabled={!selectedItemForDetails}
                       placeholder="Enter reason for price change..."
-                      rows={3}
-                      className={`w-full mt-2 px-3 py-2 bg-[#F8F8F8] border ${
-                        formPriceChangeErrors.price_change_description
-                          ? "border-red-500 focus:ring-red-500"
-                          : "border-[#EBEBEB] focus:ring-blue-500"
-                      } focus:outline-none focus:ring-2 focus:border-transparent ${
-                        !selectedItemForDetails
-                          ? "opacity-50 cursor-not-allowed"
-                          : ""
-                      }`}
+                      rows={2}
+                      className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all resize-none ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
                     />
-                    {formPriceChangeErrors.price_change_description && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {formPriceChangeErrors.price_change_description}
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
             )}
           </div>
-          {/* Save and clear buttons - LEFT SECTION */}
-          <div className="bottom-4 left-4 right-4 flex gap-2 justify-end items-end">
+
+          {/* Spacer */}
+          <div className="flex-1"></div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3">
             {saveSuccess && (
-              <div className="absolute -top-12 left-0 right-0 mx-4 p-2 bg-green-100 text-green-700 text-sm rounded">
-                Stock information updated successfully!
+              <div className="absolute top-4 left-4 right-4 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                Updated successfully!
               </div>
             )}
             <button
               onClick={resetForms}
-              className="flex items-center px-6 py-2 bg-gray-400 text-white hover:bg-gray-500 transition-colors disabled:opacity-50 flex-shrink-0"
+              className="flex-1 h-12 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
             >
               Clear
             </button>
             <button
               onClick={handleStockSubmit}
               disabled={submitLoading || !selectedItemForDetails}
-              className="flex items-center px-6 py-2 bg-[#1A318C] text-white hover:bg-[#152763] transition-colors disabled:opacity-50 flex-shrink-0"
+              className="flex-1 h-12 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all duration-200 shadow-md shadow-emerald-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitLoading ? "Saving..." : "Save"}
+              {submitLoading ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </div>
       </div>
-      {/* Form Selection left section end */}
 
-      {/* Mid Section */}
-      <div className="flex-1 bg-gray-50 p-6 shadow-md rounded-md">
-        {/* Search bar for table items only */}
-        <div className="flex items-center border-b border-[#EDEDED] h-12 gap-3 mb-5">
-          <input
-            type="text"
-            placeholder="Search selected items in table"
-            value={tableSearchTerm}
-            onChange={(e) => setTableSearchTerm(e.target.value)}
-            className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
-          />
-          <button
-            onClick={handleTableSearch}
-            disabled={tableSearchLoading}
-            className="flex items-center px-3 py-2 bg-[#1A318C] text-white disabled:opacity-50 flex-shrink-0"
-          >
-            <svg
-              className="w-4 h-4 mr-1"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"
-              />
-            </svg>
-            {tableSearchLoading ? "..." : "Search"}
-          </button>
-        </div>
-
-        {/* Display message when no items selected */}
-        {selectedItemsForTable.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-            <p className="text-lg mb-2">No items selected for price change</p>
-            <p className="text-sm">
-              Select items from the right panel to add them here
-            </p>
-          </div>
-        )}
-
-        {/* Show message when table search has no results */}
-        {selectedItemsForTable.length > 0 &&
-          filteredTableItems.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-              <p className="text-lg mb-2">No items found in table</p>
-              <p className="text-sm">
-                Try adjusting your search term: "{tableSearchTerm}"
+      {/* Middle Section - Selected Items Table */}
+      <div className="flex-1 h-full overflow-hidden flex flex-col">
+        {/* Search Header */}
+        <nav className="bg-white border-b border-gray-100 shadow-sm">
+          <div className="px-6 py-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={tableSearchTerm}
+                  onChange={handleTableSearch}
+                  placeholder="Search selected items..."
+                  className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                />
+              </div>
+              <button
+                className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2"
+              >
+                <Search className="w-4 h-4" />
+                Search
+              </button>
+            </div>
+            <div className="mt-3">
+              <p className="text-sm text-gray-500">
+                <span className="font-semibold text-gray-800">{selectedItemsForTable.length}</span> items selected for price change
               </p>
             </div>
-          )}
+          </div>
+        </nav>
 
-        {/* Save and clear buttons - MID SECTION - ONLY SHOW WHEN THERE IS DATA */}
-        {selectedItemsForTable.length > 0 && (
-          <div className="bottom-4 left-0.5 right-4 flex gap-2 justify-end items-end relative">
-            {saveSuccess && (
-              <div className="absolute -top-12 left-0 right-0 p-2 bg-green-100 text-green-700 text-sm rounded">
-                Items updated successfully!
+        {/* Table Content */}
+        <div className="flex-1 overflow-auto p-6">
+          {selectedItemsForTable.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                <Package className="w-10 h-10 text-gray-300" />
               </div>
-            )}
-            <button
-              onClick={resetForms}
-              className="flex items-center px-6 py-2 bg-gray-400 text-white hover:bg-gray-500 transition-colors disabled:opacity-50 flex-shrink-0"
-            >
-              Clear
-            </button>
-            <button
-              onClick={handleStockSubmit}
-              disabled={submitLoading || !selectedItemForDetails}
-              className="flex items-center px-6 py-2 bg-[#2fbc34] text-white hover:bg-[#28a62f] transition-colors disabled:opacity-50 flex-shrink-0"
-            >
-              {submitLoading ? "Saving..." : "Done"}
-            </button>
-          </div>
-        )}
-
-        {/* Table View - Uses filteredTableItems */}
-        {selectedItemsForTable.length > 0 && filteredTableItems.length > 0 && (
-          <div className="overflow-x-auto h-[28rem] p-2 lg:p-4">
-            <table className="w-full min-w-[500px]">
-              <thead className="bg-gray-700 text-[#848484]">
-                <tr>
-                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                    #
-                  </th>
-                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                    SKU
-                  </th>
-                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                    Status
-                  </th>
-                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                    Quantity
-                  </th>
-                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                    Stock Price
-                  </th>
-                  <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white">
-                {filteredTableItems.map((item, index) => {
-                  const isSelectedForDetails =
-                    selectedItemForDetails?.id === item.id;
-                  return (
-                    <tr
-                      key={item.id}
-                      onClick={() => selectItemForDetails(item)}
-                      className={`${
-                        isSelectedForDetails
-                          ? "border-4 border-blue-500"
-                          : "border-b border-gray-200"
-                      } bg-white hover:bg-red-100 cursor-pointer transition-colors`}
-                    >
-                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                        {index + 1}
-                      </td>
-                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                        {item.sku || "N/A"}
-                      </td>
-                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm">
-                        <span
-                          className={`px-2 py-1 text-xs rounded ${
-                            item.availability
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                        {item.current_qty} ({item.uom?.symbol || "units"})
-                      </td>
-                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                        ${item.stock_price}
-                      </td>
-                      <td className="px-2 lg:px-4 py-2 lg:py-3">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeItemFromTable(item.id);
-                          }}
-                          aria-label="Remove item"
-                          className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none hover:bg-red-600 transition-colors"
-                        >
-                          <svg
-                            className="w-4 h-4 text-white"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden="true"
+              <h3 className="text-lg font-semibold text-gray-800">No items selected</h3>
+              <p className="text-sm text-gray-500 mt-1">Select items from the right panel to add them here</p>
+            </div>
+          ) : filteredTableItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                <AlertCircle className="w-10 h-10 text-gray-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">No items found</h3>
+              <p className="text-sm text-gray-500 mt-1">Try adjusting your search term</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gradient-to-r from-[#1A318C] to-[#2a4ab8]">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">#</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">SKU</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Item Name</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Quantity</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Stock Price</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Retail Price</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredTableItems.map((item, index) => {
+                    const isSelected = selectedItemForDetails?.id === item.id;
+                    return (
+                      <tr
+                        key={item.id}
+                        onClick={() => selectItemForDetails(item)}
+                        className={`cursor-pointer transition-colors ${isSelected ? "bg-[#1A318C]/5 ring-2 ring-inset ring-[#1A318C]" : "hover:bg-gray-50"}`}
+                      >
+                        <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm font-mono text-gray-600">{item.sku}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm font-medium text-gray-800">{item.item_name}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${item.availability ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="text-sm font-semibold text-gray-800 tabular-nums">
+                            {item.current_qty} <span className="text-gray-400 font-normal">{item.uom?.symbol}</span>
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="text-sm text-gray-600 tabular-nums">Rs.{item.stock_price}</span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="text-sm font-bold text-[#1A318C] tabular-nums">Rs.{item.retail_price}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeItemFromTable(item.id);
+                            }}
+                            className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-100 flex items-center justify-center transition-colors group"
                           >
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                            <X className="w-4 h-4 text-gray-500 group-hover:text-red-500" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
-      {/* Mid Section end */}
 
-      {/* Right Section */}
-      <div className=" bg-white border-l border-gray-200">
-        <div className="flex flex-col justify-between py-4 px-6 bg-white gap-6 mb-4">
-          {/* Right section search bar - for available items */}
-          <div className="flex items-center border-b border-[#EDEDED] h-12 gap-3 mt-1">
-            <input
-              type="text"
-              placeholder="Search available items"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
-            />
-            <button
-              onClick={handleSearch}
-              disabled={searchLoading}
-              className="flex items-center px-3 py-2 bg-[#1A318C] text-white disabled:opacity-50 flex-shrink-0"
-            >
-              <svg
-                className="w-4 h-4 mr-1"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"
-                />
-              </svg>
-              {searchLoading ? "..." : "Search"}
-            </button>
+      {/* Right Section - Item Selection */}
+      <div className="bg-gray-100 w-80 h-full p-3">
+        <div className="flex flex-col h-full gap-3">
+          {/* Search */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={handleSearch}
+                placeholder="Search items..."
+                className="w-full h-10 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+              />
+            </div>
           </div>
 
-          {/* Filter section */}
-          <div className="flex flex-col gap-4">
+          {/* Filters */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-6 h-6 rounded-md bg-amber-100 flex items-center justify-center">
+                <Filter className="w-3 h-3 text-amber-600" />
+              </div>
+              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Filters</span>
+            </div>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               disabled={loadingData}
-              className="w-full h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB] rounded disabled:opacity-50"
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
             >
-              <option value="">
-                {loadingData ? "Loading categories..." : "All Categories"}
-              </option>
+              <option value="">{loadingData ? "Loading..." : "All Categories"}</option>
               {uniqueCategoryTypes.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
+                <option key={category} value={category}>{category}</option>
               ))}
             </select>
-
             <select
-              name="availability"
               value={selectedAvailability}
               onChange={(e) => setSelectedAvailability(e.target.value)}
-              className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
             >
-              <option value="All">All Availabilities</option>
+              <option value="All">All Status</option>
               <option value="Available">Available</option>
               <option value="Unavailable">Unavailable</option>
             </select>
           </div>
 
-          <div className="h-[calc(100vh-15rem)] overflow-y-scroll bg-transparent">
-            <div className="grid grid-cols-1 gap-6 p-4">
+          {/* Items List */}
+          <div className="flex-1 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="h-full overflow-y-auto p-3">
               {loadingData ? (
-                <div className="col-span-full flex flex-col items-center justify-center">
-                  <div className="flex flex-col items-center mt-32">
-                    <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
-                    <span className="text-gray-700 text-xl mt-1">
-                      Loading items...
-                    </span>
-                  </div>
+                <div className="flex flex-col items-center justify-center h-full">
+                  <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-10 w-10 mb-3"></div>
+                  <span className="text-gray-500 text-sm">Loading items...</span>
                 </div>
               ) : dataError ? (
-                <div className="col-span-full flex flex-col items-center justify-center text-red-500 text-lg">
-                  <p className="mb-2">Error loading items</p>
-                  <p className="text-sm text-gray-500">{dataError}</p>
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <AlertCircle className="w-10 h-10 text-red-400 mb-2" />
+                  <p className="text-red-500 text-sm">{dataError}</p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    className="mt-3 px-4 py-2 bg-[#1A318C] text-white rounded-lg text-sm hover:bg-[#152870] transition-colors"
                   >
                     Retry
                   </button>
                 </div>
               ) : filteredItems.length === 0 ? (
-                <div
-                  className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg"
-                  style={{ minHeight: "50vh" }}
-                >
-                  <span>No items found!</span>
-                  {items.length === 0 && (
-                    <p className="text-sm mt-2">
-                      No items available in inventory
-                    </p>
-                  )}
+                <div className="flex flex-col items-center justify-center h-full">
+                  <Package className="w-10 h-10 text-gray-300 mb-2" />
+                  <p className="text-gray-500 text-sm">No items found</p>
                 </div>
               ) : (
-                filteredItems.map((item) => {
-                  const isAlreadySelected = selectedItemsForTable.find(
-                    (selectedItem) => selectedItem.id === item.id
-                  );
-                  return (
+                <div className="space-y-3">
+                  {filteredItems.map((item) => (
                     <SalesItemCard
                       key={item.id ?? item._id}
                       item={item}
                       onOpen={() => addItemToTable(item)}
                     />
-                  );
-                })
+                  ))}
+                </div>
               )}
+            </div>
+          </div>
+
+          {/* Summary Card */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3">
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Summary</p>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Available Items</span>
+              <span className="text-sm font-bold text-gray-800">{filteredItems.length}</span>
             </div>
           </div>
         </div>

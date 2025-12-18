@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { uomApi, categoryApi, itemApi } from "../../api/localApi";
 import { useNavigate } from "react-router-dom";
-import { X, Printer, ChevronDown, ChevronUp, Search, Package, Filter, SortAsc } from "lucide-react";
+import { X, Printer, ChevronDown, ChevronUp, Search, Package, Filter, SortAsc, Upload, Image } from "lucide-react";
 import AddItemCard from "../../components/AddItemCard.jsx";
 import ConfirmDeleteModal from "../../components/ConfirmDeleteModal.jsx";
 import barcodeImg from "../../assets/barcode.png";
@@ -220,6 +220,53 @@ function AddItem({ isActive }) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Image upload handler - converts file to base64 blob
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.open("Please select an image file", 4000, 'Invalid File', 'error');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast.open("Image size must be less than 5MB", 4000, 'File Too Large', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result;
+      setFormData(prev => ({
+        ...prev,
+        item_image_blob: base64String
+      }));
+      toast.open("Image uploaded successfully", 2000, 'Success', 'success');
+    };
+    reader.onerror = () => {
+      toast.open("Failed to read image file", 4000, 'Error', 'error');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Remove uploaded image
+  const handleRemoveImage = () => {
+    setFormData(prev => ({
+      ...prev,
+      item_image_blob: null,
+      item_image_url: null
+    }));
+  };
+
+  // Get display image (blob takes priority over url)
+  const getDisplayImage = () => {
+    return formData.item_image_blob || formData.item_image_url || null;
+  };
+
 
   const fetchItems = async () => {
     try {
@@ -261,8 +308,7 @@ function AddItem({ isActive }) {
       );
       const requestData = {
         item_name: formData.item_name,
-        //changed to recent production quick fix
-        //item_image_url: formData.item_image_url || null,
+        item_image_blob: formData.item_image_blob || null,
         item_code: formData.item_code,
         sku: formData.sku,
         maximum_capacity: Number(formData.maximum_capacity),
@@ -272,7 +318,6 @@ function AddItem({ isActive }) {
         availability: formData.availability,
         stock_trace: [101] // Fixed value
       };
-      //const response = await apiClient.post("api/itemRegistry/add", requestData);
       const response = await registerItemService.registerItem(requestData);
       if (response.status === "success") {
         // Add new item to local state
@@ -322,7 +367,7 @@ function AddItem({ isActive }) {
       );
       const requestData = {
         item_name: formData.item_name,
-        //item_image_url: formData.item_image_url || null,
+        item_image_blob: formData.item_image_blob || null,
         item_code: formData.item_code,
         sku: formData.sku,
         maximum_capacity: Number(formData.maximum_capacity),
@@ -333,8 +378,7 @@ function AddItem({ isActive }) {
         stock_trace: [101], // Fixed value
       };
 
-      //const response = await apiClient.put(`api/itemRegistry/${formData.id}`, requestData);
-      const response =registerItemService.updateItem(formData.id, requestData);
+      const response = await registerItemService.updateItem(formData.id, requestData);
 
       if (response.status === "success") {
         setFormStatus("success");
@@ -500,31 +544,51 @@ function AddItem({ isActive }) {
             {openBasic && (
               <div className="px-4 pb-4 border-t border-gray-100">
                 <div className="flex flex-row items-center gap-6 pt-4">
-                  <div className="w-32 h-32 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center hover:border-[#1A318C]/30 hover:bg-[#1A318C]/5 transition-all cursor-pointer">
-                    {formData.item_image_url ? (
-                      <div>
-                        <input
-                          type="file"
-                          id="imageUpload"
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          onChange={handleImageUpload}
+                  {/* Image Upload Section */}
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="imageUpload"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                    {getDisplayImage() ? (
+                      <div className="relative w-32 h-32 group">
+                        <img
+                          src={getDisplayImage()}
+                          alt="Item"
+                          className="w-full h-full object-cover rounded-xl border-2 border-gray-200"
                         />
-                        <label htmlFor="imageUpload" className="block w-full h-full cursor-pointer">
-                          <img
-                            src={formData.item_image_url}
-                            alt="Item"
-                            className="w-full h-full object-contain rounded-lg"
-                          />
-                        </label>
+                        {/* Overlay with actions */}
+                        <div className="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <label
+                            htmlFor="imageUpload"
+                            className="w-9 h-9 bg-white rounded-lg flex items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors"
+                            title="Change image"
+                          >
+                            <Upload className="w-4 h-4 text-gray-700" />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleRemoveImage}
+                            className="w-9 h-9 bg-white rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors"
+                            title="Remove image"
+                          >
+                            <X className="w-4 h-4 text-red-500" />
+                          </button>
+                        </div>
                       </div>
                     ) : (
-                      <>
+                      <label
+                        htmlFor="imageUpload"
+                        className="w-32 h-32 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center hover:border-[#1A318C]/30 hover:bg-[#1A318C]/5 transition-all cursor-pointer"
+                      >
                         <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center mb-2">
-                          <X className="w-5 h-5 text-gray-400" />
+                          <Image className="w-5 h-5 text-gray-400" />
                         </div>
-                        <span className="text-xs text-gray-400">No image</span>
-                      </>
+                        <span className="text-xs text-gray-400">Upload Image</span>
+                      </label>
                     )}
                   </div>
                   <div className="flex flex-col items-center">
@@ -954,6 +1018,7 @@ const INITIAL_FORM_DATA = {
   item_code: "",
 
   item_image_url: "",
+  item_image_blob: null,
   sku: "",
   maximum_capacity: 0,
   uom_id: 0,
