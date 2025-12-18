@@ -564,6 +564,7 @@ class CloudSyncService {
                     password_hash TEXT NOT NULL,
                     full_name VARCHAR(255),
                     roles TEXT,
+                    branch_id VARCHAR(255),
                     is_active TINYINT DEFAULT 1,
                     last_login_at DATETIME,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -571,7 +572,8 @@ class CloudSyncService {
                     synced_at DATETIME,
                     sync_status VARCHAR(50) DEFAULT 'pending',
                     INDEX idx_email (email),
-                    INDEX idx_username (username)
+                    INDEX idx_username (username),
+                    INDEX idx_branch_id (branch_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `,
             categories: `
@@ -874,6 +876,43 @@ class CloudSyncService {
                 console.log(`[CloudSync] Created/verified table: ${tableName}`);
             } catch (error) {
                 console.error(`[CloudSync] Failed to create table ${tableName}:`, error.message);
+            }
+        }
+
+        // Add missing columns to existing tables (for schema updates)
+        await this.addMissingColumns();
+    }
+
+    /**
+     * Add missing columns to existing MySQL tables
+     * This handles schema migrations for existing tables
+     */
+    async addMissingColumns() {
+        const columnUpdates = [
+            // Add branch_id to users table if missing
+            {
+                table: 'users',
+                column: 'branch_id',
+                definition: 'VARCHAR(255) DEFAULT NULL',
+                after: 'roles'
+            }
+        ];
+
+        for (const update of columnUpdates) {
+            try {
+                // Check if column exists
+                const columns = await executeQuery(
+                    `SHOW COLUMNS FROM ${update.table} LIKE '${update.column}'`
+                );
+
+                if (!columns || columns.length === 0) {
+                    // Column doesn't exist, add it
+                    const alterQuery = `ALTER TABLE ${update.table} ADD COLUMN ${update.column} ${update.definition}${update.after ? ` AFTER ${update.after}` : ''}`;
+                    await executeQuery(alterQuery);
+                    console.log(`[CloudSync] Added column ${update.column} to ${update.table}`);
+                }
+            } catch (error) {
+                console.error(`[CloudSync] Failed to add column ${update.column} to ${update.table}:`, error.message);
             }
         }
     }
