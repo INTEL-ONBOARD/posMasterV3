@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { uomApi, categoryApi } from "../../api/localApi";
 import { useNavigate } from "react-router-dom";
-import { X, Printer, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Printer, ChevronDown, ChevronUp, Search, Package, Filter, SortAsc } from "lucide-react";
 import AddItemCard from "../../components/AddItemCard.jsx";
 import ConfirmDeleteModal from "../../components/ConfirmDeleteModal.jsx";
 import barcodeImg from "../../assets/barcode.png";
@@ -478,26 +478,29 @@ function AddItem({ isActive }) {
   const [openOrderBy, setOpenOrderBy] = useState(true);
 
   return (
-    <div className="flex flex-row">
+    <div className="flex flex-row bg-gray-50">
       {/* Item form (left) */}
       {formStatus === "form" ? (
-      // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-between">
-      // <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] overflow-y-scroll">
-      <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 z-10 flex flex-col justify-between">
-        <div className="flex flex-col h-[45rem] gap-3">
+      <div className="bg-gray-100 w-[28rem] h-[calc(100vh-2rem)] p-3 z-10 flex flex-col justify-between overflow-y-auto">
+        <div className="flex flex-col gap-3">
           {/* ▼ Basic info block ▼ */}
-          <div className="border rounded bg-white">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <button
               onClick={() => setOpenBasic(!openBasic)}
-              className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
             >
-              <span className="text-gray-400">Barcode & SKU</span>
-              {openBasic ? <ChevronUp /> : <ChevronDown />}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                  <Package className="w-4 h-4 text-slate-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Barcode & SKU</span>
+              </div>
+              {openBasic ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
             </button>
             {openBasic && (
-              <div className="bg-white mx-4">
-                <div className="flex flex-row px-4 items-center max-h-[12rem]">
-                  <div className="w-36 h-36 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center mb-4 hover:border-gray-400 transition-colors">
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="flex flex-row items-center gap-6 pt-4">
+                  <div className="w-32 h-32 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center hover:border-[#1A318C]/30 hover:bg-[#1A318C]/5 transition-all cursor-pointer">
                     {formData.item_image_url ? (
                       <div>
                         <input
@@ -511,27 +514,24 @@ function AddItem({ isActive }) {
                           <img
                             src={formData.item_image_url}
                             alt="Item"
-                            className="w-full h-full object-contain"
+                            className="w-full h-full object-contain rounded-lg"
                           />
                         </label>
                       </div>
                     ) : (
                       <>
-                        <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mb-2">
-                          <X className="w-6 h-6 text-red-500" />
+                        <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center mb-2">
+                          <X className="w-5 h-5 text-gray-400" />
                         </div>
-                        <span className="text-gray-500">No image</span>
+                        <span className="text-xs text-gray-400">No image</span>
                       </>
                     )}
                   </div>
-                  {/* Vertical black line separator */}
-                  {/* <div className="w-0.5 bg-black self-stretch"></div> */}
-                  <div className="flex flex-col m-10">
-                    <div>
-                      <img src={barcodeImg} alt="Barcode" className="w-[100px] object-contain" />
-                      {/* <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p> */}
-                      <p className="text-sm font-semibold text-gray-800">SKU: {formData.sku}</p>
+                  <div className="flex flex-col items-center">
+                    <div className="bg-slate-800 rounded-xl p-3">
+                      <img src={barcodeImg} alt="Barcode" className="w-24 object-contain brightness-0 invert opacity-80" />
                     </div>
+                    <p className="text-xs font-medium text-gray-500 mt-2">SKU: <span className="font-bold text-gray-800 font-mono">{formData.sku || "N/A"}</span></p>
                   </div>
                 </div>
               </div>
@@ -539,20 +539,26 @@ function AddItem({ isActive }) {
           </div>
 
           {/* ▼ Primary description block ▼ */}
-          <div className="border">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <button
               onClick={() => setOpenPrimary(!openPrimary)}
-              className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
             >
-              <span className="text-gray-400">Primary Description</span>
-              {openPrimary ? <ChevronUp /> : <ChevronDown />}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#1A318C]/10 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-[#1A318C]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Primary Description</span>
+              </div>
+              {openPrimary ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
             </button>
             {openPrimary && (
-              <div className="px-4 bg h-[25rem] bg-white">
-                {/*primary description block  */}
-                <div className="">
-                  <div className="pt-2">
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="space-y-4 pt-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                       Item Name
                     </label>
                     <input
@@ -561,12 +567,11 @@ function AddItem({ isActive }) {
                       value={formData.item_name}
                       onChange={handleInputChange}
                       placeholder="Enter item name"
-                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                     />
                   </div>
-                  <div className="grid grid-cols-2 mt-2 gap-4">
-                  <div className="pt-2">
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                       Product Code
                     </label>
                     <input
@@ -574,28 +579,23 @@ function AddItem({ isActive }) {
                       name="item_code"
                       value={formData.item_code}
                       onChange={handleInputChange}
-                      placeholder="Enter item name"
-                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter product code"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                     />
                   </div>
 
-                  </div>
-
-                  <div className="grid grid-cols-2 mt-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                  Category
-                </label>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Category
+                      </label>
                       <select
-                        // name="category"
-                        // value={formData.category}
-                        // onChange={handleInputChange}
                         name="categoryType"
                         value={formCategoryData.categoryType}
                         onChange={handleCategoryChange}
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                       >
-                        <option value="">-- select category --</option>
+                        <option value="">Select category</option>
                         {uniqueCategoryTypes.map(type => (
                           <option key={type} value={type}>
                             {type}
@@ -604,20 +604,17 @@ function AddItem({ isActive }) {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                  Brand
-                </label>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Brand
+                      </label>
                       <select
-                        // name="brand"
-                        // value={formData.brand}
-                        // onChange={handleInputChange}
                         name="brand"
                         value={formCategoryData.brand}
                         onChange={handleBrandChange}
                         disabled={!brandOptions.length}
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB]"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <option value="">-- select brand --</option>
+                        <option value="">Select brand</option>
                         {brandOptions.map(brand => (
                           <option key={brand} value={brand}>
                             {brand}
@@ -626,9 +623,9 @@ function AddItem({ isActive }) {
                       </select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 mt-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         SKU
                       </label>
                       <input
@@ -636,36 +633,35 @@ function AddItem({ isActive }) {
                         name="sku"
                         value={formData.sku}
                         onChange={handleInputChange}
-                        //placeholder=""
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter SKU"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Maximum Capacity
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Max Capacity
                       </label>
                       <input
                         type="number"
                         name="maximum_capacity"
                         value={formData.maximum_capacity}
                         onChange={handleInputChange}
-                        // placeholder=""
-                        className="w-full px-3 py-2 border bg-[#F8F8F8] border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         UOM
                       </label>
                       <select
                         name="uom"
-                        value={formUOMData ?? ""}               // show the selected id
-                        onChange={handleUOMChange}              // hook up your new handler
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={formUOMData ?? ""}
+                        onChange={handleUOMChange}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                       >
-                        <option value="">-- select unit --</option>
+                        <option value="">Select unit</option>
                         {uoms.map(uom => (
                           <option key={uom.id} value={uom.id}>
                             {uom.unit_name} ({uom.symbol})
@@ -674,131 +670,155 @@ function AddItem({ isActive }) {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         Availability
                       </label>
                       <select
                         name="availability"
-                        value={formData.availability}               // show the selected id
-                        onChange={handleInputChange}              // hook up your new handler
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={formData.availability}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                       >
-                        <option>-- select availability --</option>
-                          <option value={true}>Available</option>
-                          <option value={false}>Unavailable</option>
-
-                        </select>
-                      </div>
+                        <option>Select availability</option>
+                        <option value={true}>Available</option>
+                        <option value={false}>Unavailable</option>
+                      </select>
                     </div>
-
                   </div>
                 </div>
-              )}
-            </div>
-
-
+              </div>
+            )}
           </div>
 
+
+        </div>
+
           {/* Bottom bar */}
-          <div className="flex flex-row w-full gap-2">
+          <div className="flex flex-row w-full gap-2 mt-auto pt-3">
             <button
-              className="flex items-center justify-center flex-1 min-w-0 h-10 px-2 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors text-sm"
+              className="flex items-center justify-center flex-1 min-w-0 h-11 px-3 py-2 bg-slate-700 text-white rounded-xl hover:bg-slate-800 transition-all duration-200 text-sm font-medium shadow-md"
               onClick={() => generatePdf('print')}
             >
               <Printer className="w-4 h-4 mr-2 flex-shrink-0" />
-              <span className="truncate">Print Barcode</span>
+              <span className="truncate">Print</span>
             </button>
             <button
               onClick={() => {
                 clearUserInput();
-                //switch from update item button to add item button
                 setUserEditing(false)
               }}
-              className="flex-1 min-w-0 h-10 px-3 py-2 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors text-sm"
+              className="flex-1 min-w-0 h-11 px-3 py-2 bg-white border-2 border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 text-sm font-medium"
             >
               <span className="truncate">Cancel</span>
             </button>
-            {/* switch between update and add button functions based on item card selection and clear form button click */}
             <button
               onClick={isUserEditting ? updateItem : registerItem}
-              className="flex-1 min-w-0 h-10 px-3 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors text-sm"
+              className="flex-[1.5] min-w-0 h-11 px-4 py-2 bg-[#1A318C] text-white rounded-xl hover:bg-[#152870] transition-all duration-200 text-sm font-semibold shadow-md shadow-blue-900/20 flex items-center justify-center gap-2"
             >
-              <span className="truncate">{isUserEditting ? 'Update' : 'Create'}</span>
+              {isUserEditting ? (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Update</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Create</span>
+                </>
+              )}
             </button>
-
           </div>
         </div>
       ) : formStatus === "loading" ? (
-        // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
-        // <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] overflow-y-scroll">
-        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 z-10 flex flex-col justify-around">
-          <div className="flex flex-col items-center justify-center">
-            <div className="animate-spin mb-3 rounded-full border-4 border-gray-300 border-t-[#1A318C] h-12 w-12"></div>
-            <h2>Please wait…</h2>
+        <div className="bg-gray-100 w-[28rem] h-[calc(100vh-2rem)] p-3 z-10 flex flex-col items-center justify-center">
+          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col items-center">
+            <div className="animate-spin mb-4 rounded-full border-4 border-gray-200 border-t-[#1A318C] h-14 w-14"></div>
+            <h2 className="text-lg font-semibold text-gray-800">Processing...</h2>
+            <p className="text-sm text-gray-500 mt-1">Please wait</p>
           </div>
         </div>
       ) : formStatus === "success" ? (
-        // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
-        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 z-10 flex flex-col justify-around">
-          <div className="flex flex-col items-center justify-center">
-            <svg width={80} height={80} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* green circle */}
-              <circle cx="12" cy="12" r="10" fill="#22C55E" />
-              {/* white check */}
-              <path d="M7 12l3 3 7-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            <h2 className="font-semibold text-xl">Success!</h2>
+        <div className="bg-gray-100 w-[28rem] h-[calc(100vh-2rem)] p-3 z-10 flex flex-col items-center justify-center">
+          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col items-center">
+            <div className="w-20 h-20 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-200 mb-4">
+              <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800">Success!</h2>
+            <p className="text-sm text-gray-500 mt-1">Item saved successfully</p>
           </div>
         </div>
       ) : (
-        /* if it's none of the above, we treat it as "fail" */
-        // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
-        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 z-10 flex flex-col justify-around">
-          <div className="flex flex-col items-center justify-center">
-            <svg width={80} height={80} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* red circle */}
-              <circle cx="12" cy="12" r="10" fill="#EF4444" />
-              {/* white “X” */}
-              <path d="M15 9l-6 6M9 9l6 6" stroke="white" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-            <h2 className="font-semibold text-xl">Failed...</h2>
+        <div className="bg-gray-100 w-[28rem] h-[calc(100vh-2rem)] p-3 z-10 flex flex-col items-center justify-center">
+          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col items-center">
+            <div className="w-20 h-20 rounded-2xl bg-red-500 flex items-center justify-center shadow-lg shadow-red-200 mb-4">
+              <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800">Failed</h2>
+            <p className="text-sm text-gray-500 mt-1">Please try again</p>
           </div>
         </div>
       )}
 
       {/* Item list (mid) */}
-      <div className="w-[calc(57rem)] h-[calc(100vh-1rem)] bg-[#EBEBEB]">
-
+      <div className="flex-1 h-[calc(100vh-1rem)] bg-gray-50">
         {/* Search panel */}
-        <nav className="w-full flex flex-row justify-between py-8 px-10 h-[7rem] bg-white gap-6">
-          <div className="w-full flex flex-row justify-between border border-t-transparent border-l-transparent border-r-transparent pb-2 border-blue-400">
-            <input
-              type="text"
-              value={search}
-              onChange={handleSearch}
-              placeholder="Search your item here..."
-              className="px-3 py-2 w-full bg-white border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button className="px-10 py-2 bg-[#00489A] text-white hover:bg-blue-900 transition-colors">
-              Search
-            </button>
+        <nav className="w-full bg-white border-b border-gray-100 shadow-sm">
+          <div className="px-6 py-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={handleSearch}
+                  placeholder="Search items by name, SKU, or batch code..."
+                  className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                />
+              </div>
+              <button className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                Search
+              </button>
+            </div>
+            {/* Results count */}
+            <div className="mt-3 flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                Showing <span className="font-semibold text-gray-800">{filteredItems.length}</span> items
+              </p>
+            </div>
           </div>
         </nav>
 
-        <div className="h-[calc(100vh-8rem)] overflow-y-scroll">
+        <div className="h-[calc(100vh-10rem)] overflow-y-auto p-6">
           {isLoading ? (
-            <div className="flex justify-center items-center h-full">
-              <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12"></div>
+            <div className="flex flex-col justify-center items-center h-full">
+              <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
+              <p className="text-gray-500">Loading items...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 p-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
               {searchLoading ? (
-                <div className="col-span-full flex flex-col items-center justify-center" style={{ minHeight: "60vh" }}>
-                  <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
-                  <span className="text-gray-700 text-xl mt-1">Please wait...</span>
+                <div className="col-span-full flex flex-col items-center justify-center py-20">
+                  <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
+                  <span className="text-gray-500">Searching...</span>
                 </div>
               ) : filteredItems.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg" style={{ minHeight: "50vh" }}>
-                  <span>No items found!</span>
+                <div className="col-span-full flex flex-col items-center justify-center py-20">
+                  <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                    <Package className="w-10 h-10 text-gray-300" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800">No items found</h3>
+                  <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
                 </div>
               ) : (
                 filteredItems.map((item) => (
@@ -816,116 +836,96 @@ function AddItem({ isActive }) {
       </div>
 
       {/* filter section (right) */}
-      <div className="bg-[#EBEBEB] w-[calc(20rem)] h-[calc(100vh-2rem)] p-1">
-        <div className="flex flex-col h-[calc(100vh-2rem)] gap-2">
-          {/* top block set */}
-          <div>
-            {/* ▼ search filters block ▼ */}
-            <div className="bg-white">
-              <button
-                onClick={() => setOpenFilter(!openFilter)}
-                className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
-              >
-                <span className="text-gray-400">SEARCH FILTERS</span>
-                {openFilter ? <ChevronUp /> : <ChevronDown />}
-              </button>
-              {openFilter && (
-                <div className="px-4 bg-white pb-5">
-                  {/* detailed description block */}
-                  <div className="">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Category
-                      </label>
-                      <select
-                        value={searchCategory}
-                        onChange={(e) => setSearchCategory(e.target.value)}
-                        className="w-full h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
-                      >
-                        <option value="All">All Categories</option>
-                        {uniqueCategoryTypes.map(type => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+      <div className="bg-gray-100 w-[18rem] h-[calc(100vh-2rem)] p-3">
+        <div className="flex flex-col h-full gap-3">
+          {/* ▼ search filters block ▼ */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <button
+              onClick={() => setOpenFilter(!openFilter)}
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Filter className="w-4 h-4 text-amber-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Filters</span>
+              </div>
+              {openFilter ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+            </button>
+            {openFilter && (
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="space-y-4 pt-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                      Category
+                    </label>
+                    <select
+                      value={searchCategory}
+                      onChange={(e) => setSearchCategory(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="All">All Categories</option>
+                      {uniqueCategoryTypes.map(type => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                    {/* fix availability here */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Item Availability
-                      </label>
-                      <select
-                        name="searchAvailability"
-                        value={searchAvailability}
-                        onChange={(e) => setSearchAvailability(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="All">All</option>
-                        <option value="Available">Available</option>
-                        <option value="Unavailable">Unavailable</option>
-                      </select>
-                    </div>
-
-                    {/* <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Popularity
-                      </label>
-                      <select
-                        name="uom"
-                        // value={formUOMData ?? ""}               // show the selected id
-                        // onChange={handleUOMChange}              // hook up your new handler
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Default</option>
-
-                      </select>
-                    </div> */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                      Availability
+                    </label>
+                    <select
+                      name="searchAvailability"
+                      value={searchAvailability}
+                      onChange={(e) => setSearchAvailability(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="All">All Items</option>
+                      <option value="Available">Available</option>
+                      <option value="Unavailable">Unavailable</option>
+                    </select>
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* ▼ order by block ▼ */}
-            <div className="bg-white">
-              <button
-                onClick={() => setOpenOrderBy(!openOrderBy)}
-                className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
-              >
-                <span className="text-gray-400">ORDER BY</span>
-                {openOrderBy ? <ChevronUp /> : <ChevronDown />}
-              </button>
-              {openOrderBy && (
-                <div className="px-4 bg-white pb-5">
-                  {/* detailed description block */}
-                  <div className="">
-                    <div>
-                      {/* <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Suppier
-                      </label> */}
-                      <select
-                        name="uom"
-                        // value={formUOMData ?? ""}               // show the selected id
-                        // onChange={handleUOMChange}              // hook up your new handler
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Default</option>
-                        {/* {uoms.map(uom => (
-                          <option key={uom.id} value={uom.id}>
-                            {uom.unit_name} ({uom.symbol})
-                          </option>
-                        ))} */}
-                      </select>
-                    </div>
-
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-          {/* empty bottom block */}
-          <div className="bg-white h-full"></div>
+
+          {/* ▼ order by block ▼ */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <button
+              onClick={() => setOpenOrderBy(!openOrderBy)}
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#1A318C]/10 flex items-center justify-center">
+                  <SortAsc className="w-4 h-4 text-[#1A318C]" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Sort By</span>
+              </div>
+              {openOrderBy ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+            </button>
+            {openOrderBy && (
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="pt-4">
+                  <select
+                    name="sortOrder"
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">Default</option>
+                    <option value="name_asc">Name (A-Z)</option>
+                    <option value="name_desc">Name (Z-A)</option>
+                    <option value="recent">Most Recent</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Spacer */}
+          <div className="flex-1 bg-white rounded-xl border border-gray-100 shadow-sm"></div>
         </div>
       </div>
 

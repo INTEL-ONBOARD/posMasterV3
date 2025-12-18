@@ -102,44 +102,57 @@ function Login() {
 
   return (
     <motion.div
-      className="fixed inset-0 min-h-screen bg-white overflow-hidden flex items-center justify-center p-4"
+      className="fixed inset-0 min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 overflow-hidden flex items-center justify-center p-4"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
-      <motion.div className="w-full max-w-md flex flex-col justify-center min-h-[60vh]" variants={cardVariants} initial="hidden" animate="visible">
+      {/* Background decoration */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-[#1A318C]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#1A318C]/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+
+      <motion.div className="w-full max-w-md flex flex-col justify-center min-h-[60vh] relative z-10" variants={cardVariants} initial="hidden" animate="visible">
         <div>
           <motion.div
-            className="bg-white rounded-2xl p-8"
+            className="bg-white rounded-2xl p-8 shadow-xl shadow-slate-200/50 border border-gray-100"
             variants={staggerContainer}
             initial="hidden"
             animate="visible"
           >
+            {/* Logo Icon */}
+            <motion.div className="flex justify-center mb-6" variants={fadeUp}>
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#1A318C] to-[#152870] flex items-center justify-center shadow-lg shadow-blue-900/20">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </motion.div>
+
             {/* Title */}
-            <motion.div className="text-center mb-8" variants={fadeUp}>
+            <motion.div className="text-center mb-2" variants={fadeUp}>
               <h1 className="text-3xl font-bold">
-                <span className="font-bold text-[#00489A]">POS</span>
-                <span className="text-gray-900"> MASTER</span>
-                <span className="text-gray-700">.3</span>
+                <span className="font-bold text-[#1A318C]">POS</span>
+                <span className="text-gray-800"> MASTER</span>
+                <span className="text-gray-400 text-xl">.3</span>
               </h1>
             </motion.div>
 
             {/* Subtitle */}
             <motion.div className="text-center mb-8" variants={fadeUp}>
-              <p className="text-sm leading-relaxed text-[#C8C8C8]">
-                Welcome back! Enter your credentials to continue to your dashboard.
+              <p className="text-sm leading-relaxed text-gray-400">
+                Welcome back! Enter your credentials to continue.
               </p>
             </motion.div>
 
             {/* Login Form */}
-            <motion.form onSubmit={handleSubmit} className="space-y-6 w-full" variants={staggerContainer}>
+            <motion.form onSubmit={handleSubmit} className="space-y-5 w-full" variants={staggerContainer}>
               {/* Email Field */}
-              <motion.div className="space-y-2" variants={fadeUp}>
-                <label htmlFor="email" className="block text-sm font-medium text-[#D3D3D3]">
+              <motion.div className="space-y-1.5" variants={fadeUp}>
+                <label htmlFor="email" className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Email or Username
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <Mail className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
@@ -148,8 +161,7 @@ function Login() {
                     type="text"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="w-full h-[38px] pl-10 pr-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 text-gray-900 placeholder-[#949494]"
-                    style={{ backgroundColor: "#F8F8F8" }}
+                    className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all duration-200 text-gray-800 placeholder-gray-400"
                     placeholder="Enter your email or username"
                     required
                   />
@@ -157,12 +169,12 @@ function Login() {
               </motion.div>
 
               {/* Password Field */}
-              <motion.div className="space-y-2" variants={fadeUp}>
-                <label htmlFor="password" className="block text-sm font-medium text-[#D3D3D3]">
+              <motion.div className="space-y-1.5" variants={fadeUp}>
+                <label htmlFor="password" className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Password
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <Lock className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
@@ -171,20 +183,19 @@ function Login() {
                     type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={handleInputChange}
-                    className="w-full h-[38px] pl-10 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-400"
-                    style={{ backgroundColor: "#F8F8F8" }}
+                    className="w-full h-12 pl-12 pr-12 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all duration-200 text-gray-800 placeholder-gray-400"
                     placeholder="Enter your password"
                     required
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" />
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-[#1A318C] transition-colors" />
                     ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors" />
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-[#1A318C] transition-colors" />
                     )}
                   </button>
                 </div>
@@ -194,32 +205,35 @@ function Login() {
               <motion.button
                 type="submit"
                 disabled={isLoading}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                transition={{ type: "spring", stiffness: 180 }}
-                style={{ backgroundColor: "#00489A" }}
-                className="w-full h-[38px] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00489A] transition duration-200 text-white font-semibold flex items-center justify-center"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: "spring", stiffness: 200 }}
+                className="w-full h-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A318C]/50 transition-all duration-200 text-white font-semibold flex items-center justify-center bg-gradient-to-r from-[#1A318C] to-[#152870] shadow-lg shadow-blue-900/20 hover:shadow-xl hover:shadow-blue-900/30 disabled:opacity-70 disabled:cursor-not-allowed"
                 variants={fadeUp}
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
-                    Logging in...
+                    Signing in...
                   </div>
                 ) : (
-                  "Login"
+                  <>
+                    <span>Sign In</span>
+                    <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </>
                 )}
               </motion.button>
             </motion.form>
 
             {/* Support Section */}
             <motion.div className="mt-8 text-center" variants={fadeUp}>
-              <p className="text-sm mb-2 text-[#D3D3D3]">Trouble in login?</p>
+              <p className="text-sm text-gray-400">Need help?</p>
               <button
-                className="text-sm font-medium hover:underline transition-colors"
-                style={{ color: "#555555" }}
+                className="text-sm font-medium text-[#1A318C] hover:underline transition-colors mt-1"
               >
-                Contact our Support team
+                Contact Support
               </button>
             </motion.div>
           </motion.div>
@@ -232,8 +246,8 @@ function Login() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.6, duration: 0.7 }}
         >
-          <p className="text-xs text-[#D3D3D3]">
-            Copyright © 2025 SLTC ®  |  .{import.meta.env.VITE_VERSION_NUMBER}
+          <p className="text-xs text-gray-400">
+            © 2025 SLTC ® · v{import.meta.env.VITE_VERSION_NUMBER}
           </p>
         </motion.div>
 
