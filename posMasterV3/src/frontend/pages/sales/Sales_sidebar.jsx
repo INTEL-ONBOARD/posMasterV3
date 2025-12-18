@@ -1,16 +1,13 @@
-import React from "react";
-// import saleViewImg from "../../assets/Dashboard_sales.png";
-// import transactionHistoryImg from "../../assets/Inventory_report.png";
-// import inventoryViewImg from "../../assets/View_inventory.png";
-// import offersDiscountImg from "../../assets/Inventory_settings.png";
-// import salesConfigImg from "../../assets/Inventory_settings.png";
-//new image imports
+import React, { useState, useEffect } from "react";
 import saleViewImg from "../../assets/sale_sidebar_view.png";
 import transactionHistoryImg from "../../assets/sale_sidebar_trans_history.png";
 import offersDiscountImg from "../../assets/sale_sidebar_discounts.png";
 import salesConfigImg from "../../assets/Inventory_settings.png";
 import inventoryReportImg from "../../assets/Inventory_report.png";
 import viewInventoryImg from "../../assets/sale_sidebar_view_inventory.png";
+import { localAuth } from "../../api/services/localAuth";
+import { settingsApi } from "../../api/localApi";
+
 function SalesSidebar({
   activeSection,
   onSaleViewClick,
@@ -20,44 +17,77 @@ function SalesSidebar({
   onOffersDiscountClick,
   onSalesConfigClick,
 }) {
+  const [permissions, setPermissions] = useState(null);
+
+  // Load user permissions on mount
+  useEffect(() => {
+    const loadPermissions = async () => {
+      try {
+        const currentUser = await localAuth.getCurrentUser();
+        if (currentUser) {
+          const userId = currentUser.id || currentUser._id;
+          const response = await settingsApi.getUserSettings(userId);
+          if (response.status === "success" && response.data?.settings?.permissions?.SaleAccess) {
+            setPermissions(response.data.settings.permissions.SaleAccess);
+          }
+        }
+      } catch (error) {
+        console.error("[SalesSidebar] Error loading permissions:", error);
+      }
+    };
+    loadPermissions();
+  }, []);
+
+  // Check if user has specific permission
+  const hasPermission = (permKey) => {
+    if (!permissions) return true; // Show all until permissions load
+    return permissions[permKey] === true;
+  };
+
   const sidebarItems = [
     {
       id: "sale-view",
       label: "Sale View",
       icon: saleViewImg,
       onClick: onSaleViewClick,
+      permissionKey: "sale_process",
     },
     {
       id: "transaction-history",
       label: "Transaction History",
       icon: transactionHistoryImg,
       onClick: onTransactionHistoryClick,
+      permissionKey: "sale_history",
     },
     {
       id: "view-inventory",
       label: "View Inventory",
       icon: viewInventoryImg,
       onClick: onInventoryViewClick,
+      permissionKey: "sale_view_inventory",
     },
     {
       id: "sales-report",
       label: "Sales Report",
       icon: inventoryReportImg,
       onClick: onSalesReportClick,
+      permissionKey: "sale_reports",
     },
     {
       id: "sales-config",
       label: "Sales Configurations",
       icon: salesConfigImg,
       onClick: onSalesConfigClick,
+      permissionKey: "sale_configurations",
     },
     {
       id: "offers-discount",
       label: "Offers and Discount View",
       icon: offersDiscountImg,
       onClick: onOffersDiscountClick,
+      permissionKey: "sale_discounts",
     },
-  ];
+  ].filter(item => hasPermission(item.permissionKey));
 
   return (
     //z index set to 20 to show popupups and status messages without overshadwoing popup

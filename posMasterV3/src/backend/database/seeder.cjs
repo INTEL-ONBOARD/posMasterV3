@@ -52,7 +52,44 @@ function seedDefaultAdmin() {
 
     stmt.run(adminUser);
 
-    console.log('[Seeder] Default admin user created');
+    // Create full admin permissions for the admin user
+    const fullAdminPermissions = {
+        SaleAccess: {
+            sale_process: true,
+            sale_history: true,
+            sale_view_inventory: true,
+            sale_reports: true,
+            sale_configurations: true,
+            sale_discounts: true
+        },
+        InventoryAccess: {
+            inventory_view: true,
+            inventory_register_item: true,
+            inventory_restock: true,
+            inventory_return_list: true,
+            inventory_dispose: true,
+            inventory_suppliers: true,
+            inventory_price_change: true,
+            inventory_history: true,
+            inventory_configurations: true,
+            inventory_reports: true
+        },
+        UserAccess: {
+            user_manage: true,
+            user_role_manage: true
+        }
+    };
+
+    // Insert admin settings with full permissions
+    const settingsStmt = db.prepare(`
+        INSERT INTO user_settings (id, user_id, permissions, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+    `);
+
+    const settingsId = generateUUID();
+    settingsStmt.run(settingsId, adminUser.id, JSON.stringify(fullAdminPermissions), nowISO(), nowISO());
+
+    console.log('[Seeder] Default admin user created with full permissions');
     console.log('[Seeder] ================================');
     console.log('[Seeder] Username: admin');
     console.log('[Seeder] Password: 12345');
@@ -120,7 +157,7 @@ function seedDefaultUoms() {
 }
 
 /**
- * Seed default categories
+ * Seed default categories with Sri Lankan supermarket brands
  * @returns {Object} Result of seeding
  */
 function seedDefaultCategories() {
@@ -134,18 +171,170 @@ function seedDefaultCategories() {
         return { seeded: false, message: 'Categories already exist' };
     }
 
-    const defaultCategories = [
-        { brand: 'General', type: 'Beverages' },
-        { brand: 'General', type: 'Snacks' },
-        { brand: 'General', type: 'Dairy' },
-        { brand: 'General', type: 'Bakery' },
-        { brand: 'General', type: 'Personal Care' },
-        { brand: 'General', type: 'Household' },
-        { brand: 'General', type: 'Groceries' },
-        { brand: 'General', type: 'Frozen Foods' },
-        { brand: 'General', type: 'Canned Goods' },
-        { brand: 'General', type: 'Condiments' }
+    // Sri Lankan supermarket brands
+    const brands = [
+        // Beverages
+        'Elephant House', 'Coca-Cola', 'Pepsi', 'Sprite', 'Fanta', 'Nestomalt', 'Milo',
+        'Nescafe', 'Lipton', 'Dilmah', 'Zesta', 'Akbar', 'Bogawantalawa', 'Watawala',
+        'Richlife', 'Highland', 'Anchor', 'Fonterra', 'Ambewela', 'Pelwatte',
+        // Food & Snacks
+        'Munchee', 'Maliban', 'CBL', 'Prima', 'Raigam', 'Harischandra', 'MD',
+        'Edinborough', 'Kist', 'Larich', 'Astra', 'Marina', 'Fortune', 'Sunlight',
+        'Kandos', 'Ritzbury', 'Chun Wah', 'KIK', 'Star', 'Tipi Tip',
+        // Personal Care
+        'Signal', 'Closeup', 'Pepsodent', 'Colgate', 'Lifebuoy', 'Lux', 'Dettol',
+        'Sunsilk', 'Clear', 'Head & Shoulders', 'Pantene', 'Dove', 'Nivea', 'Vaseline',
+        'Parachute', 'Kumarika', 'Swadeshi', 'Link', 'Janet', 'Nature Secrets',
+        // Household
+        'Harpic', 'Vim', 'Domex', 'Cif', 'Mr. Muscle', 'Mortein', 'Good Knight',
+        'Rin', 'Surf Excel', 'Sunlight', 'Breeze', 'Diva', 'Softlan', 'Comfort',
+        'Velvet', 'Serene', 'Prima', 'Anchor', 'Atlas', 'Singer',
+        // Rice & Grains
+        'Nipuna', 'CIC', 'Araliya', 'Red Rice', 'White Rice', 'Keeri Samba',
+        'Samba Rice', 'Basmati', 'Nadu Rice', 'Brown Rice', 'Rattail Rice',
+        // Cooking
+        'Siddhalepa', 'MA\'s', 'IFS', 'Raigam', 'Harischandra', 'CBL', 'MD',
+        // International
+        'Maggi', 'Knorr', 'Heinz', 'Kelloggs', 'Quaker', 'Nestle', 'Unilever',
+        'P&G', 'Johnson & Johnson', 'Reckitt', 'Kraft', 'Mars', 'Cadbury',
+        // Local Brands
+        'Cargills', 'Keells', 'Arpico', 'Laugfs', 'Sathosa', 'Lanka Soy',
+        'Plenty Foods', 'Catch', 'Happy Cow', 'Kotmale', 'Newdale', 'Pelawatta'
     ];
+
+    // Product types/categories
+    const types = [
+        // Beverages
+        'Carbonated Drinks', 'Fruit Juice', 'Energy Drinks', 'Mineral Water', 'Flavored Water',
+        'Tea', 'Green Tea', 'Black Tea', 'Herbal Tea', 'Tea Bags', 'Loose Tea',
+        'Coffee', 'Instant Coffee', 'Ground Coffee', 'Coffee Sachets',
+        'Milk', 'Fresh Milk', 'Flavored Milk', 'Milk Powder', 'UHT Milk', 'Condensed Milk',
+        'Malted Drinks', 'Chocolate Drinks', 'Health Drinks', 'Protein Drinks',
+        // Snacks & Biscuits
+        'Cream Biscuits', 'Plain Biscuits', 'Chocolate Biscuits', 'Wafer Biscuits',
+        'Crackers', 'Cookies', 'Digestive Biscuits', 'Marie Biscuits', 'Glucose Biscuits',
+        'Potato Chips', 'Cassava Chips', 'Banana Chips', 'Mixture', 'Murukku',
+        'Chocolates', 'Toffees', 'Candy', 'Chewing Gum', 'Lollipops',
+        // Instant Food
+        'Instant Noodles', 'Cup Noodles', 'Pasta', 'Macaroni', 'Spaghetti',
+        'Instant Rice', 'Ready to Eat Meals', 'Soup Packets', 'Porridge Mix',
+        // Rice & Grains
+        'White Rice', 'Red Rice', 'Basmati Rice', 'Samba Rice', 'Nadu Rice',
+        'Brown Rice', 'Parboiled Rice', 'Raw Rice', 'String Hoppers Flour',
+        'Wheat Flour', 'Rice Flour', 'Kurakkan Flour', 'Corn Flour', 'Gram Flour',
+        'Oats', 'Corn Flakes', 'Muesli', 'Granola', 'Breakfast Cereals',
+        // Cooking Essentials
+        'Coconut Oil', 'Vegetable Oil', 'Sunflower Oil', 'Olive Oil', 'Sesame Oil',
+        'Coconut Milk', 'Coconut Cream', 'Desiccated Coconut', 'Coconut Powder',
+        'Sugar', 'Brown Sugar', 'Jaggery', 'Treacle', 'Honey',
+        'Salt', 'Iodized Salt', 'Sea Salt', 'Pink Salt',
+        'Vinegar', 'Soy Sauce', 'Fish Sauce', 'Oyster Sauce', 'Tomato Sauce',
+        'Chili Sauce', 'Garlic Sauce', 'BBQ Sauce', 'Mayonnaise', 'Mustard',
+        // Spices & Condiments
+        'Chili Powder', 'Turmeric Powder', 'Curry Powder', 'Coriander Powder',
+        'Cumin Powder', 'Pepper Powder', 'Garam Masala', 'Meat Curry Powder',
+        'Fish Curry Powder', 'Roasted Curry Powder', 'Unroasted Curry Powder',
+        'Cinnamon', 'Cardamom', 'Cloves', 'Nutmeg', 'Mace', 'Fenugreek',
+        'Goraka', 'Tamarind', 'Maldive Fish', 'Dried Fish', 'Dried Prawns',
+        // Canned & Preserved
+        'Canned Fish', 'Canned Tuna', 'Canned Sardines', 'Canned Mackerel',
+        'Canned Vegetables', 'Canned Beans', 'Canned Corn', 'Canned Peas',
+        'Canned Fruits', 'Fruit Cocktail', 'Canned Pineapple', 'Canned Peaches',
+        'Pickles', 'Acharu', 'Chutney', 'Jam', 'Marmalade', 'Peanut Butter',
+        // Dairy Products
+        'Fresh Milk', 'Full Cream Milk', 'Low Fat Milk', 'Skim Milk',
+        'Curd', 'Yogurt', 'Drinking Yogurt', 'Greek Yogurt', 'Flavored Yogurt',
+        'Cheese', 'Cheddar Cheese', 'Mozzarella', 'Processed Cheese', 'Cheese Spread',
+        'Butter', 'Margarine', 'Ghee', 'Cream', 'Whipping Cream',
+        'Ice Cream', 'Ice Cream Tub', 'Ice Cream Cone', 'Ice Cream Bar',
+        // Frozen Foods
+        'Frozen Chicken', 'Frozen Fish', 'Frozen Prawns', 'Frozen Cuttlefish',
+        'Frozen Vegetables', 'Frozen Peas', 'Frozen Corn', 'Mixed Vegetables',
+        'Frozen Parata', 'Frozen Roti', 'Frozen Samosa', 'Frozen Rolls',
+        'Frozen Sausages', 'Frozen Nuggets', 'Frozen Burgers', 'Frozen Meatballs',
+        // Meat & Poultry
+        'Fresh Chicken', 'Chicken Breast', 'Chicken Drumsticks', 'Chicken Wings',
+        'Minced Chicken', 'Chicken Sausages', 'Chicken Nuggets', 'Chicken Burgers',
+        'Fresh Beef', 'Minced Beef', 'Beef Sausages', 'Beef Burgers',
+        'Fresh Mutton', 'Mutton Curry Cut', 'Mutton Mince',
+        // Seafood
+        'Fresh Fish', 'Tuna', 'Seer Fish', 'Prawns', 'Cuttlefish', 'Crab',
+        'Dried Sprats', 'Dried Prawns', 'Maldive Fish Chips',
+        // Bakery
+        'White Bread', 'Brown Bread', 'Whole Wheat Bread', 'Milk Bread',
+        'Buns', 'Rolls', 'Croissants', 'Puff Pastry', 'Danish Pastry',
+        'Cakes', 'Cupcakes', 'Muffins', 'Donuts', 'Éclairs',
+        // Personal Care - Hair
+        'Shampoo', 'Conditioner', 'Hair Oil', 'Hair Gel', 'Hair Cream',
+        'Hair Serum', 'Anti-Dandruff Shampoo', 'Hair Color', 'Hair Dye',
+        // Personal Care - Skin
+        'Body Lotion', 'Face Cream', 'Moisturizer', 'Sunscreen', 'Face Wash',
+        'Body Wash', 'Shower Gel', 'Bath Soap', 'Handwash', 'Hand Sanitizer',
+        'Deodorant', 'Perfume', 'Body Spray', 'Talcum Powder',
+        // Personal Care - Oral
+        'Toothpaste', 'Toothbrush', 'Mouthwash', 'Dental Floss', 'Tongue Cleaner',
+        // Personal Care - Feminine
+        'Sanitary Pads', 'Panty Liners', 'Tampons', 'Feminine Wash',
+        // Baby Care
+        'Baby Milk Powder', 'Baby Cereal', 'Baby Food', 'Baby Biscuits',
+        'Baby Diapers', 'Baby Wipes', 'Baby Soap', 'Baby Shampoo', 'Baby Oil',
+        'Baby Lotion', 'Baby Powder', 'Baby Cream', 'Diaper Rash Cream',
+        // Household Cleaning
+        'Dish Wash Liquid', 'Dish Wash Bar', 'Dish Wash Powder',
+        'Floor Cleaner', 'Toilet Cleaner', 'Glass Cleaner', 'Kitchen Cleaner',
+        'Bleach', 'Disinfectant', 'Air Freshener', 'Room Spray',
+        'Laundry Detergent', 'Washing Powder', 'Liquid Detergent', 'Fabric Softener',
+        'Stain Remover', 'Bleaching Powder', 'Laundry Bar',
+        // Household Items
+        'Garbage Bags', 'Food Wrap', 'Aluminum Foil', 'Baking Paper',
+        'Tissue Paper', 'Toilet Paper', 'Kitchen Towels', 'Napkins',
+        'Sponges', 'Scrubbers', 'Mops', 'Brooms', 'Dustpans',
+        // Pest Control
+        'Mosquito Coils', 'Mosquito Spray', 'Mosquito Liquid', 'Mosquito Mats',
+        'Cockroach Killer', 'Rat Poison', 'Ant Killer', 'Insect Spray',
+        // Health & Wellness
+        'Vitamins', 'Supplements', 'Calcium Tablets', 'Iron Tablets',
+        'Pain Relievers', 'Cold Medicine', 'Cough Syrup', 'Balm',
+        'First Aid', 'Bandages', 'Cotton', 'Antiseptic',
+        // Pet Food
+        'Dog Food', 'Cat Food', 'Fish Food', 'Bird Food', 'Pet Treats',
+        // Stationery
+        'Pens', 'Pencils', 'Notebooks', 'A4 Paper', 'Envelopes',
+        'Glue', 'Tape', 'Scissors', 'Staplers', 'Files',
+        // Electronics
+        'Batteries', 'Light Bulbs', 'LED Bulbs', 'Extension Cords', 'Adapters'
+    ];
+
+    // Generate 1000 brand-type combinations
+    const defaultCategories = [];
+    let count = 0;
+
+    // Create combinations until we reach 1000
+    for (let i = 0; i < brands.length && count < 1000; i++) {
+        for (let j = 0; j < types.length && count < 1000; j++) {
+            // Create logical brand-type pairs
+            const brand = brands[i];
+            const type = types[j];
+
+            // Skip illogical combinations
+            if (shouldSkipCombination(brand, type)) continue;
+
+            defaultCategories.push({ brand, type });
+            count++;
+        }
+    }
+
+    // If we haven't reached 1000, add more combinations
+    while (defaultCategories.length < 1000) {
+        const randomBrand = brands[Math.floor(Math.random() * brands.length)];
+        const randomType = types[Math.floor(Math.random() * types.length)];
+
+        // Check if this combination already exists
+        const exists = defaultCategories.some(c => c.brand === randomBrand && c.type === randomType);
+        if (!exists && !shouldSkipCombination(randomBrand, randomType)) {
+            defaultCategories.push({ brand: randomBrand, type: randomType });
+        }
+    }
 
     const stmt = db.prepare(`
         INSERT INTO categories (brand, type, created_at, updated_at, sync_status)
@@ -163,6 +352,25 @@ function seedDefaultCategories() {
 
     console.log('[Seeder] Default categories created:', defaultCategories.length);
     return { seeded: true, message: `Created ${defaultCategories.length} categories` };
+}
+
+/**
+ * Helper to skip illogical brand-type combinations
+ */
+function shouldSkipCombination(brand, type) {
+    // Beverage brands shouldn't have cleaning products
+    const beverageBrands = ['Elephant House', 'Coca-Cola', 'Pepsi', 'Sprite', 'Fanta', 'Nestomalt', 'Milo', 'Nescafe', 'Lipton', 'Dilmah'];
+    const cleaningTypes = ['Floor Cleaner', 'Toilet Cleaner', 'Bleach', 'Disinfectant', 'Laundry Detergent'];
+
+    if (beverageBrands.includes(brand) && cleaningTypes.includes(type)) return true;
+
+    // Cleaning brands shouldn't have food
+    const cleaningBrands = ['Harpic', 'Vim', 'Domex', 'Cif', 'Mr. Muscle', 'Mortein', 'Good Knight'];
+    const foodTypes = ['Biscuits', 'Chocolates', 'Rice', 'Milk', 'Cheese', 'Bread'];
+
+    if (cleaningBrands.includes(brand) && foodTypes.some(f => type.includes(f))) return true;
+
+    return false;
 }
 
 /**
