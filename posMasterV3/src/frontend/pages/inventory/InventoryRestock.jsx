@@ -385,10 +385,12 @@ function InventoryRestock({ isActive }) {
 
   //adding an item from form back to the item table row based on ret/reg item
   const addNewRegItem = () => {
+    // Use consistent ID (prefer id, fallback to _id)
+    const formItemId = formDataRegItem.id ?? formDataRegItem._id;
 
     if (!returnItemSelected) {
     //prevent adding items without selecting table rows
-    if(formDataRegItem.id===0){
+    if(!formItemId || formItemId === 0){
       return;
     }
 
@@ -407,7 +409,7 @@ function InventoryRestock({ isActive }) {
     //check if it already exists on the item list first
       const newRegItem = {
         _id: formDataRegItem._id,
-        id: formDataRegItem.id,
+        id: formItemId,
         stock_trace: formDataRegItem.stock_trace,
         item_name: formDataRegItem.item_name,
         item_image_url: formDataRegItem.item_image_url,
@@ -437,9 +439,9 @@ function InventoryRestock({ isActive }) {
       //TODO: do a validation first
 
       // Update existing item by id instead of adding new item
-      setSelectedStockItemList(prev => 
-        prev.map(prevItem => 
-          prevItem.id === formDataRegItem.id ? newRegItem : prevItem
+      setSelectedStockItemList(prev =>
+        prev.map(prevItem =>
+          (prevItem.id ?? prevItem._id) === formItemId ? newRegItem : prevItem
         )
       );
 
@@ -463,7 +465,7 @@ function InventoryRestock({ isActive }) {
       const newRetItem = {
 
         _id: formDataRegItem._id,
-        id: formDataRegItem.id,
+        id: formItemId,
         stock_trace: formDataRegItem.stock_trace,
         item_name: formDataRegItem.item_name,
         item_image_url: formDataRegItem.item_image_url,
@@ -492,15 +494,14 @@ function InventoryRestock({ isActive }) {
 
         return_description: formDataReturnItem.return_description,
         return_quantity: formDataReturnItem.quantity
-        
+
       };
       console.log(newRetItem);
       //TODO: do a validation first
-      //setSelectedReturnItemList(prev => [...prev, newRetItem]);
       // Update existing item by id instead of adding new item
-      setSelectedReturnItemList(prev => 
-        prev.map(prevItem => 
-          prevItem.id === formDataRegItem.id ? newRetItem : prevItem
+      setSelectedReturnItemList(prev =>
+        prev.map(prevItem =>
+          (prevItem.id ?? prevItem._id) === formItemId ? newRetItem : prevItem
         )
       );
 
@@ -573,10 +574,10 @@ function InventoryRestock({ isActive }) {
 
   //removes item from list by id
   const removeStockItemFromList = (id) => {
-    setSelectedStockItemList(prev => prev.filter(item => item.id !== id));
+    setSelectedStockItemList(prev => prev.filter(item => (item.id ?? item._id) !== id));
   }
     const removeReturnItemFromList = (id) => {
-    setSelectedReturnItemList(prev => prev.filter(item => item.id !== id));
+    setSelectedReturnItemList(prev => prev.filter(item => (item.id ?? item._id) !== id));
   }
 
 
@@ -781,11 +782,13 @@ function InventoryRestock({ isActive }) {
 
   // Load item object into selectd item table from cards
   const loadItemtoList = (item) => {
+    // Use consistent ID (prefer id, fallback to _id)
+    const itemId = item.id ?? item._id;
 
     if (rightActiveSection != "return") {
       const newRegItem = {
         _id: item._id,
-        id: item.id,
+        id: itemId,
         stock_trace: item.stock_trace,
         item_name: item.item_name,
         item_image_url: item.item_image_url,
@@ -796,14 +799,14 @@ function InventoryRestock({ isActive }) {
         batch_code: "",
 
         uom: {
-        id: item.uom.id,
-        symbol: item.uom.symbol,
-        unit_name: item.uom.unit_name,
+        id: item.uom?.id ?? item.uom?._id,
+        symbol: item.uom?.symbol,
+        unit_name: item.uom?.unit_name,
       },
       category: {
-        id: item.category.id,
-        brand: item.category.brand,
-        type: item.category.type,
+        id: item.category?.id ?? item.category?._id,
+        brand: item.category?.brand,
+        type: item.category?.type,
       },
 
         sku: item.sku,
@@ -818,12 +821,11 @@ function InventoryRestock({ isActive }) {
 
         uom_symbol: formDataStock.uom?.uom_symbol
       };
-      console.log(newRegItem);
-      //setSelectedStockItemList(prev => [...prev, newRegItem]);
+      console.log("Adding stock item:", newRegItem);
       //TODO: do a validation first: if item already exists, don't add it(can be changed to update mulitple items with different batch codes)
-      setSelectedStockItemList(prev => 
-        prev.some(item => item.id === newRegItem.id) 
-          ? prev 
+      setSelectedStockItemList(prev =>
+        prev.some(existingItem => (existingItem.id ?? existingItem._id) === itemId)
+          ? prev
           : [...prev, newRegItem]
       );
     }
@@ -835,14 +837,14 @@ function InventoryRestock({ isActive }) {
       const newRetItem = {
 
         _id: item._id,
-        id: item.id,
+        id: itemId,
         stock_trace: item.stock_trace,
         item_name: item.item_name,
         item_image_url: item.item_image_url,
         maximum_capacity: item.maximum_capacity,
         uom_id: item.uom_id,
         category_id: item.category_id,
-        
+
         sku: item.sku,
         threshold_limit: 0,
         stock_price: 0,
@@ -859,13 +861,12 @@ function InventoryRestock({ isActive }) {
         return_description: "",
         return_quantity: 0
       };
-      console.log(newRetItem);
+      console.log("Adding return item:", newRetItem);
 
       //TODO: do a validation first: if item already exists, don't add it(can be changed to update mulitple items with different batch codes)
-      //setSelectedReturnItemList(prev => [...prev, newRetItem]);
-      setSelectedReturnItemList(prev => 
-        prev.some(item => item.id === newRetItem.id) 
-          ? prev 
+      setSelectedReturnItemList(prev =>
+        prev.some(existingItem => (existingItem.id ?? existingItem._id) === itemId)
+          ? prev
           : [...prev, newRetItem]
       );
     }
@@ -1430,7 +1431,7 @@ function InventoryRestock({ isActive }) {
           </button>
           <button
             onClick={addNewRegItem}
-            disabled={formDataRegItem.id === 0}
+            disabled={!(formDataRegItem.id ?? formDataRegItem._id) || (formDataRegItem.id ?? formDataRegItem._id) === 0}
             className="flex-1 min-w-0 h-11 px-4 py-2 bg-[#1A318C] text-white rounded-xl text-sm font-semibold enabled:hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -1566,13 +1567,16 @@ function InventoryRestock({ isActive }) {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {/* Map selectedStockItemList */}
-              {selectedStockItemList.map((item, index) => (
+              {selectedStockItemList.map((item, index) => {
+                const itemId = item.id ?? item._id;
+                const formId = formDataRegItem.id ?? formDataRegItem._id;
+                return (
                 <tr
                   onClick={() => {
                     addRegItemToForm(item);
                   }}
-                  key={item.id || generateUniqueString()}
-                  className={`${item.id === formDataRegItem.id && item.item_name === formDataRegItem.item_name && !returnItemSelected ? 'bg-[#1A318C]/5 ring-2 ring-[#1A318C] ring-inset' : ''} hover:bg-gray-50 cursor-pointer transition-all`}
+                  key={itemId || generateUniqueString()}
+                  className={`${itemId === formId && item.item_name === formDataRegItem.item_name && !returnItemSelected ? 'bg-[#1A318C]/5 ring-2 ring-[#1A318C] ring-inset' : ''} hover:bg-gray-50 cursor-pointer transition-all`}
                 >
                   <td className="px-4 py-3 text-sm text-gray-600 tabular-nums">
                     {index + 1}
@@ -1601,7 +1605,7 @@ function InventoryRestock({ isActive }) {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        removeStockItemFromList(item.id);
+                        removeStockItemFromList(itemId);
                       }}
                       aria-label="Remove item"
                       className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-red-500 hover:text-white text-gray-400 inline-flex items-center justify-center transition-all"
@@ -1613,16 +1617,19 @@ function InventoryRestock({ isActive }) {
                     </button>
                   </td>
                 </tr>
-              ))}
+              )})}
 
               {/* Map selectedReturnItemList */}
-              {selectedReturnItemList.map((item, index) => (
+              {selectedReturnItemList.map((item, index) => {
+                const itemId = item.id ?? item._id;
+                const formId = formDataRegItem.id ?? formDataRegItem._id;
+                return (
                 <tr
                   onClick={() => {
                     addReturnItemToForm(item);
                   }}
-                  key={item.id}
-                  className={`${item.id === formDataRegItem.id && item.item_name === formDataRegItem.item_name && returnItemSelected ? 'ring-2 ring-red-400 ring-inset' : ''} bg-red-50 hover:bg-red-100 cursor-pointer transition-all`}
+                  key={itemId}
+                  className={`${itemId === formId && item.item_name === formDataRegItem.item_name && returnItemSelected ? 'ring-2 ring-red-400 ring-inset' : ''} bg-red-50 hover:bg-red-100 cursor-pointer transition-all`}
                 >
                   <td className="px-4 py-3 text-sm text-red-600 tabular-nums">
                     {selectedStockItemList.length + index + 1}
@@ -1643,7 +1650,7 @@ function InventoryRestock({ isActive }) {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        removeReturnItemFromList(item.id);
+                        removeReturnItemFromList(itemId);
                       }}
                       aria-label="Remove item"
                       className="w-7 h-7 rounded-lg bg-red-100 hover:bg-red-500 hover:text-white text-red-400 inline-flex items-center justify-center transition-all"
@@ -1655,7 +1662,7 @@ function InventoryRestock({ isActive }) {
                     </button>
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
           </div>
