@@ -29,7 +29,8 @@ export default function AddItemCard({ item, onOpen, onRemove }) {
     statusText = "Good";
   }
 
-  const imageSrc = item.item_image_url || placeholderImg;
+  // Prioritize blob image over URL, fallback to placeholder
+  const imageSrc = item.item_image_blob || item.item_image_url || placeholderImg;
 
   return (
     <div

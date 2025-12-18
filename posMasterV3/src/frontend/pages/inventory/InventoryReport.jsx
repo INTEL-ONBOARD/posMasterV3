@@ -1,122 +1,109 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { Search, FileText, Download, Printer, Package, DollarSign, AlertTriangle, Tag, ChevronDown, ChevronUp, Filter, SortAsc, BarChart3 } from "lucide-react";
+import { itemApi } from "../../api/localApi";
 
 export default function InventoryReport({ isActive }) {
   const [reportType, setReportType] = useState("basic");
-  // Example inventory data
-const [inventoryItems, setInventoryItems] = useState([
-    
-    {
-        _id: "688978631309a2c8d1dd7c8f",
-        id: 56,
-        stock_trace: [1],
-        item_name: "plastic",
-        item_image_url: null,
-        batch_code: "SKU-384745833OR136422",
-        sku: "SKU-384745833",
-        quantity: 60,
-        threshold_limit: 30,
-        maximum_capacity: 110,
-        uom_id: 22,
-        category_id: 1364,
-        inventory_id: 1,
-        retail_price: 220,
-        stock_price: 110,
-        availability: false,
-        expired_datetime: null,
-        stock_update_datetime: "2025-07-30T01:42:16.000Z",
-        stock_created_datetime: "2025-07-30T01:41:55.000Z",
-        initiate_datetime: "2025-07-30T01:41:55.000Z",
-        __v: 0,
-        uom: {
-            _id: "687720ad798018e0851599a0",
-            id: 22,
-            symbol: "pcs",
-            unit_name: "Piece",
-            __v: 0
-        },
-        category: {
-            _id: "687fb2b7d9b1c944cfddf226",
-            id: 1364,
-            brand: "Battler",
-            type: "Tea",
-            __v: 0
-        },
-        inventory: null
-    },
-    {
-        _id: "688979891309a2c8d1dd7ca8",
-        id: 57,
-        stock_trace: [1],
-        item_name: "orange",
-        item_image_url: null,
-        batch_code: "SKU-384747333OR74436",
-        sku: "SKU-384747333",
-        quantity: 18,
-        threshold_limit: 10,
-        maximum_capacity: 100,
-        uom_id: 36,
-        category_id: 744,
-        inventory_id: 1,
-        retail_price: 20,
-        stock_price: 10,
-        availability: false,
-        expired_datetime: "2025-08-01T00:00:00.000Z",
-        stock_update_datetime: "2025-07-30T01:47:49.000Z",
-        stock_created_datetime: "2025-07-30T01:46:49.000Z",
-        initiate_datetime: "2025-07-30T01:46:49.000Z",
-        __v: 0,
-        uom: {
-            _id: "68772164798018e0851599d8",
-            id: 36,
-            symbol: "ctn",
-            unit_name: "Carton",
-            __v: 0
-        },
-        category: {
-            _id: "687a62b5a969f7f5cf5ea31c",
-            id: 744,
-            brand: "Keells",
-            type: "Snacks",
-            __v: 0
-        },
-        inventory: null
-    }
-]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [openFilters, setOpenFilters] = useState(true);
+  const [openSort, setOpenSort] = useState(true);
+  const [sortOrder, setSortOrder] = useState("name_asc");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterStock, setFilterStock] = useState("all");
 
-      // id: "1",
-      // name: "Banana",
-      // barcode: "SKU-37847324",
-      // category: "Fruit",
-      // price: "340.00",
-      // unit: "KG",
-      // sku: "SKU001",
-      // stock: 100,
-      // image: bananaImg,
+  const [inventoryItems, setInventoryItems] = useState([]);
+
+  // Fetch items from API
+  useEffect(() => {
+    const fetchItems = async () => {
+      if (!isActive) return;
+      setIsLoading(true);
+      try {
+        const response = await itemApi.getAllExtended();
+        if (response.status === "success") {
+          setInventoryItems(response.data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching items:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchItems();
+  }, [isActive]);
 
   // Calculate summary statistics
   const totalItems = inventoryItems.length;
-  const totalValue = inventoryItems.reduce((sum, item) => sum + (parseFloat(item.retail_price) * item.quantity), 0);
-  const lowStockItems = inventoryItems.filter(item => (item.quantity/item.threshold_limit*100) < item.threshold_limit).length;
-  const categories = [...new Set(inventoryItems.map(item => item.category.type))];
+  const totalValue = inventoryItems.reduce((sum, item) => sum + (parseFloat(item.retail_price || 0) * (item.quantity || 0)), 0);
+  const lowStockItems = inventoryItems.filter(item => {
+    const percentFull = (item.quantity / item.maximum_capacity) * 100;
+    return percentFull <= (item.threshold_limit || 30);
+  }).length;
+  const categories = [...new Set(inventoryItems.map(item => item.category?.type).filter(Boolean))];
+
+  // Search handler
+  const handleSearch = (e) => {
+    setSearchLoading(true);
+    setSearchTerm(e.target.value);
+    setTimeout(() => setSearchLoading(false), 400);
+  };
+
+  // Filter and sort items
+  const filteredItems = inventoryItems
+    .filter(item => {
+      const matchesSearch = searchTerm === "" ||
+        item.item_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.category?.type?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesCategory = filterCategory === "all" || item.category?.type === filterCategory;
+
+      const percentFull = (item.quantity / item.maximum_capacity) * 100;
+      const isLowStock = percentFull <= (item.threshold_limit || 30);
+      const matchesStock = filterStock === "all" ||
+        (filterStock === "low" && isLowStock) ||
+        (filterStock === "in_stock" && !isLowStock);
+
+      return matchesSearch && matchesCategory && matchesStock;
+    })
+    .sort((a, b) => {
+      switch (sortOrder) {
+        case "name_asc":
+          return (a.item_name || "").localeCompare(b.item_name || "");
+        case "name_desc":
+          return (b.item_name || "").localeCompare(a.item_name || "");
+        case "stock_high":
+          return (b.quantity || 0) - (a.quantity || 0);
+        case "stock_low":
+          return (a.quantity || 0) - (b.quantity || 0);
+        case "price_high":
+          return (b.retail_price || 0) - (a.retail_price || 0);
+        case "price_low":
+          return (a.retail_price || 0) - (b.retail_price || 0);
+        default:
+          return 0;
+      }
+    });
 
   const handlePrint = () => {
     window.print();
   };
 
   const handleExport = () => {
-    // Basic CSV export
     const headers = ["ID", "Name", "Category", "Price", "Stock", "Unit", "SKU", "Total Value"];
     const csvContent = [
       headers.join(","),
-      ...inventoryItems.map(item => [
+      ...filteredItems.map(item => [
         item.id,
-        item.item_name,
-        item.category.type,
-        item.retail_price,
-        item.quantity,
-        item.uom.symbol,
+        `"${item.item_name}"`,
+        item.category?.type || "N/A",
+        item.retail_price || 0,
+        item.quantity || 0,
+        item.uom?.symbol || "pcs",
         item.sku,
-        (parseFloat(item.price) * item.stock).toFixed(2)
+        ((parseFloat(item.retail_price || 0) * (item.quantity || 0))).toFixed(2)
       ].join(","))
     ].join("\n");
 
@@ -131,192 +118,339 @@ const [inventoryItems, setInventoryItems] = useState([
     document.body.removeChild(a);
   };
 
+  // Get stock status
+  const getStockStatus = (item) => {
+    const percentFull = (item.quantity / item.maximum_capacity) * 100;
+    if (percentFull <= (item.threshold_limit || 30)) {
+      return { text: "Low Stock", class: "bg-red-100 text-red-700" };
+    } else if (percentFull <= (item.threshold_limit || 30) + 20) {
+      return { text: "Medium", class: "bg-amber-100 text-amber-700" };
+    }
+    return { text: "In Stock", class: "bg-emerald-100 text-emerald-700" };
+  };
+
   return (
-    <div className="flex h-full bg-red-400">
-      {/* Left panel */}
-      <div className="w-72 bg-white h-[calc(100vh-7rem)] border-r flex flex-col">
-        <div className="p-6">
-          <div className="mb-2 bg-[#F8F8F8] rounded">
-            <button 
-              onClick={() => setReportType("basic")}
-              className={`w-full text-left px-4 py-3 font-semibold flex items-center justify-between ${
-                reportType === "basic" ? "text-blue-600 bg-blue-50" : "text-gray-500"
-              }`}
-            >
-              BASIC REPORT
-              <span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </span>
-            </button>
-          </div>
-          {/* <div className="mb-2 bg-[#F8F8F8] rounded">
-            <button 
-              onClick={() => setReportType("advanced")}
-              className={`w-full text-left px-4 py-3 font-semibold flex items-center justify-between ${
-                reportType === "advanced" ? "text-blue-600 bg-blue-50" : "text-gray-500"
-              }`}
-            >
-              ADVANCED REPORT
-              <span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </span>
-            </button>
-          </div> */}
-        </div>
-      </div>
-
-      {/* Right panel - Added scroll like ViewInventory */}
-      <div className="h-[calc(100vh-7rem)] bg-white p-8 rounded flex-1">
-        <h2 className="text-2xl font-bold text-gray-400 mb-6">INVENTORY REPORTS</h2>
-        
-        {inventoryItems.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center min-h-[300px]">
-            <span className="text-sm text-gray-700 text-center">
-              NO INVENTORY DATA AVAILABLE
-            </span>
-          </div>
-        ) : (
-          <div>
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h3 className="text-sm font-medium text-blue-600">Total Items</h3>
-                <p className="text-2xl font-bold text-blue-900">{totalItems}</p>
+    <div className="flex flex-row bg-gray-50 h-[calc(100vh-2rem)]">
+      {/* Main Content Area */}
+      <div className="flex-1 h-full overflow-hidden flex flex-col">
+        {/* Search Header */}
+        <nav className="bg-white border-b border-gray-100 shadow-sm">
+          <div className="px-6 py-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  placeholder="Search by item name, SKU, or category..."
+                  className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                />
               </div>
-              <div className="bg-green-50 p-4 rounded-lg">
-                <h3 className="text-sm font-medium text-green-600">Total Value</h3>
-                <p className="text-2xl font-bold text-green-900">Rs.{totalValue.toFixed(2)}</p>
-              </div>
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <h3 className="text-sm font-medium text-yellow-600">Low Stock Items</h3>
-                <p className="text-2xl font-bold text-yellow-900">{lowStockItems}</p>
-              </div>
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <h3 className="text-sm font-medium text-purple-600">Categories</h3>
-                <p className="text-2xl font-bold text-purple-900">{categories.length}</p>
-              </div>
+              <button
+                onClick={handleExport}
+                className="h-12 px-6 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all duration-200 shadow-md shadow-emerald-900/20 flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Export CSV
+              </button>
+              <button
+                onClick={handlePrint}
+                className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2"
+              >
+                <Printer className="w-4 h-4" />
+                Print
+              </button>
             </div>
+            {/* Results count */}
+            <div className="mt-3 flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                Showing <span className="font-semibold text-gray-800">{filteredItems.length}</span> of {totalItems} items
+              </p>
+            </div>
+          </div>
+        </nav>
 
-            {reportType === "basic" ? (
-              /* Basic Report */
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <h3 className="text-lg font-semibold mb-4">Basic Inventory Report</h3>
-              <div className="overflow-x-auto">
-                <div className="inline-block min-w-full h-[30rem] overflow-y-auto">
-                  <table className="w-full border-collapse bg-white rounded">
-                    <thead className="sticky top-0 bg-gray-100">
-                      <tr>
-                        <th className="border px-4 py-2 text-left">Item Name</th>
-                        <th className="border px-4 py-2 text-left">Category</th>
-                        <th className="border px-4 py-2 text-left">Stock</th>
-                        <th className="border px-4 py-2 text-left">Price</th>
-                        <th className="border px-4 py-2 text-left">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {inventoryItems.map((item) => (
-                        <tr key={item.id} className="hover:bg-gray-50">
-                          <td className="border px-4 py-2">{item.item_name}</td>
-                          <td className="border px-4 py-2">{item.category.type}</td>
-                          <td className="border px-4 py-2">{item.quantity} {item.unit}</td>
-                          <td className="border px-4 py-2">Rs.{item.retail_price}</td>
-                          <td className="border px-4 py-2">
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              item.stock < 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                            }`}>
-                              {item.stock < 20 ? 'Low Stock' : 'In Stock'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+        {/* Summary Cards */}
+        <div className="px-6 pt-6">
+          <div className="grid grid-cols-4 gap-4">
+            {/* Total Items Card */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-[#1A318C]/10 flex items-center justify-center">
+                  <Package className="w-6 h-6 text-[#1A318C]" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Total Items</p>
+                  <p className="text-2xl font-bold text-gray-800">{totalItems}</p>
                 </div>
               </div>
             </div>
 
-            ) : (
-              /* Advanced Report */
-              <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <h3 className="text-lg font-semibold mb-4">Advanced Inventory Report</h3>
-                <div className="overflow-x-auto">
-                  <div className="inline-block min-w-full h-[30rem] overflow-y-auto">
-                  <table className="w-full border-collapse bg-white rounded">
-                    <thead className="sticky top-0 bg-gray-100">
-                      <tr className="bg-gray-100">
-                        <th className="border px-4 py-2 text-left">SKU</th>
-                        <th className="border px-4 py-2 text-left">Item Name</th>
-                        <th className="border px-4 py-2 text-left">Category</th>
-                        <th className="border px-4 py-2 text-left">Stock</th>
-                        <th className="border px-4 py-2 text-left">Unit Price</th>
-                        <th className="border px-4 py-2 text-left">Total Value</th>
-                        <th className="border px-4 py-2 text-left">Barcode</th>
-                        <th className="border px-4 py-2 text-left">Status</th>
+            {/* Total Value Card */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                  <DollarSign className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Total Value</p>
+                  <p className="text-2xl font-bold text-gray-800">Rs.{totalValue.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Low Stock Card */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Low Stock Items</p>
+                  <p className="text-2xl font-bold text-gray-800">{lowStockItems}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Categories Card */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+                  <Tag className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Categories</p>
+                  <p className="text-2xl font-bold text-gray-800">{categories.length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Report Table */}
+        <div className="flex-1 overflow-auto p-6">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
+              <p className="text-gray-500">Loading inventory data...</p>
+            </div>
+          ) : searchLoading ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
+              <p className="text-gray-500">Searching...</p>
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                <BarChart3 className="w-10 h-10 text-gray-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">No inventory data found</h3>
+              <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gradient-to-r from-[#1A318C] to-[#2a4ab8]">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">#</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Item Name</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">SKU</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Category</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Stock</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Unit Price</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Total Value</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredItems.map((item, index) => {
+                    const status = getStockStatus(item);
+                    return (
+                      <tr key={item.id || index} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm font-medium text-gray-800">{item.item_name}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-600 font-mono">{item.sku}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-600">{item.category?.type || "N/A"}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="text-sm font-semibold text-gray-800 tabular-nums">
+                            {item.quantity || 0} <span className="text-gray-400 font-normal">{item.uom?.symbol || "pcs"}</span>
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="text-sm text-gray-600 tabular-nums">Rs.{item.retail_price || 0}</span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="text-sm font-bold text-gray-800 tabular-nums">
+                            Rs.{((item.retail_price || 0) * (item.quantity || 0)).toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${status.class}`}>
+                            {status.text}
+                          </span>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {inventoryItems.map((item) => (
-                        <tr key={item.id} className="hover:bg-gray-50">
-                          <td className="border px-4 py-2 font-mono text-sm">{item.sku}</td>
-                          <td className="border px-4 py-2">{item.item_name}</td>
-                          <td className="border px-4 py-2">{item.category.type}</td>
-                          <td className="border px-4 py-2">{item.quantity} {item.unit}</td>
-                          <td className="border px-4 py-2">Rs.{item.retail_price}</td>
-                          <td className="border px-4 py-2">Rs.{(parseFloat(item.retail_price) * item.quantity).toFixed(2)}</td>
-                          <td className="border px-4 py-2 font-mono text-sm">{item.sku}</td>
-                          <td className="border px-4 py-2">
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              item.stock < 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                            }`}>
-                              {item.stock < 20 ? 'Low Stock' : 'In Stock'}
-                            </span>
-                          </td>
-                        </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right Filter Section */}
+      <div className="bg-gray-100 w-72 h-full p-3">
+        <div className="flex flex-col h-full gap-3">
+          {/* Report Type Block */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#1A318C]/10 flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-[#1A318C]" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Report Type</span>
+              </div>
+            </div>
+            <div className="p-3 space-y-2">
+              <button
+                onClick={() => setReportType("basic")}
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+                  reportType === "basic"
+                    ? "bg-[#1A318C] text-white"
+                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                Basic Report
+              </button>
+              <button
+                onClick={() => setReportType("advanced")}
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+                  reportType === "advanced"
+                    ? "bg-[#1A318C] text-white"
+                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                Advanced Report
+              </button>
+            </div>
+          </div>
+
+          {/* Filters Block */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <button
+              onClick={() => setOpenFilters(!openFilters)}
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Filter className="w-4 h-4 text-amber-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Filters</span>
+              </div>
+              {openFilters ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+            </button>
+            {openFilters && (
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="space-y-4 pt-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                      Category
+                    </label>
+                    <select
+                      value={filterCategory}
+                      onChange={(e) => setFilterCategory(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="all">All Categories</option>
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
                       ))}
-                    </tbody>
-                  </table>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                      Stock Status
+                    </label>
+                    <select
+                      value={filterStock}
+                      onChange={(e) => setFilterStock(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="in_stock">In Stock</option>
+                      <option value="low">Low Stock</option>
+                    </select>
                   </div>
                 </div>
               </div>
             )}
+          </div>
 
-            {/* Bottom bar */}
-            <div className="flex justify-between items-center gap-4 pt-4 border-t">
-              <div className="flex gap-2">
-                <button
-                  onClick={handlePrint}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Print
-                </button>
-                <button
-                  onClick={handleExport}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Export CSV
-                </button>
+          {/* Sort By Block */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <button
+              onClick={() => setOpenSort(!openSort)}
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <SortAsc className="w-4 h-4 text-emerald-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Sort By</span>
               </div>
-              <div className="flex gap-4">
-                <button className="px-8 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-                  Clear
-                </button>
-                <button className="px-8 py-2 bg-blue-900 text-white rounded hover:bg-blue-800">
-                  Save
-                </button>
+              {openSort ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+            </button>
+            {openSort && (
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="pt-4">
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="name_asc">Name (A-Z)</option>
+                    <option value="name_desc">Name (Z-A)</option>
+                    <option value="stock_high">Stock (High to Low)</option>
+                    <option value="stock_low">Stock (Low to High)</option>
+                    <option value="price_high">Price (High to Low)</option>
+                    <option value="price_low">Price (Low to High)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Stats Summary Card */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mt-auto">
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">Report Summary</p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Filtered Items</span>
+                <span className="text-sm font-bold text-gray-800">{filteredItems.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Filtered Value</span>
+                <span className="text-sm font-bold text-[#1A318C]">
+                  Rs.{filteredItems.reduce((sum, item) => sum + ((item.retail_price || 0) * (item.quantity || 0)), 0).toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
-        )}
+
+          {/* Spacer */}
+          <div className="flex-1 bg-white rounded-xl border border-gray-100 shadow-sm"></div>
+        </div>
       </div>
     </div>
   );

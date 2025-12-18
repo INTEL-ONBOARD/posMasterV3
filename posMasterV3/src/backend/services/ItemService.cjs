@@ -180,6 +180,7 @@ class ItemService {
                 sku: sku,
                 item_name: data.item_name,
                 item_image_url: data.item_image_url || null,
+                item_image_blob: data.item_image_blob || null,
                 maximum_capacity: data.maximum_capacity || 0,
                 category_id: data.category_id || null,
                 uom_id: data.uom_id || null,
@@ -224,6 +225,7 @@ class ItemService {
             const updateData = {};
             if (data.item_name) updateData.item_name = data.item_name;
             if (data.item_image_url !== undefined) updateData.item_image_url = data.item_image_url;
+            if (data.item_image_blob !== undefined) updateData.item_image_blob = data.item_image_blob;
             if (data.maximum_capacity !== undefined) updateData.maximum_capacity = data.maximum_capacity;
             if (data.category_id !== undefined) updateData.category_id = data.category_id;
             if (data.uom_id !== undefined) updateData.uom_id = data.uom_id;
@@ -262,6 +264,15 @@ class ItemService {
                 };
             }
 
+            // Check if item has stock quantity > 0
+            const stockQuantity = itemRepository.getItemStockQuantity(id);
+            if (stockQuantity > 0) {
+                return {
+                    status: 'error',
+                    message: `Cannot delete item. There are ${stockQuantity} units in stock. Please clear stock first.`
+                };
+            }
+
             itemRepository.delete(id);
             return {
                 status: 'success',
@@ -288,6 +299,7 @@ class ItemService {
             sku: item.sku,
             item_name: item.item_name,
             item_image_url: item.item_image_url,
+            item_image_blob: item.item_image_blob,
             maximum_capacity: item.maximum_capacity,
             category_id: item.category_id,
             uom_id: item.uom_id,
