@@ -3,7 +3,7 @@ import barcodeImg from "../../assets/barcode.png";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import SalesItemCard from "../../components/SalesItemCard";
 import { fetchCommonData } from "../../context/inventory/common/CommonContext";
-import { fetchStockContext } from "../../context/inventory/return-stock/ReturnStockContext";
+import { restockApi } from "../../api/localApi";
 
 // Initial form state
 const INITIAL_STOCK_FORM = {
@@ -165,25 +165,23 @@ function PriceChange() {
 
       console.log("Fetching stock entries for SKU:", sku);
 
-      const stockData = await fetchStockContext();
+      const response = await restockApi.getStockData(sku);
 
       let batchEntries = [];
-      if (stockData.batchCodes && Array.isArray(stockData.batchCodes)) {
-        batchEntries = stockData.batchCodes
-          .filter((batch) => batch.sku === sku || batch.item_sku === sku)
-          .map((batch) => ({
-            code: batch.batch_code || batch.code || "Unknown Batch",
-            quantity: `${batch.quantity || 0} ${batch.uom_symbol || "pcs"}`,
-            expiry: batch.expire_date
-              ? new Date(batch.expire_date).toISOString().split("T")[0]
-              : "No expiry",
-            stock_price: batch.stock_price || 0,
-            retail_price: batch.retail_price || 0,
-            availability:
-              batch.availability !== undefined ? batch.availability : true,
-            threshold_limit: batch.threshold_limit || 0,
-            discount: batch.discount || 0,
-          }));
+      if (response.status === "success" && Array.isArray(response.data)) {
+        batchEntries = response.data.map((batch) => ({
+          code: batch.batch_code || batch.code || "Unknown Batch",
+          quantity: `${batch.quantity || 0} ${batch.uom_symbol || "pcs"}`,
+          expiry: batch.exp_date
+            ? new Date(batch.exp_date).toISOString().split("T")[0]
+            : "No expiry",
+          stock_price: batch.stock_price || 0,
+          retail_price: batch.retail_price || 0,
+          availability:
+            batch.availability !== undefined ? batch.availability : true,
+          threshold_limit: batch.threshold_limit || 0,
+          discount: batch.discount_price || 0,
+        }));
       }
 
       if (batchEntries.length === 0) {
