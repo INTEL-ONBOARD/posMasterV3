@@ -650,28 +650,35 @@ function ManageUser() {
   };
 
   return (
-    <div className="flex bg-gray-300 w-full h-[calc(100vh-2rem)] relative">
+    <div className="flex bg-gray-100 w-full h-[calc(100vh-2rem)] relative">
       {formStatus === "form" ? (
-        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-2">
+        <div className="w-[28rem] h-[calc(100vh-2rem)] p-4 overflow-y-auto">
           {/* Form section */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             {/* Primary Description Block */}
-            <div className="bg-white">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <button
                 onClick={() => {
                   setOpenUser(!openUser)
                   setOpenPermission(!openPermission)
                 }}
-                className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+                className="w-full flex justify-between items-center px-5 py-4 hover:bg-gray-50 transition-colors"
               >
-                <span className="text-gray-400">USER INFORMATION</span>
-                {(openUser && !openPermission) ? <ChevronUp /> : <ChevronDown />}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#1A318C]/10 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-[#1A318C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">User Information</span>
+                </div>
+                {(openUser && !openPermission) ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
               </button>
               {(openUser && !openPermission) && (
-                <div className="px-4 bg-white pb-5">
-                  <div className="flex flex-col items-center mb-4">
+                <div className="px-5 pb-5 border-t border-gray-100">
+                  <div className="flex flex-col items-center py-4">
                     {/* Profile image with upload */}
-                    <div className={`w-24 h-24 ${formData.profile_image ? 'border-2 border-gray-200 bg-gray-100' : 'border-2 border-dashed border-gray-300'} flex flex-col items-center justify-center hover:border-gray-400 transition-colors rounded-full overflow-hidden`}>
+                    <div className={`relative w-24 h-24 ${formData.profile_image ? 'ring-4 ring-[#1A318C]/20' : 'border-2 border-dashed border-gray-300'} flex flex-col items-center justify-center hover:border-[#1A318C] transition-all duration-300 rounded-full overflow-hidden bg-gray-50`}>
                       {formData.profile_image ? (
                         <img
                           src={formData.profile_image}
@@ -689,10 +696,11 @@ function ManageUser() {
                         />
                       ) : (
                         <>
-                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                            <X className="w-6 h-6 text-gray-400" />
+                          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
                           </div>
-                          <span className="text-gray-500 text-xs mt-1">No image</span>
                         </>
                       )}
                     </div>
@@ -706,15 +714,15 @@ function ManageUser() {
                     />
                     <label
                       htmlFor="profileImageUpload"
-                      className="mt-2 px-3 py-1 bg-[#A8A8A8] text-white text-xs rounded-md hover:bg-gray-600 transition-colors cursor-pointer flex items-center gap-1"
+                      className="mt-3 px-4 py-2 bg-[#1A318C] text-white text-xs font-medium rounded-lg hover:bg-[#152870] transition-colors cursor-pointer flex items-center gap-2 shadow-sm"
                     >
-                      <Upload className="w-3 h-3" />
-                      Upload
+                      <Upload className="w-4 h-4" />
+                      Upload Photo
                     </label>
                   </div>
 
-                  <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
                       Full Name *
                     </label>
                     <input
@@ -723,13 +731,13 @@ function ManageUser() {
                       value={formData.full_name}
                       onChange={handleInputChange}
                       placeholder="Enter full name"
-                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mb-3">
+                  <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
                         Username *
                       </label>
                       <input
@@ -738,11 +746,11 @@ function ManageUser() {
                         value={formData.username}
                         onChange={handleInputChange}
                         placeholder="Enter username"
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
                         Email *
                       </label>
                       <input
@@ -751,14 +759,14 @@ function ManageUser() {
                         value={formData.email}
                         onChange={handleInputChange}
                         placeholder="Enter email"
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mb-3">
+                  <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
                         Password {!isUserEditing && "*"}
                       </label>
                       <input
@@ -767,11 +775,11 @@ function ManageUser() {
                         value={formData.password}
                         onChange={handleInputChange}
                         placeholder={isUserEditing ? "Leave blank to keep" : "Enter password"}
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
                         Confirm Password {!isUserEditing && "*"}
                       </label>
                       <input
@@ -780,35 +788,35 @@ function ManageUser() {
                         value={formData.confirm_password}
                         onChange={handleInputChange}
                         placeholder="Confirm password"
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
                         Status
                       </label>
                       <select
                         name="is_active"
                         value={formData.is_active}
                         onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.value === "true" }))}
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       >
                         <option value="true">Active</option>
                         <option value="false">Inactive</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
                         Branch
                       </label>
                       <select
                         name="branch_id"
                         value={formData.branch_id}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       >
                         <option value="">Select Branch</option>
                         {branchList.map((branch) => (
@@ -824,28 +832,35 @@ function ManageUser() {
             </div>
 
             {/* Permission Description Block */}
-            <div className="bg-white">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <button
                 onClick={() => {
                   setOpenPermission(!openPermission)
                   setOpenUser(!openUser)
                 }}
-                className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+                className="w-full flex justify-between items-center px-5 py-4 hover:bg-gray-50 transition-colors"
               >
-                <span className="text-gray-400">ROLES & PERMISSIONS</span>
-                {(openPermission && !openUser) ? <ChevronUp /> : <ChevronDown />}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Roles & Permissions</span>
+                </div>
+                {(openPermission && !openUser) ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
               </button>
               {(openPermission && !openUser) && (
-                <div className="px-4 bg-white pb-5">
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                <div className="px-5 pb-5 border-t border-gray-100">
+                  <div className="py-4">
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
                       Role
                     </label>
                     <select
                       name="roles"
                       value={formData.roles[0] || "cashier"}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                     >
                       {rolesList.map((role) => (
                         <option key={role.value} value={role.value}>
@@ -856,24 +871,29 @@ function ManageUser() {
                   </div>
 
                   <div className="space-y-4 max-h-[30rem] overflow-y-auto">
-                    <p className="text-xs text-gray-400 italic mb-2">
-                      Permissions are based on the selected role (read-only)
+                    <p className="text-xs text-gray-400 italic mb-2 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Permissions are based on the selected role
                     </p>
                     {Object.entries(permissions).map(([category, perms]) => (
-                      <div key={category} className="border-b border-gray-100 pb-2">
-                        <div className="font-semibold text-gray-500 text-sm mb-2">
+                      <div key={category} className="bg-gray-50 rounded-lg p-3">
+                        <div className="font-semibold text-gray-700 text-xs mb-3 uppercase tracking-wide">
                           {category.replace("Access", " Access")}
                         </div>
-                        {Object.entries(perms).map(([perm, value]) => (
-                          <div key={perm} className="flex items-center justify-between py-1 pl-2">
-                            <span className="text-sm text-gray-600">
-                              {formatPermissionLabel(perm)}
-                            </span>
-                            <div className="relative inline-flex items-center">
-                              <div className={`w-9 h-5 rounded-full ${value ? 'bg-blue-600' : 'bg-gray-200'} after:content-[''] after:absolute after:top-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all ${value ? 'after:left-[18px]' : 'after:left-[2px]'}`}></div>
+                        <div className="space-y-2">
+                          {Object.entries(perms).map(([perm, value]) => (
+                            <div key={perm} className="flex items-center justify-between py-1.5 px-2 bg-white rounded-md">
+                              <span className="text-sm text-gray-600">
+                                {formatPermissionLabel(perm)}
+                              </span>
+                              <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${value ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'}`}>
+                                {value ? 'Enabled' : 'Disabled'}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -883,72 +903,89 @@ function ManageUser() {
           </div>
 
           {/* Bottom button set */}
-          <div className="flex flex-row w-full gap-2 mt-4">
+          <div className="flex flex-row w-full gap-3 mt-4">
             <button
               onClick={deleteUser}
               disabled={!isUserEditing}
-              className={`flex-1 min-w-0 h-10 px-3 py-2 border border-gray-300 text-white transition-colors text-sm ${
-                isUserEditing ? "bg-[#D01710] hover:bg-red-700" : "bg-gray-400 cursor-not-allowed"
+              className={`flex-1 min-w-0 h-11 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
+                isUserEditing
+                  ? "bg-red-500 text-white hover:bg-red-600 shadow-sm shadow-red-200"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}
             >
-              <span className="truncate">Delete</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete
             </button>
             <button
               onClick={clearUserInput}
-              className="flex-1 min-w-0 h-10 px-3 py-2 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors text-sm"
+              className="flex-1 min-w-0 h-11 px-4 py-2 bg-white border-2 border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 flex items-center justify-center gap-2"
             >
-              <span className="truncate">Cancel</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Cancel
             </button>
             <button
               onClick={isUserEditing ? updateUser : registerUser}
-              className="flex-1 min-w-0 h-10 px-3 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors text-sm"
+              className="flex-[1.5] min-w-0 h-11 px-4 py-2 bg-[#1A318C] text-white rounded-xl text-sm font-semibold hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center justify-center gap-2"
             >
-              <span className="truncate">
-                {isUserEditing ? "Update User" : "Add User"}
-              </span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isUserEditing ? "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" : "M12 4v16m8-8H4"} />
+              </svg>
+              {isUserEditing ? "Update User" : "Add User"}
             </button>
           </div>
-        {/* remove tag */}
         </div>
       ) : formStatus === "loading" ? (
-        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 flex flex-col justify-center items-center">
-          <div className="animate-spin mb-3 rounded-full border-4 border-gray-300 border-t-[#1A318C] h-12 w-12"></div>
-          <h2>Please wait...</h2>
+        <div className="w-[28rem] h-[calc(100vh-2rem)] p-5 flex flex-col justify-center items-center bg-white rounded-xl m-4 shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-[#1A318C]/10 flex items-center justify-center mb-4">
+            <div className="animate-spin rounded-full border-4 border-[#1A318C]/20 border-t-[#1A318C] h-8 w-8"></div>
+          </div>
+          <h2 className="text-gray-700 font-semibold">Processing...</h2>
+          <p className="text-sm text-gray-400 mt-1">Please wait</p>
         </div>
       ) : formStatus === "success" ? (
-        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 flex flex-col justify-center items-center">
-          <svg width={80} height={80} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="10" fill="#22C55E" />
-            <path d="M7 12l3 3 7-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <h2 className="font-semibold text-xl mt-3">Success!</h2>
+        <div className="w-[28rem] h-[calc(100vh-2rem)] p-5 flex flex-col justify-center items-center bg-white rounded-xl m-4 shadow-sm">
+          <div className="w-20 h-20 rounded-2xl bg-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-emerald-200">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="font-bold text-xl text-gray-800">Success!</h2>
+          <p className="text-sm text-gray-400 mt-1">Operation completed</p>
         </div>
       ) : (
-        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 flex flex-col justify-center items-center">
-          <svg width={80} height={80} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="10" fill="#EF4444" />
-            <path d="M15 9l-6 6M9 9l6 6" stroke="white" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <h2 className="font-semibold text-xl mt-3">Failed...</h2>
+        <div className="w-[28rem] h-[calc(100vh-2rem)] p-5 flex flex-col justify-center items-center bg-white rounded-xl m-4 shadow-sm">
+          <div className="w-20 h-20 rounded-2xl bg-red-500 flex items-center justify-center mb-4 shadow-lg shadow-red-200">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h2 className="font-bold text-xl text-gray-800">Failed</h2>
+          <p className="text-sm text-gray-400 mt-1">Something went wrong</p>
         </div>
       )}
 
       {/* Table section */}
-      <div className="bg-white flex-1 h-[calc(100vh-2rem)]">
+      <div className="bg-white flex-1 h-[calc(100vh-2rem)] rounded-l-2xl shadow-sm border-l border-gray-100 overflow-hidden flex flex-col">
         {/* Search bar */}
-        <nav className="w-full flex justify-between py-4 px-6 bg-white gap-4 mb-4">
-          <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
+        <nav className="w-full flex items-center gap-4 p-4 bg-white border-b border-gray-100">
+          <div className="flex-1 flex items-center bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+            <div className="pl-4">
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+              </svg>
+            </div>
             <input
               type="text"
               value={search}
               onChange={handleSearch}
               placeholder="Search by name, username, or email..."
-              className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
+              className="flex-1 px-4 py-3 bg-transparent focus:outline-none text-sm"
             />
-            <button className="flex items-center px-4 py-2 bg-[#1A318C] text-white">
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
-              </svg>
+            <button className="px-6 py-3 bg-[#1A318C] text-white text-sm font-medium hover:bg-[#152870] transition-colors">
               Search
             </button>
           </div>
@@ -956,7 +993,7 @@ function ManageUser() {
           <select
             value={searchRole}
             onChange={(e) => setSearchRole(e.target.value)}
-            className="w-40 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
+            className="w-40 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#1A318C] transition-colors"
           >
             <option value="All">All Roles</option>
             {rolesList.map((role) => (
@@ -969,105 +1006,114 @@ function ManageUser() {
           <select
             value={searchStatus}
             onChange={(e) => setSearchStatus(e.target.value)}
-            className="w-40 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
+            className="w-40 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#1A318C] transition-colors"
           >
             <option value="All">All Status</option>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
           </select>
+
+          {/* User Count Badge */}
+          <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl px-4 py-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">Users</p>
+              <p className="text-lg font-bold text-white tabular-nums">{filteredUsers.length}</p>
+            </div>
+          </div>
         </nav>
 
         {/* Table */}
-        <div className="overflow-x-auto h-[calc(100vh-10rem)] p-4">
-          <table className="w-full min-w-[600px] table-auto">
-            <thead className="bg-gray-100 text-gray-600">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium">#</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Full Name</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Username</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Role</th>
-                <th className="px-4 py-3 text-left text-xs font-medium">Status</th>
-                <th className="px-4 py-3 w-10"></th>
-              </tr>
-            </thead>
+        <div className="flex-1 overflow-auto p-4">
+          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            {/* Table Header */}
+            <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-3">
+              <div className="grid grid-cols-12 gap-2 text-xs font-medium text-slate-300 uppercase tracking-wider">
+                <div className="col-span-1">#</div>
+                <div className="col-span-2">Full Name</div>
+                <div className="col-span-2">Username</div>
+                <div className="col-span-3">Email</div>
+                <div className="col-span-2">Role</div>
+                <div className="col-span-1">Status</div>
+                <div className="col-span-1"></div>
+              </div>
+            </div>
 
-            <tbody className="bg-white">
+            {/* Table Body */}
+            <div className="divide-y divide-gray-100">
               {isLoading ? (
-                <tr>
-                  <td colSpan={7}>
-                    <div className="h-[20rem] w-full flex items-center justify-center">
-                      <div className="flex flex-col items-center">
-                        <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12"></div>
-                        <span className="mt-3 text-gray-700">Loading users...</span>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
+                <div className="h-[20rem] w-full flex items-center justify-center">
+                  <div className="flex flex-col items-center">
+                    <div className="w-12 h-12 border-4 border-gray-200 border-t-[#1A318C] rounded-full animate-spin mb-4"></div>
+                    <span className="text-gray-500 text-sm font-medium">Loading users...</span>
+                  </div>
+                </div>
               ) : searchLoading ? (
-                <tr>
-                  <td colSpan={7}>
-                    <div className="h-[20rem] w-full flex flex-col items-center justify-center">
-                      <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
-                      <span className="text-gray-700">Searching...</span>
-                    </div>
-                  </td>
-                </tr>
+                <div className="h-[20rem] w-full flex flex-col items-center justify-center">
+                  <div className="w-12 h-12 border-4 border-gray-200 border-t-[#1A318C] rounded-full animate-spin mb-4"></div>
+                  <span className="text-gray-500 text-sm font-medium">Searching...</span>
+                </div>
               ) : filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={7}>
-                    <div className="h-[16rem] w-full flex items-center justify-center">
-                      <span className="text-gray-500 text-lg">No users found</span>
-                    </div>
-                  </td>
-                </tr>
+                <div className="h-[16rem] w-full flex flex-col items-center justify-center">
+                  <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-500 font-medium">No users found</p>
+                  <p className="text-sm text-gray-400 mt-1">Try adjusting your search filters</p>
+                </div>
               ) : (
                 filteredUsers.map((user, index) => (
-                  <tr
+                  <div
                     key={user.id}
-                    className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors ${
-                      formData.id === user.id ? "bg-blue-50" : ""
+                    className={`grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
+                      formData.id === user.id ? "bg-[#1A318C]/5 border-l-4 border-l-[#1A318C]" : ""
                     }`}
                     onClick={() => loadUser(user)}
                   >
-                    <td className="px-4 py-3 text-sm text-gray-700">{index + 1}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{user.full_name || "-"}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{user.username}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{user.email}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                    <div className="col-span-1 text-sm text-gray-500 font-medium">{index + 1}</div>
+                    <div className="col-span-2 text-sm font-medium text-gray-800">{user.full_name || "-"}</div>
+                    <div className="col-span-2 text-sm text-gray-600">{user.username}</div>
+                    <div className="col-span-3 text-sm text-gray-600 truncate">{user.email}</div>
+                    <div className="col-span-2">
+                      <span className="px-2.5 py-1 bg-[#1A318C]/10 text-[#1A318C] rounded-lg text-xs font-semibold">
                         {getRoleDisplay(user.roles)}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`px-2 py-1 rounded text-xs ${
+                    </div>
+                    <div className="col-span-1">
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
                         user.is_active
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-red-100 text-red-700"
                       }`}>
                         {user.is_active ? "Active" : "Inactive"}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 w-10">
+                    </div>
+                    <div className="col-span-1 flex justify-end">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           loadUser(user);
                         }}
-                        className="w-6 h-6 rounded-full bg-gray-200 inline-flex items-center justify-center hover:bg-gray-300"
+                        className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-[#1A318C] hover:text-white inline-flex items-center justify-center transition-all duration-200 group"
                       >
-                        <svg className="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg className="w-4 h-4 text-gray-500 group-hover:text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                           <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                         </svg>
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>
