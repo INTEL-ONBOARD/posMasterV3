@@ -95,9 +95,12 @@ class SettingsController {
         });
 
         // Update app settings (multiple)
+        // Returns requiresRestart: true so frontend can trigger app restart + logout
         ipcMain.handle('settings:update-app-settings', async (event, settings) => {
             try {
-                return this.service.updateAppSettings(settings);
+                const result = this.service.updateAppSettings(settings);
+                // App settings changes require restart and logout
+                return { ...result, requiresRestart: true };
             } catch (error) {
                 console.error('[SettingsController] Update app settings error:', error);
                 return { status: 'error', message: error.message };
@@ -105,9 +108,12 @@ class SettingsController {
         });
 
         // Update a single app setting
+        // Returns requiresRestart: true so frontend can trigger app restart + logout
         ipcMain.handle('settings:update-app-setting', async (event, { key, value }) => {
             try {
-                return this.service.updateAppSetting(key, value);
+                const result = this.service.updateAppSetting(key, value);
+                // App settings changes require restart and logout
+                return { ...result, requiresRestart: true };
             } catch (error) {
                 console.error('[SettingsController] Update app setting error:', error);
                 return { status: 'error', message: error.message };
@@ -115,9 +121,12 @@ class SettingsController {
         });
 
         // Reset app settings to defaults
+        // Returns requiresRestart: true so frontend can trigger app restart + logout
         ipcMain.handle('settings:reset-app-settings', async () => {
             try {
-                return this.service.resetAppSettings();
+                const result = this.service.resetAppSettings();
+                // App settings changes require restart and logout
+                return { ...result, requiresRestart: true };
             } catch (error) {
                 console.error('[SettingsController] Reset app settings error:', error);
                 return { status: 'error', message: error.message };
