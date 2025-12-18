@@ -327,6 +327,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
     },
 
     // ============================================
+    // APP LIFECYCLE API
+    // ============================================
+
+    app: {
+        // Restart the application
+        restart: () =>
+            ipcRenderer.invoke("app:restart"),
+        // Logout user and restart the application
+        logoutAndRestart: () =>
+            ipcRenderer.invoke("app:logoutAndRestart")
+    },
+
+    // ============================================
     // CLOUD SYNC API
     // ============================================
 

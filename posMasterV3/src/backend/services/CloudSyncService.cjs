@@ -40,13 +40,13 @@ const TABLES_TO_SYNC = [
     'sales_items',
     'disposed_items',
     'offers_discounts',
-    'app_settings',
+    // NOTE: app_settings is intentionally NOT synced - it's device-specific
     'user_settings',
     'login_history'
 ];
 
-// Tables that shouldn't sync (local only)
-const LOCAL_ONLY_TABLES = ['sessions', 'sync_queue', 'migrations', 'price_change_history'];
+// Tables that shouldn't sync (local only) - each device has its own settings
+const LOCAL_ONLY_TABLES = ['sessions', 'sync_queue', 'migrations', 'price_change_history', 'app_settings'];
 
 // Tables that use "push-first-then-pull" strategy
 // For these tables: Push local changes to cloud FIRST, then pull cloud updates to local
@@ -356,9 +356,11 @@ class CloudSyncService {
     }
 
     /**
-     * Perform a full sync of all tables
-     * - Push-first tables (users, user_settings): Push local to cloud FIRST, then pull cloud to local
-     * - Other tables: Push from local to cloud
+     * Perform a full bidirectional sync of all tables
+     * Uses version-based comparison (updated_at timestamp):
+     * - If local is newer → push to cloud
+     * - If cloud is newer → pull to local
+     * - New records on either side get synced to the other
      */
     async performFullSync() {
         if (this.isSyncing) {
@@ -375,49 +377,39 @@ class CloudSyncService {
 
         this.isSyncing = true;
         this.syncStatus = 'full_sync';
-        console.log('[CloudSync] Starting full sync...');
+        console.log('[CloudSync] Starting version-based bidirectional sync...');
 
         const startTime = Date.now();
-        const results = { uploaded: 0, downloaded: 0, errors: [] };
+        const results = { uploaded: 0, downloaded: 0, conflicts: 0, errors: [] };
 
-        // Step 1: Push-first tables (users, user_settings) - Push local to cloud FIRST
-        console.log('[CloudSync] Step 1: Pushing user tables to cloud first...');
+        // Step 1: Push-first tables (users, user_settings) - Local always wins, push first
+        console.log('[CloudSync] Step 1: Syncing push-first tables (local wins)...');
         for (const tableName of PUSH_FIRST_TABLES) {
             try {
-                const pushResult = await this.syncTable(tableName);
-                results.uploaded += pushResult.uploaded || 0;
-                console.log(`[CloudSync] Pushed ${pushResult.uploaded || 0} records to ${tableName}`);
+                const syncResult = await this.bidirectionalSyncTable(tableName, true); // localPriority = true
+                results.uploaded += syncResult.pushed || 0;
+                results.downloaded += syncResult.pulled || 0;
+                console.log(`[CloudSync] ${tableName}: Pushed ${syncResult.pushed}, Pulled ${syncResult.pulled}`);
             } catch (error) {
-                console.error(`[CloudSync] Error pushing ${tableName}:`, error.message);
-                results.errors.push({ table: tableName, error: error.message, operation: 'push' });
+                console.error(`[CloudSync] Error syncing ${tableName}:`, error.message);
+                results.errors.push({ table: tableName, error: error.message });
             }
         }
 
-        // Step 2: Push-first tables - Now pull from cloud to get any updates from other devices
-        console.log('[CloudSync] Step 2: Pulling user tables from cloud...');
-        for (const tableName of PUSH_FIRST_TABLES) {
-            try {
-                const pullResult = await this.pullFromCloud(tableName);
-                results.downloaded += pullResult.downloaded || 0;
-                console.log(`[CloudSync] Pulled ${pullResult.downloaded || 0} records from ${tableName}`);
-            } catch (error) {
-                console.error(`[CloudSync] Error pulling ${tableName}:`, error.message);
-                results.errors.push({ table: tableName, error: error.message, operation: 'pull' });
-            }
-        }
-
-        // Step 3: Push all other local tables to cloud
-        console.log('[CloudSync] Step 3: Pushing other local tables to cloud...');
+        // Step 2: Bidirectional sync for all other tables (version-based)
+        console.log('[CloudSync] Step 2: Bidirectional sync for other tables (version-based)...');
         for (const tableName of TABLES_TO_SYNC) {
             // Skip push-first tables (already handled above)
             if (PUSH_FIRST_TABLES.includes(tableName)) continue;
 
             try {
-                const tableResult = await this.syncTable(tableName);
-                results.uploaded += tableResult.uploaded || 0;
+                const syncResult = await this.bidirectionalSyncTable(tableName, false); // version-based
+                results.uploaded += syncResult.pushed || 0;
+                results.downloaded += syncResult.pulled || 0;
+                results.conflicts += syncResult.conflicts || 0;
             } catch (error) {
                 console.error(`[CloudSync] Error syncing ${tableName}:`, error.message);
-                results.errors.push({ table: tableName, error: error.message, operation: 'push' });
+                results.errors.push({ table: tableName, error: error.message });
             }
         }
 
@@ -426,9 +418,184 @@ class CloudSyncService {
         this.syncStatus = 'completed';
         this.isSyncing = false;
 
-        console.log(`[CloudSync] Full sync completed in ${duration}ms. Downloaded: ${results.downloaded}, Uploaded: ${results.uploaded}`);
+        console.log(`[CloudSync] Bidirectional sync completed in ${duration}ms. Pushed: ${results.uploaded}, Pulled: ${results.downloaded}, Conflicts: ${results.conflicts}`);
 
         return { status: 'success', duration, ...results };
+    }
+
+    /**
+     * Bidirectional sync for a single table using version comparison
+     * @param {string} tableName - Table to sync
+     * @param {boolean} localPriority - If true, local always wins (for push-first tables)
+     */
+    async bidirectionalSyncTable(tableName, localPriority = false) {
+        const db = getDatabase();
+        if (!db) throw new Error('Local database not initialized');
+
+        const result = { pushed: 0, pulled: 0, conflicts: 0, skipped: 0 };
+        const primaryKey = this.getPrimaryKeyColumn(tableName);
+
+        try {
+            // Get local records
+            const localRecords = db.prepare(`SELECT * FROM ${tableName}`).all();
+            const localMap = new Map();
+            for (const record of localRecords) {
+                localMap.set(String(record[primaryKey]), record);
+            }
+
+            // Get cloud records
+            let cloudRecords = [];
+            try {
+                cloudRecords = await executeQuery(`SELECT * FROM ${tableName}`) || [];
+            } catch (error) {
+                // Table might not exist in cloud yet
+                console.log(`[CloudSync] Cloud table ${tableName} may not exist, pushing all local records`);
+            }
+
+            const cloudMap = new Map();
+            for (const record of cloudRecords) {
+                cloudMap.set(String(record[primaryKey]), record);
+            }
+
+            // Get table info for column validation
+            const tableInfo = db.prepare(`PRAGMA table_info(${tableName})`).all();
+            const localColumns = tableInfo.map(col => col.name);
+            const hasUpdatedAt = localColumns.includes('updated_at');
+            const hasCreatedAt = localColumns.includes('created_at');
+
+            // Process all unique IDs from both local and cloud
+            const allIds = new Set([...localMap.keys(), ...cloudMap.keys()]);
+
+            for (const id of allIds) {
+                const localRecord = localMap.get(id);
+                const cloudRecord = cloudMap.get(id);
+
+                try {
+                    if (localRecord && !cloudRecord) {
+                        // Record exists only locally → Push to cloud
+                        await this.pushRecordToCloud(tableName, localRecord, localColumns);
+                        this.updateLocalSyncStatus(tableName, id, 'synced');
+                        result.pushed++;
+                    } else if (!localRecord && cloudRecord) {
+                        // Record exists only in cloud → Pull to local
+                        await this.pullRecordToLocal(tableName, cloudRecord, localColumns, primaryKey);
+                        result.pulled++;
+                    } else if (localRecord && cloudRecord) {
+                        // Record exists in both - compare versions
+                        const syncDecision = this.compareVersions(localRecord, cloudRecord, hasUpdatedAt, hasCreatedAt, localPriority);
+
+                        if (syncDecision === 'push') {
+                            // Local is newer → Push to cloud
+                            await this.pushRecordToCloud(tableName, localRecord, localColumns);
+                            this.updateLocalSyncStatus(tableName, id, 'synced');
+                            result.pushed++;
+                        } else if (syncDecision === 'pull') {
+                            // Cloud is newer → Pull to local
+                            await this.pullRecordToLocal(tableName, cloudRecord, localColumns, primaryKey);
+                            result.pulled++;
+                        } else {
+                            // Same version, skip
+                            result.skipped++;
+                        }
+                    }
+                } catch (error) {
+                    console.error(`[CloudSync] Error syncing record ${id} in ${tableName}:`, error.message);
+                    result.conflicts++;
+                }
+            }
+
+            console.log(`[CloudSync] ${tableName}: pushed=${result.pushed}, pulled=${result.pulled}, skipped=${result.skipped}`);
+            return result;
+        } catch (error) {
+            console.error(`[CloudSync] Failed bidirectional sync for ${tableName}:`, error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Compare versions of local and cloud records
+     * @returns 'push' | 'pull' | 'skip'
+     */
+    compareVersions(localRecord, cloudRecord, hasUpdatedAt, hasCreatedAt, localPriority) {
+        // If local priority is set (push-first tables), always push local
+        if (localPriority) {
+            return 'push';
+        }
+
+        // Get timestamps for comparison
+        let localTime = null;
+        let cloudTime = null;
+
+        if (hasUpdatedAt) {
+            localTime = localRecord.updated_at ? new Date(localRecord.updated_at).getTime() : 0;
+            cloudTime = cloudRecord.updated_at ? new Date(cloudRecord.updated_at).getTime() : 0;
+        } else if (hasCreatedAt) {
+            localTime = localRecord.created_at ? new Date(localRecord.created_at).getTime() : 0;
+            cloudTime = cloudRecord.created_at ? new Date(cloudRecord.created_at).getTime() : 0;
+        }
+
+        // If we can't determine timestamps, push local (local wins as fallback)
+        if (localTime === null || cloudTime === null) {
+            return 'push';
+        }
+
+        // Compare timestamps - newer wins
+        if (localTime > cloudTime) {
+            return 'push';
+        } else if (cloudTime > localTime) {
+            return 'pull';
+        } else {
+            return 'skip'; // Same timestamp, no sync needed
+        }
+    }
+
+    /**
+     * Push a single record to cloud
+     */
+    async pushRecordToCloud(tableName, record, columns) {
+        const values = columns.map(col => {
+            const val = record[col];
+            if (typeof val === 'boolean') return val ? 1 : 0;
+            return val;
+        });
+
+        const placeholders = columns.map(() => '?').join(', ');
+        const query = `REPLACE INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`;
+
+        await executeQuery(query, values);
+    }
+
+    /**
+     * Pull a single record from cloud to local
+     */
+    async pullRecordToLocal(tableName, cloudRecord, localColumns, primaryKey) {
+        const db = getDatabase();
+        if (!db) return;
+
+        const columns = Object.keys(cloudRecord);
+        const commonColumns = columns.filter(col => localColumns.includes(col));
+
+        const values = commonColumns.map(col => {
+            const val = cloudRecord[col];
+            if (val === null || val === undefined) return null;
+            if (typeof val === 'boolean') return val ? 1 : 0;
+            if (val instanceof Date) return val.toISOString();
+            return val;
+        });
+
+        const placeholders = commonColumns.map(() => '?').join(', ');
+        const updateSet = commonColumns
+            .filter(col => col !== primaryKey)
+            .map(col => `${col} = excluded.${col}`)
+            .join(', ');
+
+        const query = `
+            INSERT INTO ${tableName} (${commonColumns.join(', ')})
+            VALUES (${placeholders})
+            ON CONFLICT(${primaryKey}) DO UPDATE SET ${updateSet}
+        `;
+
+        db.prepare(query).run(...values);
     }
 
     /**

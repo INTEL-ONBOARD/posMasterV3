@@ -129,7 +129,15 @@ function AppSettings() {
       const response = await settingsApi.updateAppSettings(allSettings);
 
       if (response.status === 'success') {
-        toast.open('Settings saved successfully', 3000, 'Success', 'success');
+        toast.open('Settings saved! App will restart to apply changes...', 3000, 'Success', 'success');
+
+        // If app settings require restart, trigger logout and restart
+        if (response.requiresRestart && window.electronAPI?.app?.logoutAndRestart) {
+          // Give user time to see the toast message
+          setTimeout(async () => {
+            await window.electronAPI.app.logoutAndRestart();
+          }, 1500);
+        }
       } else {
         toast.open('Failed to save settings', 3000, 'Error', 'error');
       }
