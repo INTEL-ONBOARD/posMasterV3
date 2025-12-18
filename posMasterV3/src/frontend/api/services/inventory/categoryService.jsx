@@ -1,37 +1,32 @@
 import ResponseDTO from "../../../templates/dtos/ResponseDTO";
-
-import { apiClient } from "../../client";
+import { categoryApi } from "../../localApi";
 
 class CategoryService {
 
     async getCategories() {
-        const response = await apiClient.get("api/categories");
-        return ResponseDTO(response.data);
-        //return response.data.map((u) => new UserDTO(u));
+        const response = await categoryApi.getAll();
+        return ResponseDTO(response);
     }
 
     async createCategory(category) {
-        const response = await apiClient.post("api/categories/add", category);
-        //return response;
-        return new ResponseDTO(response.data);
+        const response = await categoryApi.create(category);
+        return new ResponseDTO(response);
     }
 
     async updateCategory(categoryId, category) {
-        const response = await apiClient.put(`api/categories/${categoryId}`, category);
-        //return response;
-        return new ResponseDTO(response.data);
+        const response = await categoryApi.update(categoryId, category);
+        return new ResponseDTO(response);
     }
 
     async deleteCategory(categoryId) {
-        const response = await apiClient.delete(`api/categories/${categoryId}`);
-        //return response;
-        return new ResponseDTO(response.data);
+        const response = await categoryApi.delete(categoryId);
+        return new ResponseDTO(response);
     }
 
-    // async getcategoryById(id) {
-    //     const response = await apiClient.get(`api/categoryRegistry/${id}`);
-    //     return new UserDTO(response.data);
-    // }
+    async searchCategories(searchTerm) {
+        const response = await categoryApi.search(searchTerm);
+        return ResponseDTO(response);
+    }
 
 }
 

@@ -1,37 +1,37 @@
 import ResponseDTO from "../../../templates/dtos/ResponseDTO";
-
-import { apiClient } from "../../client";
+import { itemApi } from "../../localApi";
 
 class RegisterItemService {
 
     async getItems() {
-        const response = await apiClient.get("api/itemRegistry/extended");
-        return ResponseDTO(response.data);
-        //return response.data.map((u) => new UserDTO(u));
+        const response = await itemApi.getAllExtended();
+        return ResponseDTO(response);
     }
 
     async registerItem(item) {
-        const response = await apiClient.post("api/itemRegistry/add", item);
-        //return response;
-        return new ResponseDTO(response.data);
+        const response = await itemApi.create(item);
+        return new ResponseDTO(response);
     }
 
     async updateItem(itemId, item) {
-        const response = await apiClient.put(`api/itemRegistry/${itemId}`, item);
-        //return response;
-        return new ResponseDTO(response.data);
+        const response = await itemApi.update(itemId, item);
+        return new ResponseDTO(response);
     }
 
     async deleteItem(itemId) {
-        const response = await apiClient.delete(`api/itemRegistry/${itemId}`);
-        //return response;
-        return new ResponseDTO(response.data);
+        const response = await itemApi.delete(itemId);
+        return new ResponseDTO(response);
     }
 
-    // async getItemById(id) {
-    //     const response = await apiClient.get(`api/itemRegistry/${id}`);
-    //     return new UserDTO(response.data);
-    // }
+    async getItemBySku(sku) {
+        const response = await itemApi.getBySku(sku);
+        return new ResponseDTO(response);
+    }
+
+    async searchItems(searchTerm) {
+        const response = await itemApi.search(searchTerm);
+        return ResponseDTO(response);
+    }
 
 }
 

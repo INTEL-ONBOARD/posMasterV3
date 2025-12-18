@@ -2,53 +2,24 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Upload, X, Check, EyeOff, Eye } from 'lucide-react';
 import correctImage from '../../assets/Correct.png';
 import issueImage from '../../assets/issue.png';
-import { apiClient } from '../../api/client';
+import { settingsApi } from '../../api/localApi';
+import { localAuth } from '../../api/services/localAuth';
 import ToastContext from '../toasts/ToastService';
 
 function UserSettings() {
   const toast = useContext(ToastContext);
 
   const [userData, setUserData] = useState(null);
+  const [userSettings, setUserSettings] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [isChangePwOn, setIsChangePwOn] = useState(false);
+
   // States for password visibility
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showRetypePassword, setShowRetypePassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await apiClient.get(
-          'api/users/688225e779633af699be3c52'
-        );
-        setUserData(response.data.data); // Store the data object from response
-        setFormData({
-          id: response.data.data._id,
-          username: response.data.data.username,
-          fullName: response.data.data.full_name,
-          email: response.data.data.email,
-          //currentPassword: response.data.data.password,
-          currentPassword: "",
-          retypePassword: "",
-          newPassword: "",
-          role: ""
-        })
-        console.log(response.data);
-        console.log(userData);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUser();
-  }, []);
-
-  // if (loading) return <div>Loading...</div>;
-  // if (error) return <div>Error: {error}</div>;
 
   const [formData, setFormData] = useState({
     id: '',
@@ -58,7 +29,7 @@ function UserSettings() {
     currentPassword: '',
     retypePassword: '',
     newPassword: '',
-    role: 'Cashier'
+    role: ''
   });
 
   const [permissions, setPermissions] = useState({
@@ -71,9 +42,76 @@ function UserSettings() {
 
   const [profileImage, setProfileImage] = useState(null);
 
+  // Load current user data on mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        setLoading(true);
+
+        // Get current user from localStorage
+        const currentUser = await localAuth.getCurrentUser();
+
+        if (!currentUser) {
+          setError('No user logged in');
+          setLoading(false);
+          return;
+        }
+
+        const userId = currentUser.id || currentUser._id;
+
+        // Fetch user settings from backend
+        const response = await settingsApi.getUserSettings(userId);
+
+        if (response.status === 'success' && response.data) {
+          const user = response.data.user;
+          const settings = response.data.settings;
+
+          setUserData(user);
+          setUserSettings(settings);
+
+          // Populate form data
+          setFormData({
+            id: user.id || user._id || '',
+            username: user.username || '',
+            fullName: user.full_name || '',
+            email: user.email || '',
+            currentPassword: '',
+            retypePassword: '',
+            newPassword: '',
+            role: Array.isArray(user.roles) ? user.roles[0] : (user.roles || '')
+          });
+
+          // Populate permissions
+          if (settings && settings.permissions) {
+            setPermissions({
+              SaleAccess: settings.permissions.SaleAccess ?? true,
+              InventoryAccess: settings.permissions.InventoryAccess ?? false,
+              ReportAccess: settings.permissions.ReportAccess ?? false,
+              UserManagerAccess: settings.permissions.UserManagerAccess ?? false,
+              DtAccess: settings.permissions.DtAccess ?? false
+            });
+          }
+
+          // Set profile image if available
+          if (settings && settings.profile_image) {
+            setProfileImage(settings.profile_image);
+          }
+        } else {
+          setError(response.message || 'Failed to load user settings');
+        }
+      } catch (err) {
+        console.error('[UserSettings] Fetch error:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    console.log(name+": "+value);
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -81,38 +119,63 @@ function UserSettings() {
     setPermissions(prev => ({ ...prev, [permission]: !prev[permission] }));
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => setProfileImage(e.target.result);
+      reader.onload = async (e) => {
+        const base64Image = e.target.result;
+        setProfileImage(base64Image);
+
+        // Save profile image to backend
+        if (formData.id) {
+          try {
+            const response = await settingsApi.updateProfileImage(formData.id, base64Image);
+            if (response.status === 'success') {
+              toast.open('Profile image updated', 3000, 'Success', 'success');
+            }
+          } catch (err) {
+            console.error('[UserSettings] Image upload error:', err);
+          }
+        }
+      };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleReset = () => {
-    setFormData({
-      id: '',
-      username: '',
-      fullName: '',
-      email: '',
-      currentPassword: '',
-      retypePassword: '',
-      newPassword: '',
-      role: 'Cashier'
-    });
+  const handleReset = async () => {
+    // Reset to original user data
+    if (userData) {
+      setFormData({
+        id: userData.id || userData._id || '',
+        username: userData.username || '',
+        fullName: userData.full_name || '',
+        email: userData.email || '',
+        currentPassword: '',
+        retypePassword: '',
+        newPassword: '',
+        role: Array.isArray(userData.roles) ? userData.roles[0] : (userData.roles || '')
+      });
+    }
+
+    // Reset permissions to defaults
     setPermissions({
-      saleAccess: true,
-      inventoryAccess: false,
-      reportAccess: false,
-      dtAccess: false
+      SaleAccess: true,
+      InventoryAccess: false,
+      ReportAccess: false,
+      UserManagerAccess: false,
+      DtAccess: false
     });
+
     setProfileImage(null);
+    setIsChangePwOn(false);
+
+    toast.open('Form reset to defaults', 3000, 'Reset', 'info');
   };
 
   const handleClear = () => {
     setFormData({
-      id: '',
+      id: formData.id,
       username: '',
       fullName: '',
       email: '',
@@ -123,115 +186,122 @@ function UserSettings() {
     });
   };
 
-  //email format validation
+  // Email format validation
   const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      // Validation function
-      const isRequestBodyValid = (requestBody) => {
-        return (
-          requestBody.username?.trim() &&
-          requestBody.email?.trim() &&
-          requestBody.full_name?.trim() &&
-          requestBody.password?.trim() &&
-          Array.isArray(requestBody.roles) && requestBody.roles.length > 0
-        );
-      };
 
   const handleSave = async () => {
-
-    //new password was selected as current for now
-    var newPassword = formData.currentPassword
-    //if a new password was selected
+    // Validate email
     if (formData.email && !isValidEmail(formData.email)) {
-    //alert('Please enter a valid email address.');
-    toast.open("Enter a vaild Email Address", 10000, 'Invalid Email Format', 'warning');
+      toast.open('Enter a valid Email Address', 10000, 'Invalid Email Format', 'warning');
       return;
     }
 
-    if(isChangePwOn){
-    //old password validation
-    if(formData.currentPassword!=userData.password || formData.currentPassword==""){
-      //alert('Current password is incorrect.');
-      toast.open("Current password is incorrect", 10000, 'Password Missmatch', 'warning');
+    // Validate required fields
+    if (!formData.username?.trim()) {
+      toast.open('Username is required', 5000, 'Validation Error', 'warning');
       return;
     }
-    else if(formData.retypePassword!=formData.newPassword || formData.retypePassword==""){
-      //alert('New password retype mismatch.');
-      toast.open("New password retype mismatch.", 10000, 'New Password Missmatch', 'warning');
-      return;
-    }
-    //if validations passes
-    newPassword = formData.retypePassword
-  }
 
-      const requestBody = {
+    if (!formData.fullName?.trim()) {
+      toast.open('Full name is required', 5000, 'Validation Error', 'warning');
+      return;
+    }
+
+    // Handle password change
+    if (isChangePwOn) {
+      if (!formData.currentPassword) {
+        toast.open('Current password is required', 5000, 'Validation Error', 'warning');
+        return;
+      }
+
+      if (!formData.newPassword || formData.newPassword.length < 4) {
+        toast.open('New password must be at least 4 characters', 5000, 'Validation Error', 'warning');
+        return;
+      }
+
+      if (formData.retypePassword !== formData.newPassword) {
+        toast.open('New passwords do not match', 5000, 'Password Mismatch', 'warning');
+        return;
+      }
+
+      // Change password via localAuth
+      try {
+        const pwResult = await localAuth.changePassword(formData.currentPassword, formData.newPassword);
+        if (!pwResult.success) {
+          toast.open(pwResult.message || 'Password change failed', 5000, 'Error', 'error');
+          return;
+        }
+        toast.open('Password changed successfully', 3000, 'Success', 'success');
+      } catch (err) {
+        toast.open('Password change failed: ' + err.message, 5000, 'Error', 'error');
+        return;
+      }
+    }
+
+    setSaving(true);
+
+    try {
+      // Update user profile
+      const profileData = {
         username: formData.username,
         email: formData.email,
         full_name: formData.fullName,
-        roles: formData.role,
-        password: newPassword
+        roles: formData.role
+      };
+
+      const profileResult = await settingsApi.updateUserProfile(formData.id, profileData);
+
+      if (profileResult.status !== 'success') {
+        toast.open(profileResult.message || 'Failed to update profile', 5000, 'Error', 'error');
+        setSaving(false);
+        return;
       }
-      if (!isRequestBodyValid(requestBody)) {
-        console.log('Validation failed: One or more fields are empty');
-        toast.open("New password retype mismatch.", 10000, 'New Password Missmatch', 'warning');
-        return; // Cancel API call
-        
+
+      // Update permissions
+      const permResult = await settingsApi.updateUserPermissions(formData.id, permissions);
+
+      if (permResult.status !== 'success') {
+        console.warn('[UserSettings] Permission update warning:', permResult.message);
       }
-    setLoading(true);
-      try {
-      const response = await apiClient.put('api/users/68763f96c24efdc464d6a50b', requestBody);
-      //setUpdatedUser(response.data.data); // Store the response data
+
+      toast.open('Settings saved successfully', 3000, 'Success', 'success');
+
+      // Reset password fields
+      setFormData(prev => ({
+        ...prev,
+        currentPassword: '',
+        retypePassword: '',
+        newPassword: ''
+      }));
+      setIsChangePwOn(false);
+
     } catch (err) {
-      if (err.response) {
-        // Server responded with a status code outside 2xx
-        setError(`Error: ${err.response.status} - ${err.response.data.message}`);
-      } else if (err.request) {
-        // Request made but no response received
-        setError('Error: No response from server');
-      } else {
-        // Other errors
-        setError(`Error: ${err.message}`);
-      }
+      console.error('[UserSettings] Save error:', err);
+      toast.open('Failed to save settings: ' + err.message, 5000, 'Error', 'error');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
-    console.log('User settings saved:', { formData, permissions, profileImage });
   };
 
-  // const updateUser = async () => {
-  //   const newPassword = formData.newPassword;
-  //     setLoading(true);
-  //     const requestBody = {
-  //       username: formData.username,
-  //       email: formData.email,
-  //       full_name: formData.fullName,
-  //       roles: formData.role,
-  //       password: newPassword
-  //     }
-  //     try {
-  //       const response = await apiClient.put(
-  //         'api/users/68763f96c24efdc464d6a50b',
-  //         requestBody
-  //       );
-  //       //setUpdatedUser(response.data.data); // Store the response data
-  //     } catch (err) {
-  //       if (err.response) {
-  //         // Server responded with a status code outside 2xx
-  //         setError(`Error: ${err.response.status} - ${err.response.data.message}`);
-  //       } else if (err.request) {
-  //         // Request made but no response received
-  //         setError('Error: No response from server');
-  //       } else {
-  //         // Other errors
-  //         setError(`Error: ${err.message}`);
-  //       }
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
+  if (loading) {
+    return (
+      <div className="p-10 bg-white flex items-center justify-center h-full">
+        <div className="text-gray-500">Loading user settings...</div>
+      </div>
+    );
+  }
+
+  if (error && !userData) {
+    return (
+      <div className="p-10 bg-white flex items-center justify-center h-full">
+        <div className="text-red-500">Error: {error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-10 bg-white pb-32 pl-16">
-      {/* ✅ Heading and Description */}
+      {/* Heading and Description */}
       <div className="mt-4 mb-10 w-full">
         <h2 className="text-[36px] font-bold leading-[32px] text-gray-400 mb-2">
           USER SETTINGS
@@ -249,7 +319,6 @@ function UserSettings() {
             User Profile Picture
           </label>
 
-          {/* Image & Button - image aligned left on desktop, button centered under it */}
           <div className="flex flex-col items-center">
             <div className="w-40 h-40 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center mb-4 hover:border-gray-400 transition-colors relative overflow-hidden">
               {profileImage ? (
@@ -316,13 +385,11 @@ function UserSettings() {
                 placeholder="Enter full name"
                 className="w-3/4 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-
               <img
                 src={formData.fullName && formData.fullName.trim() ? correctImage : issueImage}
                 alt="Validation Status"
                 className="h-[18px] w-auto"
               />
-
             </div>
           </div>
 
@@ -337,127 +404,108 @@ function UserSettings() {
                 placeholder="Enter email address"
                 className="w-3/4 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-
               <img
                 src={formData.email && isValidEmail(formData.email) ? correctImage : issueImage}
                 alt="Validation Status"
                 className="h-[18px] w-auto"
               />
+            </div>
+          </div>
 
-            </div>
-          </div>
-{!isChangePwOn ? (
-          <button
-            onClick={() => setIsChangePwOn(true)}
-            className="mt-4 px-6 py-2 h-10 w-[11rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
-          >
-            Change Password
-          </button>
+          {/* Password change fields - only show when isChangePwOn is true */}
+          {isChangePwOn && (
+            <>
+              <div>
+                <label className="block text-[16px] font-medium text-[#949494] mb-1">Current Password</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    name="currentPassword"
+                    value={formData.currentPassword}
+                    onChange={handleInputChange}
+                    placeholder="Enter current password"
+                    className="w-3/4 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword((prev) => !prev)}
+                    className="focus:outline-none"
+                  >
+                    {showCurrentPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-500" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-500" />
+                    )}
+                  </button>
+                  <img
+                    src={formData.currentPassword && formData.currentPassword.trim() ? correctImage : issueImage}
+                    alt="Validation Status"
+                    className="h-[18px] w-auto"
+                  />
+                </div>
+              </div>
 
-      ) : (
-        <>
-        <div>
-                    <label className="block text-[16px] font-medium text-[#949494] mb-1">Current Password</label>
-          <div className="flex items-center gap-2">
-            <input
-              type={showCurrentPassword ? 'text' : 'password'} // Toggle input type
-              name="currentPassword"
-              value={formData.currentPassword}
-              onChange={handleInputChange}
-              placeholder="Enter current password"
-              className="w-3/4 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button
-              type="button"
-              onClick={() => setShowCurrentPassword((prev) => !prev)} // Toggle visibility
-              className="focus:outline-none"
-            >
-              {showCurrentPassword ? (
-                <EyeOff className="h-5 w-5 text-gray-500" />
-              ) : (
-                <Eye className="h-5 w-5 text-gray-500" />
-              )}
-            </button>
-            <img
-              src={formData.currentPassword && formData.currentPassword.trim() ? correctImage : issueImage}
-              alt="Validation Status"
-              className="h-[18px] w-auto"
-            />
-          </div>
-        </div>
-          <div>
-            <label className="block text-[16px] font-medium text-[#949494] mb-1">Retype your Current Password</label>
-            <div className="flex items-center gap-2">
-              <input
-                type={showRetypePassword ? 'text' : 'password'} // Toggle input type
-                name="retypePassword"
-                value={formData.retypePassword}
-                onChange={handleInputChange}
-                placeholder="Retype current password"
-                className="w-3/4 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <button
-                type="button"
-                onClick={() => setShowRetypePassword((prev) => !prev)} // Toggle visibility
-                className="focus:outline-none"
-              >
-                {showRetypePassword ? (
-                  <Eye className="h-5 w-5 text-gray-500" />
-                ) : (
-                  <EyeOff className="h-5 w-5 text-gray-500" />
-                )}
-              </button>
-              <img
-                src={formData.retypePassword && formData.retypePassword.trim() ? correctImage : issueImage}
-                alt="Validation Status"
-                className="h-[18px] w-auto"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-[16px] font-medium text-[#949494] mb-1">New Password</label>
-            <div className="flex items-center gap-2">
-              <input
-                type={showNewPassword ? 'text' : 'password'} // Toggle input type
-                name="newPassword"
-                value={formData.newPassword}
-                onChange={handleInputChange}
-                placeholder="Enter new password"
-                className="w-3/4 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <button
-                type="button"
-                onClick={() => setShowNewPassword((prev) => !prev)} // Toggle visibility
-                className="focus:outline-none"
-              >
-                {showNewPassword ? (
-                  <Eye className="h-5 w-5 text-gray-500" />
-                ) : (
-                  <EyeOff className="h-5 w-5 text-gray-500" />
-                )}
-              </button>
-              <img
-                src={formData.newPassword && formData.newPassword.trim() ? correctImage : issueImage}
-                alt="Validation Status"
-                className="h-[18px] w-auto"
-              />
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              setIsChangePwOn(false);
-              setFormData((prev) => ({
-                ...prev,
-                retypePassword: '',
-                newPassword: ''
-              }));
-            }}
-            className="px-6 py-2 h-10 w-[8rem] bg-gray-500 text-white hover:bg-[#59595a] transition-colors"
-          >
-            Cancel
-          </button>
-        </>
-      )}
+              <div>
+                <label className="block text-[16px] font-medium text-[#949494] mb-1">New Password</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    name="newPassword"
+                    value={formData.newPassword}
+                    onChange={handleInputChange}
+                    placeholder="Enter new password"
+                    className="w-3/4 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((prev) => !prev)}
+                    className="focus:outline-none"
+                  >
+                    {showNewPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-500" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-500" />
+                    )}
+                  </button>
+                  <img
+                    src={formData.newPassword && formData.newPassword.length >= 4 ? correctImage : issueImage}
+                    alt="Validation Status"
+                    className="h-[18px] w-auto"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[16px] font-medium text-[#949494] mb-1">Confirm New Password</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type={showRetypePassword ? 'text' : 'password'}
+                    name="retypePassword"
+                    value={formData.retypePassword}
+                    onChange={handleInputChange}
+                    placeholder="Retype new password"
+                    className="w-3/4 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRetypePassword((prev) => !prev)}
+                    className="focus:outline-none"
+                  >
+                    {showRetypePassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-500" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-500" />
+                    )}
+                  </button>
+                  <img
+                    src={formData.retypePassword && formData.retypePassword === formData.newPassword ? correctImage : issueImage}
+                    alt="Validation Status"
+                    className="h-[18px] w-auto"
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="lg:col-span-5 space-y-6 ml-0 lg:ml-[-80px]">
@@ -504,21 +552,49 @@ function UserSettings() {
       <div className="fixed bottom-16 right-6 flex justify-end space-x-3 p-4">
         <button
           onClick={handleReset}
-          className=" w-[12rem] h-10 px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
+          disabled={saving}
+          className="w-[12rem] h-10 px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors disabled:opacity-50"
         >
-        <p>Reset to Default</p>
+          Reset to Default
         </button>
+        {!isChangePwOn ? (
+          <button
+            onClick={() => setIsChangePwOn(true)}
+            disabled={saving}
+            className="px-6 py-2 h-10 min-w-[11rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors disabled:opacity-50 whitespace-nowrap"
+          >
+            Change Password
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              setIsChangePwOn(false);
+              setFormData((prev) => ({
+                ...prev,
+                currentPassword: '',
+                retypePassword: '',
+                newPassword: ''
+              }));
+            }}
+            disabled={saving}
+            className="px-6 py-2 h-10 min-w-[11rem] bg-gray-500 text-white hover:bg-[#59595a] transition-colors disabled:opacity-50 whitespace-nowrap"
+          >
+            Cancel Password
+          </button>
+        )}
         <button
           onClick={handleClear}
-          className="px-6 py-2 w-[8rem] h-10 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors"
+          disabled={saving}
+          className="px-6 py-2 w-[8rem] h-10 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors disabled:opacity-50"
         >
           Clear
         </button>
         <button
           onClick={handleSave}
-          className="px-6 py-2 h-10 w-[8rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
+          disabled={saving}
+          className="px-6 py-2 h-10 w-[8rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors disabled:opacity-50"
         >
-          Save
+          {saving ? 'Saving...' : 'Save'}
         </button>
       </div>
     </div>
@@ -526,29 +602,3 @@ function UserSettings() {
 }
 
 export default UserSettings;
-
-// const validateRequestBody = (requestBody) => {
-//   const errors = {};
-
-//   // Check string fields for emptiness
-//   if (!requestBody.username || requestBody.username.trim() === '') {
-//     errors.username = 'Username is required';
-//   }
-//   if (!requestBody.email || requestBody.email.trim() === '') {
-//     errors.email = 'Email is required';
-//   }
-//   if (!requestBody.full_name || requestBody.full_name.trim() === '') {
-//     errors.full_name = 'Full name is required';
-//   }
-//   if (!requestBody.password || requestBody.password.trim() === '') {
-//     errors.password = 'Password is required';
-//   }
-
-//   // Check roles array for emptiness
-//   if (!requestBody.roles || !Array.isArray(requestBody.roles) || requestBody.roles.length === 0) {
-//     errors.roles = 'At least one role is required';
-//   }
-
-//   // Return errors object (empty if no errors)
-//   return errors;
-// };

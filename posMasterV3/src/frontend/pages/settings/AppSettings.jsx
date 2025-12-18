@@ -3,25 +3,75 @@ import correctImage from '../../assets/Correct.png';
 import issueImage from '../../assets/issue.png';
 import successImage from '../../assets/Success.png';
 import failedImage from '../../assets/Failed.png';
+import { settingsApi } from '../../api/localApi';
+import { branchApi } from '../../api/localApi';
 
 function AppSettings() {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [branches, setBranches] = useState([]);
+
   const [settings, setSettings] = useState({
-    autoLogout: false,
+    auto_logout: false,
     notifications: true,
-    cloudSync: false,
-    tempSystem: false,
-    runOnStartup: true,
-    maximizeWindow: true
+    cloud_sync: false,
+    temp_system: false,
+    run_on_startup: true,
+    maximize_window: true
   });
 
   const [paths, setPaths] = useState({
-    tempPath: 'Default path here',
-    dbConfig: 'Default path here',
-    outletSetup: 'Default outlet Name'
+    temp_path: 'C:\\POS Master\\temp',
+    db_config_path: 'C:\\POS Master\\config',
+    default_outlet: 'Main Branch'
   });
 
-  // modal state: { open: boolean, type: 'success' | 'failed' | null }
+  // Modal state
   const [modal, setModal] = useState({ open: false, type: null });
+
+  // Load settings on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch app settings
+        const response = await settingsApi.getAppSettings();
+
+        if (response.status === 'success' && response.data) {
+          const data = response.data;
+
+          // Map settings to state
+          setSettings({
+            auto_logout: data.auto_logout ?? false,
+            notifications: data.notifications ?? true,
+            cloud_sync: data.cloud_sync ?? false,
+            temp_system: data.temp_system ?? false,
+            run_on_startup: data.run_on_startup ?? true,
+            maximize_window: data.maximize_window ?? true
+          });
+
+          setPaths({
+            temp_path: data.temp_path || 'C:\\POS Master\\temp',
+            db_config_path: data.db_config_path || 'C:\\POS Master\\config',
+            default_outlet: data.default_outlet || 'Main Branch'
+          });
+        }
+
+        // Fetch branches for outlet dropdown
+        const branchResponse = await branchApi.getAll();
+        if (branchResponse.status === 'success' && branchResponse.data) {
+          setBranches(branchResponse.data);
+        }
+      } catch (err) {
+        console.error('[AppSettings] Load error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, []);
 
   const handleToggle = (key) => {
     setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -31,41 +81,78 @@ function AppSettings() {
     setPaths((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleReset = () => {
-    setSettings({
-      autoLogout: false,
-      notifications: true,
-      cloudSync: false,
-      tempSystem: false,
-      runOnStartup: true,
-      maximizeWindow: true
-    });
-    setPaths({
-      tempPath: 'Default path here',
-      dbConfig: 'Default path here',
-      outletSetup: 'Default outlet Name'
-    });
+  const handleReset = async () => {
+    try {
+      setSaving(true);
+      const response = await settingsApi.resetAppSettings();
+
+      if (response.status === 'success' && response.data) {
+        const data = response.data;
+
+        setSettings({
+          auto_logout: data.auto_logout ?? false,
+          notifications: data.notifications ?? true,
+          cloud_sync: data.cloud_sync ?? false,
+          temp_system: data.temp_system ?? false,
+          run_on_startup: data.run_on_startup ?? true,
+          maximize_window: data.maximize_window ?? true
+        });
+
+        setPaths({
+          temp_path: data.temp_path || 'C:\\POS Master\\temp',
+          db_config_path: data.db_config_path || 'C:\\POS Master\\config',
+          default_outlet: data.default_outlet || 'Main Branch'
+        });
+
+        setModal({ open: true, type: 'success' });
+      } else {
+        setModal({ open: true, type: 'failed' });
+      }
+    } catch (err) {
+      console.error('[AppSettings] Reset error:', err);
+      setModal({ open: true, type: 'failed' });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Clear fields AND show the Failed modal
   const handleClear = () => {
     setPaths({
-      tempPath: '',
-      dbConfig: '',
-      outletSetup: ''
+      temp_path: '',
+      db_config_path: '',
+      default_outlet: ''
     });
     setModal({ open: true, type: 'failed' });
   };
 
-  // Save settings AND show the Success modal
-  const handleSave = () => {
-    console.log('Settings saved:', { settings, paths });
-    setModal({ open: true, type: 'success' });
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+
+      // Combine all settings
+      const allSettings = {
+        ...settings,
+        ...paths
+      };
+
+      const response = await settingsApi.updateAppSettings(allSettings);
+
+      if (response.status === 'success') {
+        setModal({ open: true, type: 'success' });
+      } else {
+        setModal({ open: true, type: 'failed' });
+      }
+    } catch (err) {
+      console.error('[AppSettings] Save error:', err);
+      setModal({ open: true, type: 'failed' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const closeModal = () => setModal({ open: false, type: null });
 
-  // prevent background scroll when modal is open
+  // Prevent background scroll when modal is open
   useEffect(() => {
     document.body.style.overflow = modal.open ? 'hidden' : '';
     return () => {
@@ -73,7 +160,7 @@ function AppSettings() {
     };
   }, [modal.open]);
 
-  // close on Escape
+  // Close on Escape
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape' && modal.open) closeModal();
@@ -81,6 +168,30 @@ function AppSettings() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [modal.open]);
+
+  // Handle folder selection via Electron
+  const handleSelectFolder = async (pathKey) => {
+    if (window.electronAPI && window.electronAPI.selectFolder) {
+      try {
+        const result = await window.electronAPI.selectFolder();
+        if (result && !result.canceled && result.filePaths && result.filePaths[0]) {
+          handlePathChange(pathKey, result.filePaths[0]);
+        }
+      } catch (err) {
+        console.error('[AppSettings] Folder selection error:', err);
+      }
+    } else {
+      alert('Folder picker not available');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-10 bg-white flex items-center justify-center h-full">
+        <div className="text-gray-500">Loading application settings...</div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -107,17 +218,17 @@ function AppSettings() {
         {/* Toggles */}
         <div className="space-y-4 mb-8 max-w-lg">
           {[
-            { label: 'Enable Automatic Logout', key: 'autoLogout' },
+            { label: 'Enable Automatic Logout', key: 'auto_logout' },
             { label: 'Enable Windows Built-in Notifications', key: 'notifications' },
-            { label: 'Enable automatic cloud synchronization', key: 'cloudSync' },
-            { label: 'Enable Application temp system', key: 'tempSystem' },
-            { label: 'Allow app to run-on startup', key: 'runOnStartup' },
-            { label: 'Allow app to start maximize window', key: 'maximizeWindow' }
+            { label: 'Enable automatic cloud synchronization', key: 'cloud_sync' },
+            { label: 'Enable Application temp system', key: 'temp_system' },
+            { label: 'Allow app to run-on startup', key: 'run_on_startup' },
+            { label: 'Allow app to start maximize window', key: 'maximize_window' }
           ].map(({ label, key }) => (
             <div key={key} className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-500">{label}</span>
 
-              {/* Toggle — pixel-sized via inline styles */}
+              {/* Toggle */}
               <label
                 className="relative inline-block"
                 style={{ width: 36, height: 20 }}
@@ -154,84 +265,116 @@ function AppSettings() {
 
         {/* Paths */}
         <div className="space-y-4 mb-8 max-w-lg">
-          {[
-            { label: 'Path for the temp files', key: 'tempPath', valid: true },
-            { label: 'Path for the db configuration file', key: 'dbConfig', valid: false },
-            { label: 'Default outlet Setup', key: 'outletSetup', valid: false, dropdown: true }
-          ].map(({ label, key, valid, dropdown }) => (
-            <div key={key}>
-              <label className="block text-sm font-medium text-gray-500 mb-1">{label}</label>
-              <div className="flex items-center">
-                {dropdown ? (
-                  <select
-                    value={paths[key]}
-                    onChange={(e) => handlePathChange(key, e.target.value)}
-                    className="flex-1 bg-[#f8f8f8] border border-[#ebebeb] py-1 px-2 text-sm focus:outline-none"
-                    style={{ height: 36 }}
-                  >
-                    <option value="Default outlet Name">Default outlet Name</option>
-                    <option value="Outlet A">Outlet A</option>
-                    <option value="Outlet B">Outlet B</option>
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={paths[key]}
-                    onChange={(e) => handlePathChange(key, e.target.value)}
-                    className="flex-1 bg-[#f8f8f8] border border-[#ebebeb] py-1 px-2 text-sm focus:outline-none"
-                    style={{ height: 36 }}
-                  />
-                )}
-
-                {/* inline Select button for text inputs */}
-                {!dropdown && (
-                  <button
-                    className="ml-2 text-xs font-medium px-3 py-1"
-                    style={{
-                      backgroundColor: '#c4c4c4',
-                      color: 'white',
-                      height: 32,
-                      borderRadius: 4
-                    }}
-                    onClick={() => {
-                      /* placeholder for file picker */
-                      alert('Open file picker (not implemented)');
-                    }}
-                  >
-                    Select
-                  </button>
-                )}
-
-                {/* small validation icon */}
-                <img
-                  src={valid ? correctImage : issueImage}
-                  alt={valid ? 'valid' : 'invalid'}
-                  className="ml-2 w-4 h-4"
-                />
-              </div>
+          {/* Temp Path */}
+          <div>
+            <label className="block text-sm font-medium text-gray-500 mb-1">Path for the temp files</label>
+            <div className="flex items-center">
+              <input
+                type="text"
+                value={paths.temp_path}
+                onChange={(e) => handlePathChange('temp_path', e.target.value)}
+                className="flex-1 bg-[#f8f8f8] border border-[#ebebeb] py-1 px-2 text-sm focus:outline-none"
+                style={{ height: 36 }}
+              />
+              <button
+                className="ml-2 text-xs font-medium px-3 py-1"
+                style={{
+                  backgroundColor: '#c4c4c4',
+                  color: 'white',
+                  height: 32,
+                  borderRadius: 4
+                }}
+                onClick={() => handleSelectFolder('temp_path')}
+              >
+                Select
+              </button>
+              <img
+                src={paths.temp_path ? correctImage : issueImage}
+                alt={paths.temp_path ? 'valid' : 'invalid'}
+                className="ml-2 w-4 h-4"
+              />
             </div>
-          ))}
+          </div>
+
+          {/* DB Config Path */}
+          <div>
+            <label className="block text-sm font-medium text-gray-500 mb-1">Path for the db configuration file</label>
+            <div className="flex items-center">
+              <input
+                type="text"
+                value={paths.db_config_path}
+                onChange={(e) => handlePathChange('db_config_path', e.target.value)}
+                className="flex-1 bg-[#f8f8f8] border border-[#ebebeb] py-1 px-2 text-sm focus:outline-none"
+                style={{ height: 36 }}
+              />
+              <button
+                className="ml-2 text-xs font-medium px-3 py-1"
+                style={{
+                  backgroundColor: '#c4c4c4',
+                  color: 'white',
+                  height: 32,
+                  borderRadius: 4
+                }}
+                onClick={() => handleSelectFolder('db_config_path')}
+              >
+                Select
+              </button>
+              <img
+                src={paths.db_config_path ? correctImage : issueImage}
+                alt={paths.db_config_path ? 'valid' : 'invalid'}
+                className="ml-2 w-4 h-4"
+              />
+            </div>
+          </div>
+
+          {/* Default Outlet */}
+          <div>
+            <label className="block text-sm font-medium text-gray-500 mb-1">Default outlet Setup</label>
+            <div className="flex items-center">
+              <select
+                value={paths.default_outlet}
+                onChange={(e) => handlePathChange('default_outlet', e.target.value)}
+                className="flex-1 bg-[#f8f8f8] border border-[#ebebeb] py-1 px-2 text-sm focus:outline-none"
+                style={{ height: 36 }}
+              >
+                <option value="Main Branch">Main Branch</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.name}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+              <img
+                src={paths.default_outlet ? correctImage : issueImage}
+                alt={paths.default_outlet ? 'valid' : 'invalid'}
+                className="ml-2 w-4 h-4"
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Bottom Buttons (fixed) */}
+        {/* Bottom Buttons */}
         <div className="fixed bottom-16 right-6 flex justify-end space-x-3 p-4 z-40">
           <button
             onClick={handleReset}
-            className="w-[12rem] h-10 px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors"
+            disabled={saving}
+            className="w-[12rem] h-10 px-4 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors disabled:opacity-50"
           >
             Reset to Default
           </button>
           <button
             onClick={handleClear}
-            className="px-6 py-2 w-[8rem] h-10 bg-[#727272] text-white hover:bg-gray-700 transition-colors"
+            disabled={saving}
+            className="px-6 py-2 w-[8rem] h-10 bg-[#727272] text-white hover:bg-gray-700 transition-colors disabled:opacity-50"
           >
             Clear
           </button>
           <button
             onClick={handleSave}
-            className="px-6 py-2 h-10 w-[8rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors"
+            disabled={saving}
+            className="px-6 py-2 h-10 w-[8rem] bg-blue-600 text-white hover:bg-[#1A318C] transition-colors disabled:opacity-50"
           >
-            Save
+            {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>
@@ -243,21 +386,21 @@ function AppSettings() {
           role="dialog"
           aria-modal="true"
         >
-          {/* backdrop (click to close) */}
+          {/* backdrop */}
           <div
             className="absolute inset-0"
             style={{ backgroundColor: 'rgba(255,255,255,0.55)' }}
             onClick={closeModal}
           />
 
-          {/* close button top-left */}
+          {/* close button */}
           <button
             onClick={closeModal}
             className="absolute top-6 right-6 w-8 h-8 rounded-full bg-black/90 text-white flex items-center justify-center z-[10001]"
             aria-label="Close"
             title="Close"
           >
-            ✕
+            X
           </button>
 
           {/* modal content */}

@@ -77,64 +77,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     // ============================================
 
     auth: {
-        /**
-         * Login with email/username and password
-         * @param {string} email - Email or username
-         * @param {string} password - Password
-         * @param {string} deviceInfo - Optional device information
-         * @returns {Promise<Object>} Login result
-         */
         login: (email, password, deviceInfo) =>
             ipcRenderer.invoke("auth:login", { email, password, deviceInfo }),
-
-        /**
-         * Register a new user
-         * @param {Object} userData - User registration data
-         * @returns {Promise<Object>} Registration result
-         */
         register: (userData) =>
             ipcRenderer.invoke("auth:register", userData),
-
-        /**
-         * Logout user
-         * @param {string} token - Session token
-         * @returns {Promise<Object>} Logout result
-         */
         logout: (token) =>
             ipcRenderer.invoke("auth:logout", { token }),
-
-        /**
-         * Validate session token
-         * @param {string} token - Session token
-         * @returns {Promise<Object>} Validation result
-         */
         validateSession: (token) =>
             ipcRenderer.invoke("auth:validate-session", { token }),
-
-        /**
-         * Get current user from session
-         * @param {string} token - Session token
-         * @returns {Promise<Object|null>} Current user
-         */
         getCurrentUser: (token) =>
             ipcRenderer.invoke("auth:get-current-user", { token }),
-
-        /**
-         * Change password
-         * @param {string} userId - User ID
-         * @param {string} currentPassword - Current password
-         * @param {string} newPassword - New password
-         * @returns {Promise<Object>} Result
-         */
         changePassword: (userId, currentPassword, newPassword) =>
             ipcRenderer.invoke("auth:change-password", { userId, currentPassword, newPassword }),
-
-        /**
-         * Import user from cloud (for sync)
-         * @param {Object} cloudUser - User data from cloud
-         * @param {string} password - Plain password for local storage
-         * @returns {Promise<Object>} Import result
-         */
         importFromCloud: (cloudUser, password) =>
             ipcRenderer.invoke("auth:import-from-cloud", { cloudUser, password })
     },
@@ -144,71 +98,172 @@ contextBridge.exposeInMainWorld("electronAPI", {
     // ============================================
 
     users: {
-        /**
-         * Get all users
-         * @param {Object} options - Query options (limit, offset, orderBy, order)
-         * @returns {Promise<Object>} Result with users array
-         */
         getAll: (options = {}) =>
             ipcRenderer.invoke("users:get-all", options),
-
-        /**
-         * Get user by ID
-         * @param {string} userId - User ID
-         * @returns {Promise<Object>} Result with user
-         */
         getById: (userId) =>
             ipcRenderer.invoke("users:get-by-id", { userId }),
-
-        /**
-         * Update user
-         * @param {string} userId - User ID
-         * @param {Object} data - Data to update
-         * @returns {Promise<Object>} Result with updated user
-         */
         update: (userId, data) =>
             ipcRenderer.invoke("users:update", { userId, data }),
-
-        /**
-         * Delete user
-         * @param {string} userId - User ID
-         * @param {boolean} hardDelete - Permanently delete (default: false)
-         * @returns {Promise<Object>} Result
-         */
         delete: (userId, hardDelete = false) =>
             ipcRenderer.invoke("users:delete", { userId, hardDelete }),
-
-        /**
-         * Search users
-         * @param {string} query - Search query
-         * @returns {Promise<Object>} Result with matching users
-         */
         search: (query) =>
             ipcRenderer.invoke("users:search", { query }),
-
-        /**
-         * Get users by role
-         * @param {string} role - Role to filter by
-         * @returns {Promise<Object>} Result with users
-         */
         getByRole: (role) =>
             ipcRenderer.invoke("users:get-by-role", { role }),
-
-        /**
-         * Update user roles
-         * @param {string} userId - User ID
-         * @param {string[]} roles - New roles array
-         * @returns {Promise<Object>} Result
-         */
         updateRoles: (userId, roles) =>
             ipcRenderer.invoke("users:update-roles", { userId, roles }),
-
-        /**
-         * Get user statistics
-         * @returns {Promise<Object>} Statistics
-         */
         getStatistics: () =>
             ipcRenderer.invoke("users:statistics")
+    },
+
+    // ============================================
+    // CATEGORY API
+    // ============================================
+
+    categories: {
+        getAll: () => ipcRenderer.invoke("categories:get-all"),
+        getById: (id) => ipcRenderer.invoke("categories:get-by-id", id),
+        getTypes: () => ipcRenderer.invoke("categories:get-types"),
+        search: (searchTerm) => ipcRenderer.invoke("categories:search", searchTerm),
+        create: (data) => ipcRenderer.invoke("categories:create", data),
+        update: (id, data) => ipcRenderer.invoke("categories:update", id, data),
+        delete: (id) => ipcRenderer.invoke("categories:delete", id)
+    },
+
+    // ============================================
+    // UOM (Unit of Measurement) API
+    // ============================================
+
+    uom: {
+        getAll: () => ipcRenderer.invoke("uom:get-all"),
+        getById: (id) => ipcRenderer.invoke("uom:get-by-id", id),
+        search: (searchTerm) => ipcRenderer.invoke("uom:search", searchTerm),
+        create: (data) => ipcRenderer.invoke("uom:create", data),
+        update: (id, data) => ipcRenderer.invoke("uom:update", id, data),
+        delete: (id) => ipcRenderer.invoke("uom:delete", id)
+    },
+
+    // ============================================
+    // BRANCH (Inventory/Outlet) API
+    // ============================================
+
+    branches: {
+        getAll: () => ipcRenderer.invoke("branches:get-all"),
+        getActive: () => ipcRenderer.invoke("branches:get-active"),
+        getById: (id) => ipcRenderer.invoke("branches:get-by-id", id),
+        search: (searchTerm) => ipcRenderer.invoke("branches:search", searchTerm),
+        create: (data) => ipcRenderer.invoke("branches:create", data),
+        update: (id, data) => ipcRenderer.invoke("branches:update", id, data),
+        delete: (id) => ipcRenderer.invoke("branches:delete", id)
+    },
+
+    // ============================================
+    // SUPPLIER API
+    // ============================================
+
+    suppliers: {
+        getAll: () => ipcRenderer.invoke("suppliers:get-all"),
+        getActive: () => ipcRenderer.invoke("suppliers:get-active"),
+        getById: (id) => ipcRenderer.invoke("suppliers:get-by-id", id),
+        search: (searchTerm) => ipcRenderer.invoke("suppliers:search", searchTerm),
+        create: (data) => ipcRenderer.invoke("suppliers:create", data),
+        update: (id, data) => ipcRenderer.invoke("suppliers:update", id, data),
+        delete: (id) => ipcRenderer.invoke("suppliers:delete", id),
+        updateAmounts: (id, currentAmount, previousAmount) =>
+            ipcRenderer.invoke("suppliers:update-amounts", id, currentAmount, previousAmount)
+    },
+
+    // ============================================
+    // ITEM (Item Registry) API
+    // ============================================
+
+    items: {
+        getAll: () => ipcRenderer.invoke("items:get-all"),
+        getAllExtended: () => ipcRenderer.invoke("items:get-all-extended"),
+        getById: (id) => ipcRenderer.invoke("items:get-by-id", id),
+        getByIdExtended: (id) => ipcRenderer.invoke("items:get-by-id-extended", id),
+        getBySku: (sku) => ipcRenderer.invoke("items:get-by-sku", sku),
+        search: (searchTerm) => ipcRenderer.invoke("items:search", searchTerm),
+        create: (data) => ipcRenderer.invoke("items:create", data),
+        update: (id, data) => ipcRenderer.invoke("items:update", id, data),
+        delete: (id) => ipcRenderer.invoke("items:delete", id)
+    },
+
+    // ============================================
+    // STOCK API
+    // ============================================
+
+    stock: {
+        getAll: () => ipcRenderer.invoke("stock:get-all"),
+        getAllWithItems: () => ipcRenderer.invoke("stock:get-all-with-items"),
+        getById: (id) => ipcRenderer.invoke("stock:get-by-id", id),
+        getBySku: (sku) => ipcRenderer.invoke("stock:get-by-sku", sku),
+        getLowStock: () => ipcRenderer.invoke("stock:get-low-stock"),
+        getExpiring: (days) => ipcRenderer.invoke("stock:get-expiring", days),
+        getValue: () => ipcRenderer.invoke("stock:get-value"),
+        upsert: (data) => ipcRenderer.invoke("stock:upsert", data),
+        updateQuantity: (id, quantity) => ipcRenderer.invoke("stock:update-quantity", id, quantity),
+        updatePrices: (id, stockPrice, retailPrice) =>
+            ipcRenderer.invoke("stock:update-prices", id, stockPrice, retailPrice),
+        delete: (id) => ipcRenderer.invoke("stock:delete", id)
+    },
+
+    // ============================================
+    // RESTOCK API
+    // ============================================
+
+    restocks: {
+        getAll: (options) => ipcRenderer.invoke("restocks:get-all", options),
+        getById: (id) => ipcRenderer.invoke("restocks:get-by-id", id),
+        getByInvoice: (invoiceNo) => ipcRenderer.invoke("restocks:get-by-invoice", invoiceNo),
+        getBySupplier: (supplierId) => ipcRenderer.invoke("restocks:get-by-supplier", supplierId),
+        getByDateRange: (startDate, endDate) =>
+            ipcRenderer.invoke("restocks:get-by-date-range", startDate, endDate),
+        getStockData: (sku) => ipcRenderer.invoke("restocks:get-stock-data", sku),
+        getStockItems: () => ipcRenderer.invoke("restocks:get-stock-items"),
+        create: (data) => ipcRenderer.invoke("restocks:create", data),
+        getSummary: (startDate, endDate) =>
+            ipcRenderer.invoke("restocks:get-summary", startDate, endDate)
+    },
+
+    // ============================================
+    // MEMBER (Customer) API
+    // ============================================
+
+    members: {
+        getAll: () => ipcRenderer.invoke("members:get-all"),
+        getActive: () => ipcRenderer.invoke("members:get-active"),
+        getById: (id) => ipcRenderer.invoke("members:get-by-id", id),
+        getByMemberNo: (memberNo) => ipcRenderer.invoke("members:get-by-member-no", memberNo),
+        getWithTransactions: (id) => ipcRenderer.invoke("members:get-with-transactions", id),
+        search: (searchTerm) => ipcRenderer.invoke("members:search", searchTerm),
+        create: (data) => ipcRenderer.invoke("members:create", data),
+        update: (id, data) => ipcRenderer.invoke("members:update", id, data),
+        delete: (id) => ipcRenderer.invoke("members:delete", id),
+        getTop: (limit) => ipcRenderer.invoke("members:get-top", limit),
+        getDebtors: () => ipcRenderer.invoke("members:get-debtors")
+    },
+
+    // ============================================
+    // SALES API
+    // ============================================
+
+    sales: {
+        getAll: (options) => ipcRenderer.invoke("sales:get-all", options),
+        getById: (id) => ipcRenderer.invoke("sales:get-by-id", id),
+        getByInvoice: (invoiceNo) => ipcRenderer.invoke("sales:get-by-invoice", invoiceNo),
+        getByMember: (memberId) => ipcRenderer.invoke("sales:get-by-member", memberId),
+        getByDateRange: (startDate, endDate) =>
+            ipcRenderer.invoke("sales:get-by-date-range", startDate, endDate),
+        getHeldOrders: () => ipcRenderer.invoke("sales:get-held-orders"),
+        create: (data) => ipcRenderer.invoke("sales:create", data),
+        hold: (data) => ipcRenderer.invoke("sales:hold", data),
+        completeHeld: (id, updateData) => ipcRenderer.invoke("sales:complete-held", id, updateData),
+        cancel: (id) => ipcRenderer.invoke("sales:cancel", id),
+        getSummary: (startDate, endDate) =>
+            ipcRenderer.invoke("sales:get-summary", startDate, endDate),
+        getDaily: (days) => ipcRenderer.invoke("sales:get-daily", days),
+        generateInvoiceNo: () => ipcRenderer.invoke("sales:generate-invoice-no")
     },
 
     // ============================================
@@ -216,57 +271,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     // ============================================
 
     sync: {
-        /**
-         * Get sync status
-         * @returns {Promise<Object>} Sync status
-         */
         getStatus: () =>
             ipcRenderer.invoke("sync:status"),
-
-        /**
-         * Check connectivity to cloud
-         * @returns {Promise<Object>} { online: boolean }
-         */
         checkConnectivity: () =>
             ipcRenderer.invoke("sync:check-connectivity"),
-
-        /**
-         * Process sync queue (push to cloud)
-         * @param {string} token - Auth token
-         * @returns {Promise<Object>} Sync result
-         */
         processQueue: (token) =>
             ipcRenderer.invoke("sync:process-queue", { token }),
-
-        /**
-         * Pull data from cloud
-         * @param {string} entityType - Entity type to pull
-         * @param {string} token - Auth token
-         * @returns {Promise<Object>} Pull result
-         */
         pull: (entityType, token) =>
             ipcRenderer.invoke("sync:pull", { entityType, token }),
-
-        /**
-         * Retry failed sync items
-         * @returns {Promise<Object>} Result
-         */
         retryFailed: () =>
             ipcRenderer.invoke("sync:retry-failed"),
-
-        /**
-         * Clean up old sync items
-         * @param {number} daysOld - Days to keep (default: 7)
-         * @returns {Promise<Object>} Result
-         */
         cleanup: (daysOld = 7) =>
             ipcRenderer.invoke("sync:cleanup", { daysOld }),
-
-        /**
-         * Set cloud API URL
-         * @param {string} url - Cloud URL
-         * @returns {Promise<Object>} Result
-         */
         setCloudUrl: (url) =>
             ipcRenderer.invoke("sync:set-cloud-url", { url })
     },
@@ -276,11 +292,37 @@ contextBridge.exposeInMainWorld("electronAPI", {
     // ============================================
 
     database: {
-        /**
-         * Get backend status
-         * @returns {Promise<Object>} Backend status
-         */
         getStatus: () =>
             ipcRenderer.invoke("backend:status")
+    },
+
+    // ============================================
+    // SETTINGS API
+    // ============================================
+
+    settings: {
+        // User settings
+        getUserSettings: (userId) =>
+            ipcRenderer.invoke("settings:get-user-settings", userId),
+        getCurrentUserWithSettings: (userId) =>
+            ipcRenderer.invoke("settings:get-current-user-with-settings", userId),
+        updateUserProfile: (userId, profileData) =>
+            ipcRenderer.invoke("settings:update-user-profile", { userId, profileData }),
+        updateUserPermissions: (userId, permissions) =>
+            ipcRenderer.invoke("settings:update-user-permissions", { userId, permissions }),
+        updateProfileImage: (userId, profileImage) =>
+            ipcRenderer.invoke("settings:update-profile-image", { userId, profileImage }),
+
+        // App settings
+        getAppSettings: () =>
+            ipcRenderer.invoke("settings:get-app-settings"),
+        getAppSetting: (key) =>
+            ipcRenderer.invoke("settings:get-app-setting", key),
+        updateAppSettings: (settings) =>
+            ipcRenderer.invoke("settings:update-app-settings", settings),
+        updateAppSetting: (key, value) =>
+            ipcRenderer.invoke("settings:update-app-setting", { key, value }),
+        resetAppSettings: () =>
+            ipcRenderer.invoke("settings:reset-app-settings")
     }
 });
