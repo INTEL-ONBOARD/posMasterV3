@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import ItemCard from "../../components/ItemCard.jsx";
 import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import { restockApi, categoryApi } from "../../api/localApi";
-import {ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Package, CheckCircle, AlertTriangle } from "lucide-react";
 import { transformStockData } from "../../util/common/blockConverter.jsx";
 import ViewItemModal from "./modals/ViewItemModal.jsx";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
@@ -120,201 +120,204 @@ function InventoryView({ isActive }) {
   const [openOrderBy, setOpenOrderBy] = useState(true);
 
   return (
-
-    <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
-      {/* item list section (right) */}
-      <div className="bg-white w-[calc(85rem)] h-[calc(100vh-2rem)] overflow-y-scroll p-4">
-        <div className="">
-          <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4 ">
-            <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
-              <input
-                type="text"
-                value={search}
-                onChange={handleSearch}
-                placeholder="Search Your Items here"
-                className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
-              />
-              <button
-                onClick={handleSearch}
-                className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
-              >
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
-                </svg>
+    <div className="flex flex-row bg-gray-50 w-full h-[calc(100vh-2rem)] relative">
+      {/* Main Content Area */}
+      <div className="flex-1 h-[calc(100vh-1rem)] bg-gray-50">
+        {/* Search panel */}
+        <nav className="w-full bg-white border-b border-gray-100 shadow-sm">
+          <div className="px-6 py-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={handleSearch}
+                  placeholder="Search items by name, SKU, or batch code..."
+                  className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                />
+              </div>
+              <button className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2">
+                <Search className="w-4 h-4" />
                 Search
               </button>
             </div>
-          </nav>
-
-          <div className="h-[calc(100vh-13rem)] overflow-y-scroll bg-transparent">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-10">
-              {isSearching ? (
-                <div className="col-span-full flex flex-col items-center justify-center">
-                  <div className="flex flex-col items-center mt-32">
-                    {/* Custom spinner */}
-                    <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
-                    <span className="text-gray-700 text-xl mt-1">Please wait...</span>
-                  </div>
-                </div>
-              ) : filteredItems.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg" style={{ minHeight: "50vh" }}>
-                  <img
-                    src={NotFoundImg}
-                    alt="No items found!"
-                    className="w-12 h-12 mb-2 opacity-70"
-                  />
-                  <span>No items found!</span>
-                </div>
-              ) : (
-                filteredItems.map((item) => (
-                  <ItemCard
-                    key={item.id}
-                    item={item}
-                    onOpen={()=>{
-                      setModal(true)
-                      setSelectedItem(item)
-                    }}
-                  />
-                ))
-              )}
+            {/* Results count */}
+            <div className="mt-3 flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                Showing <span className="font-semibold text-gray-800">{filteredItems.length}</span> items
+              </p>
             </div>
           </div>
-        </div>
-        </div>
+        </nav>
 
-      {/* filter section (right) */}
-      <div className="bg-[#EBEBEB] w-[calc(20rem)] h-[calc(100vh-2rem)] p-1">
-        <div className="flex flex-col h-[calc(100vh-2rem)] gap-2">
-          {/* top block set */}
-          <div>
+        {/* Items Grid */}
+        <div className="h-[calc(100vh-10rem)] overflow-y-auto p-6">
+          {isSearching ? (
+            <div className="flex flex-col justify-center items-center h-full">
+              <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
+              <p className="text-gray-500">Searching items...</p>
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                <Package className="w-10 h-10 text-gray-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">No items found</h3>
+              <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredItems.map((item) => (
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  onOpen={() => {
+                    setModal(true)
+                    setSelectedItem(item)
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Filter Sidebar */}
+      <div className="bg-gray-100 w-[18rem] h-[calc(100vh-2rem)] p-3">
+        <div className="flex flex-col h-full gap-3">
           {/* ▼ search filters block ▼ */}
-          <div className="bg-white">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <button
               onClick={() => setOpenFilter(!openFilter)}
-              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
             >
-              <span className="text-gray-400">SEARCH FILTERS</span>
-              {openFilter ? <ChevronUp /> : <ChevronDown />}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Filter className="w-4 h-4 text-amber-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Filters</span>
+              </div>
+              {openFilter ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
             </button>
             {openFilter && (
-              <div className="px-4 bg-white pb-5">
-                {/* detailed description block */}
-                <div className="">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Category
-                      </label>
-                      <select
-                        value={searchCategory}
-                        onChange={(e) => setSearchCategory(e.target.value)}
-                        className="w-full h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
-                      >
-                        <option value="All">All Categories</option>
-                          {uniqueCategoryTypes.map(type => (
-                              <option key={type} value={type}>
-                                {type}
-                            </option>
-                            ))}
-                      </select>
-                    </div>
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="space-y-4 pt-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                      Category
+                    </label>
+                    <select
+                      value={searchCategory}
+                      onChange={(e) => setSearchCategory(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="All">All Categories</option>
+                      {uniqueCategoryTypes.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Stock Availability
-                      </label>
-                      <select
-                        name="uom"
-                        // value={formUOMData ?? ""}               // show the selected id
-                        // onChange={handleUOMChange}              // hook up your new handler
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Available</option>
-                        <option value="">Unavailable</option>
-                        {/* {uoms.map(uom => (
-                          <option key={uom.id} value={uom.id}>
-                            {uom.unit_name} ({uom.symbol})
-                          </option>
-                        ))} */}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Popularity
-                      </label>
-                      <select
-                        name="uom"
-                        // value={formUOMData ?? ""}               // show the selected id
-                        // onChange={handleUOMChange}              // hook up your new handler
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Default</option>
-                        {/* {uoms.map(uom => (
-                          <option key={uom.id} value={uom.id}>
-                            {uom.unit_name} ({uom.symbol})
-                          </option>
-                        ))} */}
-                      </select>
-                    </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                      Availability
+                    </label>
+                    <select
+                      value={searchAvailability}
+                      onChange={(e) => setSearchAvailability(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="All">All Items</option>
+                      <option value="Available">Available</option>
+                      <option value="Unavailable">Unavailable</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
           {/* ▼ order by block ▼ */}
-          <div className="bg-white">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <button
               onClick={() => setOpenOrderBy(!openOrderBy)}
-              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
             >
-              <span className="text-gray-400">ORDER BY</span>
-              {openOrderBy ? <ChevronUp /> : <ChevronDown />}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#1A318C]/10 flex items-center justify-center">
+                  <SortAsc className="w-4 h-4 text-[#1A318C]" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Sort By</span>
+              </div>
+              {openOrderBy ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
             </button>
             {openOrderBy && (
-              <div className="px-4 bg-white pb-5">
-                {/* detailed description block */}
-                <div className="">
-                    <div>
-                      {/* <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Suppier
-                      </label> */}
-                      <select
-                        name="uom"
-                        // value={formUOMData ?? ""}               // show the selected id
-                        // onChange={handleUOMChange}              // hook up your new handler
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Default</option>
-                        {/* {uoms.map(uom => (
-                          <option key={uom.id} value={uom.id}>
-                            {uom.unit_name} ({uom.symbol})
-                          </option>
-                        ))} */}
-                      </select>
-                    </div>
-
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="pt-4">
+                  <select
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">Default</option>
+                    <option value="name_asc">Name (A-Z)</option>
+                    <option value="name_desc">Name (Z-A)</option>
+                    <option value="price_asc">Price (Low to High)</option>
+                    <option value="price_desc">Price (High to Low)</option>
+                    <option value="stock_asc">Stock (Low to High)</option>
+                    <option value="stock_desc">Stock (High to Low)</option>
+                  </select>
                 </div>
               </div>
             )}
           </div>
+
+          {/* Quick Stats */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex-1">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Quick Stats</p>
+
+            <div className="space-y-3">
+              <div className="bg-emerald-50 rounded-xl p-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-sm shadow-emerald-200">
+                  <CheckCircle className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-emerald-600 font-medium">In Stock</p>
+                  <p className="text-xl font-bold text-emerald-700 tabular-nums">{inventoryItems.filter(i => interpretAvailability(i)).length}</p>
+                </div>
+              </div>
+
+              <div className="bg-red-50 rounded-xl p-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-500 flex items-center justify-center shadow-sm shadow-red-200">
+                  <AlertTriangle className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-red-600 font-medium">Out of Stock</p>
+                  <p className="text-xl font-bold text-red-700 tabular-nums">{inventoryItems.filter(i => !interpretAvailability(i)).length}</p>
+                </div>
+              </div>
+
+              <div className="bg-[#1A318C]/5 rounded-xl p-3 flex items-center gap-3 border border-[#1A318C]/10">
+                <div className="w-10 h-10 rounded-xl bg-[#1A318C] flex items-center justify-center shadow-sm shadow-blue-200">
+                  <Package className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-[#1A318C] font-medium">Total Items</p>
+                  <p className="text-xl font-bold text-[#1A318C] tabular-nums">{inventoryItems.length}</p>
+                </div>
+              </div>
+            </div>
           </div>
-          {/* empty bottom block */}
-          <div className="bg-white h-full"></div>
         </div>
       </div>
-      <ViewItemModal 
+
+      <ViewItemModal
         isOpen={modal}
         closeModal={closeModal}
         item={selectedItem}
       />
-        </div>
+    </div>
   )
 }
 

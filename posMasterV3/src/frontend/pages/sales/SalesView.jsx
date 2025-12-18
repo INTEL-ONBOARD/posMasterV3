@@ -1078,80 +1078,79 @@ const filteredItems = inventoryItems.filter((item) => {
                   </div>
                 </div>
 
-                {/* selected item list */}
-                <div className="overflow-x-auto h-full p-2 lg:p-4">
-                  <table className="w-full min-w-[500px]">
-                    <thead className="bg-gray-700 text-white">
-                      <tr>
-                        <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
-                          #
-                        </th>
-                        <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
-                          Item code
-                        </th>
-                        <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
-                          Unit price
-                        </th>
-                        <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
-                          Unit count
-                        </th>
-                        <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
-                          Total
-                        </th>
-                        <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">
-                          
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white">
-                      {selectedItems.map((item, index) => (
-                        <tr
-                          key={item.id}
-                          className={`${item.id === formDataRegItem.id && item.item_name === formDataRegItem.item_name ? 'border-4 border-blue-500' : 'border-b border-gray-200'} hover:bg-gray-50 cursor-pointer transition-colors`}
-                          onClick={() => handleTableRowClick(item)}
-                        >
-                          <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                            {index+1}
-                          </td>
-                          <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                            {item.sku}
-                          </td>
-                          <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                            {(item.retail_price).toFixed(2)}
-                            {/* {(item.stock_price).toFixed(2) - (item.item_discount_amt).toFixed(2)} */}
-                          </td>
-                          <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                            {item.customer_quantity}
-                          </td>
-                          <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                            {(item.retail_price * item.customer_quantity).toFixed(2)}
-                          </td>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => removeItemFromList(item.id)}
-                      aria-label="Close notification"
-                      className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
-                    >
-                      <svg
-                        className="w-4 h-4 text-white"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                      >
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                {/* selected item list - Modern Design */}
+                <div className="flex-1 overflow-hidden p-4">
+                  <div className="bg-white rounded-xl border border-gray-100 overflow-hidden h-full flex flex-col">
+                    {/* Table Header */}
+                    <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-3">
+                      <div className="grid grid-cols-12 gap-2 text-xs font-medium text-slate-300 uppercase tracking-wider">
+                        <div className="col-span-1">#</div>
+                        <div className="col-span-3">Item Code</div>
+                        <div className="col-span-2 text-right">Unit Price</div>
+                        <div className="col-span-2 text-center">Qty</div>
+                        <div className="col-span-3 text-right">Total</div>
+                        <div className="col-span-1"></div>
+                      </div>
+                    </div>
+
+                    {/* Table Body */}
+                    <div className="flex-1 overflow-y-auto">
+                      {selectedItems.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400 py-12">
+                          <svg className="w-16 h-16 mb-4 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                          </svg>
+                          <p className="text-sm font-medium">No items added yet</p>
+                          <p className="text-xs mt-1">Add items from the right panel</p>
+                        </div>
+                      ) : (
+                        selectedItems.map((item, index) => (
+                          <div
+                            key={item.id}
+                            onClick={() => handleTableRowClick(item)}
+                            className={`grid grid-cols-12 gap-2 px-4 py-3 items-center cursor-pointer transition-all ${
+                              item.id === formDataRegItem.id && item.item_name === formDataRegItem.item_name
+                                ? 'bg-blue-50 border-l-4 border-l-[#1A318C]'
+                                : 'border-b border-gray-50 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="col-span-1">
+                              <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-xs font-medium flex items-center justify-center">
+                                {index + 1}
+                              </span>
+                            </div>
+                            <div className="col-span-3">
+                              <span className="text-sm font-medium text-gray-800">{item.sku}</span>
+                            </div>
+                            <div className="col-span-2 text-right">
+                              <span className="text-sm text-gray-600 tabular-nums">{(item.retail_price).toFixed(2)}</span>
+                            </div>
+                            <div className="col-span-2 text-center">
+                              <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 bg-slate-100 rounded-md text-sm font-semibold text-slate-700">
+                                {item.customer_quantity}
+                              </span>
+                            </div>
+                            <div className="col-span-3 text-right">
+                              <span className="text-sm font-semibold text-gray-800 tabular-nums">
+                                {(item.retail_price * item.customer_quantity).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="col-span-1 flex justify-end">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); removeItemFromList(item.id); }}
+                                className="w-7 h-7 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-colors"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1285,227 +1284,179 @@ const filteredItems = inventoryItems.filter((item) => {
 
             </div>
 
-            {/* Member and Item list section(right) */}
-            <div className="bg-gray-300 w-[calc(32rem)] h-[calc(100vh-2rem)]">
-              <div className="space-y-4 flex flex-col h-full">
+            {/* Member and Item list section(right) - Modern Design */}
+            <div className="bg-gray-100 w-[calc(32rem)] h-[calc(100vh-2rem)]">
+              <div className="flex flex-col h-full">
 
                 {/* item list */}
                 {rightActiveSection == "items" && (
-          <div>
-            <div className="w-full flex flex-col justify-between py-4 px-6 bg-white gap-6 mb-4">
-              <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center gap-3">
-                {/* back button */}
-                <button
-                  onClick={() => setRightActiveSection("buttons")}
-                  className="flex items-center justify-center w-8 h-8 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors"
-                >
-                  <BackIcon />
-                </button>
-
-                <input
-                  type="text"
-                  //value={search}
-                  //onChange={handleSearch}
-                  placeholder="Search Your Items here"
-                  className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
-                />
-
-                <button
-                  /*onClick={handleSearchClick}*/ className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
-                >
-                  <svg
-                    className="w-5 h-5 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"
-                    />
-                  </svg>
-                  Search
-                </button>
-              </div>
-
-              <div className="flex flex-row gap-4">
-                <select
-                  //value={searchCategory}
-                  //onChange={(e) => setSearchCategory(e.target.value)}
-                  className="w-full h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
-                >
-                  <option value="All">All Categories</option>
-                    {uniqueCategoryTypes.map(type => (
-                        <option key={type} value={type}>
-                          {type}
-                      </option>
-                      ))}
-                </select>
-
-                      <select
-                        name="searchAvailability"
-                        value={searchAvailability}
-                        onChange={(e) => setSearchAvailability(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="All">All Availabilities</option>
-                        <option value="Available">Available</option>
-                        <option value="Unavailable">Unavailable</option>
-                      </select>
-              </div>
-            </div>
-
-            <div className="h-[calc(100vh-9rem)] overflow-y-scroll bg-transparent">
-              <div className="grid grid-cols-1 gap-6 p-10">
-                {(isLoading || searchLoading) ? (
-                  <div className="col-span-full flex flex-col items-center justify-center">
-                    <div className="flex flex-col items-center mt-32">
-                      <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
-                      <span className="text-gray-700 text-xl mt-1">
-                        Please wait...
-                      </span>
-                    </div>
-                  </div>
-                ) : filteredItems.length === 0 ? (
-                  <div
-                    className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg"
-                    style={{ minHeight: "50vh" }}
-                  >
-                    {/* {NotFoundImg ? (
-                      <img
-                        src={NotFoundImg}
-                        alt="No items found!"
-                        className="w-12 h-12 mb-2 opacity-70"
-                      />
-                    ) : null} */}
-                    <span>No items found!</span>
-                  </div>
-                ) : (
-                  filteredItems.map((item) => (
-                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={()=>loadItemtoList(item)} />
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-                )
-                }
-                {/* buttons */}
-                {rightActiveSection == "buttons" && (
-                <div className="flex flex-col flex-1 p-2 gap-1">
-                  <button
-                    onClick={() => setRightActiveSection("items")}
-                    className="h-[16rem] flex flex-col items-center justify-center p-4 bg-white rounded shadow hover:bg-gray-100 w-full"
-                  >
-                    <img
-                      src={AddRegitemsImg}
-                      alt="Add Registered Items"
-                      className="w-[8rem] h-[8rem] object-contain mb-2"
-                    />
-                    <span>Add Registered Items</span>
-                  </button>
-
-
-
-                  {/* White block to fill remaining space */}
-                  <div className="flex flex-col h-[60rem] bg-white p-5 gap-6">
-                    <div className="flex border-b border-[#EDEDED] h-12 items-center relative">
-                      <input
-                        // ref={searchInputRef}
-                        type="text"
-                        // value={scanCode}
-                        // onChange={(e) => setScanCode(e.target.value)}
-                        // onFocus={handleSearchFocus}
-                        placeholder="Search Member ID"
-                        className="flex-1 px-2 lg:px-3 py-2 bg-transparent focus:outline-none text-sm lg:text-base"
-                      />
-                      <button
-                        className="flex items-center px-3 lg:px-4 py-2 bg-[#1A318C] text-white text-sm lg:text-base"
-                        // onClick={handleScan}
-                      >
-                        <svg
-                          className="w-4 lg:w-5 h-4 lg:h-5 mr-1 lg:mr-2"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
+                  <div className="flex flex-col h-full">
+                    {/* Search Header */}
+                    <div className="bg-white p-4 border-b border-gray-100">
+                      <div className="flex items-center gap-3 mb-4">
+                        <button
+                          onClick={() => setRightActiveSection("buttons")}
+                          className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
                         >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
-                        </svg>
-                        Search
-                      </button>
-                    </div>
-                    <div className="flex flex-row items-center justify-center"
-                      onClick={
-                        () =>{setModal(true)}
-                      }
-                    >
-                        {/* member details */}
-                      <div className="flex gap-10">
-                        <img src={userProfileImage || defaultProfileImg} className="w-12 h-12 bg-gray-300 rounded-full object-cover" />
-                        <div>
-                          <h2 className="text-blue-800 font-bold">-</h2>
-                          <p className="text-md font-semibold">MEMBER: -</p>
-                          <p className="text-xs text-gray-600">PRE-MEMBER: -</p>
+                          <BackIcon />
+                        </button>
+                        <div className="flex-1 flex items-center bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+                          <input
+                            type="text"
+                            placeholder="Search items..."
+                            className="flex-1 px-4 py-2.5 bg-transparent focus:outline-none text-sm"
+                          />
+                          <button className="px-4 py-2.5 bg-[#1A318C] text-white text-sm font-medium hover:bg-[#152870] transition-colors">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
-                    </div>
-                    {/* income details */}
-                    <div className="bg-[#E2E2E2] flex items-center justify-around border-black p-4">
-                      <div className="text-center">
-                        <div className="text-lg font-bold">RS. 0</div>
-                        <div className="text-sm text-gray-600">Income</div>
-                      </div>  
-                      {/* vertical divider */}
-                      <div
-                        role="separator"
-                        aria-orientation="vertical"
-                        className="w-px h-8 bg-white"
-                      />
-                      <div className="text-center">
-                        <div className="text-lg font-bold">RS. 0</div>
-                        <div className="text-sm text-gray-600">Credits</div>
-                      </div>
-                    </div>
-                    {/* transaction list */}
-                    <div className="h-[21rem] bg-white overflow-y-scroll gap-3">
 
-                    {/* transaction card */}
-                    <div className="bg-[#F5F5F5] h-24 items-center gap-8 flex flex-row px-6">
-                      <div>
-                        <svg width={50} height={50} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          {/* green circle */}<circle cx="12" cy="12" r="10" fill="#22C55E" />
-                          {/* white check */}<path d="M7 12l3 3 7-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </div>
-                      <div className="">
-                        <div className="text-xl text-[#979797] font-bold">yyyy-mm-dd</div>
-                        <div className="text-[#979797] font-regular">Total Amount:</div>
-                        <div><span className="text-2xl text-[#979797] font-bold">Rs. 0.00</span><span className="ml-3 text-[#2DAA44] font-bold">CASH</span></div>
+                      <div className="flex gap-3">
+                        <select className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1A318C]">
+                          <option value="All">All Categories</option>
+                          {uniqueCategoryTypes.map(type => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                        <select
+                          name="searchAvailability"
+                          value={searchAvailability}
+                          onChange={(e) => setSearchAvailability(e.target.value)}
+                          className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#1A318C]"
+                        >
+                          <option value="All">All Status</option>
+                          <option value="Available">Available</option>
+                          <option value="Unavailable">Unavailable</option>
+                        </select>
                       </div>
                     </div>
-                    </div>
-                    {/* member control buttons */}
-                    <div className="flex flex-row gap-6 justify-around h-[2.8rem]">
 
-                    <button 
-                    //onClick={handleOpenProceedPayment}
-                    className="w-full h-full bg-[#9E9E9E] text-white text-sm hover:bg-gray-500 transition-all flex items-center justify-center"
-                    >
-                    CLEAR
-                    </button>
-                    <button 
-                    //onClick={handleOpenProceedPayment}
-                    className="w-full h-full bg-[#2DAA44] text-white text-sm hover:bg-green-700 transition-all flex items-center justify-center"
-                    >
-                    SELECT
-                    </button>
+                    {/* Items List */}
+                    <div className="flex-1 overflow-y-auto p-4">
+                      {(isLoading || searchLoading) ? (
+                        <div className="flex flex-col items-center justify-center h-full">
+                          <div className="w-10 h-10 border-3 border-gray-200 border-t-[#1A318C] rounded-full animate-spin mb-3"></div>
+                          <span className="text-gray-500 text-sm">Loading items...</span>
+                        </div>
+                      ) : filteredItems.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                          <svg className="w-16 h-16 mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                          </svg>
+                          <span className="text-sm font-medium">No items found</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {filteredItems.map((item) => (
+                            <SalesItemCard key={item.id ?? item._id} item={item} onOpen={()=>loadItemtoList(item)} />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                )}
+
+                {/* Main Panel with Add Items Button & Member Section */}
+                {rightActiveSection == "buttons" && (
+                  <div className="flex flex-col h-full p-3 gap-3">
+                    {/* Add Items Card */}
+                    <button
+                      onClick={() => setRightActiveSection("items")}
+                      className="bg-white rounded-xl p-6 flex flex-col items-center justify-center hover:shadow-md transition-all border-2 border-transparent hover:border-[#1A318C]/20 group"
+                    >
+                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#1A318C]/10 to-[#1A318C]/5 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                        <img src={AddRegitemsImg} alt="Add Items" className="w-14 h-14 object-contain" />
+                      </div>
+                      <span className="text-sm font-semibold text-gray-700">Add Registered Items</span>
+                    </button>
+
+                    {/* Member Section Card */}
+                    <div className="flex-1 bg-white rounded-xl overflow-hidden flex flex-col">
+                      {/* Search Member */}
+                      <div className="p-4 border-b border-gray-100">
+                        <div className="flex items-center bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+                          <input
+                            type="text"
+                            placeholder="Search Member ID"
+                            className="flex-1 px-4 py-2.5 bg-transparent focus:outline-none text-sm"
+                          />
+                          <button className="px-4 py-2.5 bg-[#1A318C] text-white text-sm font-medium hover:bg-[#152870] transition-colors">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Member Profile */}
+                      <div
+                        className="p-4 flex items-center gap-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                        onClick={() => setModal(true)}
+                      >
+                        <img
+                          src={userProfileImage || defaultProfileImg}
+                          className="w-14 h-14 rounded-xl object-cover border-2 border-gray-100"
+                          alt="Member"
+                        />
+                        <div className="flex-1">
+                          <p className="text-[#1A318C] font-bold text-lg">-</p>
+                          <p className="text-sm font-medium text-gray-700">MEMBER: -</p>
+                          <p className="text-xs text-gray-400">PRE-MEMBER: -</p>
+                        </div>
+                        <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+
+                      {/* Income Stats */}
+                      <div className="mx-4 bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl p-4 flex items-center justify-around">
+                        <div className="text-center">
+                          <p className="text-xl font-bold text-white tabular-nums">RS. 0</p>
+                          <p className="text-xs text-slate-400 font-medium">Income</p>
+                        </div>
+                        <div className="w-px h-10 bg-slate-600"></div>
+                        <div className="text-center">
+                          <p className="text-xl font-bold text-white tabular-nums">RS. 0</p>
+                          <p className="text-xs text-slate-400 font-medium">Credits</p>
+                        </div>
+                      </div>
+
+                      {/* Transaction History */}
+                      <div className="flex-1 p-4 overflow-y-auto">
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Recent Transactions</p>
+
+                        {/* Transaction Card */}
+                        <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-4">
+                          <div className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-400">yyyy-mm-dd</p>
+                            <p className="text-xs text-gray-400">Total Amount:</p>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg font-bold text-gray-500 tabular-nums">Rs. 0.00</span>
+                              <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded">CASH</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="p-4 pt-0 flex gap-3">
+                        <button className="flex-1 py-3 bg-gray-100 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-200 transition-colors">
+                          CLEAR
+                        </button>
+                        <button className="flex-1 py-3 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-200">
+                          SELECT
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
           </div>
