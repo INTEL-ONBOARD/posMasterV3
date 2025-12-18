@@ -1,5 +1,5 @@
 import React, { useEffect, useContext, useRef, useState } from 'react'
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, Users, Building2, Trash2, Plus, RefreshCw } from "lucide-react";
 import { supplierApi } from '../../api/localApi';
 import ToastContext from '../toasts/ToastService';
 
@@ -434,417 +434,404 @@ function SupplierReg() {
   };
 
   return (
-    <div className="flex bg-gray-300 w-full h-[calc(100vh-2rem)] relative">
+    <div className="flex bg-gray-50 w-full h-[calc(100vh-2rem)] relative">
 
       {formStatus === "form" ? (
-        <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2">
+        <div className="bg-gray-100 w-[28rem] h-[calc(100vh-2rem)] p-3 flex flex-col">
           {/* form section (left) */}
-          {/* overflow-y-scroll */}
-          <div className="flex flex-col h-[56rem] gap-3">
-            {/* top block set */}
-            <div>
-              {/* ▼ supplier description block ▼ */}
-              <div className="bg-white">
-                <button
-                  onClick={() => setOpenSupplier(!openSupplier)}
-                  className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
-                >
-                  <span className="text-gray-400">SUPPLIER DESCRIPTION</span>
-                  {openSupplier ? <ChevronUp /> : <ChevronDown />}
-                </button>
-                {openSupplier && (
-                  <div className="px-4 bg-white pb-5">
-                    {/* detailed description block */}
-                    <div className="">
+          <div className="flex flex-col flex-1 gap-3 overflow-y-auto">
+            {/* ▼ supplier description block ▼ */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <button
+                onClick={() => setOpenSupplier(!openSupplier)}
+                className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-[#1A318C]/10 flex items-center justify-center">
+                    <Building2 className="w-4 h-4 text-[#1A318C]" />
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Supplier Details</span>
+                </div>
+                {openSupplier ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+              </button>
+              {openSupplier && (
+                <div className="px-4 pb-4 border-t border-gray-100">
+                  <div className="space-y-4 pt-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Supplier Name
+                      </label>
+                      <input
+                        type="text"
+                        name="supplier_name"
+                        value={formData.supplier_name}
+                        onChange={handleInputChange}
+                        placeholder="Enter supplier name"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Supplier Type
+                      </label>
+                      <select
+                        name="type"
+                        value={formData.type}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                      >
+                        <option value="">Select type</option>
+                        <option value="company">Company</option>
+                        <option value="personal">Personal</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Address
+                      </label>
+                      <textarea
+                        name="supplier_address"
+                        value={formData.supplier_address}
+                        onChange={handleInputChange}
+                        placeholder="Enter address..."
+                        rows={2}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all resize-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                          Supplier
+                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                          Status
+                        </label>
+                        <select
+                          name="status"
+                          value={formData.status}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                        >
+                          <option value={true}>Available</option>
+                          <option value={false}>Unavailable</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                          Contact
                         </label>
                         <input
                           type="text"
-                          name="supplier_name"
-                          value={formData.supplier_name}
+                          name="contact"
+                          value={formData.contact}
                           onChange={handleInputChange}
-                          placeholder="Enter supplier name"
-                          className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Phone number"
+                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                         />
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                          Supplier Type
-                        </label>
-                        <select
-                          name="type"
-                          value={formData.type}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">-- select supplier --</option>
-                          <option value="company">Company</option>
-                          <option value="personal">Personal</option>
-                          {/* <option value="personal">cooperative</option>
-                        <option value="other">other</option> */}
-                        </select>
-                      </div>
-                      <div className='mt-1'>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                          Address
-                        </label>
-                        <textarea
-                          name="supplier_address"
-                          value={formData.supplier_address}
-                          onChange={handleInputChange}
-                          placeholder="Enter details..."
-                          rows={3}
-                          className="w-full mt-2 px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
+                    </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-400 mb-1">
-                            Status
-                          </label>
-                          <select
-                            name="status"
-                            value={formData.status}
-                            onChange={handleInputChange}
-                            className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            {/* <option value={true}>-- select status --</option> */}
-                            <option value={true}>Available</option>
-                            <option value={false}>Unavailable</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-400 mb-1">
-                            Contact
-                          </label>
-                          <input
-                            type="text"
-                            name="contact"
-                            value={formData.contact}
-                            onChange={handleInputChange}
-                            placeholder=""
-                            className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="mt-1 grid grid-cols-2 gap-4">
-                        {/* <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Current Amount (Rs.)
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Previous Amount (Rs.)
                       </label>
                       <input
                         type="number"
-                        name="current_amount"
-                        value={formData.current_amount}
+                        name="previous_amount"
+                        value={formData.previous_amount}
                         onChange={handleInputChange}
-                        placeholder=""
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       />
-                    </div> */}
+                    </div>
 
-                        <div>
-                          <label className="block text-sm font-medium text-gray-400 mb-1">
-                            Previous Amount (Rs.)
-                          </label>
-                          <input
-                            type="number"
-                            name="previous_amount"
-                            value={formData.previous_amount}
-                            onChange={handleInputChange}
-                            placeholder=""
-                            className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
+                    {/* Payment Info Section */}
+                    <div className="pt-2 border-t border-gray-100">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Payment Information</p>
+
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                              Bank
+                            </label>
+                            <input
+                              type="text"
+                              name="account_related_bank"
+                              value={formData.account_related_bank}
+                              onChange={handleInputChange}
+                              placeholder="Bank name"
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                              Account No
+                            </label>
+                            <input
+                              type="text"
+                              name="account_number"
+                              value={formData.account_number}
+                              onChange={handleInputChange}
+                              placeholder="Account number"
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                              Branch
+                            </label>
+                            <input
+                              type="text"
+                              name="account_related_branch"
+                              value={formData.account_related_branch}
+                              onChange={handleInputChange}
+                              placeholder="Branch name"
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                              Acc. Nickname
+                            </label>
+                            <input
+                              type="text"
+                              name="account_nickName"
+                              value={formData.account_nickName}
+                              onChange={handleInputChange}
+                              placeholder="Nickname"
+                              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                            />
+                          </div>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-400 mb-1">
-                            Payment Bank
-                          </label>
-                          <input
-                            type="text"
-                            name="account_related_bank"
-                            value={formData.account_related_bank}
-                            onChange={handleInputChange}
-                            placeholder=""
-                            className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-400 mb-1">
-                            Bank Account No
-                          </label>
-                          <input
-                            type="text"
-                            name="account_number"
-                            value={formData.account_number}
-                            onChange={handleInputChange}
-                            placeholder=""
-                            className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-400 mb-1">
-                            Payment Branch
-                          </label>
-                          <input
-                            type="text"
-                            name="account_related_branch"
-                            value={formData.account_related_branch}
-                            onChange={handleInputChange}
-                            placeholder=""
-                            className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-400 mb-1">
-                            Acc Nick Name
-                          </label>
-                          <input
-                            type="text"
-                            name="account_nickName"
-                            value={formData.account_nickName}
-                            onChange={handleInputChange}
-                            placeholder=""
-                            className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-
           </div>
 
           {/* Bottom button set */}
-          <div className="flex flex-row w-full gap-2">
+          <div className="flex flex-row w-full gap-2 pt-3">
             <button
               onClick={() => {
                 clearUserInput();
-                //switch from update supplier button to add supplier button
                 deleteSupplier();
                 setUserEditing(false)
               }}
-              className="flex-1 min-w-0 h-10 px-3 py-2 border bg-[#D01710] border-gray-300 text-white hover:bg-red-700 transition-colors text-sm"
+              className="flex items-center justify-center flex-1 min-w-0 h-11 px-3 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-200 text-sm font-medium shadow-md shadow-red-200"
             >
+              <Trash2 className="w-4 h-4 mr-1.5" />
               <span className="truncate">Delete</span>
             </button>
             <button
               onClick={() => {
                 clearUserInput();
-                //switch from update supplier button to add supplier button
-                //deleteSupplier();
                 setUserEditing(false)
               }}
-              className="flex-1 min-w-0 h-10 px-3 py-2 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors text-sm"
+              className="flex-1 min-w-0 h-11 px-3 py-2 bg-white border-2 border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 text-sm font-medium"
             >
               <span className="truncate">Cancel</span>
             </button>
-            {/* switch between update and add button functions based on item card selection and clear form button click */}
             <button
               onClick={isUserEditting ? updateSupplier : registerSupplier}
-              className="flex-1 min-w-0 h-10 px-3 py-2 bg-blue-600 text-white hover:bg-[#1A318C] transition-colors text-sm"
+              className="flex items-center justify-center flex-[1.5] min-w-0 h-11 px-4 py-2 bg-[#1A318C] text-white rounded-xl hover:bg-[#152870] transition-all duration-200 text-sm font-semibold shadow-md shadow-blue-900/20"
             >
-              <span className="truncate">{isUserEditting ? 'Update Supplier' : 'Add Supplier'}</span>
+              {isUserEditting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-1.5" />
+                  <span>Update</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  <span>Add</span>
+                </>
+              )}
             </button>
-
           </div>
         </div>
       ) : formStatus === "loading" ? (
-        // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
-        // <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] overflow-y-scroll">
-        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 z-10 flex flex-col justify-around">
-          <div className="flex flex-col items-center justify-center">
-            <div className="animate-spin mb-3 rounded-full border-4 border-gray-300 border-t-[#1A318C] h-12 w-12"></div>
-            <h2>Please wait…</h2>
+        <div className="bg-gray-100 w-[28rem] h-[calc(100vh-2rem)] p-3 flex flex-col items-center justify-center">
+          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col items-center">
+            <div className="animate-spin mb-4 rounded-full border-4 border-gray-200 border-t-[#1A318C] h-14 w-14"></div>
+            <h2 className="text-lg font-semibold text-gray-800">Processing...</h2>
+            <p className="text-sm text-gray-500 mt-1">Please wait</p>
           </div>
         </div>
       ) : formStatus === "success" ? (
-        // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
-        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 z-10 flex flex-col justify-around">
-          <div className="flex flex-col items-center justify-center">
-            <svg width={80} height={80} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* green circle */}
-              <circle cx="12" cy="12" r="10" fill="#22C55E" />
-              {/* white check */}
-              <path d="M7 12l3 3 7-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            <h2 className="font-semibold text-xl">Success!</h2>
+        <div className="bg-gray-100 w-[28rem] h-[calc(100vh-2rem)] p-3 flex flex-col items-center justify-center">
+          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col items-center">
+            <div className="w-20 h-20 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-200 mb-4">
+              <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800">Success!</h2>
+            <p className="text-sm text-gray-500 mt-1">Supplier saved successfully</p>
           </div>
         </div>
       ) : (
-        /* if it's none of the above, we treat it as "fail" */
-        // <div className="w-1/3 h-[calc(100vh-7rem)] p-5 z-10 flex flex-col justify-around">
-        <div className="w-[calc(28rem)] h-[calc(100vh-2rem)] p-5 z-10 flex flex-col justify-around">
-          <div className="flex flex-col items-center justify-center">
-            <svg width={80} height={80} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* red circle */}
-              <circle cx="12" cy="12" r="10" fill="#EF4444" />
-              {/* white “X” */}
-              <path d="M15 9l-6 6M9 9l6 6" stroke="white" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-            <h2 className="font-semibold text-xl">Failed...</h2>
+        <div className="bg-gray-100 w-[28rem] h-[calc(100vh-2rem)] p-3 flex flex-col items-center justify-center">
+          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col items-center">
+            <div className="w-20 h-20 rounded-2xl bg-red-500 flex items-center justify-center shadow-lg shadow-red-200 mb-4">
+              <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800">Failed</h2>
+            <p className="text-sm text-gray-500 mt-1">Please try again</p>
           </div>
         </div>
       )}
 
 
       {/* table section (right) */}
-      <div className="bg-white w-[calc(77rem)] h-[calc(100vh-2rem)]">
+      <div className="flex-1 h-[calc(100vh-2rem)] flex flex-col">
         {/* search bar with dropdowns */}
-        <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4 ">
-          <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
-            <input
-              type="text"
-              value={search}
-              onChange={handleSearch}
-              placeholder="Search supplier name here"
-              className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
-            />
-            <button
-              // onClick={handleSearch}
-              className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
-            >
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
+        <nav className="bg-white border-b border-gray-100 shadow-sm">
+          <div className="px-6 py-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={handleSearch}
+                  placeholder="Search suppliers by name..."
+                  className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                />
+              </div>
+              <select
+                value={searchCategory}
+                onChange={(e) => setSearchCategory(e.target.value)}
+                className="h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer min-w-[180px]"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
-              </svg>
-              Search
-            </button>
+                <option value="All">All Types</option>
+                <option value="company">Company</option>
+                <option value="personal">Personal</option>
+              </select>
+              <button className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                Search
+              </button>
+            </div>
+            {/* Results count */}
+            <div className="mt-3 flex items-center gap-3">
+              <p className="text-sm text-gray-500">
+                Showing <span className="font-semibold text-gray-800">{filteredSuppliers.length}</span> suppliers
+              </p>
+              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-[#1A318C]/10 rounded-lg text-xs font-semibold text-[#1A318C]">
+                <Users className="w-3.5 h-3.5" />
+                {supplierList.length} Total
+              </span>
+            </div>
           </div>
-
-
-          <select
-            value={searchCategory}
-            onChange={(e) => setSearchCategory(e.target.value)}
-            className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
-          >
-            <option value="All">All Supplier Types</option>
-            <option value="company">Company</option>
-            <option value="personal">Personal</option>
-          </select>
-          <select
-            // value={viewMode}
-            // onChange={(e) => setViewMode(e.target.value)}
-            disabled={true}
-            className="w-80 h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
-          >
-            <option value="grid">Sort by</option>
-            <option value="grid">Name</option>
-            <option value="list">Current Amount</option>
-          </select>
         </nav>
-        {/* table */}
-        <div className="overflow-x-auto h-[28rem] p-2 lg:p-4">
-          <table className="w-full min-w-[500px] table-auto">
-            <thead className="bg-gray-700 text-[#848484]">
-              <tr>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">#</th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Name</th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Status</th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Contact</th>
-                {/* <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">Due Amount</th> */}
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm"></th>
-              </tr>
-            </thead>
 
-            <tbody className="bg-white">
+        {/* Modern table */}
+        <div className="flex-1 overflow-auto p-6">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            {/* Table Header */}
+            <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-3">
+              <div className="grid grid-cols-12 gap-4 text-xs font-medium text-slate-300 uppercase tracking-wider">
+                <div className="col-span-1">#</div>
+                <div className="col-span-4">Supplier Name</div>
+                <div className="col-span-2">Type</div>
+                <div className="col-span-2">Status</div>
+                <div className="col-span-2">Contact</div>
+                <div className="col-span-1"></div>
+              </div>
+            </div>
+
+            {/* Table Body */}
+            <div className="divide-y divide-gray-100">
               {isLoading ? (
-                // single row that spans all columns and centers the spinner vertically/horizontally
-                <tr>
-                  <td colSpan={7}>
-                    <div className="h-[22rem] w-full flex items-center justify-center">
-                      <div className="flex flex-col items-center">
-                        <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12"></div>
-                        <span className="mt-3 text-gray-700 text-lg">Loading table...</span>
+                <div className="flex flex-col items-center justify-center py-20">
+                  <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
+                  <p className="text-gray-500">Loading suppliers...</p>
+                </div>
+              ) : searchLoading ? (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
+                  <span className="text-gray-500">Searching...</span>
+                </div>
+              ) : filteredSuppliers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                    <Users className="w-10 h-10 text-gray-300" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800">No suppliers found</h3>
+                  <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
+                </div>
+              ) : (
+                filteredSuppliers.map((supplier, index) => (
+                  <div
+                    key={supplier.id}
+                    onClick={() => loadSupplier(supplier)}
+                    className={`grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
+                      formData.id === supplier.id ? "bg-[#1A318C]/5 border-l-4 border-l-[#1A318C]" : ""
+                    }`}
+                  >
+                    <div className="col-span-1 text-sm text-gray-400 font-medium">{index + 1}</div>
+                    <div className="col-span-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1A318C] to-[#152870] flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">
+                            {supplier.basic_info.supplier_name?.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="font-semibold text-gray-800">{supplier.basic_info.supplier_name}</span>
                       </div>
                     </div>
-                  </td>
-                </tr>
-              ) : searchLoading ? (
-                <tr>
-                  <td colSpan={7}>
-                    <div className="h-[22rem] w-full flex flex-col items-center justify-center">
-                      <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
-                      <span className="text-gray-700 text-xl mt-1">Please wait...</span>
+                    <div className="col-span-2">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${
+                        supplier.basic_info.type === 'company'
+                          ? 'bg-blue-50 text-blue-600'
+                          : 'bg-purple-50 text-purple-600'
+                      }`}>
+                        {supplier.basic_info.type === 'company' ? (
+                          <Building2 className="w-3 h-3 mr-1" />
+                        ) : (
+                          <Users className="w-3 h-3 mr-1" />
+                        )}
+                        {supplier.basic_info.type || 'N/A'}
+                      </span>
                     </div>
-                  </td>
-                </tr>
-              ) : filteredSuppliers.length === 0 ? (
-                <tr>
-                  <td colSpan={7}>
-                    <div className="h-[18rem] w-full flex items-center justify-center">
-                      <span className="text-gray-500 text-lg">No suppliers found!</span>
+                    <div className="col-span-2">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                        supplier.basic_info.status
+                          ? 'bg-emerald-50 text-emerald-600'
+                          : 'bg-red-50 text-red-600'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${supplier.basic_info.status ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                        {supplier.basic_info.status ? "Active" : "Inactive"}
+                      </span>
                     </div>
-                  </td>
-                </tr>
-              ) : (
-                // actual data rows
-                filteredSuppliers.map((supplier, index) => (
-                  <tr
-                    key={supplier.id}
-                    className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => loadSupplier(supplier)}
-                  >
-                    <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">{index + 1}</td>
-                    <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                      {supplier.basic_info.supplier_name}
-                    </td>
-                    <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                      {supplier.basic_info.status ? "Available" : "Unavailable"}
-                    </td>
-                    <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                      {supplier.basic_info.contact}
-                    </td>
-                    {/* <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-              {(supplier.financial_info.previous_amount - supplier.financial_info.current_amount).toFixed(2)}
-            </td> */}
-                    <td className="px-2 lg:px-4 py-2 lg:py-3">
+                    <div className="col-span-2 text-sm text-gray-600 font-mono">{supplier.basic_info.contact}</div>
+                    <div className="col-span-1 flex justify-end">
                       <button
                         type="button"
-                        aria-label="Close notification"
-                        className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-100 hover:text-red-500 flex items-center justify-center text-gray-400 transition-all"
                       >
-                        <svg
-                          className="w-4 h-4 text-white"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                        >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <line x1="18" y1="6" x2="6" y2="18" />
                           <line x1="6" y1="6" x2="18" y2="18" />
                         </svg>
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
-
-
-
       </div>
     </div>
   )
