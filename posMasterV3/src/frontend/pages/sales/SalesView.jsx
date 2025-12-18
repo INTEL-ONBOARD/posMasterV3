@@ -4,7 +4,6 @@ import { apiClient } from "../../api/client";
 import {ChevronDown, ChevronUp } from "lucide-react";
 import ToastContext from "../toasts/ToastService.jsx";
 
-import { pdf } from '@react-pdf/renderer';
 //image imports
 import barcodeImg from "../../assets/barcode.png";
 import AddRegitemsImg from "../../assets/add_reg_items.png";
@@ -17,6 +16,8 @@ import { transformStockData } from "../../util/common/blockConverter.jsx";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import BillContent from "./layout/BillContent.jsx"; // Import the separate off-screen component for bill printing 
+import BackIcon from "../../assets/back-icon/back_icon.jsx";
+import MemEvaluationModal from "./modals/MemEvaluation.jsx";
 
 export default function SalesView({ isActive }) {
 
@@ -24,8 +25,14 @@ export default function SalesView({ isActive }) {
   const toast = useContext(ToastContext);
   const [openItemFormBlock, setopenItemFormBlock] = useState('item'); //item || stock || supplier || 
   const [openStockFormBlock, setopenStockFormBlock] = useState('stock'); //item || stock || supplier || 
+
+  const [selectedMember, setSelectedMember] = useState(''); //item || stock || supplier || 
+  // modal state: { open: boolean, type: 'success' | 'failed' | null }
+  const [modal, setModal] = useState(true);
+  const closeModal = () => setModal(false);
+
   //left section controls
-    const [formDataRegItem, setFormDataRegItem] = useState({
+  const [formDataRegItem, setFormDataRegItem] = useState({
 
       sku: "",
 
@@ -1037,7 +1044,7 @@ const filteredItems = inventoryItems.filter((item) => {
                   </div>
                 </div>
 
-                {/* transaction details */}
+                {/* selected item list */}
                 <div className="overflow-x-auto h-full p-2 lg:p-4">
                   <table className="w-full min-w-[500px]">
                     <thead className="bg-gray-700 text-white">
@@ -1325,7 +1332,11 @@ const filteredItems = inventoryItems.filter((item) => {
                         Search
                       </button>
                     </div>
-                    <div className="flex flex-row items-center justify-center">
+                    <div className="flex flex-row items-center justify-center"
+                      onClick={
+                        () =>{setModal(true)}
+                      }
+                    >
                         {/* member details */}
                       <div className="flex gap-10">
                         <img src={profileImg} className="w-12 h-12 bg-gray-300 rounded-full" />
@@ -1398,25 +1409,14 @@ const filteredItems = inventoryItems.filter((item) => {
 
           </div>
 
+          <MemEvaluationModal
+            isOpen={modal}
+            closeModal={closeModal}
+            memeber={selectedMember}
+          />
 
     </div>
   );
 }
 
-// icon used for all back buttons
-const BackIcon = () => (
-  <svg
-    className="w-4 h-4 text-black"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M15 19l-7-7 7-7"
-    />
-  </svg>
-);
+
