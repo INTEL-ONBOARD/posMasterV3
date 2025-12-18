@@ -599,7 +599,7 @@ function ManageRole() {
               </button>
               {(openPermissions && !openRoleInfo) && (
                 <div className="px-4 bg-white pb-5">
-                  <div className="space-y-4 max-h-[20rem] overflow-y-auto">
+                  <div className="space-y-4 max-h-[30rem] overflow-y-auto">
                     {Object.entries(permissions).map(([category, perms]) => {
                       const allEnabled = Object.values(perms).every(v => v);
                       return (
