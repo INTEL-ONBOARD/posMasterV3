@@ -90,37 +90,42 @@ function SalesSidebar({
   ].filter(item => hasPermission(item.permissionKey));
 
   return (
-    //z index set to 20 to show popupups and status messages without overshadwoing popup
-    <aside className="bg-[#F3F3F3] border-r z-20 border-gray-200 h-screen">
-      <div className="flex flex-col">
+    <aside className="bg-white border-r z-20 border-gray-100 h-screen shadow-sm">
+      <div className="flex flex-col py-2">
         {sidebarItems.map((item) => {
           const isActive = activeSection === item.id;
           return (
-            <button
-              key={item.id}
-              onClick={item.onClick}
-              className={`w-28 h-28 flex flex-col border border-gray-100 items-center justify-center p-4 transition-all duration-200 ${isActive
-                  ? 'border-blue-500 bg-[#EBEBEB] relative'
-                  : 'bg-[#FAFAFA] border-gray-200 hover:border-gray-300'
+            <div key={item.id} className="relative group px-2 py-1">
+              <button
+                onClick={item.onClick}
+                className={`relative w-24 h-24 flex flex-col items-center justify-center rounded-xl transition-all duration-300 ${
+                  isActive
+                    ? "bg-gradient-to-br from-[#1A318C] to-[#152870] shadow-lg shadow-blue-900/20"
+                    : "bg-gray-50 hover:bg-gray-100 hover:shadow-md"
                 }`}
-            >
-              {/* Image and arrow */}
-              <div className="relative flex flex-col items-center mb-2">
-                <img src={item.icon} alt={item.label} className="w-12 h-12 object-contain" />
-                {/* Arrow absolutely positioned to the right of the image, vertically centered */}
-                {/* {isActive && (
-                  <span className="absolute right-[-40px] top-1/2 -translate-y-1/2">
-                    <svg className="w-8 h-8 text-black" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </span>
-                )} */}
-              </div>
-              {/* Label below image */}
-              {/* <span className={`text-sm font-medium text-center mt-1 ${isActive ? 'text-black' : 'text-gray-700'}`}>
+              >
+                {/* Active indicator line */}
+                {isActive && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-white rounded-r-full" />
+                )}
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-1 transition-transform duration-300 ${
+                  isActive ? "bg-white/20" : "bg-white shadow-sm"
+                } ${!isActive && "group-hover:scale-105"}`}>
+                  <img
+                    src={item.icon}
+                    alt={item.label}
+                    className={`w-8 h-8 object-contain pointer-events-none transition-all duration-300 ${
+                      isActive ? "brightness-0 invert" : ""
+                    }`}
+                  />
+                </div>
+              </button>
+              {/* Tooltip */}
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-2 bg-slate-800 text-white text-xs font-medium rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg">
                 {item.label}
-              </span> */}
-            </button>
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800 rotate-45" />
+              </div>
+            </div>
           );
         })}
       </div>
