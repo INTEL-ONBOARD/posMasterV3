@@ -324,5 +324,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
             ipcRenderer.invoke("settings:update-app-setting", { key, value }),
         resetAppSettings: () =>
             ipcRenderer.invoke("settings:reset-app-settings")
+    },
+
+    // ============================================
+    // CLOUD SYNC API
+    // ============================================
+
+    cloudSync: {
+        getStatus: () =>
+            ipcRenderer.invoke("cloudSync:getStatus"),
+        syncNow: () =>
+            ipcRenderer.invoke("cloudSync:syncNow"),
+        setAutoSync: (enabled) =>
+            ipcRenderer.invoke("cloudSync:setAutoSync", enabled),
+        checkNetwork: () =>
+            ipcRenderer.invoke("cloudSync:checkNetwork")
     }
 });

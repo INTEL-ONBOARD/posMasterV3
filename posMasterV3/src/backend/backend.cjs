@@ -34,6 +34,7 @@ const { runMigrations, getStatus } = require('./database/migrator.cjs');
 const { runSeeders } = require('./database/seeder.cjs');
 const { registerAllHandlers, unregisterAllHandlers } = require('./controllers/index.cjs');
 const { getSessionRepository } = require('./repositories/index.cjs');
+const { initializeCloudSync, getCloudSyncService } = require('./services/CloudSyncService.cjs');
 
 let isInitialized = false;
 
@@ -79,6 +80,12 @@ function initializeBackend(configPath) {
         console.log('[Backend] Step 5: Starting maintenance tasks...');
         startMaintenanceTasks();
 
+        // Step 6: Initialize cloud sync service
+        console.log('[Backend] Step 6: Initializing cloud sync service...');
+        initializeCloudSync().catch(err => {
+            console.error('[Backend] Cloud sync initialization error:', err.message);
+        });
+
         isInitialized = true;
 
         console.log('[Backend] ✓ Backend initialized successfully');
@@ -102,12 +109,20 @@ function initializeBackend(configPath) {
 /**
  * Shutdown the backend
  */
-function shutdownBackend() {
+async function shutdownBackend() {
     console.log('[Backend] Shutting down...');
 
     try {
         // Stop maintenance tasks
         stopMaintenanceTasks();
+
+        // Cleanup cloud sync service
+        try {
+            const cloudSyncService = getCloudSyncService();
+            await cloudSyncService.cleanup();
+        } catch (err) {
+            console.error('[Backend] Cloud sync cleanup error:', err.message);
+        }
 
         // Unregister IPC handlers
         unregisterAllHandlers();
