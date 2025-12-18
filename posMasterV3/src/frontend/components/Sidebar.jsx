@@ -58,7 +58,7 @@ function Sidebar() {
           }
         }
       } catch (error) {
-        console.error("[Sidebar] Error loading permissions:", error);
+        // Silent fail - permissions will default to showing all
       }
     };
 
@@ -92,17 +92,13 @@ function Sidebar() {
 
   // Logout function
   const handleLogout = async () => {
-    console.log("Logout initiated");
     if (isLoggingOut) return;
-    console.log("Logout process started");
     setIsLoggingOut(true);
 
     try {
-      // Use local auth logout
       await localAuth.logout();
-      console.log("Logout successful");
     } catch (error) {
-      console.error("Error during logout:", error.message);
+      // Silent fail - still navigate to login
     } finally {
       setIsLoggingOut(false);
       navigate("/");

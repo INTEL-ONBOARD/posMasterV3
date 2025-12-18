@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { supplierApi, userApi, itemApi, categoryApi } from "../../api/localApi";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import AddRegitemsImg from "../../assets/add_reg_items.png";
+import { useStatusLog } from "../../services/StatusLogService.jsx";
 
 import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import ReturnItemsImg from "../../assets/return_items.png";
@@ -19,6 +20,7 @@ import { validateReturnForm, validateStockForm } from "../../util/inventory/vali
 import StatusModal from "./modals/StatusModal";
 
 function InventoryRestock({ isActive }) {
+  const statusLog = useStatusLog();
 
   // success/fail modal state: { open: boolean, type: 'success' | 'failed' | null }
   const [modal, setModal] = useState({ open: false, type: null, description: "" });
@@ -78,14 +80,15 @@ function InventoryRestock({ isActive }) {
   // registered item list
   const [inventoryItems, setInventoryItems] = useState([]);
   const fetchItems = async () => {
-    console.log("item list repopulated");
+    statusLog.database("Loading restock items...", true);
     try {
       const response = await itemApi.getAllExtended();
       if (response.status === "success") {
         setInventoryItems(response.data || []);
+        statusLog.success(`Restock: Loaded ${response.data?.length || 0} items`);
       }
     } catch (error) {
-      console.error("Error fetching items:", error);
+      statusLog.error("Failed to load restock items");
     } finally {
       setIsLoading(false);
     }
@@ -911,6 +914,7 @@ function InventoryRestock({ isActive }) {
 
 
   const registerTransaction = async (e) => {
+    statusLog.database("Processing restock transaction...", true);
 
     //create reg item list for req data
     // Function to transform selected items to the required format
@@ -918,14 +922,13 @@ function InventoryRestock({ isActive }) {
       return selectedStockItemList.map(item => ({
         sku: item.sku,
         qty: item.quantity,
-        //stock price is deducted with the discount upon the request sendint 
+        //stock price is deducted with the discount upon the request sendint
         stock_price: item.stock_price-item.item_discount_amt,
         retail_price: item.retail_price,
         exp_date: item.expired_datetime,
         batch_code: item.batch_code
       }));
     };
-    console.log(selectedReturnItemList);
     //create ret item list for ret data
     const transformToReturnedItems = () => {
       return selectedReturnItemList.map(item => ({
@@ -957,7 +960,6 @@ function InventoryRestock({ isActive }) {
         added_items: transformToAddedItems(), //contatins a list
         return_items: transformToReturnedItems() //contains a list
       };
-      console.log(requestData);
       const response = await apiClient.post("api/restocks", requestData);
 
       if (response.data.status === "success") {
@@ -965,15 +967,14 @@ function InventoryRestock({ isActive }) {
         setInvoiceGenerate(invoiceGenerate + 1);
 
         setModal({ open: true, type: 'success' });
-        console.log(response.data.data.message);
+        statusLog.success("Restock transaction completed successfully");
       } else {
         setModal({ open: true, type: 'failed' });
-        console.log(response.data.data.message);
+        statusLog.error("Restock transaction failed");
       }
     } catch (err) {
-      //console.log(response.data.data.message);
-      console.error("Create item error:", err);
       setModal({ open: true, type: 'failed' });
+      statusLog.error("Restock transaction error");
     }
     finally {
       //repopulate items

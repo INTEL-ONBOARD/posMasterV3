@@ -859,13 +859,16 @@ class CloudSyncService {
                     logout_reason VARCHAR(50),
                     device_info TEXT,
                     ip_address VARCHAR(255),
+                    branch_id INT DEFAULT NULL,
+                    branch_name VARCHAR(255) DEFAULT NULL,
                     status VARCHAR(50) DEFAULT 'active',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
                     INDEX idx_user_id (user_id),
                     INDEX idx_login_at (login_at),
                     INDEX idx_status (status),
-                    INDEX idx_session_id (session_id)
+                    INDEX idx_session_id (session_id),
+                    INDEX idx_branch_id (branch_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `
         };
@@ -895,6 +898,20 @@ class CloudSyncService {
                 column: 'branch_id',
                 definition: 'VARCHAR(255) DEFAULT NULL',
                 after: 'roles'
+            },
+            // Add branch_id to login_history table if missing
+            {
+                table: 'login_history',
+                column: 'branch_id',
+                definition: 'INT DEFAULT NULL',
+                after: 'ip_address'
+            },
+            // Add branch_name to login_history table if missing
+            {
+                table: 'login_history',
+                column: 'branch_name',
+                definition: 'VARCHAR(255) DEFAULT NULL',
+                after: 'branch_id'
             }
         ];
 

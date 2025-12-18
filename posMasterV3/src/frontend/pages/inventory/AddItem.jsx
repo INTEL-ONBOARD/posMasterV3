@@ -6,6 +6,7 @@ import AddItemCard from "../../components/AddItemCard.jsx";
 import ConfirmDeleteModal from "../../components/ConfirmDeleteModal.jsx";
 import barcodeImg from "../../assets/barcode.png";
 import ToastContext from "../toasts/ToastService.jsx";
+import { useStatusLog } from "../../services/StatusLogService.jsx";
 
 import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './layout/BarcodeBulk.jsx';
@@ -15,6 +16,7 @@ import registerItemService from "../../api/services/inventory/registerItemServic
 
 function AddItem({ isActive }) {
   const toast = useContext(ToastContext);
+  const statusLog = useStatusLog();
 
   // Fetch UOMs from API
   // Reset form when section becomes active
@@ -250,6 +252,7 @@ function AddItem({ isActive }) {
 
   const registerItem = async (e) => {
     setFormStatus("loading");
+    statusLog.database("Registering new item...", true);
     e.preventDefault();
     try {
       const selectedCategory = itemCategories.find(c =>
@@ -269,17 +272,13 @@ function AddItem({ isActive }) {
         availability: formData.availability,
         stock_trace: [101] // Fixed value
       };
-      console.log("create inventory request");
-      console.log(requestData);
       //const response = await apiClient.post("api/itemRegistry/add", requestData);
       const response = await registerItemService.registerItem(requestData);
-      console.log(response);
       if (response.status === "success") {
         // Add new item to local state
-        //alert("Item created successfully!");
-        //toast.open("Item created successfully", 4000, 'Success', 'success');
         //clear data upon successful response
         setFormStatus("success");
+        statusLog.success(`Item "${formData.item_name}" registered successfully`);
         // after 4 seconds, flip back to the form
         timerRef.current = window.setTimeout(() => {
           setFormStatus("form");
@@ -287,9 +286,8 @@ function AddItem({ isActive }) {
         }, 4000);
         clearUserInput();
       } else {
-        //alert(response.data.message || "Failed to create item");
-        //toast.open("Create item request failed, please try again", 4000, 'Request Failed', 'error');
         setFormStatus("fail");
+        statusLog.error("Failed to register item");
         // after 4 seconds, flip back to the form
         timerRef.current = window.setTimeout(() => {
           setFormStatus("form");
@@ -297,9 +295,8 @@ function AddItem({ isActive }) {
         }, 4000);
       }
     } catch (err) {
-      console.error("Create item error:", err);
-      //alert("Error creating item"+err.message);
       setFormStatus("fail");
+      statusLog.error("Item registration failed");
         // after 4 seconds, flip back to the form
         timerRef.current = window.setTimeout(() => {
           setFormStatus("form");
@@ -316,6 +313,7 @@ function AddItem({ isActive }) {
 
   const updateItem = async (e) => {
     setFormStatus("loading");
+    statusLog.database("Updating item...", true);
     e.preventDefault();
     try {
       const selectedCategory = itemCategories.find(c =>
@@ -337,10 +335,10 @@ function AddItem({ isActive }) {
 
       //const response = await apiClient.put(`api/itemRegistry/${formData.id}`, requestData);
       const response =registerItemService.updateItem(formData.id, requestData);
-      
+
       if (response.status === "success") {
-        //alert("Item created successfully!");
         setFormStatus("success");
+        statusLog.success(`Item "${formData.item_name}" updated successfully`);
         // after 4 seconds, flip back to the form
         timerRef.current = window.setTimeout(() => {
           setFormStatus("form");
@@ -352,23 +350,22 @@ function AddItem({ isActive }) {
         setUserEditing(false);
       } else {
         setFormStatus("fail");
+        statusLog.error("Failed to update item");
         // after 4 seconds, flip back to the form
         timerRef.current = window.setTimeout(() => {
           setFormStatus("form");
           timerRef.current = null;
         }, 4000);
-        //alert(response.data.message || "Failed to update item");
         toast.open("Failed to update the item, please try again", 4000, 'Request failed', 'error');
       }
     } catch (err) {
-      console.error("Update item error:", err);
       setFormStatus("fail");
+      statusLog.error("Item update failed");
       // after 4 seconds, flip back to the form
       timerRef.current = window.setTimeout(() => {
         setFormStatus("form");
         timerRef.current = null;
       }, 4000);
-      //alert("Error updating item");
       toast.open("Update item operation faild. Please try again", 4000, 'Item update Failed', 'error');
     }
     finally {

@@ -57,6 +57,8 @@ class LoginHistoryRepository extends BaseRepository {
      * @param {string} [data.full_name] - User's full name
      * @param {string} [data.device_info] - Device information
      * @param {string} [data.ip_address] - IP address
+     * @param {number} [data.branch_id] - Branch ID
+     * @param {string} [data.branch_name] - Branch name
      * @returns {Object} Created login history record
      */
     recordLogin(data) {
@@ -68,6 +70,8 @@ class LoginHistoryRepository extends BaseRepository {
             login_at: nowISO(),
             device_info: data.device_info || null,
             ip_address: data.ip_address || null,
+            branch_id: data.branch_id || null,
+            branch_name: data.branch_name || null,
             status: 'active',
             sync_status: 'pending'
         };

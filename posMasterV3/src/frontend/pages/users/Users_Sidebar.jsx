@@ -24,7 +24,7 @@ function UsersSidebar({
           }
         }
       } catch (error) {
-        console.error("[UsersSidebar] Error loading permissions:", error);
+        // Silent fail - permissions will default to showing all
       }
     };
     loadPermissions();

@@ -40,7 +40,7 @@ function InventorySidebar({
           }
         }
       } catch (error) {
-        console.error("[InventorySidebar] Error loading permissions:", error);
+        // Silent fail - permissions will default to showing all
       }
     };
     loadPermissions();

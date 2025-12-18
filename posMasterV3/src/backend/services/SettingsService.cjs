@@ -36,12 +36,6 @@ class SettingsService {
 
             // Get user settings
             let settings = this.userSettingsRepo.findByUserId(userId);
-            console.log('[SettingsService] Raw settings for user', userId, ':', settings);
-            console.log('[SettingsService] Profile image exists:', !!settings?.profile_image);
-            if (settings?.profile_image) {
-                console.log('[SettingsService] Profile image length:', settings.profile_image.length);
-                console.log('[SettingsService] Profile image starts with:', settings.profile_image.substring(0, 50));
-            }
 
             // Create default settings if none exist
             if (!settings) {
