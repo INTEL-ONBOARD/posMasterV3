@@ -4,7 +4,6 @@ import barcodeImg from "../../../assets/barcode.png";
 import placeholderImg from "../../../assets/card_placeholder_img.png";
 
 import { extractDateOnly, getCurrentDate } from "../../../util/common/date";
-import { apiClient } from "../../../api/client";
 
 function MemEvaluationModal({ isOpen, closeModal, member }) {
   if (!isOpen) return null;

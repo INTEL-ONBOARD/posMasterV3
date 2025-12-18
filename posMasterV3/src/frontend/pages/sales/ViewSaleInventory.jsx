@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import ItemCard from "../../components/ItemCard.jsx";
 import NotFoundImg from "../../assets/nonicons_not-found-16.png";
-import { apiClient } from "../../api/client.jsx";
+import { itemApi, categoryApi } from "../../api/localApi";
 import {ChevronDown, ChevronUp } from "lucide-react";
 
 function ViewSaleInventory({ isActive }) {
@@ -113,9 +113,9 @@ function ViewSaleInventory({ isActive }) {
 
   const fetchItems = async () => {
     try {
-      const response = await apiClient.get("api/items/extended");
-      if (response.data.status === "success") {
-            setInventoryItems(response.data.data);
+      const response = await itemApi.getAllExtended();
+      if (response.status === "success") {
+            setInventoryItems(response.data || []);
       }
       } catch (error) {
           console.error("Error fetching items:", error);
@@ -148,10 +148,10 @@ function ViewSaleInventory({ isActive }) {
       const fetchCategories = async () => {
         setIsSearching(true);
         try {
-          const response = await apiClient.get("api/categories");
-          if (response.data.status === "success") {
-            //setItemCategories(response.data.data);
-            const types = Array.from(new Set(response.data.data.map(c => c.type)));
+          const response = await categoryApi.getAll();
+          if (response.status === "success") {
+            //setItemCategories(response.data);
+            const types = Array.from(new Set((response.data || []).map(c => c.type)));
             setUniqueCategoryTypes(types);
           }
         } catch (error) {
@@ -161,7 +161,7 @@ function ViewSaleInventory({ isActive }) {
           setIsSearching(false);
         }
       };
-  
+
       fetchCategories();
     }, []);
     

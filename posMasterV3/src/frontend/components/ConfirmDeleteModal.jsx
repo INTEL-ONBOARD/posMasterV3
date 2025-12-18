@@ -1,6 +1,5 @@
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
-import { apiClient } from "../api/client";
 import ItemCard from "./ItemCard";
 import registerItemService from "../api/services/inventory/registerItemService";
 

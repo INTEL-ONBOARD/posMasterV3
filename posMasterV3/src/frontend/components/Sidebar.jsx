@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { apiClient } from "../api/client";
+import { localAuth } from "../api/services/localAuth";
 import Dashboard_inventory from "../assets/Dashboard_inventory.png";
 import Dashboard_logout from "../assets/Dashboard_logout.png";
 import Dashboard_settings from "../assets/Dashboard_settings.png";
@@ -46,36 +46,12 @@ function Sidebar() {
     setIsLoggingOut(true);
 
     try {
-      const storedUserInfo = localStorage.getItem('user');
-
-      if (storedUserInfo) {
-        const user = JSON.parse(storedUserInfo);
-
-        const logoutData = {
-          email: user.email,
-          user_id: user._id
-        };
-        const response = await apiClient.post('/api/users/logout', logoutData);
-
-        if (response.status === 200) {
-          console.log("Logout successful:", response.data);
-        } else {
-          console.error("Logout API call failed:", response.statusText);
-        }
-      }
+      // Use local auth logout
+      await localAuth.logout();
+      console.log("Logout successful");
     } catch (error) {
-      console.error("Error during logout:", error.response?.data || error.message);
+      console.error("Error during logout:", error.message);
     } finally {
-      localStorage.removeItem('userInfo');
-      localStorage.removeItem('token');
-      localStorage.removeItem('authToken');
-
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('auth') || key.startsWith('user')) {
-          localStorage.removeItem(key);
-        }
-      });
-
       setIsLoggingOut(false);
       navigate("/");
     }

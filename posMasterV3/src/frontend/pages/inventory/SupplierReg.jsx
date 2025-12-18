@@ -1,6 +1,6 @@
 import React, { useEffect, useContext, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { apiClient } from '../../api/client';
+import { supplierApi } from '../../api/localApi';
 import ToastContext from '../toasts/ToastService';
 
 function SupplierReg() {
@@ -38,9 +38,9 @@ function SupplierReg() {
   ]);
   const fetchSupplierList = async () => {
     try {
-      const response = await apiClient.get("api/suppliers");
-      if (response.data.status === "success") {
-        setSupplierList(response.data.data);
+      const response = await supplierApi.getAll();
+      if (response.status === "success") {
+        setSupplierList(response.data || []);
       }
     } catch (error) {
       console.error("Error fetching suppliers:", error);
@@ -266,9 +266,9 @@ function SupplierReg() {
         return; // Cancel API call
       }
       console.log(requestData);
-      const response = await apiClient.post("api/suppliers/add", requestData);
+      const response = await supplierApi.create(requestData);
 
-      if (response.data.status === "success") {
+      if (response.status === "success") {
         // Add new item to local state
         //alert("Item created successfully!");
         //toast.open("Item created successfully", 4000, 'Success', 'success');
@@ -346,9 +346,9 @@ function SupplierReg() {
 
       console.log("updating supplier: " + requestData);
       console.log(formData.id);
-      const response = await apiClient.put(`api/suppliers/${formData.id}`, requestData);
+      const response = await supplierApi.update(formData.id, requestData);
 
-      if (response.data.status === "success") {
+      if (response.status === "success") {
         // Add new item to local state
         //alert("Item created successfully!");
         //toast.open("Item created successfully", 4000, 'Success', 'success');
@@ -392,9 +392,9 @@ function SupplierReg() {
     setFormStatus("loading");
     try {
 
-      const response = await apiClient.delete(`api/suppliers/${formData.id}`);
+      const response = await supplierApi.delete(formData.id);
 
-      if (response.data.status === "success") {
+      if (response.status === "success") {
         // Add new item to local state
         //alert("Item created successfully!");
         //toast.open("Item created successfully", 4000, 'Success', 'success');
