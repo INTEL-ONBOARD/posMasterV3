@@ -32,7 +32,7 @@ function SalesSidebar({
           }
         }
       } catch (error) {
-        console.error("[SalesSidebar] Error loading permissions:", error);
+        // Silent fail - permissions will default to showing all
       }
     };
     loadPermissions();

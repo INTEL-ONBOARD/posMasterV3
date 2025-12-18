@@ -11,6 +11,7 @@
 const bcrypt = require('bcryptjs');
 const { getUserRepository, getSessionRepository, getSyncQueueRepository, getLoginHistoryRepository } = require('../repositories/index.cjs');
 const UserRepository = require('../repositories/UserRepository.cjs');
+const BranchRepository = require('../repositories/BranchRepository.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
 
 const SALT_ROUNDS = 10;
@@ -77,15 +78,29 @@ class AuthService {
                 // Update last login
                 this.userRepo.updateLastLogin(user.id);
 
-                // Record login history
+                // Record login history with branch info
                 try {
+                    // Get branch info if user has a branch_id
+                    let branchId = null;
+                    let branchName = null;
+
+                    if (user.branch_id) {
+                        const branch = BranchRepository.findById(user.branch_id);
+                        if (branch) {
+                            branchId = branch.id;
+                            branchName = branch.name;
+                        }
+                    }
+
                     this.loginHistoryRepo.recordLogin({
                         user_id: user.id,
                         session_id: session.id,
                         username: user.username,
                         full_name: user.full_name,
                         device_info: deviceInfo,
-                        ip_address: options.ipAddress || null
+                        ip_address: options.ipAddress || null,
+                        branch_id: branchId,
+                        branch_name: branchName
                     });
                 } catch (historyError) {
                     console.error('[AuthService] Failed to record login history:', historyError.message);
