@@ -58,11 +58,6 @@ function UserSettings() {
       user_manage: false,
       user_role_manage: false,
     },
-    ReportAccess: {
-      view_reports: false,
-      generate_reports: false,
-      export_reports: false,
-    },
   });
 
   const [profileImage, setProfileImage] = useState(null);
@@ -112,7 +107,6 @@ function UserSettings() {
               SaleAccess: settings.permissions.SaleAccess || prev.SaleAccess,
               InventoryAccess: settings.permissions.InventoryAccess || prev.InventoryAccess,
               UserAccess: settings.permissions.UserAccess || prev.UserAccess,
-              ReportAccess: settings.permissions.ReportAccess || prev.ReportAccess,
             }));
           }
 
@@ -269,11 +263,6 @@ function UserSettings() {
       UserAccess: {
         user_manage: false,
         user_role_manage: false,
-      },
-      ReportAccess: {
-        view_reports: false,
-        generate_reports: false,
-        export_reports: false,
       },
     });
 
