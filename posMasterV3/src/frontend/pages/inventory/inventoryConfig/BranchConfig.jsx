@@ -6,9 +6,9 @@ function BranchConfig() {
   const toast = useContext(ToastContext);
   const [branches, setBranches] = useState([]);
   const [formData, setFormData] = useState({
-    inventory_name: "",
-    inventory_location: "",
-    inventory_contact: ""
+    name: "",
+    address: "",
+    contact: ""
   });
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
@@ -30,9 +30,9 @@ function BranchConfig() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!formData.inventory_name.trim() ||
-      !formData.inventory_location.trim() ||
-      !formData.inventory_contact.trim()) {
+    if (!formData.name.trim() ||
+      !formData.address.trim() ||
+      !formData.contact.trim()) {
       setError("All fields are required");
       return;
     }
@@ -80,18 +80,18 @@ function BranchConfig() {
 
   const handleRowClick = (branch) => {
     setFormData({
-      inventory_name: branch.inventory_name,
-      inventory_location: branch.inventory_location,
-      inventory_contact: branch.inventory_contact
+      name: branch.name,
+      address: branch.address,
+      contact: branch.contact
     });
     setEditingId(branch.id);
   };
 
   const handleClear = () => {
     setFormData({
-      inventory_name: "",
-      inventory_location: "",
-      inventory_contact: ""
+      name: "",
+      address: "",
+      contact: ""
     });
     setEditingId(null);
     setError(null);
@@ -131,10 +131,10 @@ function BranchConfig() {
                 return;
               }
 
-              const filteredBranches = branches.filter(branch => 
-                branch.inventory_name.toLowerCase().includes(value.toLowerCase()) ||
-                branch.inventory_location.toLowerCase().includes(value.toLowerCase()) ||
-                branch.inventory_contact.toLowerCase().includes(value.toLowerCase()) ||
+              const filteredBranches = branches.filter(branch =>
+                (branch.name || '').toLowerCase().includes(value.toLowerCase()) ||
+                (branch.address || '').toLowerCase().includes(value.toLowerCase()) ||
+                (branch.contact || '').toLowerCase().includes(value.toLowerCase()) ||
                 branch.id.toString().includes(value)
               );
               setBranches(filteredBranches);
@@ -205,28 +205,28 @@ function BranchConfig() {
           <div className="flex gap-2">
             <input
               type="text"
-              name="inventory_name"
+              name="name"
               placeholder="Branch name"
               className="flex-1 border border-gray-300 px-4 py-2 bg-[#F8F8F8]"
-              value={formData.inventory_name}
+              value={formData.name}
               onChange={handleChange}
             />
             <input
               type="text"
-              name="inventory_location"
+              name="address"
               placeholder="Location"
               className="flex-1 border border-gray-300 px-4 py-2 bg-[#F8F8F8]"
-              value={formData.inventory_location}
+              value={formData.address}
               onChange={handleChange}
             />
           </div>
           <div className="flex gap-2">
             <input
               type="text"
-              name="inventory_contact"
+              name="contact"
               placeholder="Contact number"
               className="flex-1 border border-gray-300 px-4 py-2 bg-[#F8F8F8]"
-              value={formData.inventory_contact}
+              value={formData.contact}
               onChange={handleChange}
             />
             <button
@@ -275,9 +275,9 @@ function BranchConfig() {
                   onClick={() => handleRowClick(branch)}
                 >
                   <td className="px-4 py-2">{branch.id}</td>
-                  <td className="px-4 py-2">{branch.inventory_name}</td>
-                  <td className="px-4 py-2">{branch.inventory_location}</td>
-                  <td className="px-4 py-2">{branch.inventory_contact}</td>
+                  <td className="px-4 py-2">{branch.name}</td>
+                  <td className="px-4 py-2">{branch.address}</td>
+                  <td className="px-4 py-2">{branch.contact}</td>
                   <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                     <button
                       className="text-red-500 hover:text-red-700"
