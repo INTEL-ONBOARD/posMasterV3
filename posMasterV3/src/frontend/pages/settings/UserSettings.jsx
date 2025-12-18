@@ -54,15 +54,9 @@ function UserSettings() {
       inventory_configurations: false,
       inventory_reports: false,
     },
-    UserManagerAccess: {
-      create_user: false,
-      edit_user: false,
-      delete_user: false,
-    },
-    ReportAccess: {
-      view_reports: false,
-      generate_reports: false,
-      export_reports: false,
+    UserAccess: {
+      user_manage: false,
+      user_role_manage: false,
     },
   });
 
@@ -112,8 +106,7 @@ function UserSettings() {
             setPermissions(prev => ({
               SaleAccess: settings.permissions.SaleAccess || prev.SaleAccess,
               InventoryAccess: settings.permissions.InventoryAccess || prev.InventoryAccess,
-              UserManagerAccess: settings.permissions.UserManagerAccess || prev.UserManagerAccess,
-              ReportAccess: settings.permissions.ReportAccess || prev.ReportAccess,
+              UserAccess: settings.permissions.UserAccess || prev.UserAccess,
             }));
           }
 
@@ -153,7 +146,7 @@ function UserSettings() {
   // Helper to format permission keys for display
   const formatPermissionLabel = (key) => {
     return key
-      .replace(/^(sale_|inventory_)/, '')
+      .replace(/^(sale_|inventory_|user_)/, '')
       .replace(/_/g, ' ')
       .replace(/\b\w/g, c => c.toUpperCase());
   };
@@ -267,15 +260,9 @@ function UserSettings() {
         inventory_configurations: false,
         inventory_reports: false,
       },
-      UserManagerAccess: {
-        create_user: false,
-        edit_user: false,
-        delete_user: false,
-      },
-      ReportAccess: {
-        view_reports: false,
-        generate_reports: false,
-        export_reports: false,
+      UserAccess: {
+        user_manage: false,
+        user_role_manage: false,
       },
     });
 
