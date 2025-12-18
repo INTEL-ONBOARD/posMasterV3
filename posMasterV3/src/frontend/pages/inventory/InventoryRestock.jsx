@@ -1,11 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supplierApi, userApi, itemApi, categoryApi } from "../../api/localApi";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import AddRegitemsImg from "../../assets/add_reg_items.png";
+import { ChevronDown, ChevronUp, Package, Layers, Building2, RotateCcw, Search, ArrowLeft, Plus } from "lucide-react";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
-
-import NotFoundImg from "../../assets/nonicons_not-found-16.png";
-import ReturnItemsImg from "../../assets/return_items.png";
 import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
 import { generateUniqueString } from "../../util/common/generate";
@@ -985,37 +981,43 @@ function InventoryRestock({ isActive }) {
 
   return (
 
-    <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
+    <div className="flex bg-gray-50 w-full h-[calc(100vh-2rem)] relative">
       {/* form section (left) */}
-      <div className="bg-gray-300 w-[calc(28rem)] h-[calc(100vh-2rem)] p-2 z-10">
-        {/* 56 is the correct height */}
+      <div className="bg-gray-100 w-[calc(28rem)] h-[calc(100vh-2rem)] p-3 z-10">
         <div className="flex flex-col h-[46rem] gap-3">
           {/* ▼ item description block ▼ */}
-          <div className="border rounded bg-white">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <button
               onClick={() => setopenFormBlock('item')}
-              className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
             >
-              <span className="text-gray-400">ITEM DESCIRPTION</span>
-              {openFormBlock == 'item' ? <ChevronUp /> : <ChevronDown />}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                  <Package className="w-4 h-4 text-slate-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Item Description</span>
+              </div>
+              {openFormBlock == 'item' ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
             </button>
             {(openFormBlock == 'item') && (
-              <div className="mx-4">
-                <div className="flex flex-row px-4 items-center max-h-[12rem]">
-                  <div className="">
-                    <img src={barcodeImg} alt="Barcode" className="w-[100px] object-contain" />
-                    <p className="text-sm text-gray-800">SKU: {formDataRegItem.sku}</p>
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="flex flex-row items-center gap-4 pt-4">
+                  <div className="flex flex-col items-center">
+                    <div className="bg-slate-800 rounded-xl p-3">
+                      <img src={barcodeImg} alt="Barcode" className="w-20 object-contain brightness-0 invert opacity-70" />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2 font-mono">{formDataRegItem.sku || 'No SKU'}</p>
                   </div>
-                  {/* Vertical black line separator */}
-                  <div className="flex flex-col m-10">
-                    <div className="grid grid-cols-2 gap-x-1 gap-y-1">
-                      <p className="text-sm font-semibold text-gray-800">Name</p>
-                      <p className="text-sm text-gray-700">{formDataRegItem.item_name}</p>
-                      <p className="text-sm font-semibold text-gray-800">Category</p>
-                      {/* {console.log(formDataRegItem.category)} */}
-                      <p className="text-sm text-gray-700">{formDataRegItem?.category?.type}</p>
-                      {/* <p className="text-sm font-semibold text-gray-800">Current Qty</p> */}
-                      {/* <p className="text-sm text-gray-700">{formDataStock?.quantity}/{formDataRegItem?.maximum_capacity}({formDataRegItem?.uom?.symbol})</p> */}
+                  <div className="flex-1 bg-gray-50 rounded-lg p-3">
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-xs text-gray-400 uppercase tracking-wide">Name</p>
+                        <p className="text-sm font-semibold text-gray-800">{formDataRegItem.item_name || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 uppercase tracking-wide">Category</p>
+                        <p className="text-sm font-medium text-gray-700">{formDataRegItem?.category?.type || '—'}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1024,23 +1026,25 @@ function InventoryRestock({ isActive }) {
           </div>
 
           {/* ▼ stock description block ▼ */}
-          <div className="border">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <button
-              // onClick={() => setOpenStock(!openStock)}
-              //openFormBlock
               onClick={() => setopenFormBlock('stock')}
-              className="w-full flex justify-between items-center bg-white px-4 py-2 text-lg font-bold"
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
             >
-              <span className="text-gray-400">STOCK DESCRIPTION</span>
-              {openFormBlock == 'stock' ? <ChevronUp /> : <ChevronDown />}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#1A318C]/10 flex items-center justify-center">
+                  <Layers className="w-4 h-4 text-[#1A318C]" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Stock Description</span>
+              </div>
+              {openFormBlock == 'stock' ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
             </button>
             {(openFormBlock == 'stock') && (
-              <div className="px-4 bg h-[34rem] bg-white">
-                {/*stock description block  */}
-                <div className="flex flex-col gap-2">
-                  <div className="grid grid-cols-2 gap-4">
+              <div className="px-4 pb-4 border-t border-gray-100 h-[34rem] overflow-y-auto">
+                <div className="space-y-3 pt-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         Batch Code
                       </label>
                       <input
@@ -1048,69 +1052,65 @@ function InventoryRestock({ isActive }) {
                         name="batch_code"
                         value={formDataStock.batch_code}
                         onChange={handleStockInputChange}
-                        //placeholder=""
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.batch_code ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        className={`w-full px-4 py-2.5 border rounded-lg text-sm ${
+                          formErrors.batch_code ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all`}
                       />
                       {formErrors.batch_code && <p className="text-red-500 text-xs mt-1">{formErrors.batch_code}</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         Quantity
                       </label>
-                      {/* Quantity */}
                       <input
                         type="number"
                         name="quantity"
                         value={formDataStock.quantity}
                         onChange={handleStockInputChange}
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.quantity ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        className={`w-full px-4 py-2.5 border rounded-lg text-sm tabular-nums ${
+                          formErrors.quantity ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all`}
                       />
                       {formErrors.quantity && <p className="text-red-500 text-xs mt-1">{formErrors.quantity}</p>}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Lower Threshold Rate(%)
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Threshold (%)
                       </label>
                       <input
                         type="number"
                         name="threshold_limit"
                         value={formDataStock.threshold_limit}
                         onChange={handleStockInputChange}
-                        //placeholder=""
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.threshold_limit ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        className={`w-full px-4 py-2.5 border rounded-lg text-sm tabular-nums ${
+                          formErrors.threshold_limit ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all`}
                       />
                       {formErrors.threshold_limit && <p className="text-red-500 text-xs mt-1">{formErrors.threshold_limit}</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         Availability
                       </label>
                       <select
                         name="availability"
                         value={formDataStock.availability}
                         onChange={handleStockInputChange}
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.quantity ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        className={`w-full px-4 py-2.5 border rounded-lg text-sm ${
+                          formErrors.availability ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all appearance-none cursor-pointer`}
                       >
-                      {formErrors.quantity && <p className="text-red-500 text-xs mt-1">{formErrors.quantity}</p>}
-                        <option value="">-- select availability --</option>
+                        <option value="">Select</option>
                         <option value={true}>Available</option>
                         <option value={false}>Unavailable</option>
                       </select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         Stock Price
                       </label>
                       <input
@@ -1118,15 +1118,14 @@ function InventoryRestock({ isActive }) {
                         name="stock_price"
                         value={formDataStock.stock_price}
                         onChange={handleStockInputChange}
-                        //placeholder=""
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.stock_price ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        className={`w-full px-4 py-2.5 border rounded-lg text-sm tabular-nums ${
+                          formErrors.stock_price ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all`}
                       />
                       {formErrors.stock_price && <p className="text-red-500 text-xs mt-1">{formErrors.stock_price}</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         Retail Price
                       </label>
                       <input
@@ -1134,98 +1133,92 @@ function InventoryRestock({ isActive }) {
                         name="retail_price"
                         value={formDataStock.retail_price}
                         onChange={handleStockInputChange}
-                        //placeholder=""
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.retail_price ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
+                        className={`w-full px-4 py-2.5 border rounded-lg text-sm tabular-nums ${
+                          formErrors.retail_price ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all`}
                       />
                       {formErrors.retail_price && <p className="text-red-500 text-xs mt-1">{formErrors.retail_price}</p>}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         Expiration Date
                       </label>
-                      <div className="relative max-w-sm">
-                        <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
-                        </div>
-                        <input
-                          type="date"
-                          id="expired_datetime"
-                          value={formDataStock.expired_datetime ? formDataStock.expired_datetime.split('T')[0] : ''}
-                          onChange={(e) => {
-                            const selectedDate = e.target.value;
-                            console.log("date input value:", selectedDate);
-                            if (selectedDate) {
-                              const localDateTime = appendCurrentTimeToDate(selectedDate);
-                              console.log("to formData:", localDateTime);
-                              setFormDataStock({
-                                ...formDataStock,
-                                expired_datetime: localDateTime,
-                              });
-                            } else {
-                              setFormDataStock({
-                                ...formDataStock,
-                                expired_datetime: null,
-                              });
-                            }
-                          }}
-                          name="expired_datetime"
-                          placeholder="Select date"
-                          className={`w-full px-3 py-2 border ${
-                            formErrors.expired_datetime ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
-                          } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
-                          />
-                          {formErrors.expired_datetime && <p className="text-red-500 text-xs mt-1">{formErrors.expired_datetime}</p>}
-                          </div>
+                      <input
+                        type="date"
+                        id="expired_datetime"
+                        value={formDataStock.expired_datetime ? formDataStock.expired_datetime.split('T')[0] : ''}
+                        onChange={(e) => {
+                          const selectedDate = e.target.value;
+                          if (selectedDate) {
+                            const localDateTime = appendCurrentTimeToDate(selectedDate);
+                            setFormDataStock({
+                              ...formDataStock,
+                              expired_datetime: localDateTime,
+                            });
+                          } else {
+                            setFormDataStock({
+                              ...formDataStock,
+                              expired_datetime: null,
+                            });
+                          }
+                        }}
+                        name="expired_datetime"
+                        className={`w-full px-4 py-2.5 border rounded-lg text-sm ${
+                          formErrors.expired_datetime ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all`}
+                      />
+                      {formErrors.expired_datetime && <p className="text-red-500 text-xs mt-1">{formErrors.expired_datetime}</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Discount (Rs/-)
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Discount (Rs.)
                       </label>
                       <input
                         type="number"
                         name="discount"
                         value={formDataStock.discount}
                         onChange={handleStockInputChange}
-                        placeholder=""
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.discount ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
-                        } bg-[#F8F8F8] focus:outline-none focus:ring-2 focus:border-transparent`}
-                        />
+                        className={`w-full px-4 py-2.5 border rounded-lg text-sm tabular-nums ${
+                          formErrors.discount ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all`}
+                      />
                       {formErrors.discount && <p className="text-red-500 text-xs mt-1">{formErrors.discount}</p>}
                     </div>
                   </div>
 
-                  <p>Recent Batch Code Changes</p>
-                  <div className="flex flex-col gap-3 overflow-y-scroll overflow-x-hidden h-[13rem] -mr-4">
-                    {stockEntries.length === 0 ? (
-                      <div className="text-gray-500">No recent batches</div>
-                    ) : (
-                      stockEntries.map((s, i) => (
-                        <div
-                          key={s.batch_code + i}
-                          className={`${s.batch_code === formDataStock.batch_code ? 'border-4 border-blue-500' : ''} flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]`}
-                          onClick={() => setStockBatchCodeFromEntry(s)}
-                        >
-                          <div className="flex flex-col">
-                            <span className="text-md font-bold">Batchcode:</span>
-                            <span className="text-gray-600">{s.batch_code}</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-gray-400 font-bold">{s.qty} units</span>
-                            <span className="text-gray-400">{s.exp_date ? extractDateOnly(s.exp_date) : ''} Exp</span>
-                          </div>
+                  <div className="pt-2">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recent Batch Codes</p>
+                    <div className="flex flex-col gap-2 max-h-[10rem] overflow-y-auto pr-1">
+                      {stockEntries.length === 0 ? (
+                        <div className="text-center py-4">
+                          <p className="text-sm text-gray-400">No recent batches</p>
                         </div>
-                      ))
-                    )}
-
-                    {/* end recent batches list */}
-
+                      ) : (
+                        stockEntries.map((s, i) => (
+                          <div
+                            key={s.batch_code + i}
+                            onClick={() => setStockBatchCodeFromEntry(s)}
+                            className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
+                              s.batch_code === formDataStock.batch_code
+                                ? 'bg-[#1A318C]/10 border-2 border-[#1A318C]'
+                                : 'bg-gray-50 border border-gray-100 hover:border-gray-200 hover:bg-gray-100'
+                            }`}
+                          >
+                            <div>
+                              <p className="text-xs text-gray-400">Batch Code</p>
+                              <p className="text-sm font-semibold text-gray-800">{s.batch_code}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-bold text-gray-800 tabular-nums">{s.qty} units</p>
+                              <p className="text-xs text-gray-400">{s.exp_date ? extractDateOnly(s.exp_date) : 'N/A'}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
-
-
                 </div>
               </div>
             )}
@@ -1233,23 +1226,25 @@ function InventoryRestock({ isActive }) {
 
 
           {/* ▼ supplier description block ▼ */}
-          <div className="bg-white">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <button
-              // onClick={() => setOpenSupplier(!openSupplier)}
               onClick={() => setopenFormBlock('supplier')}
-              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
             >
-              <span className="text-gray-400">SUPPLIER DESCRIPTION</span>
-              {(openFormBlock == 'supplier') ? <ChevronUp /> : <ChevronDown />}
-              {/* {openSupplier ? <ChevronUp /> : <ChevronDown />} */}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <Building2 className="w-4 h-4 text-emerald-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Supplier</span>
+              </div>
+              {(openFormBlock == 'supplier') ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
             </button>
             {(openFormBlock == 'supplier') && (
-              <div className="px-4 bg-white pb-5">
-                {/* detailed description block */}
-                <div className="">
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="space-y-3 pt-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      Suppier
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                      Supplier
                     </label>
                     <select
                       name="supplier_name"
@@ -1259,7 +1254,6 @@ function InventoryRestock({ isActive }) {
                         const selectedSupplierName = e.target.value;
                         const selectedSupplier = suppliers.find(supplier => supplier?.basic_info?.supplier_name === selectedSupplierName);
                         if (selectedSupplier) {
-                          console.log(selectedSupplier.id);
                           setTransactionData(prev => ({
                             ...prev,
                             supplier_id: selectedSupplier.id,
@@ -1268,9 +1262,9 @@ function InventoryRestock({ isActive }) {
                           }));
                         }
                       }}
-                      className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                     >
-                      <option value="">-- select supplier --</option>
+                      <option value="">Select supplier</option>
                       {suppliers.map(supplier => (
                         <option key={supplier.id} value={supplier?.basic_info?.supplier_name}>
                           {supplier?.basic_info?.supplier_name}
@@ -1279,23 +1273,20 @@ function InventoryRestock({ isActive }) {
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         Invoice No
                       </label>
                       <input
                         type="text"
                         name="invoice_no"
                         value={formDataSupplier.invoice_no}
-                        //onChange={handleSupplierInputChange}
-                        placeholder=""
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       />
                     </div>
-
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         Bill No
                       </label>
                       <input
@@ -1303,31 +1294,30 @@ function InventoryRestock({ isActive }) {
                         name="bill_no"
                         value={formDataSupplier.bill_no}
                         onChange={handleSupplierInputChange}
-                        placeholder=""
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         Payment Method
                       </label>
                       <select
                         name="payment_method"
                         value={formDataSupplier.payment_method}
                         onChange={handleSupplierInputChange}
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                       >
-                        <option value="">-- select payment method --</option>
-                        <option value="bank_transfer">Bank Check</option>
+                        <option value="">Select method</option>
+                        <option value="bank_transfer">Bank Transfer</option>
                         <option value="cheque">Cheque</option>
                         <option value="other">Other</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         Expenses (Rs.)
                       </label>
                       <input
@@ -1335,12 +1325,10 @@ function InventoryRestock({ isActive }) {
                         name="expenses"
                         value={formDataSupplier.expenses}
                         onChange={handleSupplierInputChange}
-                        placeholder="Enter item price"
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       />
                     </div>
                   </div>
-
                 </div>
               </div>
             )}
@@ -1348,50 +1336,51 @@ function InventoryRestock({ isActive }) {
 
           {/* ▼ return description block ▼ */}
           {(returnItemSelected) && (
-            <div className="bg-white">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <button
                 onClick={() => setopenFormBlock('return')}
-                className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
+                className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
               >
-                <span className="text-gray-400">RETURN DESCRIPTION</span>
-                {openFormBlock === 'return' ? <ChevronUp /> : <ChevronDown />}
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                    <RotateCcw className="w-4 h-4 text-red-600" />
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Return</span>
+                </div>
+                {openFormBlock === 'return' ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
               </button>
               {openFormBlock === 'return' && (
-                <div className="px-4 bg-white pb-5">
-                  {/* detailed description block */}
-                  <div className="">
-                    <div className="grid grid-cols-1 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                          Quantity
-                        </label>
-                        <input
-                          type="number"
-                          name="quantity"
-                          value={formDataReturnItem.quantity}
-                          onChange={handleReturnItemInputChange}
-                          placeholder="Enter quantity"
-                          className={`w-full px-3 py-2 bg-[#F8F8F8] border ${
-                            formReturnErrors.quantity ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
-                          } focus:outline-none focus:ring-2 focus:border-transparent`}
-                        />
-                        {formReturnErrors.quantity && <p className="text-red-500 text-xs mt-1">{formReturnErrors.quantity}</p>}
-                      </div>
+                <div className="px-4 pb-4 border-t border-gray-100">
+                  <div className="space-y-3 pt-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Quantity
+                      </label>
+                      <input
+                        type="number"
+                        name="quantity"
+                        value={formDataReturnItem.quantity}
+                        onChange={handleReturnItemInputChange}
+                        placeholder="Enter quantity"
+                        className={`w-full px-4 py-2.5 border rounded-lg text-sm tabular-nums ${
+                          formReturnErrors.quantity ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all`}
+                      />
+                      {formReturnErrors.quantity && <p className="text-red-500 text-xs mt-1">{formReturnErrors.quantity}</p>}
                     </div>
-                    <div className='mt-1'>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
                         Description
                       </label>
                       <textarea
                         name="return_description"
-                        type="text"
                         value={formDataReturnItem.return_description}
                         onChange={handleReturnItemInputChange}
-                        placeholder="Enter details..."
+                        placeholder="Enter return reason..."
                         rows={3}
-                        className={`w-full mt-2 px-3 py-2 bg-[#F8F8F8] border ${
-                          formReturnErrors.return_description ? "border-red-500 focus:ring-red-500" : "border-[#EBEBEB] focus:ring-blue-500"
-                        } focus:outline-none focus:ring-2 focus:border-transparent`}
+                        className={`w-full px-4 py-2.5 border rounded-lg text-sm ${
+                          formReturnErrors.return_description ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all resize-none`}
                       />
                       {formReturnErrors.return_description && <p className="text-red-500 text-xs mt-1">{formReturnErrors.return_description}</p>}
                     </div>
@@ -1429,134 +1418,115 @@ function InventoryRestock({ isActive }) {
 
         </div>
         {/* Bottom bar */}
-        <div className="flex flex-row w-full mt-[10rem] gap-2">
-          {/* <button
-            className="flex items-center flex-1 min-w-0 h-10 px-2 py-2 bg-[#D01710] text-white hover:bg-red-600 transition-colors text-sm"
-            // onClick={() => generatePdf('print')}
-          >
-            <Printer className="w-4 h-4 mr-2 flex-shrink-0" />
-            <span className="truncate">Print Barcode</span>
-          </button> */}
+        <div className="flex flex-row w-full gap-2 mt-auto pt-3">
           <button
             onClick={() => {
-              //clearing only stock form block for now
-              //should i also clear reg item data also?: yess
               clearFormInput();
               setReturnItemSelected(false);
-              //also clear the recent batch code changes
               setStockEntries([]);
-
-              //switch from update item button to add item button
             }}
-            className="flex-1 min-w-0 h-10 px-3 py-2 border bg-[#727272] border-gray-300 text-white hover:bg-gray-700 transition-colors text-sm"
+            className="flex-1 min-w-0 h-11 px-3 py-2 bg-white border-2 border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 text-sm font-medium"
           >
-            <span className="truncate">Cancel</span>
+            Cancel
           </button>
-          {/* switch between update and add button functions based on item card selection and clear form button click */}
           <button
             onClick={addNewRegItem}
             disabled={formDataRegItem.id === 0}
-            className="flex-1 min-w-0 h-10 px-3 py-2 bg-blue-600 text-white enabled:hover:bg-[#1A318C] transition-colors text-sm disabled:bg-gray-400 disabled:text-gray-200 disabled:cursor-not-allowed"
+            className="flex-1 min-w-0 h-11 px-4 py-2 bg-[#1A318C] text-white rounded-xl text-sm font-semibold enabled:hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
           >
-            <span className="truncate">Add Item</span>
+            <Plus className="w-4 h-4" />
+            Add Item
           </button>
-
         </div>
       </div>
 
-      {/* they don't pay me enough for this😞 */}
       {/* main transaction section (mid) with loading state and content*/}
-      <div className="bg-white w-[calc(45rem)] h-[calc(100vh-2rem)]">
-        <div></div>
+      <div className="flex-1 h-[calc(100vh-2rem)] flex flex-col">
         {/* supplier details section*/}
-        <div className="p-5">
-          <div className="flex flex-row gap-12">
-            <div className="flex flex-col w-2/3">
-              <div>
-                <p>Supplier:</p>
-                <p className="text-2xl font-semibold">{transactionData.supplierName}</p>
+        <div className="bg-white border-b border-gray-100 p-5">
+          <div className="flex flex-row gap-8">
+            <div className="flex flex-col flex-1 gap-4">
+              <div className="bg-gradient-to-r from-[#1A318C] to-[#2a4399] rounded-xl p-4 text-white">
+                <p className="text-xs uppercase tracking-wide opacity-80">Supplier</p>
+                <p className="text-xl font-bold">{transactionData.supplierName || 'Not selected'}</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">
-                  Prepared by
-                </label>
-                <select
-                  name="preparedBy"
-                  value={transactionData.preparedBy}
-                  onChange={(e) => {
-                    handleTransactionDataInputChange(e);
-                    const selectedUsername = e.target.value;
-                    const selectedUser = users.find(user => user.username === selectedUsername);
-                    if (selectedUser) {
-                      console.log(selectedUser._id)
-                      setTransactionData(prev => ({ ...prev, prep_id: selectedUser._id }));
-                    }
-                  }}
-                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">-- select employee --</option>
-                  {users.map(user => (
-                    <option key={user._id} value={user.username}>
-                      {user.username}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">
-                  Authorized by
-                </label>
-                <select
-                  name="authorizedBy"
-                  value={transactionData.authorizedBy}
-                  onChange={(e) => {
-                    handleTransactionDataInputChange(e);
-                    const selectedUsername = e.target.value;
-                    const selectedUser = users.find(user => user.username === selectedUsername);
-                    if (selectedUser) {
-                      setTransactionData(prev => ({ ...prev, auth_id: selectedUser._id }));
-                    }
-                  }}
-                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">-- select employee --</option>
-                  {users.map(user => (
-                    <option key={user._id} value={user.username}>
-                      {user.username}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                    Prepared by
+                  </label>
+                  <select
+                    name="preparedBy"
+                    value={transactionData.preparedBy}
+                    onChange={(e) => {
+                      handleTransactionDataInputChange(e);
+                      const selectedUsername = e.target.value;
+                      const selectedUser = users.find(user => user.username === selectedUsername);
+                      if (selectedUser) {
+                        console.log(selectedUser._id)
+                        setTransactionData(prev => ({ ...prev, prep_id: selectedUser._id }));
+                      }
+                    }}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">Select employee</option>
+                    {users.map(user => (
+                      <option key={user._id} value={user.username}>
+                        {user.username}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                    Authorized by
+                  </label>
+                  <select
+                    name="authorizedBy"
+                    value={transactionData.authorizedBy}
+                    onChange={(e) => {
+                      handleTransactionDataInputChange(e);
+                      const selectedUsername = e.target.value;
+                      const selectedUser = users.find(user => user.username === selectedUsername);
+                      if (selectedUser) {
+                        setTransactionData(prev => ({ ...prev, auth_id: selectedUser._id }));
+                      }
+                    }}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">Select employee</option>
+                    {users.map(user => (
+                      <option key={user._id} value={user.username}>
+                        {user.username}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
-            <div className="flex flex-col w-1/3">
-              <div>
-                <p>Date:</p>
-                <p className="text-2xl font-semibold">{getCurrentDate()}</p>
+            <div className="flex flex-col w-64 gap-3">
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Date</p>
+                <p className="text-lg font-bold text-gray-800">{getCurrentDate()}</p>
               </div>
-              <div>
-                <p>Invoice No:</p>
-                <p className="text-2xl font-semibold">{transactionData.invoiceNo}</p>
+              <div className="bg-slate-800 rounded-xl p-4">
+                <p className="text-xs text-slate-400 uppercase tracking-wide">Invoice No</p>
+                <p className="text-lg font-bold text-white font-mono">{transactionData.invoiceNo}</p>
               </div>
-              <div className="mt-8 flex flex-row gap-4">
+              <div className="flex flex-row gap-2 mt-auto">
                 <button
                   onClick={() => {
                     setInvoiceGenerate(invoiceGenerate + 1);
-                    //clearUserInput();
-                    //switch from update item button to add item button 
-                    //setUserEditing(false)
                   }}
-                  className="px-6 py-2 w-[8rem] h-10  border bg-[#727272] border-gray-300 text-white hover:bg-gray-500 transition-colors"
+                  className="flex-1 h-10 px-4 bg-white border-2 border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all"
                 >
                   Clear
                 </button>
                 <button
                   onClick={() => {
                     registerTransaction();
-                    //clearUserInput();
-                    //switch from update item button to add item button 
-                    //setUserEditing(false)
                   }}
-                  className="px-6 py-2 w-[8rem] h-10  border bg-[#2FBC34] border-gray-300 text-white hover:bg-green-500 transition-colors"
+                  className="flex-1 h-10 px-4 bg-emerald-500 text-white rounded-xl text-sm font-semibold hover:bg-emerald-600 transition-all shadow-md shadow-emerald-200"
                 >
                   Done
                 </button>
@@ -1565,151 +1535,121 @@ function InventoryRestock({ isActive }) {
           </div>
         </div>
         {/* table section*/}
-        <div className="overflow-x-auto h-[28rem] p-2 lg:p-4">
-          <table className="w-full min-w-[500px]">
-            <thead className="bg-gray-700 text-[#848484]">
+        <div className="flex-1 overflow-hidden bg-white">
+          <div className="h-full overflow-y-auto p-4">
+          <table className="w-full">
+            <thead className="bg-gradient-to-r from-slate-700 to-slate-600 sticky top-0">
               <tr>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wide">
                   #
                 </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                  Item code
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wide">
+                  Item Code
                 </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
-                  Unit count
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wide">
+                  Quantity
                 </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wide">
                   Stock Price
                 </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wide">
                   Stock Total
                 </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wide">
                   Retail Price
                 </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wide">
                   Retail Total
                 </th>
-                <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs font-normal lg:text-sm">
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wide w-12">
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white">
+            <tbody className="divide-y divide-gray-100">
               {/* Map selectedStockItemList */}
               {selectedStockItemList.map((item, index) => (
                 <tr
                   onClick={() => {
-                    //alert("item added");
                     addRegItemToForm(item);
                   }}
-                  key={item.id || generateUniqueString()} // Use the previously defined generateUniqueString
-                  //add blue border by comparing item name and id. prevent both item from return and restock by determining retrunItemSelected.
-                  className={`${item.id === formDataRegItem.id && item.item_name === formDataRegItem.item_name && !returnItemSelected ? 'border-4 border-blue-500' : 'border-b border-gray-200'} hover:bg-gray-50 cursor-pointer transition-colors`}
+                  key={item.id || generateUniqueString()}
+                  className={`${item.id === formDataRegItem.id && item.item_name === formDataRegItem.item_name && !returnItemSelected ? 'bg-[#1A318C]/5 ring-2 ring-[#1A318C] ring-inset' : ''} hover:bg-gray-50 cursor-pointer transition-all`}
                 >
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                  <td className="px-4 py-3 text-sm text-gray-600 tabular-nums">
                     {index + 1}
                   </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {item.sku 
-                    // || generateUniqueString()
-                    }
+                  <td className="px-4 py-3 text-sm font-medium text-gray-800 font-mono">
+                    {item.sku}
                   </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {item.quantity} ({item.uom_symbol})
+                  <td className="px-4 py-3 text-sm text-gray-700 tabular-nums">
+                    <span className="font-semibold">{item.quantity}</span>
+                    <span className="text-gray-400 ml-1">({item.uom_symbol})</span>
                   </td>
-                  {/* stock prices are shown with their discounts deducted */}
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {(item.stock_price).toFixed(2) - (item.item_discount_amt).toFixed(2)}
+                  <td className="px-4 py-3 text-sm text-gray-700 tabular-nums">
+                    {(item.stock_price - item.item_discount_amt).toFixed(2)}
                   </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {
-                    (((item.stock_price).toFixed(2) - (item.item_discount_amt).toFixed(2)) * item.quantity).toFixed(2)}
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-800 tabular-nums">
+                    {((item.stock_price - item.item_discount_amt) * item.quantity).toFixed(2)}
                   </td>
-                  {/* retail prices doesn't have discounts (for now) */}
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {item.retail_price.toFixed(2) - (item.item_discount_amt).toFixed(2)}
+                  <td className="px-4 py-3 text-sm text-gray-700 tabular-nums">
+                    {(item.retail_price - item.item_discount_amt).toFixed(2)}
                   </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-800 tabular-nums">
                     {(item.retail_price * item.quantity).toFixed(2)}
                   </td>
-                  <td>
+                  <td className="px-4 py-3">
                     <button
                       type="button"
-                      onClick={(e) => { // 'e' represents the React synthetic event
-                        e.stopPropagation(); // This stops the event from reaching the row
+                      onClick={(e) => {
+                        e.stopPropagation();
                         removeStockItemFromList(item.id);
-                        //alert("item removed");
                       }}
-                      aria-label="Close notification"
-                      className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
+                      aria-label="Remove item"
+                      className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-red-500 hover:text-white text-gray-400 inline-flex items-center justify-center transition-all"
                     >
-                      {/* Your SVG icon remains the same */}
-                      <svg
-                        className="w-4 h-4 text-white"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                      >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18" />
                         <line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
                     </button>
-                  </td>                
-                  </tr>
+                  </td>
+                </tr>
               ))}
 
               {/* Map selectedReturnItemList */}
               {selectedReturnItemList.map((item, index) => (
                 <tr
                   onClick={() => {
-                    //alert("ret i");
                     addReturnItemToForm(item);
                   }}
                   key={item.id}
-                  className={`${item.id === formDataRegItem.id && item.item_name === formDataRegItem.item_name && returnItemSelected ? 'border-4 border-red-400' : 'border-b border-gray-200'} bg-red-100 hover:bg-red-200 cursor-pointer transition-colors`}
+                  className={`${item.id === formDataRegItem.id && item.item_name === formDataRegItem.item_name && returnItemSelected ? 'ring-2 ring-red-400 ring-inset' : ''} bg-red-50 hover:bg-red-100 cursor-pointer transition-all`}
                 >
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {selectedStockItemList.length + index + 1} {/* Continue numbering */}
+                  <td className="px-4 py-3 text-sm text-red-600 tabular-nums">
+                    {selectedStockItemList.length + index + 1}
                   </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                  <td className="px-4 py-3 text-sm font-medium text-red-700 font-mono">
                     {item.sku}
                   </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {item.return_quantity} ({item.uom_symbol})
+                  <td className="px-4 py-3 text-sm text-red-600 tabular-nums">
+                    <span className="font-semibold">{item.return_quantity}</span>
+                    <span className="text-red-400 ml-1">({item.uom_symbol})</span>
                   </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {/* {item.stock_price.toFixed(2)} */}
-                  </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {/* {(item.stock_price * item.quantity).toFixed(2)} */}
-                  </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {/* {item.retail_price.toFixed(2)} */}
-                  </td>
-                  <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                    {/* {(item.retail_price * item.quantity).toFixed(2)} */}
-                  </td>
-                  <td>
+                  <td className="px-4 py-3 text-sm text-red-400">—</td>
+                  <td className="px-4 py-3 text-sm text-red-400">—</td>
+                  <td className="px-4 py-3 text-sm text-red-400">—</td>
+                  <td className="px-4 py-3 text-sm text-red-400">—</td>
+                  <td className="px-4 py-3">
                     <button
                       type="button"
-                      onClick={() => removeReturnItemFromList(item.id)}
-                      aria-label="Close notification"
-                      className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeReturnItemFromList(item.id);
+                      }}
+                      aria-label="Remove item"
+                      className="w-7 h-7 rounded-lg bg-red-100 hover:bg-red-500 hover:text-white text-red-400 inline-flex items-center justify-center transition-all"
                     >
-                      <svg
-                        className="w-4 h-4 text-white"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                      >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18" />
                         <line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
@@ -1719,127 +1659,96 @@ function InventoryRestock({ isActive }) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
         {/* amount section */}
-        <div className="bg-white mt-2 p-6 border-t-2 border-t-gray-400">
-          {/* outer row */}
+        <div className="bg-white border-t border-gray-100 p-5">
           <div className="flex gap-6">
-            {/* LEFT: 2/3 */}
-            <div className="w-2/3">
-              {/* Discount input */}
-              <div className="mb-6">
-                <label className="block text-sm text-gray-400 mb-2">Discount ( Rs. )</label>
-                <input
-                  // type="number"
-                  // name="discountAmount"
-                  // value={transactionData.discountAmount}
-                  // onChange={handleTransactionDataInputChange}
-                  type="number"
-                  value={finalDiscount}
-                  onChange={(e) => setFinalDiscount(e.target.value)}
-                  className="w-full px-3 py-3 bg-[#F8F8F8] border border-[#EBEBEB] text-right rounded"
-                  placeholder="0.00"
-                />
+            {/* LEFT: Amount summary cards */}
+            <div className="flex-1">
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                {/* Restock Amount */}
+                <div className="bg-emerald-50 rounded-xl p-4">
+                  <p className="text-xs text-emerald-600 uppercase tracking-wide font-medium">Restock Amount</p>
+                  <p className="text-2xl font-bold text-emerald-700 tabular-nums mt-1">Rs. {stockTotal.toFixed(2)}</p>
+                </div>
+                {/* Return Amount */}
+                <div className="bg-red-50 rounded-xl p-4">
+                  <p className="text-xs text-red-600 uppercase tracking-wide font-medium">Return Amount</p>
+                  <p className="text-2xl font-bold text-red-700 tabular-nums mt-1">Rs. {returnTotal.toFixed(2)}</p>
+                </div>
+                {/* Discount */}
+                <div className="bg-amber-50 rounded-xl p-4">
+                  <label className="block text-xs text-amber-600 uppercase tracking-wide font-medium">Discount (Rs.)</label>
+                  <input
+                    type="number"
+                    value={finalDiscount}
+                    onChange={(e) => setFinalDiscount(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-white border border-amber-200 rounded-lg text-lg font-bold text-amber-700 tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
 
-              {/* amounts area: two columns with a vertical divider */}
-              <div className="flex gap-6 py-10 items-start">
-                {/* left column inside amount area */}
-                <div className="flex-1">
-                  <div className="mb-6">
-                    <p className="text-sm text-gray-500">Restock Amount</p>
-                    <p className="text-xl font-semibold">{stockTotal.toFixed(2)}</p>
-                  </div>
-
-                  {/* <div className="mt-6">
-                    <p className="text-sm font-semibold text-gray-700">Previous Amount</p>
-                    <p className="text-3xl font-bold text-black">{transactionData.previousAmount}</p>
-                  </div> */}
+              {/* Cash and Change inputs */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                    Cash Amount (Rs.)
+                  </label>
+                  <input
+                    type="number"
+                    value={cashAmount}
+                    onChange={(e) => setCashAmount(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                    placeholder="0.00"
+                  />
                 </div>
-
-                {/* vertical divider */}
-                <div className="w-px bg-gray-200" />
-
-                {/* right column inside amount area */}
-                <div className="flex-1 pl-6">
-                  <div className="mb-6">
-                    <p className="text-sm text-red-500">Return Amount</p>
-                    <p className="text-xl font-semibold text-red-500"> {returnTotal.toFixed(2)}</p>
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Change Amount</p>
+                  <div className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p className="text-sm font-semibold text-gray-800 tabular-nums text-right">{changeAmount.toFixed(2)}</p>
                   </div>
-
-                  {/* <div className="mt-6">
-                    <p className="text-sm text-gray-500">Current Amount</p>
-                    <p className="text-xl font-semibold text-gray-700">{transactionData.currentAmount}</p>
-                  </div> */}
                 </div>
               </div>
             </div>
 
-            {/* RIGHT: 1/3 */}
-            <div className="w-1/3 border-l border-gray-200 pl-6">
-              {/* Cash amount input */}
-              <div className="mb-6">
-                <label className="block text-sm text-gray-400 mb-2">Cash Amount ( Rs. )</label>
-                <input
-                  // type="number"
-                  // value={transactionData.cashAmount}
-                  // onChange={(e) => setTransactionData(Number(e.target.value))}
-                  type="number"
-                  value={cashAmount}
-                  onChange={(e) => setCashAmount(e.target.value)}
-                  className="w-full px-3 py-3 bg-[#F8F8F8] border border-[#EBEBEB] text-right rounded"
-                  placeholder="0.00"
-                />
-              </div>
-
-              {/* change amount */}
-              <div className="mb-6">
-                <p className="text-sm text-gray-500">Change Amount</p>
-                <p className="text-lg font-semibold text-gray-800">
-                  {/* {transactionData.changeAmount} */}
-                  {changeAmount.toFixed(2)}
-                </p>
-              </div>
-
-              {/* total amount */}
-              <div>
-                <p className="text-sm font-semibold text-gray-800">Total Amount</p>
-                <p className="text-4xl font-bold text-black">{(returnTotal+stockTotal).toFixed()}</p>
+            {/* RIGHT: Total Amount */}
+            <div className="w-56 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl p-5 flex flex-col justify-center items-center">
+              <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">Total Amount</p>
+              <p className="text-4xl font-bold text-white tabular-nums mt-2">Rs. {(returnTotal+stockTotal).toFixed(2)}</p>
+              <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
+                <span className="px-2 py-0.5 bg-slate-600 rounded-full">Stock: {stockTotal.toFixed(0)}</span>
+                <span className="px-2 py-0.5 bg-red-500/20 text-red-300 rounded-full">-{returnTotal.toFixed(0)}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div className="bg-gray-300 w-[calc(32rem)] h-[calc(100vh-2rem)]">
+      <div className="bg-gray-100 w-[calc(32rem)] h-[calc(100vh-2rem)] p-3">
         {/* BUTTONS BLOCK (default visible) */}
         {rightActiveSection === "buttons" && (
-          <div className="flex flex-col flex-1 p-2 gap-1">
+          <div className="flex flex-col h-full gap-3">
             <button
               onClick={() => setRightActiveSection("add")}
-              className="h-[26rem] flex flex-col items-center justify-center p-4 bg-white rounded shadow hover:bg-gray-100 w-full"
+              className="flex-1 flex flex-col items-center justify-center bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-200 group"
             >
-              <img
-                src={AddRegitemsImg}
-                alt="Add Registered Items"
-                className="w-[8rem] h-[8rem] object-contain mb-2"
-              />
-              <span>Add Registered Items</span>
+              <div className="w-20 h-20 rounded-2xl bg-[#1A318C]/10 flex items-center justify-center mb-4 group-hover:bg-[#1A318C]/20 transition-colors">
+                <Package className="w-10 h-10 text-[#1A318C]" />
+              </div>
+              <span className="text-lg font-semibold text-gray-800">Add Items</span>
+              <span className="text-sm text-gray-500 mt-1">Add registered items to stock</span>
             </button>
             <button
               onClick={() => setRightActiveSection("return")}
-              className="h-[26rem] flex flex-col items-center justify-center p-4 bg-white rounded shadow hover:bg-gray-100 w-full"
+              className="flex-1 flex flex-col items-center justify-center bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all duration-200 group"
             >
-              <img
-                src={ReturnItemsImg}
-                alt="Return Items"
-                className="w-[8rem] h-[8rem] object-contain mb-2"
-              />
-              <span>Return Items</span>
+              <div className="w-20 h-20 rounded-2xl bg-red-100 flex items-center justify-center mb-4 group-hover:bg-red-200 transition-colors">
+                <RotateCcw className="w-10 h-10 text-red-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-800">Return Items</span>
+              <span className="text-sm text-gray-500 mt-1">Process item returns</span>
             </button>
-
-
-            {/* White block to fill remaining space */}
-            <div className="h-[20rem] bg-white rounded"></div>
           </div>
         )}
 
@@ -1865,96 +1774,72 @@ function InventoryRestock({ isActive }) {
 
         {/* ADD REGISTERED ITEMS BLOCK */}
         {(rightActiveSection === "add" || rightActiveSection === "dispose" || rightActiveSection === "return") && (
-          <div>
-            <div className="w-full flex flex-col justify-between py-4 px-6 bg-white gap-6 mb-4">
-              <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center gap-3">
-                {/* back button */}
-                <button
-                  onClick={() => setRightActiveSection("buttons")}
-                  className="flex items-center justify-center w-8 h-8 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors"
-                >
-                  <BackIcon />
-                </button>
-
-                <input
-                  type="text"
-                  value={search}
-                  onChange={handleSearch}
-                  placeholder="Search Your Items here"
-                  className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
-                />
-
-                <button
-                  /*onClick={handleSearchClick}*/ className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
-                >
-                  <svg
-                    className="w-5 h-5 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
+          <div className="flex flex-col h-full">
+            {/* Search Header */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-3 overflow-hidden">
+              <div className="p-4 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setRightActiveSection("buttons")}
+                    className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"
+                    <ArrowLeft className="w-5 h-5 text-gray-600" />
+                  </button>
+                  <div className="flex-1 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Search className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={handleSearch}
+                      placeholder="Search items..."
+                      className="w-full h-10 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                     />
-                  </svg>
-                  Search
-                </button>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex flex-row gap-4">
+              {/* Filters */}
+              <div className="p-4 bg-gray-50 flex gap-3">
                 <select
                   value={searchCategory}
                   onChange={(e) => setSearchCategory(e.target.value)}
-                  className="w-full h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
+                  className="flex-1 h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                 >
                   <option value="All">All Categories</option>
                   {uniqueCategoryTypes.map(type => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
+                    <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
-
                 <select
                   name="searchAvailability"
                   value={searchAvailability}
                   onChange={(e) => setSearchAvailability(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                 >
-                  <option value="All">All Availabilities</option>
+                  <option value="All">All Items</option>
                   <option value="Available">Available</option>
                   <option value="Unavailable">Unavailable</option>
                 </select>
               </div>
             </div>
 
-            <div className="h-[calc(100vh-9rem)] overflow-y-scroll bg-transparent">
-              <div className="grid grid-cols-1 gap-6 p-10">
+            {/* Items List */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-1 gap-3">
                 {(isLoading || searchLoading) ? (
-                  <div className="col-span-full flex flex-col items-center justify-center">
-                    <div className="flex flex-col items-center mt-32">
-                      <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
-                      <span className="text-gray-700 text-xl mt-1">
-                        Please wait...
-                      </span>
-                    </div>
+                  <div className="flex flex-col items-center justify-center py-20">
+                    <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
+                    <p className="text-gray-500">Loading items...</p>
                   </div>
                 ) : filteredItems.length === 0 ? (
-                  <div
-                    className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg"
-                    style={{ minHeight: "50vh" }}
-                  >
-                    {NotFoundImg ? (
-                      <img
-                        src={NotFoundImg}
-                        alt="No items found!"
-                        className="w-12 h-12 mb-2 opacity-70"
-                      />
-                    ) : null}
-                    <span>No items found!</span>
+                  <div className="flex flex-col items-center justify-center py-20">
+                    <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                      <Package className="w-8 h-8 text-gray-300" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-800">No items found</h3>
+                    <p className="text-sm text-gray-500 mt-1">Try adjusting your search</p>
                   </div>
                 ) : (
                   filteredItems.map((item) => (
@@ -1999,21 +1884,3 @@ function InventoryRestock({ isActive }) {
 }
 
 export default InventoryRestock;
-
-// icon used for all back buttons
-const BackIcon = () => (
-  <svg
-    className="w-4 h-4 text-black"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M15 19l-7-7 7-7"
-    />
-  </svg>
-);

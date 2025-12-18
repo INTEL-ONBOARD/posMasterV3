@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import barcodeImg from "../assets/barcode.png";
 import placeholderImg from "../assets/card_placeholder_img.png";
-import plusImg from "../assets/card_add_img.png";
 
 export default function SalesItemCard({ item, onOpen }) {
   const nameRef = useRef(null);
@@ -17,131 +16,95 @@ export default function SalesItemCard({ item, onOpen }) {
 
   // Calculate status color based on quantity
   const percentFull = (item.quantity / item.maximum_capacity) * 100;
-  let statusColorClass;
+  let statusConfig;
   if (percentFull <= item.threshold_limit) {
-    statusColorClass = "bg-red-500";
+    statusConfig = { bg: "bg-red-500", text: "text-red-600", label: "Low" };
   } else if (percentFull <= item.threshold_limit + 20) {
-    statusColorClass = "bg-yellow-500";
+    statusConfig = { bg: "bg-amber-500", text: "text-amber-600", label: "Medium" };
   } else {
-    statusColorClass = "bg-green-500";
+    statusConfig = { bg: "bg-emerald-500", text: "text-emerald-600", label: "In Stock" };
   }
 
   return (
     <div
-      className="relative group flex w-[24rem] h-[12rem] bg-white border border-gray-300 overflow-hidden cursor-pointer hover:shadow-md transform transition-transform duration-300 ease-in-out hover:scale-105"
+      className="group relative bg-white rounded-xl border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg hover:border-[#1A318C]/20 transition-all duration-300"
       onClick={onOpen}
       role="button"
       tabIndex={0}
     >
-      {/* HOVER OVERLAY */}
-      <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        <img src={plusImg} alt="+ Add" className="w-12 h-12 mb-2" />
-        <span className="text-white text-lg font-semibold">Add</span>
+      {/* Add Overlay on Hover */}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#1A318C]/90 via-[#1A318C]/60 to-transparent flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20">
+        <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-3 transform scale-90 group-hover:scale-100 transition-transform duration-300">
+          <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </div>
+        <span className="text-white text-sm font-semibold tracking-wide">Add to Cart</span>
       </div>
 
-      {/* Left Section */}
-      <div className="flex flex-col justify-between p-4 pl-6 w-[75%]">
-        <div>
-          <img src={barcodeImg} alt="Barcode" className="w-[70px] object-contain" />
-          <p className="text-xs text-gray-400 -mt-2">SKU: {item.sku}</p>
-        </div>
-        <div>
-          <div className="overflow-hidden max-w-[15rem]">
-            <h2
-              ref={nameRef}
-              className={"text-3xl font-bold text-[#6C6C6C] whitespace-nowrap " + (overflowing ? "marquee" : "")}
-            >
-              {item.item_name}
-            </h2>
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs bg-gray-100 border px-2 py-0.5 rounded-sm text-[#A7A7A7]">
-              {item.category?.type || 'Unknown'}
-            </span>
-            <span className="text-sm font-medium text-gray-800">
-              {item.category?.brand || 'Unknown'}
-            </span>
-          </div>
-          <p className="text-xl font-extrabold text-black mt-2">
-            Rs.{item.retail_price}
-            <span className="text-sm font-semibold">{item.uom?.symbol || 'unit'}</span>
-          </p>
-        </div>
+      {/* Status Badge */}
+      <div className={`absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full ${statusConfig.bg} shadow-sm`}>
+        <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+        <span className="text-[10px] font-semibold text-white uppercase tracking-wide">{statusConfig.label}</span>
       </div>
 
-      {/* Right Section */}
-      <div className="relative w-[25%] overflow-hidden">
+      {/* Image Section */}
+      <div className="relative h-28 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
         <img
           src={imageSrc}
           alt={item.item_name}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
+        {/* Stock Progress Bar */}
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200/50">
+          <div
+            className={`h-full ${statusConfig.bg} transition-all duration-500`}
+            style={{ width: `${Math.min(percentFull, 100)}%` }}
+          ></div>
+        </div>
       </div>
 
-      {/* Status Indicator Circle */}
-      <div
-        className={`absolute top-2 z-[1] right-[3.7rem] w-16 h-16 ${statusColorClass} rounded-full border-8 border-white`}
-      />
+      {/* Content Section */}
+      <div className="p-3">
+        {/* SKU */}
+        <div className="flex items-center gap-2 mb-1.5">
+          <img src={barcodeImg} alt="Barcode" className="h-3 object-contain opacity-40" />
+          <span className="text-[9px] font-medium text-gray-400 uppercase tracking-wide">{item.sku}</span>
+        </div>
+
+        {/* Item Name */}
+        <div className="overflow-hidden mb-1.5">
+          <h3
+            ref={nameRef}
+            className={`text-sm font-bold text-gray-800 whitespace-nowrap ${overflowing ? "marquee" : ""}`}
+          >
+            {item.item_name}
+          </h3>
+        </div>
+
+        {/* Category Tags */}
+        <div className="flex items-center gap-1.5 mb-2">
+          <span className="text-[9px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+            {item.category?.type || 'Unknown'}
+          </span>
+          <span className="text-[9px] font-semibold text-[#1A318C] bg-blue-50 px-1.5 py-0.5 rounded">
+            {item.category?.brand || 'Unknown'}
+          </span>
+        </div>
+
+        {/* Price & Stock */}
+        <div className="flex items-end justify-between pt-2 border-t border-gray-100">
+          <div>
+            <p className="text-lg font-bold text-gray-800 tabular-nums">
+              Rs.{item.retail_price}
+              <span className="text-[10px] font-medium text-gray-400 ml-0.5">/{item.uom?.symbol || 'unit'}</span>
+            </p>
+          </div>
+          <div className={`text-[10px] font-bold ${statusConfig.text} tabular-nums`}>
+            {item.quantity}/{item.maximum_capacity}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-
-// import React from "react";
-// import barcodeImg from "../assets/barcode.png";
-// import placeholderImg from "../assets/card_placeholder_img.png";
-// import plusImg from "../assets/card_add_img.png";
-
-// export default function SalesItemCard({ item, onOpen }) {
-//   // Use placeholder if item.item_image_url is null or undefined
-//   const imageSrc = item.item_image_url || placeholderImg;
-
-//   return (
-//     <div
-//       className="relative group flex w-[24rem] h-[12rem] bg-white border border-gray-300 overflow-hidden cursor-pointer hover:shadow-md transform transition-transform duration-300 ease-in-out hover:scale-105"
-//       onClick={onOpen}
-//       role="button"
-//       tabIndex={0}
-//     >
-//       {/* HOVER OVERLAY */}
-//       <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-//         <img src={plusImg} alt="+ Add" className="w-12 h-12 mb-2" />
-//         <span className="text-white text-lg font-semibold">Add</span>
-//       </div>
-
-//       {/* Left Section */}
-//       <div className="flex flex-col justify-between p-4 pl-6 w-[75%]">
-//         <div>
-//           <img src={barcodeImg} alt="Barcode" className="w-[70px] object-contain" />
-//           <p className="text-xs text-gray-400 -mt-2">SKU: {item.sku}</p>
-//         </div>
-//         <div>
-//           <h2 className="text-3xl font-bold text-[#6C6C6C]">{item.item_name}</h2>
-//           <div className="flex items-center gap-2 mt-1">
-//             <span className="text-xs bg-gray-100 border px-2 py-0.5 rounded-sm text-[#A7A7A7]">
-//               {item.category?.type || 'Unknown'}
-//             </span>
-//             <span className="text-sm font-medium text-gray-800">
-//               {item.category?.brand || 'Unknown'}
-//             </span>
-//           </div>
-//           <p className="text-xl font-extrabold text-black mt-2">
-//             Rs.{item.unit_price}
-//             <span className="text-sm font-semibold">{item.uom?.symbol || 'unit'}</span>
-//           </p>
-//         </div>
-//       </div>
-
-//       {/* Right Section now just an image that covers 100% of its area */}
-//       <div className="relative w-[25%] overflow-hidden">
-//         <img
-//           src={imageSrc}
-//           alt={item.item_name}
-//           className="w-full h-full object-cover"
-//         />
-//       </div>
-
-//       {/* Status Indicator Circle */}
-//       <div className="absolute top-2 z-[1] right-[3.7rem] w-16 h-16 bg-green-500 rounded-full border-8 border-white" />
-//     </div>
-//   );
-// }

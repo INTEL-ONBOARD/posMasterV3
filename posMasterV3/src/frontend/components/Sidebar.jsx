@@ -106,16 +106,14 @@ function Sidebar() {
   };
 
   return (
-    // removet pt-20 for header removal
-    //z index set to 20 to show popupups and status messages without overshadwoing popup
     <aside
       id="logo-sidebar"
-      className="fixed top-0 bottom-0 z-30 h-screen bg-white border-r"
+      className="fixed top-0 bottom-0 z-30 h-screen bg-white border-r border-gray-100 shadow-sm"
       aria-label="Sidebar"
     >
-      <div className="h-full overflow-hidden bg-white">
+      <div className="h-full overflow-hidden bg-white py-3 px-2">
         <motion.ul
-          className="font-medium"
+          className="font-medium space-y-2"
           variants={sidebarContainer}
           initial="hidden"
           animate="show"
@@ -126,7 +124,7 @@ function Sidebar() {
               to: "notifications",
               icon: Dashboard_notification,
               label: "Notifications",
-              alwaysVisible: true, // Always show
+              alwaysVisible: true,
             },
             {
               to: "inventory",
@@ -150,42 +148,64 @@ function Sidebar() {
               to: "settings",
               icon: Dashboard_settings,
               label: "Settings",
-              alwaysVisible: true, // Always show
+              alwaysVisible: true,
             },
           ]
             .filter((item) => item.alwaysVisible || hasAccess(item.permissionKey))
-            .map((item) => (
-            <motion.li key={item.to} variants={tileVariant}>
-              <Link
-                to={item.to}
-                className={`${currentPath.startsWith(`/dashboard/${item.to}`)
-                  ? "bg-[#EBEBEB] border-blue-500 relative"
-                  : ""
-                  } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200`}
-              >
-                <div className="relative flex flex-col items-center mb-2">
-                  <img className="w-12 object-contain" src={item.icon} alt={item.label} />
-                </div>
-                <span className="text-sm font-medium text-center mt-1">
-                  {item.label}
-                </span>
-              </Link>
-            </motion.li>
-          ))}
+            .map((item) => {
+              const isActive = currentPath.startsWith(`/dashboard/${item.to}`);
+              return (
+                <motion.li key={item.to} variants={tileVariant} className="relative group">
+                  <Link
+                    to={item.to}
+                    className={`relative w-28 h-28 flex flex-col items-center justify-center rounded-xl transition-all duration-300 ${
+                      isActive
+                        ? "bg-gradient-to-br from-[#1A318C] to-[#152870] shadow-lg shadow-blue-900/20"
+                        : "bg-gray-50 hover:bg-gray-100 hover:shadow-md"
+                    }`}
+                  >
+                    {/* Active indicator */}
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-14 bg-white rounded-r-full" />
+                    )}
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-2 transition-transform duration-300 ${
+                      isActive ? "bg-white/20" : "bg-white shadow-sm"
+                    } ${!isActive && "group-hover:scale-105"}`}>
+                      <img
+                        className={`w-8 h-8 object-contain transition-all duration-300 ${
+                          isActive ? "brightness-0 invert" : ""
+                        }`}
+                        src={item.icon}
+                        alt={item.label}
+                      />
+                    </div>
+                    <span className={`text-xs font-semibold text-center transition-colors duration-300 ${
+                      isActive ? "text-white" : "text-gray-600"
+                    }`}>
+                      {item.label}
+                    </span>
+                  </Link>
+                </motion.li>
+              );
+            })}
 
           {/* Logout */}
-          <motion.li variants={tileVariant}>
+          <motion.li variants={tileVariant} className="relative group">
             <button
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className={`${currentPath === "/dashboard/logout" ? "bg-[#EBEBEB] border-blue-500 relative" : ""
-                } w-32 h-32 border border-gray-100 flex flex-col items-center justify-center px-6 cursor-pointer hover:shadow-sm transition-all duration-200 hover:border-gray-200 bg-transparent outline-none ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}`}
-              style={{ border: "none", background: "none" }}
+              className={`relative w-28 h-28 flex flex-col items-center justify-center rounded-xl transition-all duration-300 bg-gray-50 hover:bg-red-50 hover:shadow-md ${
+                isLoggingOut ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
-              <div className="relative flex flex-col items-center mb-2">
-                <img className="w-12 object-contain" src={Dashboard_logout} alt="Logout" />
+              <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-2 transition-all duration-300 bg-white shadow-sm group-hover:bg-red-100 group-hover:scale-105`}>
+                <img
+                  className="w-8 h-8 object-contain transition-all duration-300 group-hover:brightness-75"
+                  src={Dashboard_logout}
+                  alt="Logout"
+                />
               </div>
-              <span className="text-sm font-medium text-center mt-1">
+              <span className="text-xs font-semibold text-center text-gray-600 group-hover:text-red-600 transition-colors duration-300">
                 {isLoggingOut ? "Logging out..." : "Logout"}
               </span>
             </button>
