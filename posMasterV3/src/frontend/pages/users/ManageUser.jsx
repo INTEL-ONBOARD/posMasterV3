@@ -51,11 +51,6 @@ function ManageUser() {
       user_manage: false,
       user_role_manage: false,
     },
-    ReportAccess: {
-      view_reports: false,
-      generate_reports: false,
-      export_reports: false,
-    },
   };
 
   // Helper to format permission keys for display
@@ -179,7 +174,6 @@ function ManageUser() {
         inventory_configurations: true, inventory_reports: true,
       },
       UserAccess: { user_manage: true, user_role_manage: true },
-      ReportAccess: { view_reports: true, generate_reports: true, export_reports: true },
     },
     manager: {
       SaleAccess: {
@@ -193,7 +187,6 @@ function ManageUser() {
         inventory_configurations: false, inventory_reports: true,
       },
       UserAccess: { user_manage: true, user_role_manage: false },
-      ReportAccess: { view_reports: true, generate_reports: true, export_reports: true },
     },
     cashier: {
       SaleAccess: {
@@ -207,7 +200,6 @@ function ManageUser() {
         inventory_configurations: false, inventory_reports: false,
       },
       UserAccess: { user_manage: false, user_role_manage: false },
-      ReportAccess: { view_reports: true, generate_reports: false, export_reports: false },
     },
     assistant: {
       SaleAccess: {
@@ -221,7 +213,6 @@ function ManageUser() {
         inventory_configurations: false, inventory_reports: false,
       },
       UserAccess: { user_manage: false, user_role_manage: false },
-      ReportAccess: { view_reports: false, generate_reports: false, export_reports: false },
     },
   };
 
