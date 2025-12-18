@@ -51,7 +51,7 @@ function ManageRole() {
           inventory_configurations: true,
           inventory_reports: true,
         },
-        UserManagerAccess: { create_user: true, edit_user: true, delete_user: true },
+        UserAccess: { user_manage: true, user_role_manage: true },
         ReportAccess: { view_reports: true, generate_reports: true, export_reports: true },
       }
     },
@@ -82,7 +82,7 @@ function ManageRole() {
           inventory_configurations: false,
           inventory_reports: true,
         },
-        UserManagerAccess: { create_user: true, edit_user: true, delete_user: false },
+        UserAccess: { user_manage: true, user_role_manage: false },
         ReportAccess: { view_reports: true, generate_reports: true, export_reports: true },
       }
     },
@@ -113,7 +113,7 @@ function ManageRole() {
           inventory_configurations: false,
           inventory_reports: false,
         },
-        UserManagerAccess: { create_user: false, edit_user: false, delete_user: false },
+        UserAccess: { user_manage: false, user_role_manage: false },
         ReportAccess: { view_reports: true, generate_reports: false, export_reports: false },
       }
     },
@@ -144,7 +144,7 @@ function ManageRole() {
           inventory_configurations: false,
           inventory_reports: false,
         },
-        UserManagerAccess: { create_user: false, edit_user: false, delete_user: false },
+        UserAccess: { user_manage: false, user_role_manage: false },
         ReportAccess: { view_reports: false, generate_reports: false, export_reports: false },
       }
     }
@@ -173,10 +173,9 @@ function ManageRole() {
       inventory_configurations: false,
       inventory_reports: false,
     },
-    UserManagerAccess: {
-      create_user: false,
-      edit_user: false,
-      delete_user: false,
+    UserAccess: {
+      user_manage: false,
+      user_role_manage: false,
     },
     ReportAccess: {
       view_reports: false,
@@ -217,17 +216,26 @@ function ManageRole() {
     try {
       setIsLoading(true);
 
-      // Initialize with predefined roles
-      setRolesList(predefinedRoles);
-
-      // Try to fetch custom roles from settings
+      // Try to fetch saved role permissions and custom roles from settings
       try {
         const rolesResponse = await settingsApi.getAppSettings();
-        if (rolesResponse.status === "success" && rolesResponse.data?.custom_roles) {
-          setRolesList([...predefinedRoles, ...rolesResponse.data.custom_roles]);
+        if (rolesResponse.status === "success" && rolesResponse.data) {
+          // Merge saved system role permissions with predefined roles
+          const savedSystemRolePerms = rolesResponse.data.system_role_permissions || {};
+          const mergedPredefinedRoles = predefinedRoles.map(role => ({
+            ...role,
+            permissions: savedSystemRolePerms[role.id] || role.permissions
+          }));
+
+          // Add custom roles
+          const customRoles = rolesResponse.data.custom_roles || [];
+          setRolesList([...mergedPredefinedRoles, ...customRoles]);
+        } else {
+          setRolesList(predefinedRoles);
         }
       } catch (error) {
-        console.log("No custom roles found, using predefined roles");
+        console.log("No saved role settings found, using predefined roles");
+        setRolesList(predefinedRoles);
       }
 
       // Fetch user stats
@@ -314,12 +322,6 @@ function ManageRole() {
 
   // Handle permission toggle
   const handlePermissionChange = (category, permission) => {
-    // Don't allow editing system roles
-    if (formData.is_system) {
-      toast.open("Cannot modify system role permissions", 4000, "Warning", "warning");
-      return;
-    }
-
     setPermissions((prev) => ({
       ...prev,
       [category]: {
@@ -331,11 +333,6 @@ function ManageRole() {
 
   // Toggle all permissions in a category
   const toggleCategoryPermissions = (category) => {
-    if (formData.is_system) {
-      toast.open("Cannot modify system role permissions", 4000, "Warning", "warning");
-      return;
-    }
-
     const currentPerms = permissions[category];
     const allEnabled = Object.values(currentPerms).every(v => v);
 
@@ -415,14 +412,9 @@ function ManageRole() {
     }
   };
 
-  // Update existing custom role
+  // Update existing role (both system and custom)
   const updateRole = async (e) => {
     e.preventDefault();
-
-    if (formData.is_system) {
-      toast.open("Cannot modify system roles", 4000, "Warning", "warning");
-      return;
-    }
 
     if (!validateFormData()) {
       return;
@@ -431,20 +423,33 @@ function ManageRole() {
     setFormStatus("loading");
 
     try {
-      const roleData = {
-        id: formData.id,
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        is_system: false,
-        permissions: permissions,
-      };
-
-      // Update custom role in app settings
       const currentSettings = await settingsApi.getAppSettings();
-      let customRoles = currentSettings.data?.custom_roles || [];
-      customRoles = customRoles.map(r => r.id === formData.id ? roleData : r);
 
-      await settingsApi.updateAppSettings({ custom_roles: customRoles });
+      if (formData.is_system) {
+        // Update system role permissions in app_settings
+        const systemRolePerms = currentSettings.data?.system_role_permissions || {};
+        systemRolePerms[formData.id] = permissions;
+
+        await settingsApi.updateAppSettings({ system_role_permissions: systemRolePerms });
+
+        toast.open("System role permissions updated successfully", 4000, "Success", "success");
+      } else {
+        // Update custom role in app settings
+        const roleData = {
+          id: formData.id,
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          is_system: false,
+          permissions: permissions,
+        };
+
+        let customRoles = currentSettings.data?.custom_roles || [];
+        customRoles = customRoles.map(r => r.id === formData.id ? roleData : r);
+
+        await settingsApi.updateAppSettings({ custom_roles: customRoles });
+
+        toast.open("Role updated successfully", 4000, "Success", "success");
+      }
 
       setFormStatus("success");
       timerRef.current = setTimeout(() => {
@@ -453,7 +458,6 @@ function ManageRole() {
       }, 2000);
 
       clearRoleInput();
-      toast.open("Role updated successfully", 4000, "Success", "success");
       fetchRolesAndStats();
     } catch (err) {
       console.error("Update role error:", err);
@@ -578,9 +582,9 @@ function ManageRole() {
                   </div>
 
                   {formData.is_system && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-700">
+                    <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-700">
                       <Shield className="inline w-4 h-4 mr-1" />
-                      This is a system role and cannot be modified.
+                      This is a system role. You can modify permissions but not the role name.
                     </div>
                   )}
                 </div>
@@ -603,11 +607,11 @@ function ManageRole() {
                       const allEnabled = Object.values(perms).every(v => v);
                       return (
                         <div key={category} className="border-b border-gray-100 pb-3">
-                          <div
-                            className="flex items-center justify-between cursor-pointer py-1"
-                            onClick={() => toggleCategoryPermissions(category)}
-                          >
-                            <span className="font-semibold text-gray-600 text-sm">
+                          <div className="flex items-center justify-between py-1">
+                            <span
+                              className="font-semibold text-gray-600 text-sm cursor-pointer"
+                              onClick={() => toggleCategoryPermissions(category)}
+                            >
                               {category.replace("Access", " Access")}
                             </span>
                             <label className="relative inline-flex items-center cursor-pointer">
@@ -615,12 +619,9 @@ function ManageRole() {
                                 type="checkbox"
                                 className="sr-only peer"
                                 checked={allEnabled}
-                                onChange={() => {}}
-                                disabled={formData.is_system}
+                                onChange={() => toggleCategoryPermissions(category)}
                               />
-                              <div className={`w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 ${
-                                formData.is_system ? "opacity-50" : ""
-                              }`}></div>
+                              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
                           {Object.entries(perms).map(([perm, value]) => (
@@ -634,11 +635,8 @@ function ManageRole() {
                                   className="sr-only peer"
                                   checked={value}
                                   onChange={() => handlePermissionChange(category, perm)}
-                                  disabled={formData.is_system}
                                 />
-                                <div className={`w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[1px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-green-500 ${
-                                  formData.is_system ? "opacity-50" : ""
-                                }`}></div>
+                                <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[1px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-green-500"></div>
                               </label>
                             </div>
                           ))}
@@ -670,13 +668,10 @@ function ManageRole() {
             </button>
             <button
               onClick={isRoleEditing ? updateRole : createRole}
-              disabled={formData.is_system}
-              className={`flex-1 min-w-0 h-10 px-3 py-2 text-white transition-colors text-sm ${
-                formData.is_system ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-[#1A318C]"
-              }`}
+              className="flex-1 min-w-0 h-10 px-3 py-2 text-white transition-colors text-sm bg-blue-600 hover:bg-[#1A318C]"
             >
               <span className="truncate">
-                {isRoleEditing ? "Update Role" : "Add Role"}
+                {isRoleEditing ? (formData.is_system ? "Update Permissions" : "Update Role") : "Add Role"}
               </span>
             </button>
           </div>
