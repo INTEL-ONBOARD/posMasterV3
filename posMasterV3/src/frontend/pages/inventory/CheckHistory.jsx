@@ -60,7 +60,8 @@ function CheckHistory({ isActive }) {
     const matchesSearch =
       t.invoice_no?.toLowerCase().includes(searchTerm) ||
       t.bill_no?.toLowerCase().includes(searchTerm) ||
-      String(t.sup_id).includes(searchTerm);
+      String(t.supplier_id).includes(searchTerm) ||
+      t.supplier?.basic_info?.supplier_name?.toLowerCase().includes(searchTerm);
     return matchesSearch;
   });
 
@@ -68,9 +69,9 @@ function CheckHistory({ isActive }) {
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
     switch (sortOrder) {
       case "recent":
-        return new Date(b.date) - new Date(a.date);
+        return new Date(b.created_at) - new Date(a.created_at);
       case "oldest":
-        return new Date(a.date) - new Date(b.date);
+        return new Date(a.created_at) - new Date(b.created_at);
       case "amount_high":
         return b.total_amount - a.total_amount;
       case "amount_low":
@@ -80,9 +81,20 @@ function CheckHistory({ isActive }) {
     }
   });
 
-  // View transaction details
-  const handleViewDetails = (transaction) => {
-    setSelectedTrans(transaction);
+  // View transaction details - fetch full details including items
+  const handleViewDetails = async (transaction) => {
+    try {
+      const response = await restockApi.getById(transaction.id);
+      if (response.status === 'success') {
+        setSelectedTrans(response.data);
+      } else {
+        // Fallback to basic transaction data
+        setSelectedTrans(transaction);
+      }
+    } catch (error) {
+      console.error("Error fetching transaction details:", error);
+      setSelectedTrans(transaction);
+    }
     setActiveView("items");
   };
 
@@ -178,13 +190,15 @@ function CheckHistory({ isActive }) {
                               <div className="w-8 h-8 rounded-lg bg-[#1A318C]/10 flex items-center justify-center">
                                 <User className="w-4 h-4 text-[#1A318C]" />
                               </div>
-                              <span className="text-sm text-gray-700">Supplier #{t.sup_id}</span>
+                              <span className="text-sm text-gray-700">
+                                {t.supplier?.basic_info?.supplier_name || `Supplier #${t.supplier_id}`}
+                              </span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <Calendar className="w-4 h-4 text-gray-400" />
-                              {extractDateOnly(t.date)}
+                              {extractDateOnly(t.created_at)}
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -263,7 +277,7 @@ function CheckHistory({ isActive }) {
                     </div>
                     <div>
                       <p className="text-xs text-gray-400 uppercase tracking-wide">Date</p>
-                      <p className="text-lg font-bold text-gray-800">{extractDateOnly(selectedTrans.date)}</p>
+                      <p className="text-lg font-bold text-gray-800">{extractDateOnly(selectedTrans.created_at)}</p>
                     </div>
                   </div>
                 </div>
@@ -303,19 +317,21 @@ function CheckHistory({ isActive }) {
                 <div className="grid grid-cols-4 gap-6">
                   <div>
                     <p className="text-sm text-gray-500">Supplier</p>
-                    <p className="text-base font-semibold text-gray-800">Supplier #{selectedTrans.sup_id}</p>
+                    <p className="text-base font-semibold text-gray-800">
+                      {selectedTrans.supplier?.basic_info?.supplier_name || `Supplier #${selectedTrans.supplier_id}`}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Prepared By</p>
-                    <p className="text-base font-semibold text-gray-800">Agent #{selectedTrans.prep_agent_id}</p>
+                    <p className="text-base font-semibold text-gray-800">{selectedTrans.prepared_by || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Authorized By</p>
-                    <p className="text-base font-semibold text-gray-800">Agent #{selectedTrans.auth_agent_id}</p>
+                    <p className="text-base font-semibold text-gray-800">{selectedTrans.authorized_by || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Payment Method</p>
-                    <p className="text-base font-semibold text-gray-800 capitalize">{selectedTrans.payment_method}</p>
+                    <p className="text-base font-semibold text-gray-800 capitalize">{selectedTrans.payment_method || 'N/A'}</p>
                   </div>
                 </div>
               </div>
@@ -346,19 +362,22 @@ function CheckHistory({ isActive }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {selectedTrans.added_items?.map((item, index) => (
-                      <tr key={index} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-800 font-mono">{item.sku}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{item.batch_code}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{extractDateOnly(item.exp_date)}</td>
-                        <td className="px-6 py-4 text-sm text-gray-800 text-center font-semibold">{item.qty}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600 text-right tabular-nums">Rs.{item.stock_price}</td>
-                        <td className="px-6 py-4 text-sm text-gray-800 text-right font-semibold tabular-nums">Rs.{(item.stock_price * item.qty).toFixed(2)}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600 text-right tabular-nums">Rs.{item.retail_price}</td>
-                        <td className="px-6 py-4 text-sm text-gray-800 text-right font-semibold tabular-nums">Rs.{(item.retail_price * item.qty).toFixed(2)}</td>
-                      </tr>
-                    ))}
+                    {selectedTrans.added_items?.map((item, index) => {
+                      const qty = item.quantity || item.qty || 0;
+                      return (
+                        <tr key={index} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-800 font-mono">{item.sku}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{item.batch_code}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{extractDateOnly(item.expiry_date || item.exp_date)}</td>
+                          <td className="px-6 py-4 text-sm text-gray-800 text-center font-semibold">{qty}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600 text-right tabular-nums">Rs.{item.stock_price}</td>
+                          <td className="px-6 py-4 text-sm text-gray-800 text-right font-semibold tabular-nums">Rs.{(item.stock_price * qty).toFixed(2)}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600 text-right tabular-nums">Rs.{item.retail_price}</td>
+                          <td className="px-6 py-4 text-sm text-gray-800 text-right font-semibold tabular-nums">Rs.{(item.retail_price * qty).toFixed(2)}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -386,15 +405,18 @@ function CheckHistory({ isActive }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-red-100">
-                      {selectedTrans.return_items?.map((item, index) => (
-                        <tr key={index} className="hover:bg-red-50/50 transition-colors">
-                          <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
-                          <td className="px-6 py-4 text-sm font-medium text-gray-800 font-mono">{item.sku}</td>
-                          <td className="px-6 py-4 text-sm text-gray-600">{item.batch_code}</td>
-                          <td className="px-6 py-4 text-sm text-red-600 text-center font-semibold">-{item.qty}</td>
-                          <td className="px-6 py-4 text-sm text-gray-600">{item.description}</td>
-                        </tr>
-                      ))}
+                      {selectedTrans.return_items?.map((item, index) => {
+                        const qty = item.quantity || item.qty || 0;
+                        return (
+                          <tr key={index} className="hover:bg-red-50/50 transition-colors">
+                            <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
+                            <td className="px-6 py-4 text-sm font-medium text-gray-800 font-mono">{item.sku}</td>
+                            <td className="px-6 py-4 text-sm text-gray-600">{item.batch_code}</td>
+                            <td className="px-6 py-4 text-sm text-red-600 text-center font-semibold">-{qty}</td>
+                            <td className="px-6 py-4 text-sm text-gray-600">{item.description}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
