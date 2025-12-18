@@ -53,6 +53,7 @@ function seedDefaultAdmin() {
     stmt.run(adminUser);
 
     // Create full admin permissions for the admin user
+    // This must match the permissions structure in ManageRole.jsx predefinedRoles
     const fullAdminPermissions = {
         SaleAccess: {
             sale_process: true,
@@ -69,6 +70,7 @@ function seedDefaultAdmin() {
             inventory_return_list: true,
             inventory_dispose: true,
             inventory_suppliers: true,
+            inventory_discount: true,
             inventory_price_change: true,
             inventory_history: true,
             inventory_configurations: true,
