@@ -115,42 +115,37 @@ function MemEvaluationModal({ isOpen, closeModal, member }) {
                       //onClick={() => handleTableRowClick(item)}
                     >
                       <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                        {/* {index+1} */}
+                        JAN
                       </td>
                       <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                        {/* {item.sku} */}
+                        20,000.00
                       </td>
                       <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                        {/* {(item.retail_price).toFixed(2)} */}
-                        {/* {(item.stock_price).toFixed(2) - (item.item_discount_amt).toFixed(2)} */}
+                        20,000.00
                       </td>
                       <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                        {/* {item.customer_quantity} */}
+                        20,000.00
                       </td>
                       <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                        {/* {(item.retail_price * item.customer_quantity).toFixed(2)} */}
+                        20,000.00
                       </td>
-                      <td>
-                        <button
-                          type="button"
-                          onClick={() => removeItemFromList(item.id)}
-                          aria-label="Close notification"
-                          className="m-3 w-5 h-5 rounded-full bg-black inline-flex items-center justify-center focus:outline-none"
-                        >
-                          <svg
-                            className="w-4 h-4 text-white"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden="true"
-                          >
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
-                        </button>
+                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        20,000.00
+                      </td>
+                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        20,000.00
+                      </td>
+                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        20,000.00
+                      </td>
+                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        20,000.00
+                      </td>
+                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        20,000.00
+                      </td>
+                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        20,000.00
                       </td>
                     </tr>
                     //))
@@ -159,6 +154,7 @@ function MemEvaluationModal({ isOpen, closeModal, member }) {
               </table>
             </div>
           </div>
+          {/* TODO: add a divider between left and right sections */}
           {/* right section */}
           <div className="w-1/4">
             {/* income details */}
@@ -215,18 +211,17 @@ function MemEvaluationModal({ isOpen, closeModal, member }) {
                       className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
                       //onClick={() => handleTableRowClick(item)}
                     >
-                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                        {/* {index+1} */}
+                      <td className="px-2 lg:px-3 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        JAN
                       </td>
-                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                        {/* {item.sku} */}
+                      <td className="px-2 lg:px-3 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        20,000
                       </td>
-                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                        {/* {(item.retail_price).toFixed(2)} */}
-                        {/* {(item.stock_price).toFixed(2) - (item.item_discount_amt).toFixed(2)} */}
+                      <td className="px-2 lg:px-3 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        20,000
                       </td>
-                      <td className="px-2 lg:px-4 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
-                        {/* {item.customer_quantity} */}
+                      <td className="px-2 lg:px-3 py-2 lg:py-3 text-xs lg:text-sm text-gray-700">
+                        20,000
                       </td>
                     </tr>
                     //))
