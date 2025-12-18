@@ -7,6 +7,7 @@ import Dashboard_logout from "../assets/Dashboard_logout.png";
 import Dashboard_settings from "../assets/Dashboard_settings.png";
 import Dashboard_notification from "../assets/Dashboard_notification.png";
 import Dashboard_sales from "../assets/Dashboard_sales.png";
+import Dashboard_users from "../assets/Dashboard_users.png";
 
 // Animation variants
 const sidebarContainer = {
@@ -87,6 +88,11 @@ function Sidebar() {
             {
               to: "sales",
               icon: Dashboard_sales,
+              label: "Sales",
+            },
+            {
+              to: "users",
+              icon: Dashboard_users,
               label: "Sales",
             },
             {
