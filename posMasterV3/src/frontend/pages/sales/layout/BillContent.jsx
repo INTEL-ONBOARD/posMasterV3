@@ -120,6 +120,7 @@ const BillContent = React.forwardRef(({ billData = {} }, ref) => {
       {/* header section */}
       <div className="flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold mb-4">ඇලන්වැලි සමූපකාර වෙලදසැල</h1>
+        <h1 className="text-2xl font-bold mb-4">ඇලන්වැලි සමූපකාර වෙලදසැල</h1>
         <h2 className="mb-2">No.91, කොටපල, මාතර</h2>
         <p>034/4940670</p>
       </div>
