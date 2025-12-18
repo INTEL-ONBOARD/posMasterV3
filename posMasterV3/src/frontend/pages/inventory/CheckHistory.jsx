@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import {ChevronDown, ChevronUp } from "lucide-react";
-import { apiClient } from '../../api/client';
+import { restockApi } from '../../api/localApi';
 import { extractDateOnly } from '../../util/common/date';
 
 function CheckHistory({isAcitve}) {
@@ -108,12 +108,12 @@ function CheckHistory({isAcitve}) {
 
   const fetchTransactionList = async () => {
     try {
-      const response = await apiClient.get("api/restocks");
-      if (response.data.status === "success") {
-        setTransData(response.data.data);
+      const response = await restockApi.getAll();
+      if (response.status === "success") {
+        setTransData(response.data || []);
       }
     } catch (error) {
-      console.error("Error fetching suppliers:", error);
+      console.error("Error fetching restocks:", error);
     } finally {
       setIsLoading(false);
     }

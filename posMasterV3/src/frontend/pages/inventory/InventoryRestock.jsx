@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { apiClient } from "../../api/client";
+import { supplierApi, userApi, itemApi, categoryApi } from "../../api/localApi";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import AddRegitemsImg from "../../assets/add_reg_items.png";
 
@@ -31,14 +31,13 @@ function InventoryRestock({ isActive }) {
     // user list(to populate dropdowns)
     const fetchSuppliers = async () => {
       try {
-        const response = await apiClient.get("api/suppliers");
-        if (response.data.status === "success") {
-          console.log(response.data.data)
-          setSuppliers(response.data.data);
-          // console.log(response.data.data)
+        const response = await supplierApi.getAll();
+        if (response.status === "success") {
+          console.log(response.data)
+          setSuppliers(response.data || []);
+          // console.log(response.data)
         }
       } catch (error) {
-        <response className="data message"></response>
         console.error("Error fetching suppliers:", error);
       } finally {
         //setLoadingCategories(false);
@@ -49,7 +48,7 @@ function InventoryRestock({ isActive }) {
   }
   }, [isActive]);
 
-  // Fetch Categories from API and create mapping
+  // Fetch Users from API and create mapping
   const [users, setUsers] = useState([]);
   // Refetch when section becomes active
   useEffect(() => {
@@ -57,13 +56,12 @@ function InventoryRestock({ isActive }) {
     // user list(to populate dropdowns)
     const fetchUsers = async () => {
       try {
-        const response = await apiClient.get("api/users");
-        if (response.data.status === "success") {
-          setUsers(response.data.data);
-          // console.log(response.data.data)
+        const response = await userApi.getAll();
+        if (response.status === "success") {
+          setUsers(response.data || []);
+          // console.log(response.data)
         }
       } catch (error) {
-        <response className="data message"></response>
         console.error("Error fetching users:", error);
       } finally {
         //setLoadingCategories(false);
@@ -82,9 +80,9 @@ function InventoryRestock({ isActive }) {
   const fetchItems = async () => {
     console.log("item list repopulated");
     try {
-      const response = await apiClient.get("api/itemRegistry/extended");
-      if (response.data.status === "success") {
-        setInventoryItems(response.data.data);
+      const response = await itemApi.getAllExtended();
+      if (response.status === "success") {
+        setInventoryItems(response.data || []);
       }
     } catch (error) {
       console.error("Error fetching items:", error);
@@ -108,9 +106,9 @@ function InventoryRestock({ isActive }) {
     if (isActive) {
     const fetchCategories = async () => {
       try {
-        const response = await apiClient.get("api/categories");
-        if (response.data.status === "success") {
-          setItemCategories(response.data.data);
+        const response = await categoryApi.getAll();
+        if (response.status === "success") {
+          setItemCategories(response.data || []);
         }
       } catch (error) {
         console.error("Error fetching categories:", error);

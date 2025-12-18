@@ -1,14 +1,14 @@
-import apiClient from "../../../api/apiClient";
+import { itemApi, categoryApi } from "../../../api/localApi";
 
 export const fetchCommonData = async () => {
   try {
     // Fetch items
-    const itemsRes = await apiClient.get("/api/itemRegistry/extended");
+    const itemsRes = await itemApi.getAllExtended();
 
     // Fetch categories
-    const categoriesRes = await apiClient.get("/api/categories");
+    const categoriesRes = await categoryApi.getAll();
 
-    const rawCategories = categoriesRes.data.data; // because your API wraps it
+    const rawCategories = categoriesRes.data || []; // because your API wraps it
 
     // Deduplicate categories based on brand + type
     const uniqueCategories = Array.from(

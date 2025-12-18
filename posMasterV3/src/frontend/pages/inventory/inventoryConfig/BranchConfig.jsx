@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { apiClient } from "../../../api/client";
+import { branchApi } from "../../../api/localApi";
 import ToastContext from "../../toasts/ToastService";
 
 function BranchConfig() {
@@ -16,12 +16,12 @@ function BranchConfig() {
 
   const fetchBranches = async () => {
     try {
-      const response = await apiClient.get('api/inventories/');
-      if (response.data.status === 'success') {
-        setBranches(response.data.data);
+      const response = await branchApi.getAll();
+      if (response.status === 'success') {
+        setBranches(response.data || []);
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to fetch branches');
+      setError(error.message || 'Failed to fetch branches');
     }
   };
 
@@ -43,48 +43,37 @@ function BranchConfig() {
     try {
       let response;
       if (editingId) {
-        // Update existing branch
-        response = await apiClient.put(`api/inventories/${editingId}`, formData);
+        response = await branchApi.update(editingId, formData);
       } else {
-        // Add new branch
-        response = await apiClient.post('api/inventories/add', formData);
+        response = await branchApi.create(formData);
       }
 
-      if (response.data.status === "success") {
-        if (editingId) {
-          
-        } else {
-          
-        }
-        fetchBranches(); // Refresh the list
+      if (response.status === "success") {
+        fetchBranches();
         handleClear();
       } else {
-        setError(response.data.message || "Operation failed");
-        
+        setError(response.message || "Operation failed");
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message ||
-        error.message ||
-        "Network error, please try again";
+      const errorMessage = error.message || "Network error, please try again";
       setError(errorMessage);
-      
     } finally {
       setIsPosting(false);
     }
   };
 
   const handleDelete = async (id, e) => {
-    e.stopPropagation(); // Prevent row click event
+    e.stopPropagation();
 
     if (window.confirm("Are you sure you want to delete this branch?")) {
       try {
-        const response = await apiClient.delete(`api/inventories/${id}`);
-        if (response.data.status === "success") {
+        const response = await branchApi.delete(id);
+        if (response.status === "success") {
           setBranches(prev => prev.filter(branch => branch.id !== id));
           if (editingId === id) handleClear();
         }
       } catch (error) {
-        setError(error.response?.data?.message || 'Delete failed');
+        setError(error.message || 'Delete failed');
       }
     }
   };
