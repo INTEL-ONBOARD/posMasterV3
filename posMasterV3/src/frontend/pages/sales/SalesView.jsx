@@ -1155,60 +1155,132 @@ const filteredItems = inventoryItems.filter((item) => {
                 </div>
               </div>
 
-              {/* Payment Section */}
-              <div className="bg-white">
-                {/* Amounts */}
-                <div className="grid grid-cols-2 p-2 lg:p-3">
-                  <div className="p-2 bg-[#5C5C5C] text-sm lg:text-base text-gray-500">Amount</div>
-                  <div className="p-2 bg-[#5C5C5C] text-lg lg:text-xl font-semibold text-white text-right">RS.{stockTotal.toFixed(2)}</div>
-                  <div className="p-2 bg-[#D9D9D9] text-sm lg:text-base text-gray-500">Discount Amount</div>
-                  <div className="p-2 bg-[#D9D9D9] text-lg lg:text-xl font-normal text-gray-800 text-right">
-                  <input
-                    type="number"
-                    value={finalDiscount}
-                    onChange={(e) => setFinalDiscount(e.target.value)}
-                    className="w-full px-3 py-1 bg-[#F8F8F8] border border-[#EBEBEB] text-right rounded"
-                    placeholder="0.00"
-                  />
+              {/* Payment Section - Modern POS Design */}
+              <div className="bg-white border-t border-gray-200">
+                {/* Order Summary */}
+                <div className="px-6 pt-5 pb-4">
+                  {/* Subtotal */}
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-500">Subtotal</span>
+                    <span className="text-sm font-medium text-gray-700 tabular-nums">RS. {stockTotal.toFixed(2)}</span>
                   </div>
-                  <div className="p-2 bg-[#5C5C5C] text-sm lg:text-base text-gray-500">Total Amount</div>
-                  <div className="p-2 bg-[#5C5C5C] text-lg lg:text-xl font-semibold text-white text-right">RS.{totalAmount.toFixed(2)}</div>
-                  <div className="p-2 bg-white text-sm lg:text-base text-gray-500 h-16">Customer Gave</div>
-                  <div className="p-2 bg-white text-lg lg:text-3xl font-semibold text-[#737373] text-right  h-16 border-b-2 ">
-                  <input
-                    type="number"
-                    value={cashAmount}
-                    onChange={(e) => setCashAmount(e.target.value)}
-                    className="w-full px-3 py-1 bg-[#F8F8F8] border border-[#EBEBEB] text-right rounded"
-                    placeholder="0.00"
-                  />
-                  </div>
-                  <div className="p-2 bg-[#F8F8F8] text-sm lg:text-base text-gray-500">Change Amount</div>
-                  <div className="p-2 bg-[#F8F8F8] text-lg lg:text-xl font-normal text-gray-800 text-right">RS.{changeAmount.toFixed(2)}</div>
 
+                  {/* Discount */}
+                  <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-200">
+                    <span className="text-sm text-gray-500">Discount</span>
+                    <div className="flex items-center">
+                      <span className="text-gray-400 text-sm mr-1">−</span>
+                      <input
+                        type="number"
+                        value={finalDiscount}
+                        onChange={(e) => setFinalDiscount(e.target.value)}
+                        className="w-20 px-2 py-1 text-right text-sm font-medium text-gray-700 bg-transparent border border-transparent hover:border-gray-300 focus:border-[#1A318C] focus:bg-white rounded transition-all outline-none tabular-nums"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
                 </div>
-                {/* payment button controls*/}
-                <div className="flex flex-col sm:flex-row px-2 lg:px-3 gap-[10px]">
-                  <button className="w-1/4 px-4 py-3 bg-[#727272] text-white text-sm hover:bg-gray-700 transition-all flex items-center justify-center">
-                    <img src={clearBtnImg} alt="Clear" className="w-4 h-4 mr-2" />
+
+                {/* Total Amount - Hero Section */}
+                <div className="mx-4 mb-4 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 rounded-xl p-5 shadow-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-slate-400 text-xs font-medium uppercase tracking-widest mb-1">Total Amount</p>
+                      <p className="text-3xl font-bold text-white tabular-nums tracking-tight">
+                        RS. {totalAmount.toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Input Section */}
+                <div className="px-4 pb-4">
+                  <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                    {/* Cash Received Input */}
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center">
+                          <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </div>
+                        <span className="text-sm font-medium text-gray-600">Cash Received</span>
+                      </div>
+                      <input
+                        type="number"
+                        value={cashAmount}
+                        onChange={(e) => setCashAmount(e.target.value)}
+                        className="w-32 px-4 py-2.5 text-right text-lg font-semibold text-emerald-700 bg-white border-2 border-emerald-200 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all outline-none tabular-nums"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-gray-200"></div>
+
+                    {/* Change Display */}
+                    <div className={`flex justify-between items-center p-3 rounded-lg transition-colors ${
+                      changeAmount >= 0
+                        ? 'bg-emerald-50 border border-emerald-200'
+                        : 'bg-red-50 border border-red-200'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          changeAmount >= 0 ? 'bg-emerald-500' : 'bg-red-500'
+                        }`}>
+                          {changeAmount >= 0 ? (
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className={`text-sm font-medium ${changeAmount >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>
+                          {changeAmount >= 0 ? 'Change to Return' : 'Amount Remaining'}
+                        </span>
+                      </div>
+                      <span className={`text-xl font-bold tabular-nums ${changeAmount >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        RS. {Math.abs(changeAmount).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="px-4 pb-5 flex gap-3">
+                  <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white text-gray-600 text-sm font-medium rounded-xl border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
                     Clear
                   </button>
 
-                  <button className="w-1/4 px-4 py-3 bg-[#EB8928] text-white text-sm hover:bg-orange-500 transition-all flex items-center justify-center">
-                    <img src={sidebarHoldOrderBtnImg} alt="Hold Order" className="w-4 h-4 mr-2" />
-                    Hold Order
+                  <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-amber-500 text-white text-sm font-semibold rounded-xl hover:bg-amber-600 active:scale-[0.98] transition-all shadow-sm shadow-amber-200">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Hold
                   </button>
 
-                  <button 
-                    //onClick={handleOpenProceedPayment}
+                  <button
                     onClick={() => generateBillPdf()}
-                    className="flex-1 w-1/2 px-4 py-3 bg-[#1A318C] text-white text-sm hover:bg-blue-700 transition-all flex items-center justify-center"
+                    disabled={totalAmount <= 0 || cashAmount < totalAmount}
+                    className="flex-[2] flex items-center justify-center gap-2 px-6 py-3 bg-[#1A318C] text-white text-sm font-semibold rounded-xl hover:bg-[#152870] active:scale-[0.98] transition-all shadow-md shadow-blue-900/20 disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed"
                   >
-                    <img src={sidebarPaymentBtnImg} alt="Proceed Payment" className="w-4 h-4 mr-2" />
-                    Proceed Payment
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Complete Payment
                   </button>
                 </div>
-
               </div>
 
             </div>
