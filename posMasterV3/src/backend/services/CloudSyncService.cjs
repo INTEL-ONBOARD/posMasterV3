@@ -18,6 +18,7 @@ const {
     closeMySQLPool
 } = require('../database/mysql-connection.cjs');
 const dns = require('dns');
+const { nowISO } = require('../utils/helpers.cjs');
 
 // Sync configuration
 const NETWORK_CHECK_INTERVAL_MS = 10000; // Check network every 10 seconds
@@ -40,11 +41,16 @@ const TABLES_TO_SYNC = [
     'disposed_items',
     'offers_discounts',
     'app_settings',
-    'user_settings'
+    'user_settings',
+    'login_history'
 ];
 
 // Tables that shouldn't sync (local only)
 const LOCAL_ONLY_TABLES = ['sessions', 'sync_queue', 'migrations', 'price_change_history'];
+
+// Tables where cloud is the primary source (pull from cloud to local)
+// These tables sync: Cloud -> Local (cloud wins)
+const CLOUD_PRIMARY_TABLES = ['users', 'user_settings'];
 
 class CloudSyncService {
     constructor() {
@@ -201,7 +207,7 @@ class CloudSyncService {
             operation,
             record,
             recordId,
-            timestamp: new Date().toISOString()
+            timestamp: nowISO()
         };
 
         // If online, sync immediately
@@ -232,13 +238,14 @@ class CloudSyncService {
 
             const primaryKey = this.getPrimaryKeyColumn(tableName);
 
-            // Check if table has sync_status column
+            // Check if table has sync_status and synced_at columns
             const tableInfo = db.prepare(`PRAGMA table_info(${tableName})`).all();
             const hasSyncStatus = tableInfo.some(col => col.name === 'sync_status');
+            const hasSyncedAt = tableInfo.some(col => col.name === 'synced_at');
 
             if (hasSyncStatus) {
-                const now = new Date().toISOString();
-                if (status === 'synced') {
+                const now = nowISO();
+                if (status === 'synced' && hasSyncedAt) {
                     db.prepare(`UPDATE ${tableName} SET sync_status = ?, synced_at = ? WHERE ${primaryKey} = ?`)
                         .run(status, now, recordId);
                 } else {
@@ -324,7 +331,7 @@ class CloudSyncService {
         // Re-queue failed changes
         this.pendingChanges = [...failedChanges, ...this.pendingChanges];
 
-        this.lastSyncTime = new Date().toISOString();
+        this.lastSyncTime = nowISO();
         this.syncStatus = failed > 0 ? 'partial' : 'completed';
         this.isSyncing = false;
 
@@ -342,7 +349,9 @@ class CloudSyncService {
     }
 
     /**
-     * Perform a full sync of all tables (all local data -> cloud)
+     * Perform a full sync of all tables
+     * - Cloud-primary tables (users, user_settings): Pull from cloud to local
+     * - Local-primary tables: Push from local to cloud
      */
     async performFullSync() {
         if (this.isSyncing) {
@@ -362,26 +371,110 @@ class CloudSyncService {
         console.log('[CloudSync] Starting full sync...');
 
         const startTime = Date.now();
-        const results = { uploaded: 0, errors: [] };
+        const results = { uploaded: 0, downloaded: 0, errors: [] };
 
+        // Step 1: Pull cloud-primary tables (users, user_settings) from cloud to local
+        console.log('[CloudSync] Step 1: Pulling cloud-primary tables...');
+        for (const tableName of CLOUD_PRIMARY_TABLES) {
+            try {
+                const pullResult = await this.pullFromCloud(tableName);
+                results.downloaded += pullResult.downloaded || 0;
+                console.log(`[CloudSync] Pulled ${pullResult.downloaded || 0} records from ${tableName}`);
+            } catch (error) {
+                console.error(`[CloudSync] Error pulling ${tableName}:`, error.message);
+                results.errors.push({ table: tableName, error: error.message, operation: 'pull' });
+            }
+        }
+
+        // Step 2: Push local-primary tables to cloud
+        console.log('[CloudSync] Step 2: Pushing local-primary tables...');
         for (const tableName of TABLES_TO_SYNC) {
+            // Skip cloud-primary tables (already handled above)
+            if (CLOUD_PRIMARY_TABLES.includes(tableName)) continue;
+
             try {
                 const tableResult = await this.syncTable(tableName);
                 results.uploaded += tableResult.uploaded || 0;
             } catch (error) {
                 console.error(`[CloudSync] Error syncing ${tableName}:`, error.message);
-                results.errors.push({ table: tableName, error: error.message });
+                results.errors.push({ table: tableName, error: error.message, operation: 'push' });
             }
         }
 
         const duration = Date.now() - startTime;
-        this.lastSyncTime = new Date().toISOString();
+        this.lastSyncTime = nowISO();
         this.syncStatus = 'completed';
         this.isSyncing = false;
 
-        console.log(`[CloudSync] Full sync completed in ${duration}ms. Uploaded: ${results.uploaded}`);
+        console.log(`[CloudSync] Full sync completed in ${duration}ms. Downloaded: ${results.downloaded}, Uploaded: ${results.uploaded}`);
 
         return { status: 'success', duration, ...results };
+    }
+
+    /**
+     * Pull records from cloud to local (for cloud-primary tables like users)
+     * @param {string} tableName - Table to pull from cloud
+     */
+    async pullFromCloud(tableName) {
+        const db = getDatabase();
+        if (!db) throw new Error('Local database not initialized');
+
+        const result = { downloaded: 0 };
+
+        try {
+            // Get all records from cloud
+            const cloudRecords = await executeQuery(`SELECT * FROM ${tableName}`);
+            if (!cloudRecords || cloudRecords.length === 0) {
+                console.log(`[CloudSync] No records in cloud ${tableName}`);
+                return result;
+            }
+
+            const columns = Object.keys(cloudRecords[0]);
+            const primaryKey = this.getPrimaryKeyColumn(tableName);
+
+            // Get local table info to check which columns exist locally
+            const tableInfo = db.prepare(`PRAGMA table_info(${tableName})`).all();
+            const localColumns = tableInfo.map(col => col.name);
+
+            // Filter to only columns that exist in both cloud and local
+            const commonColumns = columns.filter(col => localColumns.includes(col));
+
+            for (const record of cloudRecords) {
+                try {
+                    // Build upsert query for SQLite
+                    const values = commonColumns.map(col => {
+                        const val = record[col];
+                        if (val === null || val === undefined) return null;
+                        if (typeof val === 'boolean') return val ? 1 : 0;
+                        // Handle MySQL date objects
+                        if (val instanceof Date) return val.toISOString();
+                        return val;
+                    });
+
+                    const placeholders = commonColumns.map(() => '?').join(', ');
+                    const updateSet = commonColumns
+                        .filter(col => col !== primaryKey)
+                        .map(col => `${col} = excluded.${col}`)
+                        .join(', ');
+
+                    const query = `
+                        INSERT INTO ${tableName} (${commonColumns.join(', ')})
+                        VALUES (${placeholders})
+                        ON CONFLICT(${primaryKey}) DO UPDATE SET ${updateSet}
+                    `;
+
+                    db.prepare(query).run(...values);
+                    result.downloaded++;
+                } catch (error) {
+                    console.error(`[CloudSync] Failed to pull record from ${tableName}:`, error.message);
+                }
+            }
+
+            return result;
+        } catch (error) {
+            console.error(`[CloudSync] Failed to pull from cloud ${tableName}:`, error.message);
+            throw error;
+        }
     }
 
     /**
@@ -414,10 +507,16 @@ class CloudSyncService {
                     await executeQuery(query, values);
                     result.uploaded++;
 
-                    // Mark as synced
+                    // Mark as synced (check if synced_at column exists)
                     if (columns.includes('sync_status')) {
-                        db.prepare(`UPDATE ${tableName} SET sync_status = 'synced', synced_at = ? WHERE ${primaryKey} = ?`)
-                            .run(new Date().toISOString(), record[primaryKey]);
+                        const hasSyncedAt = columns.includes('synced_at');
+                        if (hasSyncedAt) {
+                            db.prepare(`UPDATE ${tableName} SET sync_status = 'synced', synced_at = ? WHERE ${primaryKey} = ?`)
+                                .run(nowISO(), record[primaryKey]);
+                        } else {
+                            db.prepare(`UPDATE ${tableName} SET sync_status = 'synced' WHERE ${primaryKey} = ?`)
+                                .run(record[primaryKey]);
+                        }
                     }
                 } catch (error) {
                     console.error(`[CloudSync] Failed to sync record in ${tableName}:`, error.message);
@@ -444,7 +543,7 @@ class CloudSyncService {
                     email VARCHAR(255) UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
                     full_name VARCHAR(255),
-                    roles TEXT DEFAULT '[]',
+                    roles TEXT,
                     is_active TINYINT DEFAULT 1,
                     last_login_at DATETIME,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -716,13 +815,35 @@ class CloudSyncService {
                     id VARCHAR(255) PRIMARY KEY,
                     user_id VARCHAR(255) NOT NULL UNIQUE,
                     profile_image TEXT,
-                    permissions TEXT DEFAULT '{}',
+                    permissions TEXT,
                     theme VARCHAR(50) DEFAULT 'light',
                     language VARCHAR(10) DEFAULT 'en',
                     notifications_enabled TINYINT DEFAULT 1,
                     created_at DATETIME NOT NULL,
                     updated_at DATETIME NOT NULL,
                     INDEX idx_user_id (user_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `,
+            login_history: `
+                CREATE TABLE IF NOT EXISTS login_history (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id VARCHAR(255) NOT NULL,
+                    session_id VARCHAR(255),
+                    username VARCHAR(255) NOT NULL,
+                    full_name VARCHAR(255),
+                    login_at DATETIME NOT NULL,
+                    logout_at DATETIME,
+                    duration_seconds INT,
+                    logout_reason VARCHAR(50),
+                    device_info TEXT,
+                    ip_address VARCHAR(255),
+                    status VARCHAR(50) DEFAULT 'active',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    sync_status VARCHAR(50) DEFAULT 'pending',
+                    INDEX idx_user_id (user_id),
+                    INDEX idx_login_at (login_at),
+                    INDEX idx_status (status),
+                    INDEX idx_session_id (session_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `
         };
@@ -753,6 +874,69 @@ class CloudSyncService {
             await this.syncPendingChanges();
         }
         return await this.performFullSync();
+    }
+
+    /**
+     * Pull users from cloud (cloud is primary source for users)
+     * Call this to refresh local users from cloud
+     */
+    async pullUsers() {
+        if (!this.isOnline) {
+            return { status: 'offline', downloaded: 0 };
+        }
+
+        if (!await testConnection()) {
+            return { status: 'connection_failed', downloaded: 0 };
+        }
+
+        console.log('[CloudSync] Pulling users from cloud...');
+
+        try {
+            const usersResult = await this.pullFromCloud('users');
+            const settingsResult = await this.pullFromCloud('user_settings');
+
+            console.log(`[CloudSync] Pulled ${usersResult.downloaded} users and ${settingsResult.downloaded} user settings from cloud`);
+
+            return {
+                status: 'success',
+                users: usersResult.downloaded,
+                userSettings: settingsResult.downloaded
+            };
+        } catch (error) {
+            console.error('[CloudSync] Failed to pull users:', error.message);
+            return { status: 'error', error: error.message };
+        }
+    }
+
+    /**
+     * Push a user to cloud (for when user is created/updated locally)
+     * @param {object} user - User record
+     */
+    async pushUser(user) {
+        if (!this.isOnline || !this.mysqlInitialized) {
+            // Queue for later
+            this.pendingChanges.push({
+                tableName: 'users',
+                operation: 'INSERT',
+                record: user,
+                recordId: user.id,
+                timestamp: nowISO()
+            });
+            return { status: 'queued' };
+        }
+
+        try {
+            await this.syncSingleChange({
+                tableName: 'users',
+                operation: 'INSERT',
+                record: user,
+                recordId: user.id
+            });
+            return { status: 'success' };
+        } catch (error) {
+            console.error('[CloudSync] Failed to push user:', error.message);
+            return { status: 'error', error: error.message };
+        }
     }
 
     /**

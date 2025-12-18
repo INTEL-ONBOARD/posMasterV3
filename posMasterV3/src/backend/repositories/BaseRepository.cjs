@@ -8,6 +8,7 @@
 
 const { getDatabase } = require('../database/connection.cjs');
 const { notifyDataChange } = require('../services/CloudSyncService.cjs');
+const { nowISO } = require('../utils/helpers.cjs');
 
 class BaseRepository {
     constructor(tableName) {
@@ -149,10 +150,10 @@ class BaseRepository {
             return this.findById(id);
         }
 
-        // Add updated_at if column exists
+        // Add updated_at if column exists (using Sri Lankan time)
         if (!keys.includes('updated_at')) {
             keys.push('updated_at');
-            values.push(new Date().toISOString());
+            values.push(nowISO());
         }
 
         const setClause = keys.map(k => `${k} = ?`).join(', ');

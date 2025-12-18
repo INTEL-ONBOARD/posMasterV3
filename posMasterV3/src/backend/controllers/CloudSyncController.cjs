@@ -75,6 +75,36 @@ class CloudSyncController {
             }
         });
 
+        // Pull users from cloud (cloud is the primary source for users)
+        ipcMain.handle('cloudSync:pullUsers', async () => {
+            try {
+                const service = getCloudSyncService();
+                const result = await service.pullUsers();
+                return {
+                    status: 'success',
+                    data: result
+                };
+            } catch (error) {
+                console.error('[CloudSyncController] Pull users error:', error);
+                return { status: 'error', message: error.message };
+            }
+        });
+
+        // Push a user to cloud
+        ipcMain.handle('cloudSync:pushUser', async (event, user) => {
+            try {
+                const service = getCloudSyncService();
+                const result = await service.pushUser(user);
+                return {
+                    status: 'success',
+                    data: result
+                };
+            } catch (error) {
+                console.error('[CloudSyncController] Push user error:', error);
+                return { status: 'error', message: error.message };
+            }
+        });
+
         console.log('[CloudSyncController] IPC handlers registered');
     }
 }

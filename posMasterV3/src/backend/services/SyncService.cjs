@@ -7,6 +7,7 @@
 
 const axios = require('axios');
 const { getSyncQueueRepository, getUserRepository } = require('../repositories/index.cjs');
+const { nowISO } = require('../utils/helpers.cjs');
 
 // Default cloud API URL (can be overridden)
 const DEFAULT_CLOUD_URL = 'https://posmasterv3-backend.onrender.com';
@@ -307,7 +308,7 @@ class SyncService {
                     full_name: cloudUser.full_name,
                     roles: JSON.stringify(cloudUser.roles || []),
                     sync_status: 'synced',
-                    synced_at: new Date().toISOString()
+                    synced_at: nowISO()
                 });
                 updated++;
             } else {
@@ -336,7 +337,7 @@ class SyncService {
             isOnline: this.isOnline,
             isSyncing: this.isSyncing,
             queue: queueStats,
-            lastCheck: new Date().toISOString()
+            lastCheck: nowISO()
         };
     }
 

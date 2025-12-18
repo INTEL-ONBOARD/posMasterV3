@@ -338,6 +338,46 @@ contextBridge.exposeInMainWorld("electronAPI", {
         setAutoSync: (enabled) =>
             ipcRenderer.invoke("cloudSync:setAutoSync", enabled),
         checkNetwork: () =>
-            ipcRenderer.invoke("cloudSync:checkNetwork")
+            ipcRenderer.invoke("cloudSync:checkNetwork"),
+        // Pull users from cloud (cloud is primary source for users)
+        pullUsers: () =>
+            ipcRenderer.invoke("cloudSync:pullUsers"),
+        // Push a user to cloud
+        pushUser: (user) =>
+            ipcRenderer.invoke("cloudSync:pushUser", user)
+    },
+
+    // ============================================
+    // LOGIN HISTORY API
+    // ============================================
+
+    loginHistory: {
+        // Get all login history with pagination
+        getAll: (options) =>
+            ipcRenderer.invoke("loginHistory:getAll", options),
+        // Get login history for a specific user
+        getByUser: (userId, options) =>
+            ipcRenderer.invoke("loginHistory:getByUser", userId, options),
+        // Get login history by date range
+        getByDateRange: (startDate, endDate) =>
+            ipcRenderer.invoke("loginHistory:getByDateRange", startDate, endDate),
+        // Get user statistics
+        getUserStats: (userId) =>
+            ipcRenderer.invoke("loginHistory:getUserStats", userId),
+        // Get daily statistics
+        getDailyStats: (days) =>
+            ipcRenderer.invoke("loginHistory:getDailyStats", days),
+        // Get user activity summary
+        getUserActivitySummary: (days) =>
+            ipcRenderer.invoke("loginHistory:getUserActivitySummary", days),
+        // Get currently active sessions
+        getActiveSessions: () =>
+            ipcRenderer.invoke("loginHistory:getActiveSessions"),
+        // Count active sessions
+        countActiveSessions: () =>
+            ipcRenderer.invoke("loginHistory:countActiveSessions"),
+        // Mark stale sessions (cleanup)
+        markStaleSessions: (hoursThreshold) =>
+            ipcRenderer.invoke("loginHistory:markStaleSessions", hoursThreshold)
     }
 });

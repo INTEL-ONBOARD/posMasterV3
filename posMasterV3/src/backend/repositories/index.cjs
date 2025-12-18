@@ -8,11 +8,13 @@
 const UserRepository = require('./UserRepository.cjs');
 const SessionRepository = require('./SessionRepository.cjs');
 const SyncQueueRepository = require('./SyncQueueRepository.cjs');
+const LoginHistoryRepository = require('./LoginHistoryRepository.cjs');
 
 // Singleton instances
 let userRepository = null;
 let sessionRepository = null;
 let syncQueueRepository = null;
+let loginHistoryRepository = null;
 
 /**
  * Get User Repository instance (singleton)
@@ -48,20 +50,34 @@ function getSyncQueueRepository() {
 }
 
 /**
+ * Get Login History Repository instance (singleton)
+ * @returns {LoginHistoryRepository}
+ */
+function getLoginHistoryRepository() {
+    if (!loginHistoryRepository) {
+        loginHistoryRepository = LoginHistoryRepository;
+    }
+    return loginHistoryRepository;
+}
+
+/**
  * Reset all repository instances (useful for testing)
  */
 function resetRepositories() {
     userRepository = null;
     sessionRepository = null;
     syncQueueRepository = null;
+    loginHistoryRepository = null;
 }
 
 module.exports = {
     UserRepository,
     SessionRepository,
     SyncQueueRepository,
+    LoginHistoryRepository,
     getUserRepository,
     getSessionRepository,
     getSyncQueueRepository,
+    getLoginHistoryRepository,
     resetRepositories
 };

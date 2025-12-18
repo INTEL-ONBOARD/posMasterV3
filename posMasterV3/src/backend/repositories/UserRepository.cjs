@@ -6,7 +6,7 @@
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
-const { generateUUID } = require('../utils/helpers.cjs');
+const { generateUUID, nowISO } = require('../utils/helpers.cjs');
 
 class UserRepository extends BaseRepository {
     constructor() {
@@ -28,8 +28,8 @@ class UserRepository extends BaseRepository {
             full_name: userData.full_name || null,
             roles: JSON.stringify(userData.roles || []),
             is_active: userData.is_active !== undefined ? userData.is_active : 1,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            created_at: nowISO(),
+            updated_at: nowISO(),
             sync_status: userData.sync_status || 'pending'
         };
 
@@ -99,7 +99,7 @@ class UserRepository extends BaseRepository {
      */
     updateLastLogin(userId) {
         return this.update(userId, {
-            last_login_at: new Date().toISOString()
+            last_login_at: nowISO()
         });
     }
 
@@ -113,7 +113,7 @@ class UserRepository extends BaseRepository {
     updateSyncStatus(userId, status, cloudId = null) {
         const data = {
             sync_status: status,
-            synced_at: status === 'synced' ? new Date().toISOString() : null
+            synced_at: status === 'synced' ? nowISO() : null
         };
 
         if (cloudId) {

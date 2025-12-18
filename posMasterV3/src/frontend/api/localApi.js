@@ -1480,6 +1480,185 @@ export const cloudSyncApi = {
         const api = getElectronAPI();
         if (!api) return { status: 'error', message: 'Not in Electron environment' };
         return api.cloudSync.checkNetwork();
+    },
+
+    /**
+     * Pull users from cloud (cloud is the primary source for users)
+     * Use this to refresh local user data from the cloud database
+     * @returns {Promise<ApiResponse & {data: {status: string, users: number, userSettings: number}}>}
+     * @example
+     * const result = await cloudSyncApi.pullUsers();
+     * // { status: 'success', data: { status: 'success', users: 5, userSettings: 5 } }
+     */
+    pullUsers: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.cloudSync.pullUsers();
+    },
+
+    /**
+     * Push a user to cloud
+     * Use this to sync a locally created/updated user to the cloud
+     * @param {User} user - The user object to push to cloud
+     * @returns {Promise<ApiResponse & {data: {status: string}}>}
+     * @example
+     * const result = await cloudSyncApi.pushUser(newUser);
+     * // { status: 'success', data: { status: 'success' } }
+     */
+    pushUser: async (user) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.cloudSync.pushUser(user);
+    }
+};
+
+// ============================================
+// LOGIN HISTORY API
+// ============================================
+
+/**
+ * @typedef {Object} LoginHistoryRecord
+ * @property {number} id - Record ID
+ * @property {string} user_id - User ID
+ * @property {string} session_id - Session ID
+ * @property {string} username - Username
+ * @property {string} [full_name] - User's full name
+ * @property {string} login_at - Login timestamp (ISO string)
+ * @property {string} [logout_at] - Logout timestamp (ISO string)
+ * @property {number} [duration_seconds] - Session duration in seconds
+ * @property {string} [logout_reason] - Logout reason (manual, timeout, forced, app_close)
+ * @property {string} [device_info] - Device information
+ * @property {string} [ip_address] - IP address
+ * @property {string} status - Status (active, completed, timeout)
+ * @property {string} created_at - Created timestamp
+ */
+
+/**
+ * @typedef {Object} UserLoginStats
+ * @property {number} total_logins - Total login count
+ * @property {number} total_duration_seconds - Total time logged in
+ * @property {number} avg_duration_seconds - Average session duration
+ * @property {string} last_login - Last login timestamp
+ * @property {string} first_login - First login timestamp
+ */
+
+/**
+ * @typedef {Object} DailyLoginStats
+ * @property {string} date - Date (YYYY-MM-DD)
+ * @property {number} login_count - Number of logins
+ * @property {number} unique_users - Number of unique users
+ * @property {number} total_duration_seconds - Total duration
+ * @property {number} avg_duration_seconds - Average duration
+ */
+
+/**
+ * Login History API
+ * Track and view user login/logout activity
+ */
+export const loginHistoryApi = {
+    /**
+     * Get all login history with pagination
+     * @param {Object} [options] - Query options
+     * @param {number} [options.limit=50] - Maximum records
+     * @param {number} [options.offset=0] - Records to skip
+     * @param {string} [options.startDate] - Filter by start date
+     * @param {string} [options.endDate] - Filter by end date
+     * @returns {Promise<ApiResponse & {data: LoginHistoryRecord[]}>}
+     */
+    getAll: async (options = {}) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.loginHistory.getAll(options);
+    },
+
+    /**
+     * Get login history for a specific user
+     * @param {string} userId - User ID
+     * @param {Object} [options] - Query options
+     * @param {number} [options.limit=50] - Maximum records
+     * @param {number} [options.offset=0] - Records to skip
+     * @returns {Promise<ApiResponse & {data: LoginHistoryRecord[]}>}
+     */
+    getByUser: async (userId, options = {}) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.loginHistory.getByUser(userId, options);
+    },
+
+    /**
+     * Get login history by date range
+     * @param {string} startDate - Start date ISO string
+     * @param {string} endDate - End date ISO string
+     * @returns {Promise<ApiResponse & {data: LoginHistoryRecord[]}>}
+     */
+    getByDateRange: async (startDate, endDate) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.loginHistory.getByDateRange(startDate, endDate);
+    },
+
+    /**
+     * Get login statistics for a user
+     * @param {string} userId - User ID
+     * @returns {Promise<ApiResponse & {data: UserLoginStats}>}
+     */
+    getUserStats: async (userId) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.loginHistory.getUserStats(userId);
+    },
+
+    /**
+     * Get daily login statistics
+     * @param {number} [days=30] - Number of days to look back
+     * @returns {Promise<ApiResponse & {data: DailyLoginStats[]}>}
+     */
+    getDailyStats: async (days = 30) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.loginHistory.getDailyStats(days);
+    },
+
+    /**
+     * Get user activity summary
+     * @param {number} [days=30] - Number of days to look back
+     * @returns {Promise<ApiResponse & {data: Array}>}
+     */
+    getUserActivitySummary: async (days = 30) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.loginHistory.getUserActivitySummary(days);
+    },
+
+    /**
+     * Get currently active sessions
+     * @returns {Promise<ApiResponse & {data: LoginHistoryRecord[]}>}
+     */
+    getActiveSessions: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.loginHistory.getActiveSessions();
+    },
+
+    /**
+     * Count active sessions
+     * @returns {Promise<ApiResponse & {data: {count: number}}>}
+     */
+    countActiveSessions: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.loginHistory.countActiveSessions();
+    },
+
+    /**
+     * Mark stale sessions as timed out (cleanup)
+     * @param {number} [hoursThreshold=24] - Hours after which to consider session stale
+     * @returns {Promise<ApiResponse & {data: {markedCount: number}}>}
+     */
+    markStaleSessions: async (hoursThreshold = 24) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.loginHistory.markStaleSessions(hoursThreshold);
     }
 };
 
@@ -1504,5 +1683,6 @@ export default {
     users: userApi,
     settings: settingsApi,
     cloudSync: cloudSyncApi,
+    loginHistory: loginHistoryApi,
     isElectron
 };
