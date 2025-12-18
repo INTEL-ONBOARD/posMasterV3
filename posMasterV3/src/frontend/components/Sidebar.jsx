@@ -40,6 +40,7 @@ function Sidebar() {
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [permissions, setPermissions] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Load user permissions on mount
   useEffect(() => {
@@ -47,6 +48,19 @@ function Sidebar() {
       try {
         const currentUser = await localAuth.getCurrentUser();
         if (currentUser) {
+          // Check if user is admin
+          const userRoles = currentUser.roles || [];
+          const adminCheck = userRoles.some(role =>
+            ['admin', 'superadmin', 'Admin', 'SuperAdmin'].includes(role)
+          );
+          setIsAdmin(adminCheck);
+
+          // If admin, no need to load specific permissions - they have all access
+          if (adminCheck) {
+            setPermissions(null);
+            return;
+          }
+
           const userId = currentUser.id || currentUser._id;
           const response = await settingsApi.getUserSettings(userId);
 
@@ -67,6 +81,11 @@ function Sidebar() {
 
   // Check if user has access to a specific section
   const hasAccess = (section) => {
+    // Admin users have access to everything
+    if (isAdmin) {
+      return true;
+    }
+
     // If permissions not loaded yet or null, check user role for defaults
     if (!permissions) {
       return true; // Show all by default until permissions load
