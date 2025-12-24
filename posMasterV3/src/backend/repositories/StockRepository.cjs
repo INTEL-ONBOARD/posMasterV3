@@ -165,28 +165,53 @@ class StockRepository extends BaseRepository {
     }
 
     /**
-     * Increment stock quantity
+     * Increment stock quantity (atomic operation to prevent race conditions)
      * @param {number} id - Stock ID
      * @param {number} amount - Amount to add
      * @returns {Object}
      */
     incrementQuantity(id, amount) {
-        const stock = this.findById(id);
-        if (!stock) return null;
-        return this.update(id, { quantity: stock.quantity + amount });
+        // Validate amount is a positive number
+        if (typeof amount !== 'number' || amount < 0) {
+            return null;
+        }
+
+        // Use atomic SQL UPDATE to prevent race conditions
+        const stmt = this.db.prepare(`
+            UPDATE ${this.tableName}
+            SET quantity = quantity + ?,
+                updated_at = ?
+            WHERE id = ?
+        `);
+        const result = stmt.run(amount, new Date().toISOString(), id);
+
+        if (result.changes === 0) return null;
+        return this.findById(id);
     }
 
     /**
-     * Decrement stock quantity
+     * Decrement stock quantity (atomic operation to prevent race conditions)
      * @param {number} id - Stock ID
      * @param {number} amount - Amount to subtract
      * @returns {Object}
      */
     decrementQuantity(id, amount) {
-        const stock = this.findById(id);
-        if (!stock) return null;
-        const newQuantity = Math.max(0, stock.quantity - amount);
-        return this.update(id, { quantity: newQuantity });
+        // Validate amount is a positive number
+        if (typeof amount !== 'number' || amount < 0) {
+            return null;
+        }
+
+        // Use atomic SQL UPDATE with MAX to prevent negative stock
+        const stmt = this.db.prepare(`
+            UPDATE ${this.tableName}
+            SET quantity = MAX(0, quantity - ?),
+                updated_at = ?
+            WHERE id = ?
+        `);
+        const result = stmt.run(amount, new Date().toISOString(), id);
+
+        if (result.changes === 0) return null;
+        return this.findById(id);
     }
 
     /**

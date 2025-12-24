@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
+const { pathToFileURL } = require("url");
 const axios = require("axios");
 const fs = require("fs").promises;
 const printer = require("pdf-to-printer");
