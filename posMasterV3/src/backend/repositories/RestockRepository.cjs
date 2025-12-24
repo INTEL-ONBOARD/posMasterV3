@@ -95,10 +95,17 @@ class RestockRepository extends BaseRepository {
         const restock = this.findById(id);
         if (!restock) return null;
 
-        // Get restock items
+        // Get restock items with all fields
         const restockItems = this.db.prepare(`
             SELECT
-                ri.*,
+                ri.id,
+                ri.restock_id,
+                ri.item_id,
+                ri.batch_code,
+                ri.quantity,
+                ri.stock_price,
+                ri.retail_price,
+                ri.expiry_date,
                 i.sku,
                 i.item_name
             FROM restock_items ri
@@ -106,16 +113,39 @@ class RestockRepository extends BaseRepository {
             WHERE ri.restock_id = ?
         `).all(id);
 
-        // Get return items
+        // Get return items with all fields
         const returnItems = this.db.prepare(`
             SELECT
-                rt.*,
+                rt.id,
+                rt.restock_id,
+                rt.item_id,
+                rt.batch_code,
+                rt.quantity,
+                rt.description,
                 i.sku,
                 i.item_name
             FROM return_items rt
             JOIN items i ON rt.item_id = i.id
             WHERE rt.restock_id = ?
         `).all(id);
+
+        // Resolve prepared_by to username
+        let preparedByName = restock.prepared_by;
+        if (restock.prepared_by) {
+            const prepUser = this.db.prepare(`SELECT username, full_name FROM users WHERE id = ?`).get(restock.prepared_by);
+            if (prepUser) {
+                preparedByName = prepUser.full_name || prepUser.username;
+            }
+        }
+
+        // Resolve authorized_by to username
+        let authorizedByName = restock.authorized_by;
+        if (restock.authorized_by) {
+            const authUser = this.db.prepare(`SELECT username, full_name FROM users WHERE id = ?`).get(restock.authorized_by);
+            if (authUser) {
+                authorizedByName = authUser.full_name || authUser.username;
+            }
+        }
 
         // Get supplier info
         let supplier = null;
@@ -143,6 +173,8 @@ class RestockRepository extends BaseRepository {
 
         return {
             ...restock,
+            prepared_by_name: preparedByName,
+            authorized_by_name: authorizedByName,
             supplier,
             added_items: restockItems,
             return_items: returnItems

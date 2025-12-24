@@ -64,31 +64,53 @@ class MemberRepository extends BaseRepository {
     }
 
     /**
-     * Update member income
+     * Update member income (atomic operation to prevent race conditions)
      * @param {number} id - Member ID
      * @param {number} amount - Amount to add
      * @returns {Object}
      */
     addIncome(id, amount) {
-        const member = this.findById(id);
-        if (!member) return null;
-        return this.update(id, {
-            total_income: member.total_income + amount
-        });
+        // Validate amount is a positive number
+        if (typeof amount !== 'number' || amount < 0) {
+            return null;
+        }
+
+        // Use atomic SQL UPDATE to prevent race conditions
+        const stmt = this.db.prepare(`
+            UPDATE ${this.tableName}
+            SET total_income = total_income + ?,
+                updated_at = ?
+            WHERE id = ?
+        `);
+        const result = stmt.run(amount, new Date().toISOString(), id);
+
+        if (result.changes === 0) return null;
+        return this.findById(id);
     }
 
     /**
-     * Update member credits
+     * Update member credits (atomic operation to prevent race conditions)
      * @param {number} id - Member ID
      * @param {number} amount - Amount to add/subtract
      * @returns {Object}
      */
     updateCredits(id, amount) {
-        const member = this.findById(id);
-        if (!member) return null;
-        return this.update(id, {
-            total_credits: member.total_credits + amount
-        });
+        // Validate amount is a number
+        if (typeof amount !== 'number') {
+            return null;
+        }
+
+        // Use atomic SQL UPDATE to prevent race conditions
+        const stmt = this.db.prepare(`
+            UPDATE ${this.tableName}
+            SET total_credits = total_credits + ?,
+                updated_at = ?
+            WHERE id = ?
+        `);
+        const result = stmt.run(amount, new Date().toISOString(), id);
+
+        if (result.changes === 0) return null;
+        return this.findById(id);
     }
 
     /**

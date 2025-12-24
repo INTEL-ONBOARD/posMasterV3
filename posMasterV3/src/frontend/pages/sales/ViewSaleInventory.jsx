@@ -1,404 +1,406 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import ItemCard from "../../components/ItemCard.jsx";
-import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import { itemApi, categoryApi } from "../../api/localApi";
-import {ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Package, Grid3X3, List, CheckCircle, AlertTriangle, Tag } from "lucide-react";
 import ViewItemModal from "./modals/ViewItemModal.jsx";
 
 function ViewSaleInventory({ isActive }) {
-
   const [modal, setModal] = useState(false);
   const closeModal = () => setModal(false);
   const [selectedItem, setSelectedItem] = useState({});
 
-  const [inventoryItems, setInventoryItems] = useState([
-        // {
-        //     _id: '688136391a56f324f917f98f',
-        //     id: 29,
-        //     stock_trace: [1],
-        //     item_name: 'dsds1',
-        //     item_image_url: null,
-        //     batch_code: '2424DS4521',
-        //     sku: '2424',
-        //     quantity: 11,
-        //     threshold_limit: 11,
-        //     maximum_capacity: 111,
-        //     uom_id: 21,
-        //     category_id: 45,
-        //     inventory_id: 1,
-        //     unit_price: 111,
-        //     stock_update_datetime: '2025-07-23T19:21:29.406Z',
-        //     stock_created_datetime: '2025-07-23T19:21:29.406Z',
-        //     __v: 0,
-        //     uom: {
-        //         _id: '687720a0798018e08515999c',
-        //         id: 21,
-        //         symbol: 'mL',
-        //         unit_name: 'Milliliter',
-        //         __v: 0
-        //     },
-        //     category: {
-        //         _id: '687740d91edd62f9c8128bd0',
-        //         id: 45,
-        //         brand: 'Axe',
-        //         type: 'Deodorants',
-        //         __v: 0
-        //     },
-        //     inventory: null
-        // },
-        {
-            _id: '688452ef1ddc1d25637c9a47',
-            id: 31,
-            stock_trace: [1],
-            item_name: 'Water Bottle',
-            item_image_url: null,
-            batch_code: 'SKU2263WA901',
-            sku: 'SKU2263',
-            quantity: 50,
-            threshold_limit: 120,
-            maximum_capacity: 400,
-            uom_id: 22,
-            category_id: 90,
-            inventory_id: 1,
-            unit_price: 25.5,
-            stock_update_datetime: '2025-07-26T04:00:47.273Z',
-            stock_created_datetime: '2025-07-26T04:00:47.273Z',
-            __v: 0,
-            uom: {
-                _id: '687720ad798018e0851599a0',
-                id: 22,
-                symbol: 'pcs',
-                unit_name: 'Piece',
-                __v: 0
-            },
-            category: {
-                _id: '68775a921edd62f9c8128e0d',
-                id: 90,
-                brand: 'Reebok',
-                type: 'Sportswear',
-                __v: 0
-            },
-            inventory: null
-        },
-        {
-            _id: '68845a0b8767fec474faa590',
-            id: 32,
-            stock_trace: [1],
-            item_name: 'Mobile Data cable',
-            item_image_url: null,
-            batch_code: 'SKU-32452DA15822',
-            sku: 'SKU-32452',
-            quantity: 54,
-            threshold_limit: 40,
-            maximum_capacity: 60,
-            uom_id: 22,
-            category_id: 158,
-            inventory_id: 1,
-            unit_price: 155,
-            stock_update_datetime: '2025-07-26T04:31:07.861Z',
-            stock_created_datetime: '2025-07-26T04:31:07.861Z',
-            __v: 0,
-            uom: {
-                _id: '687720ad798018e0851599a0',
-                id: 22,
-                symbol: 'pcs',
-                unit_name: 'Piece',
-                __v: 0
-            },
-            category: {
-                _id: '687765bb1edd62f9c8129017',
-                id: 158,
-                brand: 'Hp',
-                type: 'Computers',
-                __v: 0
-            },
-            inventory: null
-        }
-    ]
-);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchItems = async () => {
+    setIsLoading(true);
     try {
       const response = await itemApi.getAllExtended();
       if (response.status === "success") {
-            setInventoryItems(response.data || []);
+        setInventoryItems(response.data || []);
       }
+    } catch (error) {
+      console.error("Error fetching items:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isActive) {
+      fetchItems();
+    }
+  }, [isActive]);
+
+  const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await categoryApi.getAll();
+        if (response.status === "success") {
+          const types = Array.from(new Set((response.data || []).map((c) => c.type)));
+          setUniqueCategoryTypes(types);
+        }
       } catch (error) {
-          console.error("Error fetching items:", error);
-      } finally {
-          //setIsLoading(false);
+        console.error("Error fetching categories:", error);
       }
     };
-    // Fetch items from API
-    useEffect(() => {
-      // Fetch items after UOMs are loaded to properly map uomName
-      // if (!loadingUoms) {
-        fetchItems();
-      // }
-    //}, [loadingUoms]);
-    }, []);
-
-  // //if more control over categories needed later, use this State for category/brand mapping
-//   const [itemCategories, setItemCategories] = useState([
-//     { id: 145, brand: "Close-Up",   type: "Oral Care" },
-//     { id:  94, brand: "Clogard",    type: "Oral Care" },
-//     { id:  15, brand: "Colgate",    type: "Oral Care" },
-//     { id:  26, brand: "Pepsi",      type: "Beverages" },
-//     { id:   7, brand: "Coca-Cola",  type: "Beverages" },
-//   ]);
-
-  //category dropdown population(search and item form)
-  const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
-    // Fetch Categories from API and create mapping
-    useEffect(() => {
-      const fetchCategories = async () => {
-        setIsSearching(true);
-        try {
-          const response = await categoryApi.getAll();
-          if (response.status === "success") {
-            //setItemCategories(response.data);
-            const types = Array.from(new Set((response.data || []).map(c => c.type)));
-            setUniqueCategoryTypes(types);
-          }
-        } catch (error) {
-          console.error("Error fetching categories:", error);
-        } finally {
-          //setLoadingCategories(false); //if more control over categories needed later, use this
-          setIsSearching(false);
-        }
-      };
-
-      fetchCategories();
-    }, []);
-    
-    //if more control over categories needed later, use this
-    //   useEffect(() => {
-    //     const types = Array.from(new Set(itemCategories.map(c => c.type)));
-    //     setUniqueCategoryTypes(types);
-    //   }, [itemCategories]);
+    fetchCategories();
+  }, []);
 
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
-  const [viewMode, setViewMode] = useState("grid"); // or "list"
-  const [isSearching, setIsSearching] = useState(false);
-
-  // search handler to set loading state:
-  const handleSearch = (e) => {
-    setIsSearching(true);
-    setSearch(e.target.value);
-    // Simulate async search (replace with your real async logic if needed)
-    setTimeout(() => {
-      setIsSearching(false);
-    }, 600); // 600ms delay for demo
-  };
-
-  const filteredItems = inventoryItems.filter(
-    (item) =>
-      (searchCategory === "All" || item.category.type === searchCategory) &&
-      item.item_name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  //right filter section controls
+  const [searchAvailability, setSearchAvailability] = useState("All");
+  const [sortOrder, setSortOrder] = useState("name_asc");
+  const [viewMode, setViewMode] = useState("grid");
   const [openFilter, setOpenFilter] = useState(true);
   const [openOrderBy, setOpenOrderBy] = useState(true);
 
-  return (
+  const handleSearch = (e) => {
+    setSearch(e.target.value);
+  };
 
-    <div className="flex bg-black w-full h-[calc(100vh-2rem)] relative">
-      {/* item list section (right) */}
-      <div className="bg-white w-[calc(85rem)] h-[calc(100vh-2rem)] overflow-y-scroll p-4">
-        <div className="">
-          <nav className="w-full flex justify-between py-4 px-10 bg-white gap-6 mb-4 ">
-            <div className="flex-1 flex border-b border-[#EDEDED] h-12 items-center">
-              <input
-                type="text"
-                value={search}
-                onChange={handleSearch}
-                placeholder="Search Your Items here"
-                className="flex-1 px-3 py-2 bg-transparent focus:outline-none"
-              />
+  const filteredItems = inventoryItems
+    .filter((item) => {
+      const matchesCategory =
+        searchCategory === "All" ||
+        (item.category && item.category.type === searchCategory);
+      const matchesSearch =
+        item.item_name.toLowerCase().includes(search.toLowerCase()) ||
+        (item.sku || "").toLowerCase().includes(search.toLowerCase());
+      const matchesAvailability =
+        searchAvailability === "All" ||
+        (searchAvailability === "Available" && item.quantity > 0) ||
+        (searchAvailability === "Out of Stock" && item.quantity <= 0);
+      return matchesCategory && matchesSearch && matchesAvailability;
+    })
+    .sort((a, b) => {
+      switch (sortOrder) {
+        case "name_asc":
+          return a.item_name.localeCompare(b.item_name);
+        case "name_desc":
+          return b.item_name.localeCompare(a.item_name);
+        case "price_asc":
+          return (a.unit_price || 0) - (b.unit_price || 0);
+        case "price_desc":
+          return (b.unit_price || 0) - (a.unit_price || 0);
+        case "quantity_asc":
+          return (a.quantity || 0) - (b.quantity || 0);
+        case "quantity_desc":
+          return (b.quantity || 0) - (a.quantity || 0);
+        default:
+          return 0;
+      }
+    });
+
+  const inStockCount = inventoryItems.filter((i) => i.quantity > 0).length;
+  const outOfStockCount = inventoryItems.filter((i) => i.quantity <= 0).length;
+
+  return (
+    <div className="flex flex-row bg-gray-50 w-full h-[calc(100vh-2rem)] relative">
+      {/* Main Content Area */}
+      <div className="flex-1 h-[calc(100vh-1rem)] bg-gray-50">
+        {/* Search panel */}
+        <nav className="w-full bg-white border-b border-gray-100 shadow-sm">
+          <div className="px-6 py-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={handleSearch}
+                  placeholder="Search items by name or SKU..."
+                  className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                />
+              </div>
               <button
-                onClick={handleSearch}
-                className="flex items-center px-4 py-2 bg-[#1A318C] text-white"
+                onClick={fetchItems}
+                className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2"
               >
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
-                </svg>
+                <Search className="w-4 h-4" />
                 Search
               </button>
+              <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`p-2.5 rounded-lg transition-colors ${
+                    viewMode === "grid"
+                      ? "bg-white shadow-sm text-[#1A318C]"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  <Grid3X3 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={`p-2.5 rounded-lg transition-colors ${
+                    viewMode === "list"
+                      ? "bg-white shadow-sm text-[#1A318C]"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          </nav>
+            <div className="mt-3 flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                Showing <span className="font-semibold text-gray-800">{filteredItems.length}</span> items
+              </p>
+            </div>
+          </div>
+        </nav>
 
-          <div className="h-[calc(100vh-13rem)] overflow-y-scroll bg-transparent">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-10">
-              {isSearching ? (
-                <div className="col-span-full flex flex-col items-center justify-center">
-                  <div className="flex flex-col items-center mt-32">
-                    {/* Custom spinner */}
-                    <div className="animate-spin rounded-full border-4 border-gray-300 border-t-blue-900 h-12 w-12 mb-3"></div>
-                    <span className="text-gray-700 text-xl mt-1">Please wait...</span>
-                  </div>
-                </div>
-              ) : filteredItems.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center text-gray-500 text-lg" style={{ minHeight: "50vh" }}>
-                  <img
-                    src={NotFoundImg}
-                    alt="No items found!"
-                    className="w-12 h-12 mb-2 opacity-70"
-                  />
-                  <span>No items found!</span>
-                </div>
-              ) : (
-                filteredItems.map((item) => (
-                  <ItemCard
-                    key={item.id}
+        {/* Items Grid */}
+        <div className="h-[calc(100vh-10rem)] overflow-y-auto p-6">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
+              <p className="text-gray-500">Loading inventory...</p>
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                <Package className="w-10 h-10 text-gray-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">No items found</h3>
+              <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
+            </div>
+          ) : viewMode === "grid" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredItems.map((item) => (
+                <ItemCard
+                  key={item.id}
                   item={item}
                   onOpen={() => {
-                    setModal(true)
-                    setSelectedItem(item)
+                    setModal(true);
+                    setSelectedItem(item);
                   }}
-                  />
-                ))
-              )}
+                />
+              ))}
             </div>
-          </div>
-        </div>
-        </div>
-
-      {/* filter section (right) */}
-      <div className="bg-[#EBEBEB] w-[calc(20rem)] h-[calc(100vh-2rem)] p-1">
-        <div className="flex flex-col h-[calc(100vh-2rem)] gap-2">
-          {/* top block set */}
-          <div>
-          {/* ▼ search filters block ▼ */}
-          <div className="bg-white">
-            <button
-              onClick={() => setOpenFilter(!openFilter)}
-              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
-            >
-              <span className="text-gray-400">SEARCH FILTERS</span>
-              {openFilter ? <ChevronUp /> : <ChevronDown />}
-            </button>
-            {openFilter && (
-              <div className="px-4 bg-white pb-5">
-                {/* detailed description block */}
-                <div className="">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Category
-                      </label>
-                      <select
-                        value={searchCategory}
-                        onChange={(e) => setSearchCategory(e.target.value)}
-                        className="w-full h-10 px-3 bg-[#F8F8F8] border border-[#EBEBEB]"
-                      >
-                        <option value="All">All Categories</option>
-                          {uniqueCategoryTypes.map(type => (
-                              <option key={type} value={type}>
-                                {type}
-                            </option>
-                            ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Stock Availability
-                      </label>
-                      <select
-                        name="uom"
-                        // value={formUOMData ?? ""}               // show the selected id
-                        // onChange={handleUOMChange}              // hook up your new handler
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Available</option>
-                        <option value="">Unavailable</option>
-                        {/* {uoms.map(uom => (
-                          <option key={uom.id} value={uom.id}>
-                            {uom.unit_name} ({uom.symbol})
-                          </option>
-                        ))} */}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Popularity
-                      </label>
-                      <select
-                        name="uom"
-                        // value={formUOMData ?? ""}               // show the selected id
-                        // onChange={handleUOMChange}              // hook up your new handler
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Default</option>
-                        {/* {uoms.map(uom => (
-                          <option key={uom.id} value={uom.id}>
-                            {uom.unit_name} ({uom.symbol})
-                          </option>
-                        ))} */}
-                      </select>
-                    </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ▼ order by block ▼ */}
-          <div className="bg-white">
-            <button
-              onClick={() => setOpenOrderBy(!openOrderBy)}
-              className="w-full flex justify-between items-center px-4 py-2 text-lg font-bold"
-            >
-              <span className="text-gray-400">ORDER BY</span>
-              {openOrderBy ? <ChevronUp /> : <ChevronDown />}
-            </button>
-            {openOrderBy && (
-              <div className="px-4 bg-white pb-5">
-                {/* detailed description block */}
-                <div className="">
-                    <div>
-                      {/* <label className="block text-sm font-medium text-gray-400 mb-1">
-                        Suppier
-                      </label> */}
-                      <select
-                        name="uom"
-                        // value={formUOMData ?? ""}               // show the selected id
-                        // onChange={handleUOMChange}              // hook up your new handler
-                        className="w-full px-3 py-2 bg-[#F8F8F8] border border-[#EBEBEB] focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Default</option>
-                        {/* {uoms.map(uom => (
-                          <option key={uom.id} value={uom.id}>
-                            {uom.unit_name} ({uom.symbol})
-                          </option>
-                        ))} */}
-                      </select>
-                    </div>
-
-                </div>
-              </div>
-            )}
-          </div>
-          </div>
-          {/* empty bottom block */}
-          <div className="bg-white h-full"></div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Item</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">SKU</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Price</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Stock</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredItems.map((item, index) => (
+                    <tr
+                      key={item.id}
+                      onClick={() => {
+                        setModal(true);
+                        setSelectedItem(item);
+                      }}
+                      className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    >
+                      <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                            {item.item_image_url ? (
+                              <img
+                                src={item.item_image_url}
+                                alt={item.item_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Package className="w-5 h-5 text-gray-400" />
+                            )}
+                          </div>
+                          <span className="text-sm font-medium text-gray-800">{item.item_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                          {item.sku || "-"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{item.category?.type || "-"}</td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-sm font-bold text-gray-800 tabular-nums">
+                          Rs. {(item.unit_price || 0).toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {item.quantity > 0 ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500 shadow-sm">
+                            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+                            <span className="text-[10px] font-semibold text-white uppercase tracking-wide">{item.quantity} In Stock</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500 shadow-sm">
+                            <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                            <span className="text-[10px] font-semibold text-white uppercase tracking-wide">Out of Stock</span>
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
-            <ViewItemModal
-        isOpen={modal}
-        closeModal={closeModal}
-        item={selectedItem}
-      />
+
+      {/* Filter Sidebar */}
+      <div className="bg-gray-100 w-[18rem] h-[calc(100vh-2rem)] p-3">
+        <div className="flex flex-col h-full gap-3">
+          {/* Filters Block */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <button
+              onClick={() => setOpenFilter(!openFilter)}
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Filter className="w-4 h-4 text-amber-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Filters</span>
+              </div>
+              {openFilter ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+            </button>
+            {openFilter && (
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="space-y-4 pt-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                      Category
+                    </label>
+                    <select
+                      value={searchCategory}
+                      onChange={(e) => setSearchCategory(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="All">All Categories</option>
+                      {uniqueCategoryTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                      Availability
+                    </label>
+                    <select
+                      value={searchAvailability}
+                      onChange={(e) => setSearchAvailability(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="All">All Status</option>
+                      <option value="Available">In Stock</option>
+                      <option value="Out of Stock">Out of Stock</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sort By Block */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <button
+              onClick={() => setOpenOrderBy(!openOrderBy)}
+              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#1A318C]/10 flex items-center justify-center">
+                  <SortAsc className="w-4 h-4 text-[#1A318C]" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Sort By</span>
+              </div>
+              {openOrderBy ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+            </button>
+            {openOrderBy && (
+              <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="pt-4">
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="name_asc">Name (A-Z)</option>
+                    <option value="name_desc">Name (Z-A)</option>
+                    <option value="price_asc">Price (Low to High)</option>
+                    <option value="price_desc">Price (High to Low)</option>
+                    <option value="quantity_asc">Quantity (Low to High)</option>
+                    <option value="quantity_desc">Quantity (High to Low)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Stats */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex-1">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Quick Stats</p>
+
+            <div className="space-y-3">
+              <div className="bg-emerald-50 rounded-xl p-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-sm shadow-emerald-200">
+                  <CheckCircle className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-emerald-600 font-medium">In Stock</p>
+                  <p className="text-xl font-bold text-emerald-700 tabular-nums">{inStockCount}</p>
+                </div>
+              </div>
+
+              <div className="bg-red-50 rounded-xl p-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-500 flex items-center justify-center shadow-sm shadow-red-200">
+                  <AlertTriangle className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-red-600 font-medium">Out of Stock</p>
+                  <p className="text-xl font-bold text-red-700 tabular-nums">{outOfStockCount}</p>
+                </div>
+              </div>
+
+              <div className="bg-[#1A318C]/5 rounded-xl p-3 flex items-center gap-3 border border-[#1A318C]/10">
+                <div className="w-10 h-10 rounded-xl bg-[#1A318C] flex items-center justify-center shadow-sm shadow-blue-200">
+                  <Tag className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-[#1A318C] font-medium">Total Items</p>
+                  <p className="text-xl font-bold text-[#1A318C] tabular-nums">{inventoryItems.length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Clear Filters Button */}
+          <button
+            onClick={() => {
+              setSearch("");
+              setSearchCategory("All");
+              setSearchAvailability("All");
+              setSortOrder("name_asc");
+            }}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm"
+          >
+            Clear All Filters
+          </button>
         </div>
-  )
+      </div>
+
+      <ViewItemModal isOpen={modal} closeModal={closeModal} item={selectedItem} />
+    </div>
+  );
 }
 
-export default ViewSaleInventory
+export default ViewSaleInventory;

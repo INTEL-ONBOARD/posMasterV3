@@ -289,6 +289,25 @@ class UserService {
      */
     getUsersByRole(role) {
         try {
+            // Validate role against allowed values to prevent SQL injection
+            const allowedRoles = ['admin', 'manager', 'cashier', 'accountant', 'inventory_manager', 'viewer'];
+            if (!role || typeof role !== 'string') {
+                return {
+                    success: false,
+                    status: 'error',
+                    message: 'Invalid role parameter'
+                };
+            }
+
+            const sanitizedRole = role.toLowerCase().trim();
+            if (!allowedRoles.includes(sanitizedRole)) {
+                return {
+                    success: false,
+                    status: 'error',
+                    message: 'Invalid role specified'
+                };
+            }
+
             const stmt = this.userRepo.db.prepare(`
                 SELECT * FROM users
                 WHERE roles LIKE ?
@@ -296,7 +315,9 @@ class UserService {
                 ORDER BY username ASC
             `);
 
-            const users = stmt.all(`%"${role}"%`);
+            // Use properly escaped parameter
+            const searchPattern = '%"' + sanitizedRole + '"%';
+            const users = stmt.all(searchPattern);
 
             const sanitizedUsers = users.map(u => {
                 const parsed = this.userRepo._parseUser(u);

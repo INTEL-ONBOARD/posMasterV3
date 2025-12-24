@@ -480,15 +480,23 @@ function InventoryRestock({ isActive }) {
 
         uom_symbol: formDataStock.uom?.uom_symbol
       };
-      console.log(newRegItem);
-      //TODO: do a validation first
+      console.log("Adding/updating stock item:", newRegItem);
 
-      // Update existing item by id instead of adding new item
-      setSelectedStockItemList(prev =>
-        prev.map(prevItem =>
-          (prevItem.id ?? prevItem._id) === formItemId ? newRegItem : prevItem
-        )
-      );
+      // Add new item to list, or update if it already exists
+      setSelectedStockItemList(prev => {
+        const existingIndex = prev.findIndex(
+          prevItem => (prevItem.id ?? prevItem._id) === formItemId
+        );
+        if (existingIndex >= 0) {
+          // Update existing item
+          const updated = [...prev];
+          updated[existingIndex] = newRegItem;
+          return updated;
+        } else {
+          // Add new item to list
+          return [...prev, newRegItem];
+        }
+      });
 
       //finally clear inputs
       clearFormInput();
@@ -542,14 +550,23 @@ function InventoryRestock({ isActive }) {
         return_quantity: formDataReturnItem.quantity
 
       };
-      console.log(newRetItem);
-      //TODO: do a validation first
-      // Update existing item by id instead of adding new item
-      setSelectedReturnItemList(prev =>
-        prev.map(prevItem =>
-          (prevItem.id ?? prevItem._id) === formItemId ? newRetItem : prevItem
-        )
-      );
+      console.log("Adding/updating return item:", newRetItem);
+
+      // Add new item to list, or update if it already exists
+      setSelectedReturnItemList(prev => {
+        const existingIndex = prev.findIndex(
+          prevItem => (prevItem.id ?? prevItem._id) === formItemId
+        );
+        if (existingIndex >= 0) {
+          // Update existing item
+          const updated = [...prev];
+          updated[existingIndex] = newRetItem;
+          return updated;
+        } else {
+          // Add new item to list
+          return [...prev, newRetItem];
+        }
+      });
 
       //finally clear inputs
       clearFormInput();
@@ -826,13 +843,18 @@ function InventoryRestock({ isActive }) {
     setTransactionData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Load item object into selectd item table from cards
+  // Load item object into form from cards (populates form only, does not add to list)
+  // Item is added to list when user clicks "Add Item" button
   const loadItemtoList = (item) => {
     // Use consistent ID (prefer id, fallback to _id)
     const itemId = item.id ?? item._id;
 
     if (rightActiveSection != "return") {
-      const newRegItem = {
+      console.log("Loading stock item to form:", item.item_name);
+
+      // Populate form data for regular item
+      setFormDataRegItem({
+        sku: item.sku,
         _id: item._id,
         id: itemId,
         stock_trace: item.stock_trace,
@@ -841,47 +863,53 @@ function InventoryRestock({ isActive }) {
         maximum_capacity: item.maximum_capacity,
         uom_id: item.uom_id,
         category_id: item.category_id,
-
-        batch_code: "",
-
+        inventory_id: item.inventory_id,
+        item_update_datetime: item.item_update_datetime,
+        item_created_datetime: item.item_created_datetime,
+        __v: item.__v,
         uom: {
-        id: item.uom?.id ?? item.uom?._id,
-        symbol: item.uom?.symbol,
-        unit_name: item.uom?.unit_name,
-      },
-      category: {
-        id: item.category?.id ?? item.category?._id,
-        brand: item.category?.brand,
-        type: item.category?.type,
-      },
+          _id: item.uom?._id,
+          id: item.uom?.id ?? item.uom?._id,
+          symbol: item.uom?.symbol,
+          unit_name: item.uom?.unit_name,
+          __v: item.uom?.__v,
+        },
+        category: {
+          _id: item.category?._id,
+          id: item.category?.id ?? item.category?._id,
+          brand: item.category?.brand,
+          type: item.category?.type,
+          __v: item.category?.__v,
+        },
+        inventory: item.inventory,
+        availability: true
+      });
 
-        sku: item.sku,
-        quantity: 0,
-        threshold_limit: 0,
-        stock_price: 0,
-        retail_price: 0,
-        expired_datetime: "",
-        availability: true,
+      // Reset stock form with defaults for new item entry
+      setFormDataStock(prev => ({
+        ...prev,
+        batch_code: "",
+        quantity: "",
+        threshold_limit: "",
+        stock_price: "",
+        retail_price: "",
+        discount: 0,
+        availability: true
+      }));
 
-        item_discount_amt: 0,
+      // Fetch existing stock entries for this SKU
+      fetchStockEntries(item.sku);
 
-        uom_symbol: formDataStock.uom?.uom_symbol
-      };
-      console.log("Adding stock item:", newRegItem);
-      //TODO: do a validation first: if item already exists, don't add it(can be changed to update mulitple items with different batch codes)
-      setSelectedStockItemList(prev =>
-        prev.some(existingItem => (existingItem.id ?? existingItem._id) === itemId)
-          ? prev
-          : [...prev, newRegItem]
-      );
+      // Hide return section
+      setReturnItemSelected(false);
     }
-    //item is added to the table as a return item
+    //item is added to the form as a return item
     else {
-      console.log("return item was selected");
+      console.log("Loading return item to form:", item.item_name);
 
-      //TODO: fix quantity redunduncy here
-      const newRetItem = {
-
+      // Populate form data for return item
+      setFormDataRegItem({
+        sku: item.sku,
         _id: item._id,
         id: itemId,
         stock_trace: item.stock_trace,
@@ -890,34 +918,44 @@ function InventoryRestock({ isActive }) {
         maximum_capacity: item.maximum_capacity,
         uom_id: item.uom_id,
         category_id: item.category_id,
+        inventory_id: item.inventory_id,
+        item_update_datetime: item.item_update_datetime,
+        item_created_datetime: item.item_created_datetime,
+        __v: item.__v,
+        uom: {
+          _id: item.uom?._id,
+          id: item.uom?.id ?? item.uom?._id,
+          symbol: item.uom?.symbol,
+          unit_name: item.uom?.unit_name,
+          __v: item.uom?.__v,
+        },
+        category: {
+          _id: item.category?._id,
+          id: item.category?.id ?? item.category?._id,
+          brand: item.category?.brand,
+          type: item.category?.type,
+          __v: item.category?.__v,
+        },
+        inventory: item.inventory,
+        availability: true
+      });
 
-        sku: item.sku,
-        threshold_limit: 0,
+      // Reset return form fields
+      setFormDataReturnItem({
+        sku: "",
         stock_price: 0,
         retail_price: 0,
-        expired_datetime: "",
-        availability: formDataStock.availability,
-
         batch_code: "",
-        quantity: 0,
-        uom_symbol: formDataStock.uom?.uom_symbol,
+        quantity: "",
+        return_description: ""
+      });
 
-        item_discount_amt: 0,
+      // Fetch existing stock entries for this SKU
+      fetchStockEntries(item.sku);
 
-        return_description: "",
-        return_quantity: 0
-      };
-      console.log("Adding return item:", newRetItem);
-
-      //TODO: do a validation first: if item already exists, don't add it(can be changed to update mulitple items with different batch codes)
-      setSelectedReturnItemList(prev =>
-        prev.some(existingItem => (existingItem.id ?? existingItem._id) === itemId)
-          ? prev
-          : [...prev, newRetItem]
-      );
+      // Show return section
+      setReturnItemSelected(true);
     }
-
-
   };
 
   //to make left section's return item block visible only after selecting a return item from the table
@@ -1547,7 +1585,7 @@ function InventoryRestock({ isActive }) {
                       const selectedUsername = e.target.value;
                       const selectedUser = users.find(user => user.username === selectedUsername);
                       if (selectedUser) {
-                        setTransactionData(prev => ({ ...prev, prep_id: selectedUser._id }));
+                        setTransactionData(prev => ({ ...prev, prep_id: selectedUser.id || selectedUser._id }));
                         setTransactionErrors(prev => {
                           const next = { ...prev };
                           delete next.preparedBy;
@@ -1563,7 +1601,7 @@ function InventoryRestock({ isActive }) {
                   >
                     <option value="">Select employee</option>
                     {users.map(user => (
-                      <option key={user._id} value={user.username}>
+                      <option key={user.id || user._id} value={user.username}>
                         {user.username}
                       </option>
                     ))}
@@ -1584,7 +1622,7 @@ function InventoryRestock({ isActive }) {
                       const selectedUsername = e.target.value;
                       const selectedUser = users.find(user => user.username === selectedUsername);
                       if (selectedUser) {
-                        setTransactionData(prev => ({ ...prev, auth_id: selectedUser._id }));
+                        setTransactionData(prev => ({ ...prev, auth_id: selectedUser.id || selectedUser._id }));
                         setTransactionErrors(prev => {
                           const next = { ...prev };
                           delete next.authorizedBy;
@@ -1600,7 +1638,7 @@ function InventoryRestock({ isActive }) {
                   >
                     <option value="">Select employee</option>
                     {users.map(user => (
-                      <option key={user._id} value={user.username}>
+                      <option key={user.id || user._id} value={user.username}>
                         {user.username}
                       </option>
                     ))}
