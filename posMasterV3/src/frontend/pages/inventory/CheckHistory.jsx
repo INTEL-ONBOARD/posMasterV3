@@ -323,11 +323,11 @@ function CheckHistory({ isActive }) {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Prepared By</p>
-                    <p className="text-base font-semibold text-gray-800">{selectedTrans.prepared_by || 'N/A'}</p>
+                    <p className="text-base font-semibold text-gray-800">{selectedTrans.prepared_by_name || selectedTrans.prepared_by || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Authorized By</p>
-                    <p className="text-base font-semibold text-gray-800">{selectedTrans.authorized_by || 'N/A'}</p>
+                    <p className="text-base font-semibold text-gray-800">{selectedTrans.authorized_by_name || selectedTrans.authorized_by || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Payment Method</p>
