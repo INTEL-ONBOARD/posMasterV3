@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { ChevronDown, ChevronUp, Search, Filter, SortAsc, ArrowLeft, FileText, Calendar, DollarSign, User, Package, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, Filter, SortAsc, ArrowLeft, FileText, Calendar, DollarSign, User, Package, Clock, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { restockApi } from '../../api/localApi';
 import { extractDateOnly } from '../../util/common/date';
 import { useReactiveData, TABLES } from '../../store';
@@ -13,7 +13,7 @@ function CheckHistory({ isActive }) {
   const [openOrderBy, setOpenOrderBy] = useState(true);
 
   // Use reactive data hook for restock transactions
-  const { data: transData, loading: isLoadingTrans } = useReactiveData(
+  const { data: transData, loading: isLoadingTrans, refetch: refetchTransactions } = useReactiveData(
     TABLES.RESTOCK_TRANSACTIONS,
     null,
     { enabled: isActive }
@@ -115,9 +115,13 @@ function CheckHistory({ isActive }) {
                       className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                     />
                   </div>
-                  <button className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2">
-                    <Search className="w-4 h-4" />
-                    Search
+                  <button
+                    onClick={refetchTransactions}
+                    disabled={isLoadingTrans}
+                    className="h-12 w-12 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-all duration-200 flex items-center justify-center disabled:opacity-50"
+                    title="Refresh"
+                  >
+                    <RefreshCw className={`w-5 h-5 ${isLoadingTrans ? 'animate-spin' : ''}`} />
                   </button>
                 </div>
                 {/* Results count */}
