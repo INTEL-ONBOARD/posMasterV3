@@ -174,10 +174,32 @@ class DataStore {
      * Handle data change events from backend
      */
     _handleDataChange(event) {
-        const { table, operation, recordId, record } = event;
+        const { table, operation, recordId, record, isBatch, count } = event;
 
         // Map backend table names to our table constants if needed
         const normalizedTable = this._normalizeTableName(table);
+
+        // For batch sync operations, skip if no records changed or use debouncing
+        if (isBatch) {
+            if (count === 0) {
+                return; // No actual changes
+            }
+            // Debounce batch updates - skip if we recently handled this table
+            const lastRefresh = this._lastRefreshTime?.get(normalizedTable) || 0;
+            if (Date.now() - lastRefresh < 2000) {
+                console.log(`[DataStore] Skipping batch change for ${normalizedTable} (debounced)`);
+                return;
+            }
+            // For batch operations, just invalidate and refetch if there are subscribers
+            this.invalidate(normalizedTable);
+            const subscribers = this.subscribers.get(normalizedTable);
+            if (subscribers && subscribers.size > 0) {
+                if (!this._lastRefreshTime) this._lastRefreshTime = new Map();
+                this._lastRefreshTime.set(normalizedTable, Date.now());
+                this.refetch(normalizedTable);
+            }
+            return;
+        }
 
         if (!this.cache.has(normalizedTable)) {
             // Table not in cache, nothing to update
@@ -240,8 +262,20 @@ class DataStore {
      * Handle refresh needed events (triggered after cloud sync pulls data)
      */
     _handleRefreshNeeded(event) {
-        const { table } = event;
+        const { table, count } = event;
         const normalizedTable = this._normalizeTableName(table);
+
+        // Skip if no records were actually changed
+        if (count === 0) {
+            return;
+        }
+
+        // Debounce: Skip if we recently refreshed this table (within 2 seconds)
+        const lastRefresh = this._lastRefreshTime?.get(normalizedTable) || 0;
+        if (Date.now() - lastRefresh < 2000) {
+            console.log(`[DataStore] Skipping refresh for ${normalizedTable} (debounced)`);
+            return;
+        }
 
         // Invalidate cache for this table
         this.invalidate(normalizedTable);
@@ -249,6 +283,10 @@ class DataStore {
         // If there are active subscribers, refetch immediately
         const subscribers = this.subscribers.get(normalizedTable);
         if (subscribers && subscribers.size > 0) {
+            // Track refresh time
+            if (!this._lastRefreshTime) this._lastRefreshTime = new Map();
+            this._lastRefreshTime.set(normalizedTable, Date.now());
+
             this.refetch(normalizedTable);
         }
     }
@@ -281,34 +319,64 @@ class DataStore {
      * @param {Object} data - { changes: [{table, count}], totalRecords, tables }
      */
     _handleMultiTableChange(data) {
-        const { changes, tables } = data;
+        const { changes, tables, totalRecords } = data;
 
-        // Invalidate all affected tables
+        // Skip if no actual records changed
+        if (!totalRecords || totalRecords === 0) {
+            return;
+        }
+
+        // Track which tables we've already processed
+        const processedTables = new Set();
+
+        // Process tables list
         if (tables && Array.isArray(tables)) {
             for (const table of tables) {
                 const normalizedTable = this._normalizeTableName(table);
+
+                // Debounce: Skip if we recently refreshed this table
+                const lastRefresh = this._lastRefreshTime?.get(normalizedTable) || 0;
+                if (Date.now() - lastRefresh < 2000) {
+                    console.log(`[DataStore] Skipping multi-table refresh for ${normalizedTable} (debounced)`);
+                    continue;
+                }
+
                 this.invalidate(normalizedTable);
+                processedTables.add(normalizedTable);
 
                 // Refetch if there are active subscribers
                 const subscribers = this.subscribers.get(normalizedTable);
                 if (subscribers && subscribers.size > 0) {
+                    if (!this._lastRefreshTime) this._lastRefreshTime = new Map();
+                    this._lastRefreshTime.set(normalizedTable, Date.now());
                     this.refetch(normalizedTable);
                 }
             }
         }
 
-        // Also process individual changes if provided
+        // Also process individual changes if provided (for tables not in the tables list)
         if (changes && Array.isArray(changes)) {
             for (const change of changes) {
                 if (change.count > 0) {
                     const normalizedTable = this._normalizeTableName(change.table);
-                    // Only refetch if not already handled above
-                    if (!tables?.includes(change.table)) {
-                        this.invalidate(normalizedTable);
-                        const subscribers = this.subscribers.get(normalizedTable);
-                        if (subscribers && subscribers.size > 0) {
-                            this.refetch(normalizedTable);
-                        }
+
+                    // Skip if already processed
+                    if (processedTables.has(normalizedTable)) {
+                        continue;
+                    }
+
+                    // Debounce check
+                    const lastRefresh = this._lastRefreshTime?.get(normalizedTable) || 0;
+                    if (Date.now() - lastRefresh < 2000) {
+                        continue;
+                    }
+
+                    this.invalidate(normalizedTable);
+                    const subscribers = this.subscribers.get(normalizedTable);
+                    if (subscribers && subscribers.size > 0) {
+                        if (!this._lastRefreshTime) this._lastRefreshTime = new Map();
+                        this._lastRefreshTime.set(normalizedTable, Date.now());
+                        this.refetch(normalizedTable);
                     }
                 }
             }

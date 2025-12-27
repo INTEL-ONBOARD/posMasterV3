@@ -193,6 +193,11 @@ function broadcastSyncComplete(result) {
  * @param {string} operation - 'SYNC_PULL' | 'BULK_INSERT' | 'BULK_UPDATE' | 'BULK_DELETE'
  */
 function broadcastBatchChange(table, count, operation = 'SYNC_PULL') {
+    // Skip if no records were actually changed
+    if (count === 0) {
+        return;
+    }
+
     try {
         const windows = BrowserWindow.getAllWindows();
         const payload = {
@@ -205,15 +210,9 @@ function broadcastBatchChange(table, count, operation = 'SYNC_PULL') {
 
         for (const win of windows) {
             if (win && win.webContents && !win.isDestroyed()) {
-                // Send as data:changed so existing listeners pick it up
+                // Send only data:changed - the frontend DataStore will handle it
+                // Don't send both data:changed AND refresh-needed to avoid duplicate refreshes
                 win.webContents.send('data:changed', payload);
-                // Also send refresh-needed for this table
-                win.webContents.send('data:refresh-needed', {
-                    table,
-                    reason: operation.toLowerCase(),
-                    count,
-                    timestamp: payload.timestamp
-                });
             }
         }
 
@@ -229,34 +228,30 @@ function broadcastBatchChange(table, count, operation = 'SYNC_PULL') {
  * @param {Array<{table: string, count: number}>} changes - Array of table changes
  */
 function broadcastMultiTableChange(changes) {
+    // Filter out tables with no changes
+    const actualChanges = changes.filter(c => c.count > 0);
+    if (actualChanges.length === 0) {
+        return; // No actual changes
+    }
+
     try {
         const windows = BrowserWindow.getAllWindows();
         const payload = {
-            changes,
-            totalRecords: changes.reduce((sum, c) => sum + (c.count || 0), 0),
-            tables: changes.map(c => c.table),
+            changes: actualChanges,
+            totalRecords: actualChanges.reduce((sum, c) => sum + (c.count || 0), 0),
+            tables: actualChanges.map(c => c.table),
             timestamp: new Date().toISOString()
         };
 
         for (const win of windows) {
             if (win && win.webContents && !win.isDestroyed()) {
+                // Send only multi-table-changed - the frontend DataStore handles it
+                // Don't also send individual refresh-needed to avoid duplicate refreshes
                 win.webContents.send('sync:multi-table-changed', payload);
-
-                // Also send individual refresh-needed for each table
-                for (const change of changes) {
-                    if (change.count > 0) {
-                        win.webContents.send('data:refresh-needed', {
-                            table: change.table,
-                            reason: 'cloud_sync',
-                            count: change.count,
-                            timestamp: payload.timestamp
-                        });
-                    }
-                }
             }
         }
 
-        console.log(`[EventBroadcaster] Multi-table change: ${changes.length} tables, ${payload.totalRecords} total records`);
+        console.log(`[EventBroadcaster] Multi-table change: ${actualChanges.length} tables, ${payload.totalRecords} total records`);
     } catch (error) {
         console.error('[EventBroadcaster] Failed to broadcast multi-table change:', error.message);
     }
