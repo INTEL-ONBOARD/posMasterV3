@@ -409,7 +409,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
             ipcRenderer.invoke("cloudSync:ensureSchema"),
         // Initialize MySQL connection
         initializeMySQL: () =>
-            ipcRenderer.invoke("cloudSync:initializeMySQL")
+            ipcRenderer.invoke("cloudSync:initializeMySQL"),
+        // Force full sync immediately (real-time sync)
+        forceFullSync: () =>
+            ipcRenderer.invoke("cloudSync:forceFullSync"),
+        // Sync active_sessions immediately (for single-device enforcement)
+        syncActiveSessions: () =>
+            ipcRenderer.invoke("cloudSync:syncActiveSessions"),
+        // Get real-time sync status
+        getRealTimeStatus: () =>
+            ipcRenderer.invoke("cloudSync:getRealTimeStatus")
     },
 
     // ============================================
@@ -477,5 +486,48 @@ contextBridge.exposeInMainWorld("electronAPI", {
         const handler = (event, data) => callback(data);
         ipcRenderer.on("sync:status-changed", handler);
         return () => ipcRenderer.removeListener("sync:status-changed", handler);
+    },
+
+    /**
+     * Listen for session kicked event (single-device enforcement)
+     * Called when another device logs in with the same user
+     * The callback will be called with: { userId, deviceName, message, timestamp }
+     */
+    onSessionKicked: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on("session:kicked", handler);
+        return () => ipcRenderer.removeListener("session:kicked", handler);
+    },
+
+    /**
+     * Listen for connection status changes
+     * Called when network connectivity changes
+     * The callback will be called with: { isOnline, quality, timestamp }
+     */
+    onConnectionStatusChange: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on("connection:status-changed", handler);
+        return () => ipcRenderer.removeListener("connection:status-changed", handler);
+    },
+
+    /**
+     * Listen for data refresh notifications
+     * Called when data needs to be refetched (after sync)
+     * The callback will be called with: { table, reason, timestamp }
+     */
+    onRefreshNeeded: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on("data:refresh-needed", handler);
+        return () => ipcRenderer.removeListener("data:refresh-needed", handler);
+    },
+
+    /**
+     * Listen for active sessions updates (for session monitoring)
+     * Called after active_sessions are synced from cloud
+     */
+    onActiveSessionsUpdated: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on("sync:active-sessions-updated", handler);
+        return () => ipcRenderer.removeListener("sync:active-sessions-updated", handler);
     }
 });
