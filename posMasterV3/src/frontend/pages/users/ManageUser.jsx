@@ -1,5 +1,5 @@
 import React, { useEffect, useContext, useRef, useState } from "react";
-import { X, ChevronDown, ChevronUp, Upload } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Upload, RefreshCw } from "lucide-react";
 import { userApi, authApi, branchApi, settingsApi } from "../../api/localApi";
 import ToastContext from "../toasts/ToastService";
 import { useReactiveData, TABLES } from "../../store";
@@ -955,6 +955,14 @@ function ManageUser() {
             />
             <button className="px-6 py-3 bg-[#1A318C] text-white text-sm font-medium hover:bg-[#152870] transition-colors">
               Search
+            </button>
+            <button
+              onClick={refetchUsers}
+              disabled={isLoading}
+              className="px-3 py-3 bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors flex items-center justify-center disabled:opacity-50"
+              title="Refresh"
+            >
+              <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
           </div>
 
