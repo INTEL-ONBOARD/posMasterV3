@@ -13,9 +13,9 @@ export default function AddItemCard({ item, onOpen, onRemove }) {
   }, [item.item_name]);
 
   // compute filled % once per render
-  const percentFull = (item.quantity / item.maximum_capacity) * 100;
+  const percentFull = item.maximum_capacity ? ((item.quantity || 0) / item.maximum_capacity) * 100 : 0;
   let statusColorClass, statusBgClass, statusText;
-  if (percentFull <= item.threshold_limit) {
+  if (percentFull <= (item.threshold_limit || 30)) {
     statusColorClass = "bg-red-500";
     statusBgClass = "bg-red-50 text-red-600";
     statusText = "Low";

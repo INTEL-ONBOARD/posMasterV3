@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp, Search, Filter, SortAsc, ArrowLeft, FileText, Calendar, DollarSign, User, Package, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { restockApi } from '../../api/localApi';
 import { extractDateOnly } from '../../util/common/date';
+import { useReactiveData, TABLES } from '../../store';
 
 function CheckHistory({ isActive }) {
   // View state
@@ -11,8 +12,14 @@ function CheckHistory({ isActive }) {
   const [openFilters, setOpenFilters] = useState(true);
   const [openOrderBy, setOpenOrderBy] = useState(true);
 
-  // Loading states
-  const [isLoadingTrans, setIsLoadingTrans] = useState(true);
+  // Use reactive data hook for restock transactions
+  const { data: transData, loading: isLoadingTrans } = useReactiveData(
+    TABLES.RESTOCK_TRANSACTIONS,
+    null,
+    { enabled: isActive }
+  );
+
+  // Search loading state
   const [searchLoading, setSearchLoading] = useState(false);
 
   // Search and filter states
@@ -22,30 +29,8 @@ function CheckHistory({ isActive }) {
   const [filterAmount, setFilterAmount] = useState("all");
   const [sortOrder, setSortOrder] = useState("recent");
 
-  // Transaction data
-  const [transData, setTransData] = useState([]);
+  // Selected transaction for detail view
   const [selectedTrans, setSelectedTrans] = useState(null);
-
-  // Fetch transactions
-  const fetchTransactionList = async () => {
-    setIsLoadingTrans(true);
-    try {
-      const response = await restockApi.getAll();
-      if (response.status === "success") {
-        setTransData(response.data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching restocks:", error);
-    } finally {
-      setIsLoadingTrans(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isActive) {
-      fetchTransactionList();
-    }
-  }, [isActive]);
 
   // Search handler
   const handleSearch = (e) => {
@@ -54,8 +39,11 @@ function CheckHistory({ isActive }) {
     setTimeout(() => setSearchLoading(false), 400);
   };
 
+  // Safe access to transaction data
+  const safeTransData = transData || [];
+
   // Filter transactions
-  const filteredTransactions = transData.filter((t) => {
+  const filteredTransactions = safeTransData.filter((t) => {
     const searchTerm = search.toLowerCase();
     const matchesSearch =
       t.invoice_no?.toLowerCase().includes(searchTerm) ||
@@ -207,7 +195,7 @@ function CheckHistory({ isActive }) {
                                 ? 'bg-emerald-100 text-emerald-700'
                                 : 'bg-blue-100 text-blue-700'
                             }`}>
-                              {t.payment_method?.charAt(0).toUpperCase() + t.payment_method?.slice(1) || 'N/A'}
+                              {t.payment_method ? t.payment_method.charAt(0).toUpperCase() + t.payment_method.slice(1) : 'N/A'}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
@@ -533,12 +521,12 @@ function CheckHistory({ isActive }) {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Total Transactions</span>
-                <span className="text-sm font-bold text-gray-800">{transData.length}</span>
+                <span className="text-sm font-bold text-gray-800">{safeTransData.length}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Total Amount</span>
                 <span className="text-sm font-bold text-[#1A318C]">
-                  Rs.{transData.reduce((sum, t) => sum + (t.total_amount || 0), 0).toLocaleString()}
+                  Rs.{safeTransData.reduce((sum, t) => sum + (t.total_amount || 0), 0).toLocaleString()}
                 </span>
               </div>
             </div>

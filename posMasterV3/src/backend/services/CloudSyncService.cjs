@@ -21,7 +21,14 @@ const {
 } = require('../database/mysql-connection.cjs');
 const dns = require('dns');
 const { nowISO } = require('../utils/helpers.cjs');
-const { broadcastDataChange, broadcastSyncStatus, broadcastRefreshNeeded } = require('../utils/eventBroadcaster.cjs');
+const {
+    broadcastDataChange,
+    broadcastSyncStatus,
+    broadcastRefreshNeeded,
+    broadcastSyncComplete,
+    broadcastBatchChange,
+    broadcastMultiTableChange
+} = require('../utils/eventBroadcaster.cjs');
 
 // Sync configuration
 const NETWORK_CHECK_INTERVAL_MS = 5000; // Check network every 5 seconds (faster for real-time)
@@ -505,6 +512,29 @@ class CloudSyncService {
 
         console.log(`[CloudSync] Bidirectional sync completed in ${duration}ms. Pushed: ${results.uploaded}, Pulled: ${results.downloaded}, Conflicts: ${results.conflicts}`);
 
+        // Broadcast sync completion to update UI
+        const totalRecordsUpdated = results.uploaded + results.downloaded;
+        broadcastSyncComplete({
+            success: results.errors.length === 0,
+            tablesAffected: TABLES_TO_SYNC.length,
+            recordsUpdated: totalRecordsUpdated,
+            uploaded: results.uploaded,
+            downloaded: results.downloaded,
+            conflicts: results.conflicts,
+            duration,
+            errors: results.errors
+        });
+
+        // If any records were downloaded, broadcast multi-table change to refresh UI
+        if (results.downloaded > 0) {
+            // Build list of tables that had changes
+            const tableChanges = TABLES_TO_SYNC.map(table => ({
+                table,
+                count: Math.ceil(results.downloaded / TABLES_TO_SYNC.length) // Approximate distribution
+            }));
+            broadcastMultiTableChange(tableChanges);
+        }
+
         return { status: 'success', duration, ...results };
     }
 
@@ -929,8 +959,9 @@ class CloudSyncService {
                 }
             }
 
-            // Broadcast refresh needed if we downloaded any records
+            // Broadcast batch change and refresh needed if we downloaded any records
             if (result.downloaded > 0) {
+                broadcastBatchChange(tableName, result.downloaded, 'SYNC_PULL');
                 broadcastRefreshNeeded(tableName, 'cloud_sync');
             }
 

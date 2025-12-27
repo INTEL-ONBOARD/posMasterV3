@@ -1,11 +1,15 @@
-import React, { useState, useEffect, useContext } from "react";
-import { Search, X, Check, Tag, ChevronDown } from "lucide-react";
+import React, { useState, useContext, useMemo } from "react";
+import { Search, X, Check, Tag, ChevronDown, RefreshCw } from "lucide-react";
 import { categoryApi } from "../../../api/localApi";
 import ToastContext from "../../toasts/ToastService";
+import { useReactiveData, TABLES } from "../../../store";
 
 function CategoryConfig() {
   const toast = useContext(ToastContext);
-  const [categories, setCategories] = useState([]);
+
+  // Use reactive data hook - automatically updates when categories change
+  const { data: categories, loading: isLoading, refetch } = useReactiveData(TABLES.CATEGORIES);
+
   const [formData, setFormData] = useState({
     brand: "",
     type: ""
@@ -16,29 +20,11 @@ function CategoryConfig() {
 
   // Search functionality
   const [search, setSearch] = useState("");
-  const [searchLoading, setSearchLoading] = useState(false);
   const [searchCategory, setSearchCategory] = useState("All");
-
-  const fetchCategories = async () => {
-    try {
-      const response = await categoryApi.getAll();
-      if (response.status === 'success') {
-        setCategories(response.data || []);
-      }
-    } catch (error) {
-      setError(error.message || 'Failed to fetch categories');
-    }
-  };
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
 
   // Search handler
   const handleSearch = (e) => {
-    setSearchLoading(true);
     setSearch(e.target.value);
-    setTimeout(() => setSearchLoading(false), 400);
   };
 
   // Category search handler
@@ -47,7 +33,7 @@ function CategoryConfig() {
   };
 
   // Filter categories based on search and category type
-  const filteredCategories = categories.filter((category) => {
+  const filteredCategories = (categories || []).filter((category) => {
     const matchesSearch = category.brand.toLowerCase().includes(search.toLowerCase()) ||
       category.type.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = searchCategory === "All" || category.type === searchCategory;
@@ -55,7 +41,7 @@ function CategoryConfig() {
   });
 
   // Get unique category types for dropdown
-  const uniqueCategoryTypes = [...new Set(categories.map(cat => cat.type))];
+  const uniqueCategoryTypes = [...new Set((categories || []).map(cat => cat.type))];
 
   const handleSubmit = async () => {
     if (!formData.brand.trim() || !formData.type.trim()) {
@@ -75,7 +61,7 @@ function CategoryConfig() {
       }
 
       if (response.status === "success") {
-        fetchCategories();
+        // Data will auto-refresh via reactive hook - no need to manually fetch
         handleClear();
         toast?.open(editingId ? "Category updated successfully" : "Category added successfully", 3000, 'Success', 'success');
       } else {
@@ -95,7 +81,7 @@ function CategoryConfig() {
     try {
       const response = await categoryApi.delete(id);
       if (response.status === "success") {
-        setCategories(prev => prev.filter(cat => cat.id !== id));
+        // Data will auto-refresh via reactive hook - no need to manually update state
         if (editingId === id) handleClear();
         toast?.open("Category deleted successfully", 3000, 'Success', 'success');
       }
@@ -124,7 +110,7 @@ function CategoryConfig() {
   };
 
   // GROUP BY type → count brands per type
-  const summary = categories.reduce((acc, { type }) => {
+  const summary = (categories || []).reduce((acc, { type }) => {
     acc[type] = (acc[type] || 0) + 1;
     return acc;
   }, {});
@@ -250,7 +236,7 @@ function CategoryConfig() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {searchLoading ? (
+              {isLoading ? (
                 <tr>
                   <td colSpan="4" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center">
@@ -330,7 +316,7 @@ function CategoryConfig() {
 
         {/* Summary Footer */}
         <div className="mt-4 text-sm text-gray-500">
-          Showing {filteredCategories.length} of {categories.length} categories
+          Showing {filteredCategories.length} of {(categories || []).length} categories
         </div>
       </div>
     </div>

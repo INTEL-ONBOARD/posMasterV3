@@ -15,7 +15,7 @@ export default function SalesItemCard({ item, onOpen }) {
   }, [item.item_name]);
 
   // Calculate status color based on quantity
-  const percentFull = (item.quantity / item.maximum_capacity) * 100;
+  const percentFull = item.maximum_capacity ? ((item.quantity || 0) / item.maximum_capacity) * 100 : 0;
   let statusConfig;
   if (percentFull <= item.threshold_limit) {
     statusConfig = { bg: "bg-red-500", text: "text-red-600", label: "Low" };

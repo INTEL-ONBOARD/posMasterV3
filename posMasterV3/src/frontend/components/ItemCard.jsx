@@ -15,9 +15,9 @@ export default function ItemCard({ item, onOpen, onRemove }) {
     setOverflowing(el.scrollWidth > el.clientWidth);
   }, [item.item_name]);
 
-  const percentFull = (item.quantity / item.maximum_capacity) * 100;
+  const percentFull = item.maximum_capacity ? ((item.quantity || 0) / item.maximum_capacity) * 100 : 0;
   let statusConfig;
-  if (percentFull <= item.threshold_limit) {
+  if (percentFull <= (item.threshold_limit || 30)) {
     statusConfig = { bg: "bg-red-500", ring: "ring-red-200", text: "text-red-600", label: "Low Stock" };
   } else if (percentFull <= item.threshold_limit + 20) {
     statusConfig = { bg: "bg-amber-500", ring: "ring-amber-200", text: "text-amber-600", label: "Medium" };

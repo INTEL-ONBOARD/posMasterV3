@@ -13,9 +13,9 @@ export default function RestockItemCard({ item, onOpen, onRemove }) {
   }, [item.item_name]);
 
   // compute filled % once per render
-  const percentFull = (item.quantity / item.maximum_capacity) * 100;
+  const percentFull = item.maximum_capacity ? ((item.quantity || 0) / item.maximum_capacity) * 100 : 0;
   let statusColorClass;
-  if (percentFull <= item.threshold_limit) {
+  if (percentFull <= (item.threshold_limit || 30)) {
     statusColorClass = "bg-red-500";
   } else if (percentFull <= item.threshold_limit + 20) {
     statusColorClass = "bg-yellow-500";

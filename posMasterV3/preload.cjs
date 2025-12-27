@@ -529,5 +529,27 @@ contextBridge.exposeInMainWorld("electronAPI", {
         const handler = (event, data) => callback(data);
         ipcRenderer.on("sync:active-sessions-updated", handler);
         return () => ipcRenderer.removeListener("sync:active-sessions-updated", handler);
+    },
+
+    /**
+     * Listen for sync completion events
+     * Called when a sync cycle completes (push or pull)
+     * The callback will be called with: { success, tablesAffected, recordsUpdated, timestamp }
+     */
+    onSyncCompleted: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on("sync:completed", handler);
+        return () => ipcRenderer.removeListener("sync:completed", handler);
+    },
+
+    /**
+     * Listen for multi-table sync changes
+     * Called when cloud sync updates multiple tables at once
+     * The callback will be called with: { changes: [{table, count}], totalRecords, tables, timestamp }
+     */
+    onMultiTableChanged: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on("sync:multi-table-changed", handler);
+        return () => ipcRenderer.removeListener("sync:multi-table-changed", handler);
     }
 });
