@@ -588,16 +588,25 @@ class CloudSyncService {
 
     /**
      * Push a single record to cloud
+     * Filters out local-only columns that don't exist in the cloud database
      */
     async pushRecordToCloud(tableName, record, columns) {
-        const values = columns.map(col => {
+        // Columns that exist only in local SQLite and should NOT be synced to cloud
+        const LOCAL_ONLY_COLUMNS = [
+            'item_image_blob'  // Binary blob for images stored locally
+        ];
+
+        // Filter out local-only columns
+        const syncColumns = columns.filter(col => !LOCAL_ONLY_COLUMNS.includes(col));
+
+        const values = syncColumns.map(col => {
             const val = record[col];
             if (typeof val === 'boolean') return val ? 1 : 0;
             return val;
         });
 
-        const placeholders = columns.map(() => '?').join(', ');
-        const query = `REPLACE INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`;
+        const placeholders = syncColumns.map(() => '?').join(', ');
+        const query = `REPLACE INTO ${tableName} (${syncColumns.join(', ')}) VALUES (${placeholders})`;
 
         await executeQuery(query, values);
     }
