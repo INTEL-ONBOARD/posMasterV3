@@ -333,6 +333,9 @@ class MemberService {
             member_type: member.member_type,
             total_income: member.total_income,
             total_credits: member.total_credits,
+            // Frontend compatibility aliases
+            credit_limit: member.total_income || 0,
+            credit_balance: member.total_credits || 0,
             is_active: member.is_active === 1,
             created_at: member.created_at,
             updated_at: member.updated_at,
