@@ -12,7 +12,12 @@
  */
 
 const { getDatabase } = require('../database/connection.cjs');
-const { broadcastDataChange, broadcastSyncStatus, broadcastEvent } = require('../utils/eventBroadcaster.cjs');
+const {
+    broadcastDataChange,
+    broadcastSyncStatus,
+    broadcastEvent,
+    broadcastSyncComplete
+} = require('../utils/eventBroadcaster.cjs');
 const EventEmitter = require('events');
 
 // Configuration for real-time sync
@@ -360,6 +365,18 @@ class RealTimeSyncService extends EventEmitter {
         this.pendingChanges = [...failed];
 
         console.log(`[RealTimeSync] Pending sync complete. Synced: ${synced}, Failed: ${failed.length}`);
+
+        // Broadcast sync completion to update UI
+        if (synced > 0) {
+            broadcastSyncComplete({
+                success: failed.length === 0,
+                recordsUpdated: synced,
+                uploaded: synced,
+                downloaded: 0,
+                errors: failed.length > 0 ? [{ count: failed.length }] : []
+            });
+        }
+
         return { synced, failed: failed.length };
     }
 

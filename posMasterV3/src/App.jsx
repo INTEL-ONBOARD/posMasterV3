@@ -24,6 +24,9 @@ import Sales from './frontend/pages/sales/Sales.jsx';
 import Startup from './frontend/pages/Startup.jsx';
 import Users from './frontend/pages/users/users.jsx';
 
+// Reactive Data Store Provider
+import { DataStoreProvider } from './frontend/store';
+
 
 
 function App() {
@@ -86,25 +89,27 @@ function App() {
   return (
     <ToastProvider>
       <StatusLogProvider>
-        <HashRouter>
-          <Routes>
-            <Route index element={<Intro />} />
-            <Route path="startup" element={<Startup />} />
-            <Route path="login" element={<Login />} />
+        <DataStoreProvider>
+          <HashRouter>
+            <Routes>
+              <Route index element={<Intro />} />
+              <Route path="startup" element={<Startup />} />
+              <Route path="login" element={<Login />} />
 
-            <Route path="dashboard" element={<Dashboard />}>
-              <Route index element={<Notification />} />
-              <Route path="inventory/*" element={<Inventory />} />
-              <Route path="inventory-config" element={<InventoryConfig />} />
-              <Route path="settings/*" element={<Settings />} />
-              <Route path="notifications" element={<Notification />} />
-              <Route path="sales" element={<Sales />} />
-              <Route path="users" element={<Users />} />
-            </Route>
+              <Route path="dashboard" element={<Dashboard />}>
+                <Route index element={<Notification />} />
+                <Route path="inventory/*" element={<Inventory />} />
+                <Route path="inventory-config" element={<InventoryConfig />} />
+                <Route path="settings/*" element={<Settings />} />
+                <Route path="notifications" element={<Notification />} />
+                <Route path="sales" element={<Sales />} />
+                <Route path="users" element={<Users />} />
+              </Route>
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </HashRouter>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </HashRouter>
+        </DataStoreProvider>
       </StatusLogProvider>
     </ToastProvider>
   );

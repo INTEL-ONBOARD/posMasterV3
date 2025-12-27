@@ -1,16 +1,35 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Search, X, User, CreditCard, Clock, TrendingUp, AlertTriangle, CheckCircle, ArrowRight, UserCheck, Users } from "lucide-react";
-import { memberApi, salesApi } from "../../../api/localApi";
+import { salesApi } from "../../../api/localApi";
+import { useReactiveData, TABLES } from "../../../store";
 
 function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember }) {
   const [activeTab, setActiveTab] = useState("search"); // search | details
   const [searchTerm, setSearchTerm] = useState("");
-  const [members, setMembers] = useState([]);
-  const [filteredMembers, setFilteredMembers] = useState([]);
   const [selectedMember, setSelectedMember] = useState(null);
   const [memberTransactions, setMemberTransactions] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
+
+  // Use reactive data hook for members
+  const { data: members, loading: isLoading } = useReactiveData(
+    TABLES.MEMBERS,
+    null,
+    { enabled: isOpen }
+  );
+
+  // Filter members based on search using useMemo
+  const filteredMembers = useMemo(() => {
+    const safeMembers = members || [];
+    if (searchTerm.trim() === "") {
+      return safeMembers;
+    }
+    const term = searchTerm.toLowerCase();
+    return safeMembers.filter(m =>
+      (m.full_name || "").toLowerCase().includes(term) ||
+      (m.member_no || "").toLowerCase().includes(term) ||
+      (m.contact || "").includes(term)
+    );
+  }, [searchTerm, members]);
 
   // Guest user object
   const guestUser = {
@@ -26,10 +45,9 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
     is_guest: true
   };
 
-  // Fetch all members on mount
+  // Handle current member selection when modal opens
   useEffect(() => {
     if (isOpen) {
-      fetchMembers();
       if (currentMember && !currentMember.is_guest) {
         setSelectedMember(currentMember);
         setActiveTab("details");
@@ -40,21 +58,6 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
       }
     }
   }, [isOpen, currentMember]);
-
-  const fetchMembers = async () => {
-    setIsLoading(true);
-    try {
-      const response = await memberApi.getAll();
-      if (response.status === "success") {
-        setMembers(response.data || []);
-        setFilteredMembers(response.data || []);
-      }
-    } catch (error) {
-      console.error("[MemEvaluationModal] Error fetching members:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const fetchMemberTransactions = async (memberId) => {
     setTransactionsLoading(true);
@@ -79,21 +82,6 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
       setTransactionsLoading(false);
     }
   };
-
-  // Filter members based on search
-  useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredMembers(members);
-    } else {
-      const term = searchTerm.toLowerCase();
-      const filtered = members.filter(m =>
-        (m.full_name || "").toLowerCase().includes(term) ||
-        (m.member_no || "").toLowerCase().includes(term) ||
-        (m.contact || "").includes(term)
-      );
-      setFilteredMembers(filtered);
-    }
-  }, [searchTerm, members]);
 
   const handleSelectMember = (member) => {
     setSelectedMember(member);

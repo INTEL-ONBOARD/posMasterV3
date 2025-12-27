@@ -152,11 +152,124 @@ function broadcastRefreshNeeded(table, reason = 'update') {
     }
 }
 
+/**
+ * Broadcast sync completion event
+ * Called when a sync cycle completes (either push or pull)
+ * @param {object} result - Sync result { success, tablesAffected, recordsUpdated, error }
+ */
+function broadcastSyncComplete(result) {
+    try {
+        const windows = BrowserWindow.getAllWindows();
+        const payload = {
+            ...result,
+            syncStatus: result.success ? 'completed' : 'failed',
+            timestamp: new Date().toISOString()
+        };
+
+        for (const win of windows) {
+            if (win && win.webContents && !win.isDestroyed()) {
+                win.webContents.send('sync:completed', payload);
+                // Also update sync status
+                win.webContents.send('sync:status-changed', {
+                    syncStatus: result.success ? 'completed' : 'failed',
+                    lastSyncTime: payload.timestamp,
+                    isSyncing: false,
+                    ...result
+                });
+            }
+        }
+
+        console.log(`[EventBroadcaster] Sync completed: ${result.success ? 'success' : 'failed'}, ${result.recordsUpdated || 0} records updated`);
+    } catch (error) {
+        console.error('[EventBroadcaster] Failed to broadcast sync complete:', error.message);
+    }
+}
+
+/**
+ * Broadcast batch data change event
+ * Used when multiple records change at once (e.g., after cloud sync pull)
+ * @param {string} table - The table that changed
+ * @param {number} count - Number of records affected
+ * @param {string} operation - 'SYNC_PULL' | 'BULK_INSERT' | 'BULK_UPDATE' | 'BULK_DELETE'
+ */
+function broadcastBatchChange(table, count, operation = 'SYNC_PULL') {
+    try {
+        const windows = BrowserWindow.getAllWindows();
+        const payload = {
+            table,
+            operation,
+            count,
+            isBatch: true,
+            timestamp: new Date().toISOString()
+        };
+
+        for (const win of windows) {
+            if (win && win.webContents && !win.isDestroyed()) {
+                // Send as data:changed so existing listeners pick it up
+                win.webContents.send('data:changed', payload);
+                // Also send refresh-needed for this table
+                win.webContents.send('data:refresh-needed', {
+                    table,
+                    reason: operation.toLowerCase(),
+                    count,
+                    timestamp: payload.timestamp
+                });
+            }
+        }
+
+        console.log(`[EventBroadcaster] Batch change: ${operation} on ${table} (${count} records)`);
+    } catch (error) {
+        console.error('[EventBroadcaster] Failed to broadcast batch change:', error.message);
+    }
+}
+
+/**
+ * Broadcast multiple table changes at once
+ * Used after full sync when multiple tables are updated
+ * @param {Array<{table: string, count: number}>} changes - Array of table changes
+ */
+function broadcastMultiTableChange(changes) {
+    try {
+        const windows = BrowserWindow.getAllWindows();
+        const payload = {
+            changes,
+            totalRecords: changes.reduce((sum, c) => sum + (c.count || 0), 0),
+            tables: changes.map(c => c.table),
+            timestamp: new Date().toISOString()
+        };
+
+        for (const win of windows) {
+            if (win && win.webContents && !win.isDestroyed()) {
+                win.webContents.send('sync:multi-table-changed', payload);
+
+                // Also send individual refresh-needed for each table
+                for (const change of changes) {
+                    if (change.count > 0) {
+                        win.webContents.send('data:refresh-needed', {
+                            table: change.table,
+                            reason: 'cloud_sync',
+                            count: change.count,
+                            timestamp: payload.timestamp
+                        });
+                    }
+                }
+            }
+        }
+
+        console.log(`[EventBroadcaster] Multi-table change: ${changes.length} tables, ${payload.totalRecords} total records`);
+    } catch (error) {
+        console.error('[EventBroadcaster] Failed to broadcast multi-table change:', error.message);
+    }
+}
+
 module.exports = {
     broadcastDataChange,
     broadcastSyncStatus,
     broadcastEvent,
     broadcastSessionKicked,
     broadcastConnectionStatus,
-    broadcastRefreshNeeded
+    broadcastRefreshNeeded,
+    broadcastSyncComplete,
+    broadcastBatchChange,
+    broadcastMultiTableChange
 };

@@ -1,12 +1,15 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { Search, X, Check, MapPin, Plus } from "lucide-react";
 import { branchApi } from "../../../api/localApi";
 import ToastContext from "../../toasts/ToastService";
+import { useReactiveData, TABLES } from "../../../store";
 
 function BranchConfig() {
   const toast = useContext(ToastContext);
-  const [branches, setBranches] = useState([]);
-  const [allBranches, setAllBranches] = useState([]);
+
+  // Use reactive data hook for branches
+  const { data: allBranches, refetch: refetchBranches } = useReactiveData(TABLES.BRANCHES);
+
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -17,35 +20,16 @@ function BranchConfig() {
   const [error, setError] = useState(null);
   const [editingId, setEditingId] = useState(null);
 
-  const fetchBranches = async () => {
-    try {
-      const response = await branchApi.getAll();
-      if (response.status === 'success') {
-        setBranches(response.data || []);
-        setAllBranches(response.data || []);
-      }
-    } catch (error) {
-      setError(error.message || 'Failed to fetch branches');
-    }
-  };
-
-  useEffect(() => {
-    fetchBranches();
-  }, []);
-
-  // Filter branches based on search
-  useEffect(() => {
-    if (!searchTerm) {
-      setBranches(allBranches);
-    } else {
-      const filtered = allBranches.filter(branch =>
-        (branch.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (branch.address || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (branch.contact || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        branch.id.toString().includes(searchTerm)
-      );
-      setBranches(filtered);
-    }
+  // Filter branches based on search using useMemo
+  const branches = useMemo(() => {
+    if (!allBranches || allBranches.length === 0) return [];
+    if (!searchTerm) return allBranches;
+    return allBranches.filter(branch =>
+      (branch.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (branch.address || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (branch.contact || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      branch.id.toString().includes(searchTerm)
+    );
   }, [searchTerm, allBranches]);
 
   const handleSubmit = async () => {
@@ -68,7 +52,7 @@ function BranchConfig() {
       }
 
       if (response.status === "success") {
-        fetchBranches();
+        refetchBranches();
         handleClear();
         toast?.open(editingId ? "Branch updated successfully" : "Branch added successfully", 3000, 'Success', 'success');
       } else {
@@ -88,7 +72,7 @@ function BranchConfig() {
     try {
       const response = await branchApi.delete(id);
       if (response.status === "success") {
-        setAllBranches(prev => prev.filter(branch => branch.id !== id));
+        refetchBranches();
         if (editingId === id) handleClear();
         toast?.open("Branch deleted successfully", 3000, 'Success', 'success');
       }
@@ -279,7 +263,7 @@ function BranchConfig() {
 
         {/* Summary */}
         <div className="mt-4 text-sm text-gray-500">
-          Showing {branches.length} of {allBranches.length} branches
+          Showing {branches.length} of {(allBranches || []).length} branches
         </div>
       </div>
     </div>

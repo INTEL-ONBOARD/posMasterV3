@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { ChevronDown, ChevronUp, Search, Package, DollarSign, Tag, Percent, Calendar, X, CheckCircle, Filter, AlertCircle } from "lucide-react";
 import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
-import { fetchCommonData } from "../../context/inventory/common/CommonContext";
 import { restockApi } from "../../api/localApi";
+import { useReactiveData, TABLES } from "../../store";
 
 // Initial form state
 const INITIAL_STOCK_FORM = {
@@ -32,11 +32,40 @@ function PriceChange() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedAvailability, setSelectedAvailability] = useState("All");
 
-  // API data states
-  const [categories, setCategories] = useState([]);
-  const [items, setItems] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
-  const [dataError, setDataError] = useState(null);
+  // Use reactive data hooks for categories and items
+  const { data: categories, loading: categoriesLoading } = useReactiveData(TABLES.CATEGORIES);
+  const { data: rawItems, loading: itemsLoading } = useReactiveData(TABLES.ITEMS);
+
+  // Derive loading state
+  const loadingData = categoriesLoading || itemsLoading;
+
+  // Transform items to expected format
+  const items = useMemo(() => {
+    if (!rawItems || rawItems.length === 0) return [];
+    return rawItems.map((item, index) => ({
+      id: item.id || item._id || index + 1,
+      _id: item._id || `item_${index + 1}`,
+      stock_trace: item.stock_trace || [item.id || index + 1],
+      item_name: item.item_name || item.name || "Unknown Item",
+      item_image_url: item.item_image_url || item.image_url || "",
+      item_image_blob: item.item_image_blob || null,
+      sku: item.sku || `SKU_${index + 1}`,
+      maximum_capacity: item.maximum_capacity || 0,
+      uom_id: item.uom_id || 1,
+      category_id: item.category_id || 1,
+      inventory_id: item.inventory_id || 1,
+      uom: item.uom || { symbol: "pcs", unit_name: "Pieces" },
+      category: item.category || { brand: "Unknown", type: "General" },
+      inventory: item.inventory || null,
+      availability: item.availability !== undefined ? item.availability : true,
+      current_qty: item.current_qty || item.quantity || 0,
+      stock_price: item.stock_price || item.price || 0,
+      retail_price: item.retail_price || item.selling_price || item.stock_price || 0,
+      batch_code: item.batch_code || `BATCH_${item.sku || index + 1}`,
+      expire_date: item.expire_date || item.expiry_date || "2025-12-31",
+      status: item.status || (item.availability ? "In Stock" : "Out of Stock"),
+    }));
+  }, [rawItems]);
 
   // Separate states for different sections
   const [selectedItemsForTable, setSelectedItemsForTable] = useState([]);
@@ -62,61 +91,6 @@ function PriceChange() {
   const [stockEntries, setStockEntries] = useState([]);
   const [loadingStockEntries, setLoadingStockEntries] = useState(false);
   const [stockEntriesError, setStockEntriesError] = useState(null);
-
-  // Fetch data from API on component mount
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoadingData(true);
-        setDataError(null);
-        const data = await fetchCommonData();
-
-        setCategories(data.categories || []);
-
-        let apiItems = [];
-        if (data.items) {
-          if (Array.isArray(data.items)) {
-            apiItems = data.items;
-          } else if (data.items.data && Array.isArray(data.items.data)) {
-            apiItems = data.items.data;
-          }
-        }
-
-        const transformedItems = apiItems.map((item, index) => ({
-          id: item.id || item._id || index + 1,
-          _id: item._id || `item_${index + 1}`,
-          stock_trace: item.stock_trace || [item.id || index + 1],
-          item_name: item.item_name || item.name || "Unknown Item",
-          item_image_url: item.item_image_url || item.image_url || "",
-          item_image_blob: item.item_image_blob || null,
-          sku: item.sku || `SKU_${index + 1}`,
-          maximum_capacity: item.maximum_capacity || 0,
-          uom_id: item.uom_id || 1,
-          category_id: item.category_id || 1,
-          inventory_id: item.inventory_id || 1,
-          uom: item.uom || { symbol: "pcs", unit_name: "Pieces" },
-          category: item.category || { brand: "Unknown", type: "General" },
-          inventory: item.inventory || null,
-          availability: item.availability !== undefined ? item.availability : true,
-          current_qty: item.current_qty || item.quantity || 0,
-          stock_price: item.stock_price || item.price || 0,
-          retail_price: item.retail_price || item.selling_price || item.stock_price || 0,
-          batch_code: item.batch_code || `BATCH_${item.sku || index + 1}`,
-          expire_date: item.expire_date || item.expiry_date || "2025-12-31",
-          status: item.status || (item.availability ? "In Stock" : "Out of Stock"),
-        }));
-
-        setItems(transformedItems);
-      } catch (error) {
-        console.error("Failed to load data:", error);
-        setDataError(error.message || "Failed to load data");
-      } finally {
-        setLoadingData(false);
-      }
-    };
-
-    loadData();
-  }, []);
 
   // Fetch stock entries when an item is selected
   const fetchStockEntriesForItem = useCallback(async (sku) => {
@@ -167,11 +141,12 @@ function PriceChange() {
 
   // Generate unique category types
   const uniqueCategoryTypes = useMemo(() => {
-    if (!categories || categories.length === 0) {
+    const safeCategories = categories || [];
+    if (safeCategories.length === 0) {
       const itemCategories = items.map((item) => item.category?.type).filter(Boolean);
       return [...new Set(itemCategories)];
     }
-    const types = categories.map((category) => category.type).filter(Boolean);
+    const types = safeCategories.map((category) => category.type).filter(Boolean);
     return [...new Set(types)];
   }, [categories, items]);
 
@@ -324,9 +299,7 @@ function PriceChange() {
             prev.map((item) => item.id === selectedItemForDetails.id ? updatedItem : item)
           );
           setSelectedItemForDetails(updatedItem);
-          setItems((prev) =>
-            prev.map((item) => item.id === selectedItemForDetails.id ? updatedItem : item)
-          );
+          // Note: Items come from reactive hook, they'll update automatically when data changes
 
           setSaveSuccess(true);
           setTimeout(() => setSaveSuccess(false), 3000);
@@ -826,17 +799,6 @@ function PriceChange() {
                 <div className="flex flex-col items-center justify-center h-full">
                   <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-10 w-10 mb-3"></div>
                   <span className="text-gray-500 text-sm">Loading items...</span>
-                </div>
-              ) : dataError ? (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <AlertCircle className="w-10 h-10 text-red-400 mb-2" />
-                  <p className="text-red-500 text-sm">{dataError}</p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="mt-3 px-4 py-2 bg-[#1A318C] text-white rounded-lg text-sm hover:bg-[#152870] transition-colors"
-                  >
-                    Retry
-                  </button>
                 </div>
               ) : filteredItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full">

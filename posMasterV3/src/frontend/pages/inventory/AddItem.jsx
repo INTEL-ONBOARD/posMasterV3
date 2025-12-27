@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useContext } from "react";
+import React, { useState, useRef, useEffect, useContext, useMemo } from "react";
 import { uomApi, categoryApi, itemApi } from "../../api/localApi";
 import { useNavigate } from "react-router-dom";
 import { X, Printer, ChevronDown, ChevronUp, Search, Package, Filter, SortAsc, Upload, Image } from "lucide-react";
@@ -7,6 +7,7 @@ import ConfirmDeleteModal from "../../components/ConfirmDeleteModal.jsx";
 import barcodeImg from "../../assets/barcode.png";
 import ToastContext from "../toasts/ToastService.jsx";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
+import { useReactiveData, TABLES } from "../../store";
 
 import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './layout/BarcodeBulk.jsx';
@@ -18,72 +19,24 @@ function AddItem({ isActive }) {
   const toast = useContext(ToastContext);
   const statusLog = useStatusLog();
 
-  // Fetch UOMs from API
-  // Reset form when section becomes active
-  useEffect(() => {
-    if (isActive) {
-    const fetchUoms = async () => {
-      try {
-        const response = await uomApi.getAll();
-        if (response.status === "success") {
-          setUoms(response.data || []);
-        }
-      } catch (error) {
-        console.error("Error fetching UOMs:", error);
-      } finally {
-        //setLoadingUoms(false);
-      }
-    };
+  // Use reactive data hooks for UOMs, Categories, and Items
+  const { data: uoms } = useReactiveData(
+    TABLES.UOM,
+    null,
+    { enabled: isActive }
+  );
 
-    fetchUoms();
-    }
-  }, [isActive]);
+  const { data: itemCategories } = useReactiveData(
+    TABLES.CATEGORIES,
+    null,
+    { enabled: isActive }
+  );
 
-  // Fetch Categories from API and create mapping
-  useEffect(() => {
-    if (isActive) {
-    const fetchCategories = async () => {
-      try {
-        const response = await categoryApi.getAll();
-        if (response.status === "success") {
-          setItemCategories(response.data || []);
-        }
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      } finally {
-        //setLoadingCategories(false);
-      }
-    };
-
-    fetchCategories();
-  }
-  }, [isActive]);
-
-  const [inventoryItems, setInventoryItems] = useState([]);
-
-  const [uoms, setUoms] = useState([
-    // {
-    //   _id: "687720ad798018e0851599a0",
-    //   id: 22,
-    //   symbol: "pcs",
-    //   unit_name: "Piece",
-    //   __v: 0
-    // },
-    // {
-    //   _id: "6877207b798018e085159998",
-    //   id: 20,
-    //   symbol: "L",
-    //   unit_name: "Liter",
-    //   __v: 0
-    // },
-    // {
-    //   _id: "687720a0798018e08515999c",
-    //   id: 21,
-    //   symbol: "mL",
-    //   unit_name: "Milliliter",
-    //   __v: 0
-    // },
-  ]);
+  const { data: inventoryItems, loading: isLoading, refetch: refetchItems } = useReactiveData(
+    TABLES.ITEMS,
+    null,
+    { enabled: isActive }
+  );
 
   //holds the selected UOM id from the dropdown
   const [formUOMData, setFormUOMData] = useState(null);
@@ -96,41 +49,25 @@ function AddItem({ isActive }) {
     setFormData(fd => ({
       ...fd,
       uom_id: uomId,
-      uom: uoms.find(u => u.id === uomId) || fd.uom
+      uom: (uoms || []).find(u => u.id === uomId) || fd.uom
     }));
   };
 
-  // State for category/brand mapping
-  const [itemCategories, setItemCategories] = useState([
-    // { id: 145, brand: "Close-Up", type: "Oral Care" },
-    // { id: 94, brand: "Clogard", type: "Oral Care" },
-    // { id: 15, brand: "Colgate", type: "Oral Care" },
-    // { id: 26, brand: "Pepsi", type: "Beverages" },
-    // { id: 7, brand: "Coca-Cola", type: "Beverages" },
-  ]);
-
   //to select the brand option from category
   const [selectedCategoryType, setSelectedCategoryType] = useState("");
-  //filled when a category was selected from the category dropdown
-  const [brandOptions, setBrandOptions] = useState([]);
-  //category dropdown population(search and item form)
-  const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
 
-  useEffect(() => {
-    const types = Array.from(new Set(itemCategories.map(c => c.type)));
-    setUniqueCategoryTypes(types);
+  // Derive unique category types from reactive data
+  const uniqueCategoryTypes = useMemo(() => {
+    if (!itemCategories || itemCategories.length === 0) return [];
+    return Array.from(new Set(itemCategories.map(c => c.type)));
   }, [itemCategories]);
 
-  // when category changes, compute brands for that category
-  useEffect(() => {
-    if (!selectedCategoryType) {
-      setBrandOptions([]);
-      return;
-    }
-    const brands = itemCategories
+  // Derive brand options based on selected category type
+  const brandOptions = useMemo(() => {
+    if (!selectedCategoryType || !itemCategories) return [];
+    return itemCategories
       .filter(c => c.type === selectedCategoryType)
       .map(c => c.brand);
-    setBrandOptions(brands);
   }, [selectedCategoryType, itemCategories]);
 
   const handleCategoryChange = e => {
@@ -144,7 +81,6 @@ function AddItem({ isActive }) {
     setFormCategoryData(f => ({ ...f, brand: e.target.value }));
   };
 
-  const [isLoading, setIsLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
@@ -268,31 +204,6 @@ function AddItem({ isActive }) {
   };
 
 
-  const fetchItems = async () => {
-    try {
-      const response = await itemApi.getAllExtended();
-      if (response.status === "success") {
-        console.log(response.data);
-        setInventoryItems(response.data);
-      }
-    } catch (error) {
-      console.error("Error fetching items:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  // Fetch items from API
-  useEffect(() => {
-    if (isActive) {
-            console.log('Add items: items are fetching when active');
-    // Fetch items after UOMs are loaded to properly map uomName
-    // if (!loadingUoms) {
-    fetchItems();
-    // }
-    //}, [loadingUoms]);
-    }
-  }, [isActive]);
-
   // to switch between add and update api call via button switching
   const [isUserEditting, setUserEditing] = useState(false);
 
@@ -302,7 +213,7 @@ function AddItem({ isActive }) {
     statusLog.database("Registering new item...", true);
     e.preventDefault();
     try {
-      const selectedCategory = itemCategories.find(c =>
+      const selectedCategory = (itemCategories || []).find(c =>
         c.type === formCategoryData.categoryType &&
         c.brand === formCategoryData.brand
       );
@@ -351,7 +262,7 @@ function AddItem({ isActive }) {
     }
     finally {
       //repopulate items
-      fetchItems();
+      refetchItems();
     }
   };
 
@@ -361,7 +272,7 @@ function AddItem({ isActive }) {
     statusLog.database("Updating item...", true);
     e.preventDefault();
     try {
-      const selectedCategory = itemCategories.find(c =>
+      const selectedCategory = (itemCategories || []).find(c =>
         c.type === formCategoryData.categoryType &&
         c.brand === formCategoryData.brand
       );
@@ -414,7 +325,7 @@ function AddItem({ isActive }) {
     }
     finally {
       //repopulate items
-      fetchItems();
+      refetchItems();
     }
   };
 
@@ -423,13 +334,13 @@ function AddItem({ isActive }) {
     //alert("clearing user inputs")
     setFormData(INITIAL_FORM_DATA)
     setSelectedCategoryType("");
-    setBrandOptions([]);
+    // brandOptions is derived from selectedCategoryType via useMemo, so it will clear automatically
     setFormCategoryData({
       categoryType: "",
       brand: "",
     });
     setFormUOMData(null);
-    //switch from update item button to add item button 
+    //switch from update item button to add item button
     setUserEditing(false)
   }
 
@@ -439,25 +350,25 @@ function AddItem({ isActive }) {
     setUserEditing(true);
     setFormData(item);
     // 2. extract its category & brand:
-    const { type, brand } = item.category;
+    const { type, brand } = item.category || {};
     // 3a. set the category‐dropdown state (this also fires your useEffect to populate brandOptions)
-    setSelectedCategoryType(type);
-    // 3b. explicitly set the form’s dropdown values:
+    setSelectedCategoryType(type || "");
+    // 3b. explicitly set the form's dropdown values:
     setFormCategoryData({
-      categoryType: type,
-      brand,
+      categoryType: type || "",
+      brand: brand || "",
     });
     //set unit of measure in the dropdown
     // 3. pre‐select the UOM dropdown
-    setFormUOMData(item.uom.id);
+    setFormUOMData(item.uom?.id);
     // and keep formData.uom_id correct:
-    setFormData(fd => ({ ...fd, uom_id: item.uom.id, uom: item.uom }));
+    setFormData(fd => ({ ...fd, uom_id: item.uom?.id, uom: item.uom }));
   };
 
 
   // Delete item handlers
   const handleRemoveClick = (itemId) => {
-    const item = inventoryItems.find(i => i.id === itemId);
+    const item = (inventoryItems || []).find(i => i.id === itemId);
     setDeletingItem(item);
     setShowDeleteModal(true);
     //addditional fetch handling
@@ -479,7 +390,7 @@ function AddItem({ isActive }) {
   };
 
   // Filter items based on search, category and availability
-  const filteredItems = inventoryItems.filter((item) => {
+  const filteredItems = (inventoryItems || []).filter((item) => {
     // category match: either All or item.category.type equals selected
     const matchesCategory =
       searchCategory === "All" ||
@@ -726,7 +637,7 @@ function AddItem({ isActive }) {
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                       >
                         <option value="">Select unit</option>
-                        {uoms.map(uom => (
+                        {(uoms || []).map(uom => (
                           <option key={uom.id} value={uom.id}>
                             {uom.unit_name} ({uom.symbol})
                           </option>
@@ -739,13 +650,13 @@ function AddItem({ isActive }) {
                       </label>
                       <select
                         name="availability"
-                        value={formData.availability}
-                        onChange={handleInputChange}
+                        value={String(formData.availability)}
+                        onChange={(e) => setFormData(prev => ({ ...prev, availability: e.target.value === 'true' }))}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                       >
-                        <option>Select availability</option>
-                        <option value={true}>Available</option>
-                        <option value={false}>Unavailable</option>
+                        <option value="">Select availability</option>
+                        <option value="true">Available</option>
+                        <option value="false">Unavailable</option>
                       </select>
                     </div>
                   </div>
@@ -998,7 +909,7 @@ function AddItem({ isActive }) {
         open={showDeleteModal}
         item={deletingItem}
         onCancel={handleCancelDelete}
-        onSuccess={fetchItems}
+        onSuccess={refetchItems}
       />
     </div>
 

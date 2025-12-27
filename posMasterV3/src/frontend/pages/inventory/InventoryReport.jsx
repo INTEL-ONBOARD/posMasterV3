@@ -1,47 +1,34 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Search, FileText, Download, Printer, Package, DollarSign, AlertTriangle, Tag, ChevronDown, ChevronUp, Filter, SortAsc, BarChart3 } from "lucide-react";
 import { itemApi } from "../../api/localApi";
+import { useReactiveData, TABLES } from "../../store";
 
 export default function InventoryReport({ isActive }) {
+  // Use reactive data hook for inventory items
+  const { data: inventoryItems, loading: isLoading } = useReactiveData(
+    TABLES.ITEMS,
+    null,
+    { enabled: isActive }
+  );
+
   const [reportType, setReportType] = useState("basic");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [openFilters, setOpenFilters] = useState(true);
   const [openSort, setOpenSort] = useState(true);
   const [sortOrder, setSortOrder] = useState("name_asc");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStock, setFilterStock] = useState("all");
 
-  const [inventoryItems, setInventoryItems] = useState([]);
-
-  // Fetch items from API
-  useEffect(() => {
-    const fetchItems = async () => {
-      if (!isActive) return;
-      setIsLoading(true);
-      try {
-        const response = await itemApi.getAllExtended();
-        if (response.status === "success") {
-          setInventoryItems(response.data || []);
-        }
-      } catch (error) {
-        console.error("Error fetching items:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchItems();
-  }, [isActive]);
-
-  // Calculate summary statistics
-  const totalItems = inventoryItems.length;
-  const totalValue = inventoryItems.reduce((sum, item) => sum + (parseFloat(item.retail_price || 0) * (item.quantity || 0)), 0);
-  const lowStockItems = inventoryItems.filter(item => {
-    const percentFull = (item.quantity / item.maximum_capacity) * 100;
+  // Calculate summary statistics with null checks
+  const safeItems = inventoryItems || [];
+  const totalItems = safeItems.length;
+  const totalValue = safeItems.reduce((sum, item) => sum + (parseFloat(item.retail_price || 0) * (item.quantity || 0)), 0);
+  const lowStockItems = safeItems.filter(item => {
+    const percentFull = ((item.quantity || 0) / (item.maximum_capacity || 1)) * 100;
     return percentFull <= (item.threshold_limit || 30);
   }).length;
-  const categories = [...new Set(inventoryItems.map(item => item.category?.type).filter(Boolean))];
+  const categories = [...new Set(safeItems.map(item => item.category?.type).filter(Boolean))];
 
   // Search handler
   const handleSearch = (e) => {
@@ -51,8 +38,9 @@ export default function InventoryReport({ isActive }) {
   };
 
   // Filter and sort items
-  const filteredItems = inventoryItems
-    .filter(item => {
+  const filteredItems = useMemo(() => {
+    if (!inventoryItems || inventoryItems.length === 0) return [];
+    return inventoryItems.filter(item => {
       const matchesSearch = searchTerm === "" ||
         item.item_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -60,7 +48,7 @@ export default function InventoryReport({ isActive }) {
 
       const matchesCategory = filterCategory === "all" || item.category?.type === filterCategory;
 
-      const percentFull = (item.quantity / item.maximum_capacity) * 100;
+      const percentFull = ((item.quantity || 0) / (item.maximum_capacity || 1)) * 100;
       const isLowStock = percentFull <= (item.threshold_limit || 30);
       const matchesStock = filterStock === "all" ||
         (filterStock === "low" && isLowStock) ||
@@ -86,6 +74,7 @@ export default function InventoryReport({ isActive }) {
           return 0;
       }
     });
+  }, [inventoryItems, searchTerm, filterCategory, filterStock, sortOrder]);
 
   const handlePrint = () => {
     window.print();
@@ -120,7 +109,7 @@ export default function InventoryReport({ isActive }) {
 
   // Get stock status
   const getStockStatus = (item) => {
-    const percentFull = (item.quantity / item.maximum_capacity) * 100;
+    const percentFull = ((item.quantity || 0) / (item.maximum_capacity || 1)) * 100;
     if (percentFull <= (item.threshold_limit || 30)) {
       return { text: "Low Stock", class: "bg-red-100 text-red-700" };
     } else if (percentFull <= (item.threshold_limit || 30) + 20) {
