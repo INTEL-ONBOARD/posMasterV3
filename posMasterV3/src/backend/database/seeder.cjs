@@ -19,6 +19,50 @@ function seedDefaultAdmin() {
     const existingUser = db.prepare('SELECT id FROM users LIMIT 1').get();
 
     if (existingUser) {
+        // Check if admin user exists but has no roles - fix it
+        const adminUser = db.prepare("SELECT id, roles FROM users WHERE username = 'admin' LIMIT 1").get();
+        if (adminUser) {
+            let fixed = false;
+            const roles = adminUser.roles ? JSON.parse(adminUser.roles) : [];
+
+            // Fix roles if missing or doesn't include 'admin'
+            if (!roles || roles.length === 0 || !roles.includes('admin')) {
+                console.log('[Seeder] Admin user exists but has no/incorrect roles, fixing...');
+                const stmt = db.prepare('UPDATE users SET roles = ?, updated_at = ? WHERE id = ?');
+                stmt.run(JSON.stringify(['admin']), nowISO(), adminUser.id);
+                console.log('[Seeder] Admin user roles fixed: ["admin"]');
+                fixed = true;
+            }
+
+            // Check if admin has user_settings with permissions
+            const adminSettings = db.prepare('SELECT id, permissions FROM user_settings WHERE user_id = ?').get(adminUser.id);
+            if (!adminSettings) {
+                console.log('[Seeder] Admin user has no settings, creating full permissions...');
+                const fullAdminPermissions = {
+                    SaleAccess: {
+                        sale_process: true, sale_history: true, sale_view_inventory: true,
+                        sale_reports: true, sale_configurations: true, sale_discounts: true
+                    },
+                    InventoryAccess: {
+                        inventory_view: true, inventory_register_item: true, inventory_restock: true,
+                        inventory_suppliers: true, inventory_discount: true, inventory_price_change: true,
+                        inventory_history: true, inventory_configurations: true, inventory_reports: true
+                    },
+                    UserAccess: { user_manage: true, user_role_manage: true }
+                };
+                const settingsStmt = db.prepare(`
+                    INSERT INTO user_settings (id, user_id, permissions, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                `);
+                settingsStmt.run(generateUUID(), adminUser.id, JSON.stringify(fullAdminPermissions), nowISO(), nowISO());
+                console.log('[Seeder] Admin user settings created with full permissions');
+                fixed = true;
+            }
+
+            if (fixed) {
+                return { seeded: false, message: 'Admin user fixed', roleFixed: true };
+            }
+        }
         console.log('[Seeder] Users already exist, skipping seed');
         return { seeded: false, message: 'Users already exist' };
     }
