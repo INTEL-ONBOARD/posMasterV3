@@ -9,9 +9,10 @@
  */
 
 const bcrypt = require('bcryptjs');
-const { getUserRepository, getSessionRepository, getSyncQueueRepository, getLoginHistoryRepository } = require('../repositories/index.cjs');
+const { getUserRepository, getSessionRepository, getSyncQueueRepository, getLoginHistoryRepository, getActiveSessionRepository } = require('../repositories/index.cjs');
 const UserRepository = require('../repositories/UserRepository.cjs');
 const BranchRepository = require('../repositories/BranchRepository.cjs');
+const SettingsService = require('./SettingsService.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
 
 const SALT_ROUNDS = 10;
@@ -22,6 +23,8 @@ class AuthService {
         this.sessionRepo = getSessionRepository();
         this.syncQueueRepo = getSyncQueueRepository();
         this.loginHistoryRepo = getLoginHistoryRepository();
+        this.activeSessionRepo = getActiveSessionRepository();
+        this.settingsService = new SettingsService();
     }
 
     /**
@@ -69,7 +72,28 @@ class AuthService {
                     };
                 }
 
-                // Create session
+                // SINGLE-DEVICE ENFORCEMENT:
+                // Invalidate all existing sessions for this user before creating a new one
+                // This ensures only one device can be logged in at a time
+                const existingSessions = this.sessionRepo.findActiveByUserId(user.id);
+                if (existingSessions.length > 0) {
+                    console.log(`[AuthService] User ${user.username} has ${existingSessions.length} active session(s). Invalidating for single-device enforcement.`);
+
+                    // Record forced logout for each existing session
+                    for (const existingSession of existingSessions) {
+                        try {
+                            this.loginHistoryRepo.recordLogout(existingSession.id, 'forced_new_login');
+                        } catch (historyError) {
+                            console.error('[AuthService] Failed to record forced logout:', historyError.message);
+                        }
+                    }
+
+                    // Invalidate all sessions for this user
+                    const invalidatedCount = this.sessionRepo.invalidateAllForUser(user.id);
+                    console.log(`[AuthService] Invalidated ${invalidatedCount} session(s) for user ${user.username}`);
+                }
+
+                // Create new session (this will be the only active session)
                 const session = this.sessionRepo.create({
                     user_id: user.id,
                     device_info: deviceInfo
@@ -106,13 +130,28 @@ class AuthService {
                     console.error('[AuthService] Failed to record login history:', historyError.message);
                 }
 
+                // Track active session for cloud sync (enables cross-device session awareness)
+                try {
+                    const deviceData = this.settingsService.getDeviceInfo();
+                    this.activeSessionRepo.upsertActiveSession({
+                        user_id: user.id,
+                        device_id: deviceData.device_id,
+                        device_name: deviceData.device_name || deviceData.hostname,
+                        session_token: session.token
+                    });
+                    console.log(`[AuthService] Active session recorded for user ${user.username} on device ${deviceData.device_id}`);
+                } catch (activeSessionError) {
+                    console.error('[AuthService] Failed to record active session:', activeSessionError.message);
+                }
+
                 return {
                     success: true,
                     status: 'success',
                     message: 'Login successful',
                     data: UserRepository.sanitize(user),
                     token: session.token,
-                    sessionId: session.id
+                    sessionId: session.id,
+                    deviceId: this.settingsService.getDeviceId()
                 };
             }
 
@@ -244,12 +283,19 @@ class AuthService {
             // Get session before invalidating
             const session = this.sessionRepo.findByToken(token);
 
-            // Record logout in history
+            // Record logout in history and deactivate cloud-synced active session
             if (session) {
                 try {
                     this.loginHistoryRepo.recordLogout(session.id, reason);
                 } catch (historyError) {
                     console.error('[AuthService] Failed to record logout history:', historyError.message);
+                }
+
+                // Deactivate the cloud-synced active session
+                try {
+                    this.activeSessionRepo.deactivateForUser(session.user_id);
+                } catch (activeSessionError) {
+                    console.error('[AuthService] Failed to deactivate active session:', activeSessionError.message);
                 }
             }
 
@@ -273,6 +319,7 @@ class AuthService {
 
     /**
      * Validate session token
+     * Also checks if another device has logged in (via active_sessions cloud sync)
      * @param {string} token - Session token
      * @returns {Object} Validation result
      */
@@ -303,10 +350,35 @@ class AuthService {
             };
         }
 
+        // Check if another device has taken over (via cloud-synced active_sessions)
+        try {
+            const deviceId = this.settingsService.getDeviceId();
+            const isStillActive = this.activeSessionRepo.isSessionStillActive(
+                user.id,
+                deviceId,
+                token
+            );
+
+            if (!isStillActive) {
+                // Another device has logged in, invalidate this session
+                console.log(`[AuthService] Session invalidated - another device logged in for user ${user.username}`);
+                this.sessionRepo.invalidateByToken(token);
+                return {
+                    valid: false,
+                    message: 'Session ended - logged in from another device',
+                    forcedLogout: true
+                };
+            }
+        } catch (activeSessionError) {
+            // If active session check fails, fall back to local validation only
+            console.error('[AuthService] Active session check failed:', activeSessionError.message);
+        }
+
         return {
             valid: true,
             user: UserRepository.sanitize(user),
-            session: validation.session
+            session: validation.session,
+            deviceId: this.settingsService.getDeviceId()
         };
     }
 

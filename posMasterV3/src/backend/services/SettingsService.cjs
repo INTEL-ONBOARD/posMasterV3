@@ -4,6 +4,8 @@
  * Business logic for user and application settings.
  */
 
+const crypto = require('crypto');
+const os = require('os');
 const { UserSettingsRepository, AppSettingsRepository } = require('../repositories/SettingsRepository.cjs');
 const UserRepository = require('../repositories/UserRepository.cjs');
 
@@ -12,6 +14,108 @@ class SettingsService {
         this.userSettingsRepo = new UserSettingsRepository();
         this.appSettingsRepo = new AppSettingsRepository();
         this.userRepo = new UserRepository();
+    }
+
+    // ============================================
+    // DEVICE IDENTIFICATION METHODS
+    // ============================================
+
+    /**
+     * Get or generate unique device ID for this installation
+     * The device ID is persisted in app_settings and remains constant
+     * @returns {string} Device ID
+     */
+    getDeviceId() {
+        try {
+            let deviceId = this.appSettingsRepo.get('device_id');
+
+            if (!deviceId) {
+                // Generate a new unique device ID
+                deviceId = this._generateDeviceId();
+                this.appSettingsRepo.set('device_id', deviceId, 'string', 'Unique identifier for this device installation');
+                console.log('[SettingsService] Generated new device ID:', deviceId);
+            }
+
+            return deviceId;
+        } catch (error) {
+            console.error('[SettingsService] Get device ID error:', error);
+            // Fallback: generate a temporary ID if storage fails
+            return this._generateDeviceId();
+        }
+    }
+
+    /**
+     * Get device information for session tracking
+     * @returns {Object} Device info object
+     */
+    getDeviceInfo() {
+        try {
+            const deviceId = this.getDeviceId();
+            const deviceName = this.appSettingsRepo.get('device_name') || os.hostname();
+
+            return {
+                device_id: deviceId,
+                device_name: deviceName,
+                platform: os.platform(),
+                arch: os.arch(),
+                hostname: os.hostname(),
+                os_type: os.type(),
+                os_release: os.release()
+            };
+        } catch (error) {
+            console.error('[SettingsService] Get device info error:', error);
+            return {
+                device_id: this.getDeviceId(),
+                device_name: 'Unknown Device',
+                platform: 'unknown'
+            };
+        }
+    }
+
+    /**
+     * Set a custom name for this device
+     * @param {string} name - Device name
+     * @returns {Object}
+     */
+    setDeviceName(name) {
+        try {
+            this.appSettingsRepo.set('device_name', name, 'string', 'Custom name for this device');
+            return {
+                status: 'success',
+                message: 'Device name updated',
+                data: { device_name: name }
+            };
+        } catch (error) {
+            console.error('[SettingsService] Set device name error:', error);
+            return {
+                status: 'error',
+                message: error.message
+            };
+        }
+    }
+
+    /**
+     * Generate a unique device ID based on hardware characteristics
+     * @returns {string} Device ID
+     * @private
+     */
+    _generateDeviceId() {
+        // Create a fingerprint based on system characteristics
+        const fingerprint = [
+            os.hostname(),
+            os.platform(),
+            os.arch(),
+            os.cpus()[0]?.model || 'unknown-cpu',
+            os.totalmem().toString(),
+            // Add a random component for uniqueness
+            crypto.randomBytes(8).toString('hex')
+        ].join('|');
+
+        // Create a hash of the fingerprint
+        const hash = crypto.createHash('sha256').update(fingerprint).digest('hex');
+
+        // Return a shorter, prefixed device ID
+        return `DEV-${hash.substring(0, 16).toUpperCase()}`;
     }
 
     // ============================================

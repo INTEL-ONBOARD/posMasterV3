@@ -45,7 +45,8 @@ const TABLES_TO_SYNC = [
     'offers_discounts',
     // NOTE: app_settings is intentionally NOT synced - it's device-specific
     'user_settings',
-    'login_history'
+    'login_history',
+    'active_sessions'  // For single-device enforcement across devices
 ];
 
 // Tables that shouldn't sync (local only) - each device has its own settings
@@ -74,6 +75,13 @@ const LOCAL_ONLY_COLUMNS = [
     'inventory',            // Embedded inventory object
     'supplier',             // Embedded supplier object
 
+    // Restock-specific virtual fields (from RestockRepository.getFullDetails)
+    'added_items',          // Embedded array of restock items
+    'return_items',         // Embedded array of return items
+    'prepared_by_name',     // Resolved username from prepared_by ID
+    'authorized_by_name',   // Resolved username from authorized_by ID
+    'supplier_basic_info',  // JOINed supplier info
+
     // Other virtual/computed fields
     'uom_symbol',           // From JOINed uom data
     'uom_unit_name',        // From JOINed uom data
@@ -84,7 +92,7 @@ const LOCAL_ONLY_COLUMNS = [
 // Tables that use "pull-first-then-push" strategy
 // For these tables: Pull cloud updates to local FIRST, then push local changes to cloud
 // This ensures we have the latest cloud data before pushing local changes
-const PULL_FIRST_TABLES = ['users', 'user_settings'];
+const PULL_FIRST_TABLES = ['users', 'user_settings', 'active_sessions'];
 
 class CloudSyncService {
     constructor() {

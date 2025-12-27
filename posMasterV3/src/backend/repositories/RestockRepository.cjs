@@ -191,6 +191,7 @@ class RestockRepository extends BaseRepository {
     createWithItems(data, addedItems = [], returnItems = []) {
         const transaction = this.db.transaction(() => {
             // Create main transaction
+            const now = nowISO();
             const restockData = {
                 invoice_no: data.invoice_no,
                 bill_no: data.bill_no,
@@ -205,7 +206,8 @@ class RestockRepository extends BaseRepository {
                 change_amount: data.change_amount || 0,
                 execution_level: data.execution_level || 'medium',
                 status: 'completed',
-                created_at: nowISO(),
+                created_at: now,
+                updated_at: now,
                 sync_status: 'pending'
             };
 
@@ -213,10 +215,10 @@ class RestockRepository extends BaseRepository {
                 INSERT INTO restock_transactions
                 (invoice_no, bill_no, supplier_id, prepared_by, authorized_by, payment_method,
                 discount, expenses, total_amount, cash_amount, change_amount, execution_level,
-                status, created_at, sync_status)
+                status, created_at, updated_at, sync_status)
                 VALUES (@invoice_no, @bill_no, @supplier_id, @prepared_by, @authorized_by, @payment_method,
                 @discount, @expenses, @total_amount, @cash_amount, @change_amount, @execution_level,
-                @status, @created_at, @sync_status)
+                @status, @created_at, @updated_at, @sync_status)
             `);
 
             const result = restockStmt.run(restockData);
