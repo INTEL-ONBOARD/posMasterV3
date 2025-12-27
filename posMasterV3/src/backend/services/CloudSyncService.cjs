@@ -51,6 +51,36 @@ const TABLES_TO_SYNC = [
 // Tables that shouldn't sync (local only) - each device has its own settings
 const LOCAL_ONLY_TABLES = ['sessions', 'sync_queue', 'migrations', 'price_change_history', 'app_settings'];
 
+// Columns that exist ONLY in local SQLite and should NOT be synced to cloud MySQL
+// These columns are either:
+// 1. Added by local migrations that aren't in cloud schema (e.g., item_image_blob)
+// 2. Virtual columns from JOINs that get added when fetching full details (e.g., sku, item_name, member, cashier)
+// 3. Object/nested data that's embedded for convenience but shouldn't be synced as columns
+const LOCAL_ONLY_COLUMNS = [
+    // Binary/blob data stored locally for offline support
+    'item_image_blob',
+
+    // Virtual columns from JOINs (added when fetching full sale/restock details)
+    'sku',                  // Comes from items table JOIN
+    'item_name',            // Comes from items table JOIN
+    'item_image_url',       // Can come from items table JOIN in sales_items context
+
+    // Nested objects that get embedded for convenience (not actual DB columns)
+    'member',               // Embedded member object in sales
+    'cashier',              // Embedded cashier object in sales
+    'items',                // Embedded items array in transactions
+    'category',             // Embedded category object
+    'uom',                  // Embedded unit of measurement object
+    'inventory',            // Embedded inventory object
+    'supplier',             // Embedded supplier object
+
+    // Other virtual/computed fields
+    'uom_symbol',           // From JOINed uom data
+    'uom_unit_name',        // From JOINed uom data
+    'category_brand',       // From JOINed category data
+    'category_type'         // From JOINed category data
+];
+
 // Tables that use "pull-first-then-push" strategy
 // For these tables: Pull cloud updates to local FIRST, then push local changes to cloud
 // This ensures we have the latest cloud data before pushing local changes
@@ -282,10 +312,15 @@ class CloudSyncService {
             await executeQuery(`DELETE FROM ${tableName} WHERE ${primaryKey} = ?`, [recordId]);
         } else {
             // INSERT or UPDATE - use REPLACE INTO for upsert behavior
-            const columns = Object.keys(record);
+            // Filter out local-only columns that don't exist in cloud MySQL
+            const allColumns = Object.keys(record);
+            const columns = allColumns.filter(col => !LOCAL_ONLY_COLUMNS.includes(col));
+
             const values = columns.map(col => {
                 const val = record[col];
                 if (typeof val === 'boolean') return val ? 1 : 0;
+                // Skip objects/arrays - these are embedded data, not actual columns
+                if (typeof val === 'object' && val !== null) return null;
                 return val;
             });
 
@@ -591,17 +626,14 @@ class CloudSyncService {
      * Filters out local-only columns that don't exist in the cloud database
      */
     async pushRecordToCloud(tableName, record, columns) {
-        // Columns that exist only in local SQLite and should NOT be synced to cloud
-        const LOCAL_ONLY_COLUMNS = [
-            'item_image_blob'  // Binary blob for images stored locally
-        ];
-
-        // Filter out local-only columns
+        // Filter out local-only columns using the module-level constant
         const syncColumns = columns.filter(col => !LOCAL_ONLY_COLUMNS.includes(col));
 
         const values = syncColumns.map(col => {
             const val = record[col];
             if (typeof val === 'boolean') return val ? 1 : 0;
+            // Skip objects/arrays - these are embedded data, not actual columns
+            if (typeof val === 'object' && val !== null) return null;
             return val;
         });
 
@@ -769,7 +801,9 @@ class CloudSyncService {
             const localRecords = db.prepare(`SELECT * FROM ${tableName}`).all();
             if (localRecords.length === 0) return result;
 
-            const columns = Object.keys(localRecords[0]);
+            // Get all columns and filter out local-only columns
+            const allColumns = Object.keys(localRecords[0]);
+            const columns = allColumns.filter(col => !LOCAL_ONLY_COLUMNS.includes(col));
             const primaryKey = this.getPrimaryKeyColumn(tableName);
 
             for (const record of localRecords) {
@@ -777,6 +811,8 @@ class CloudSyncService {
                     const values = columns.map(col => {
                         const val = record[col];
                         if (typeof val === 'boolean') return val ? 1 : 0;
+                        // Skip objects/arrays - these are embedded data, not actual columns
+                        if (typeof val === 'object' && val !== null) return null;
                         return val;
                     });
 
@@ -787,8 +823,8 @@ class CloudSyncService {
                     result.uploaded++;
 
                     // Mark as synced (check if synced_at column exists)
-                    if (columns.includes('sync_status')) {
-                        const hasSyncedAt = columns.includes('synced_at');
+                    if (allColumns.includes('sync_status')) {
+                        const hasSyncedAt = allColumns.includes('synced_at');
                         if (hasSyncedAt) {
                             db.prepare(`UPDATE ${tableName} SET sync_status = 'synced', synced_at = ? WHERE ${primaryKey} = ?`)
                                 .run(nowISO(), record[primaryKey]);
