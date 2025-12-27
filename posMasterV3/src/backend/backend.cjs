@@ -71,8 +71,8 @@ function initializeBackend(configPath) {
         }
 
         // Step 3: Run seeders (create default admin if no users exist)
-        // console.log('[Backend] Step 3: Running database seeders...');
-        // runSeeders();
+        //console.log('[Backend] Step 3: Running database seeders...');
+        //runSeeders();
 
         // Step 4: Register IPC handlers
         console.log('[Backend] Step 4: Registering IPC handlers...');
