@@ -53,13 +53,14 @@ module.exports = {
             CREATE INDEX IF NOT EXISTS idx_app_settings_key ON app_settings(setting_key)
         `);
 
-        // Insert default app settings
+        // Insert default app settings - all settings enabled by default
         const now = new Date().toISOString();
         const defaultSettings = [
-            { key: 'auto_logout', value: 'false', type: 'boolean', description: 'Enable automatic logout' },
+            { key: 'auto_logout', value: 'true', type: 'boolean', description: 'Enable automatic logout' },
+            { key: 'auto_logout_minutes', value: '15', type: 'number', description: 'Auto logout timeout in minutes' },
             { key: 'notifications', value: 'true', type: 'boolean', description: 'Enable Windows built-in notifications' },
-            { key: 'cloud_sync', value: 'false', type: 'boolean', description: 'Enable automatic cloud synchronization' },
-            { key: 'temp_system', value: 'false', type: 'boolean', description: 'Enable application temp system' },
+            { key: 'cloud_sync', value: 'true', type: 'boolean', description: 'Enable automatic cloud synchronization' },
+            { key: 'temp_system', value: 'true', type: 'boolean', description: 'Enable application temp system' },
             { key: 'run_on_startup', value: 'true', type: 'boolean', description: 'Allow app to run on startup' },
             { key: 'maximize_window', value: 'true', type: 'boolean', description: 'Allow app to start maximized' },
             { key: 'temp_path', value: 'C:\\POS Master\\temp', type: 'string', description: 'Path for temp files' },

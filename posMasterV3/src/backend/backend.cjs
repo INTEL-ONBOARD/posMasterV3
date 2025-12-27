@@ -34,7 +34,9 @@ const { runMigrations, getStatus } = require('./database/migrator.cjs');
 const { runSeeders } = require('./database/seeder.cjs');
 const { registerAllHandlers, unregisterAllHandlers } = require('./controllers/index.cjs');
 const { getSessionRepository } = require('./repositories/index.cjs');
-const { initializeCloudSync, getCloudSyncService } = require('./services/CloudSyncService.cjs');
+
+// Note: CloudSyncService and AppSettingsService are imported lazily to avoid
+// importing Electron modules (like BrowserWindow) before app is ready
 
 let isInitialized = false;
 
@@ -80,11 +82,31 @@ function initializeBackend(configPath) {
         console.log('[Backend] Step 5: Starting maintenance tasks...');
         startMaintenanceTasks();
 
-        // Step 6: Initialize cloud sync service
-        console.log('[Backend] Step 6: Initializing cloud sync service...');
-        initializeCloudSync().catch(err => {
-            console.error('[Backend] Cloud sync initialization error:', err.message);
-        });
+        // Step 6: Initialize cloud sync service (only if enabled in settings)
+        console.log('[Backend] Step 6: Checking cloud sync setting...');
+        try {
+            // Lazy import to avoid importing Electron modules before app is ready
+            const { getAppSettingsService } = require('./services/AppSettingsService.cjs');
+            const { initializeCloudSync } = require('./services/CloudSyncService.cjs');
+
+            const appSettingsService = getAppSettingsService();
+            const cloudSyncEnabled = appSettingsService.isCloudSyncEnabled();
+
+            if (cloudSyncEnabled) {
+                console.log('[Backend] Cloud sync is enabled, initializing...');
+                initializeCloudSync().catch(err => {
+                    console.error('[Backend] Cloud sync initialization error:', err.message);
+                });
+            } else {
+                console.log('[Backend] Cloud sync is disabled in settings, skipping initialization');
+            }
+        } catch (err) {
+            console.log('[Backend] Could not check cloud sync setting, initializing by default:', err.message);
+            const { initializeCloudSync } = require('./services/CloudSyncService.cjs');
+            initializeCloudSync().catch(err => {
+                console.error('[Backend] Cloud sync initialization error:', err.message);
+            });
+        }
 
         isInitialized = true;
 
@@ -118,6 +140,7 @@ async function shutdownBackend() {
 
         // Cleanup cloud sync service
         try {
+            const { getCloudSyncService } = require('./services/CloudSyncService.cjs');
             const cloudSyncService = getCloudSyncService();
             await cloudSyncService.cleanup();
         } catch (err) {

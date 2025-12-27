@@ -23,6 +23,7 @@ const SalesController = require('./SalesController.cjs');
 const SettingsController = require('./SettingsController.cjs');
 const CloudSyncController = require('./CloudSyncController.cjs');
 const LoginHistoryController = require('./LoginHistoryController.cjs');
+const AppSettingsController = require('./AppSettingsController.cjs');
 
 /**
  * Register all IPC handlers
@@ -62,6 +63,10 @@ function registerAllHandlers() {
     // Login History handlers
     const loginHistoryController = new LoginHistoryController();
     loginHistoryController.registerHandlers();
+
+    // App Settings handlers (auto-logout, notifications, startup, etc.)
+    const appSettingsController = new AppSettingsController();
+    appSettingsController.registerHandlers();
 
     console.log('[Controllers] All IPC handlers registered successfully');
 }
@@ -104,5 +109,6 @@ module.exports = {
     SalesController,
     SettingsController,
     CloudSyncController,
-    LoginHistoryController
+    LoginHistoryController,
+    AppSettingsController
 };

@@ -8,9 +8,37 @@
  */
 
 const { getDatabase } = require('../database/connection.cjs');
-const { notifyDataChange } = require('../services/CloudSyncService.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
-const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
+
+// Lazy imports to avoid requiring Electron modules (like BrowserWindow) before app is ready
+let _notifyDataChange = null;
+let _broadcastDataChange = null;
+
+function getNotifyDataChange() {
+    if (_notifyDataChange === null) {
+        try {
+            const { notifyDataChange } = require('../services/CloudSyncService.cjs');
+            _notifyDataChange = notifyDataChange;
+        } catch (e) {
+            console.warn('[BaseRepository] CloudSyncService not available:', e.message);
+            _notifyDataChange = () => {}; // No-op fallback
+        }
+    }
+    return _notifyDataChange;
+}
+
+function getBroadcastDataChange() {
+    if (_broadcastDataChange === null) {
+        try {
+            const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
+            _broadcastDataChange = broadcastDataChange;
+        } catch (e) {
+            console.warn('[BaseRepository] eventBroadcaster not available:', e.message);
+            _broadcastDataChange = () => {}; // No-op fallback
+        }
+    }
+    return _broadcastDataChange;
+}
 
 class BaseRepository {
     constructor(tableName) {
@@ -132,9 +160,9 @@ class BaseRepository {
         // Notify CloudSync of the change and broadcast to UI
         if (createdRecord) {
             const recordId = createdRecord.id || result.lastInsertRowid;
-            notifyDataChange(this.tableName, 'INSERT', createdRecord, recordId);
+            getNotifyDataChange()(this.tableName, 'INSERT', createdRecord, recordId);
             // Broadcast to update UI immediately
-            broadcastDataChange(this.tableName, 'INSERT', recordId, createdRecord);
+            getBroadcastDataChange()(this.tableName, 'INSERT', recordId, createdRecord);
         }
 
         return createdRecord;
@@ -173,9 +201,9 @@ class BaseRepository {
         // Get the updated record and notify CloudSync
         const updatedRecord = this.findById(id);
         if (updatedRecord) {
-            notifyDataChange(this.tableName, 'UPDATE', updatedRecord, id);
+            getNotifyDataChange()(this.tableName, 'UPDATE', updatedRecord, id);
             // Broadcast to update UI immediately
-            broadcastDataChange(this.tableName, 'UPDATE', id, updatedRecord);
+            getBroadcastDataChange()(this.tableName, 'UPDATE', id, updatedRecord);
         }
 
         return updatedRecord;
@@ -195,9 +223,9 @@ class BaseRepository {
 
         // Notify CloudSync of the deletion and broadcast to UI
         if (result.changes > 0 && recordToDelete) {
-            notifyDataChange(this.tableName, 'DELETE', recordToDelete, id);
+            getNotifyDataChange()(this.tableName, 'DELETE', recordToDelete, id);
             // Broadcast to update UI immediately
-            broadcastDataChange(this.tableName, 'DELETE', id, recordToDelete);
+            getBroadcastDataChange()(this.tableName, 'DELETE', id, recordToDelete);
         }
 
         return result.changes > 0;

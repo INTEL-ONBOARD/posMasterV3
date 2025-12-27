@@ -8,7 +8,16 @@
 const AuthService = require('./AuthService.cjs');
 const UserService = require('./UserService.cjs');
 const SyncService = require('./SyncService.cjs');
-const { CloudSyncService, getCloudSyncService, initializeCloudSync, notifyDataChange } = require('./CloudSyncService.cjs');
+
+// CloudSyncService is lazily imported to avoid importing Electron modules
+// (like BrowserWindow) before the app is ready
+let _cloudSyncModule = null;
+function getCloudSyncModule() {
+    if (!_cloudSyncModule) {
+        _cloudSyncModule = require('./CloudSyncService.cjs');
+    }
+    return _cloudSyncModule;
+}
 
 // Singleton instances
 let authService = null;
@@ -62,12 +71,13 @@ module.exports = {
     AuthService,
     UserService,
     SyncService,
-    CloudSyncService,
+    // CloudSyncService exports are proxied through lazy loader
+    get CloudSyncService() { return getCloudSyncModule().CloudSyncService; },
+    get getCloudSyncService() { return getCloudSyncModule().getCloudSyncService; },
+    get initializeCloudSync() { return getCloudSyncModule().initializeCloudSync; },
+    get notifyDataChange() { return getCloudSyncModule().notifyDataChange; },
     getAuthService,
     getUserService,
     getSyncService,
-    getCloudSyncService,
-    initializeCloudSync,
-    notifyDataChange,
     resetServices
 };

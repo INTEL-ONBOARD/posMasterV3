@@ -146,19 +146,49 @@ class CloudSyncService {
         if (this.mysqlInitialized) return true;
 
         try {
+            console.log('[CloudSync] Initializing MySQL connection pool...');
             await initializeMySQLPool();
+
+            console.log('[CloudSync] Testing MySQL connection...');
             const connected = await testConnection();
 
             if (connected) {
+                console.log('[CloudSync] Connection successful, creating schema...');
                 await this.createMySQLSchema();
                 this.mysqlInitialized = true;
                 console.log('[CloudSync] MySQL initialized successfully');
                 return true;
+            } else {
+                console.error('[CloudSync] MySQL connection test failed');
             }
         } catch (error) {
             console.error('[CloudSync] Failed to initialize MySQL:', error.message);
+            console.error('[CloudSync] Full error:', error);
         }
         return false;
+    }
+
+    /**
+     * Force recreate MySQL schema (can be called manually if tables are missing)
+     * @returns {Promise<Object>} Result with status
+     */
+    async ensureMySQLSchema() {
+        try {
+            console.log('[CloudSync] Ensuring MySQL schema exists...');
+            await initializeMySQLPool();
+
+            const connected = await testConnection();
+            if (!connected) {
+                return { success: false, message: 'MySQL connection failed' };
+            }
+
+            await this.createMySQLSchema();
+            this.mysqlInitialized = true;
+            return { success: true, message: 'MySQL schema created/verified successfully' };
+        } catch (error) {
+            console.error('[CloudSync] Failed to ensure MySQL schema:', error.message);
+            return { success: false, message: error.message };
+        }
     }
 
     /**
@@ -999,6 +1029,7 @@ class CloudSyncService {
                     execution_level VARCHAR(50) DEFAULT 'medium',
                     status VARCHAR(50) DEFAULT 'completed',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
                     INDEX idx_invoice (invoice_no),
                     INDEX idx_supplier (supplier_id)
@@ -1173,6 +1204,26 @@ class CloudSyncService {
                     INDEX idx_session_id (session_id),
                     INDEX idx_branch_id (branch_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `,
+            active_sessions: `
+                CREATE TABLE IF NOT EXISTS active_sessions (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    cloud_id VARCHAR(255),
+                    user_id VARCHAR(255) NOT NULL,
+                    device_id VARCHAR(255) NOT NULL,
+                    device_name VARCHAR(255),
+                    session_token_hash VARCHAR(64),
+                    login_at DATETIME NOT NULL,
+                    last_activity_at DATETIME,
+                    is_active TINYINT DEFAULT 1,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    sync_status VARCHAR(50) DEFAULT 'pending',
+                    UNIQUE KEY unique_user (user_id),
+                    INDEX idx_user_id (user_id),
+                    INDEX idx_device_id (device_id),
+                    INDEX idx_is_active (is_active)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `
         };
 
@@ -1215,6 +1266,13 @@ class CloudSyncService {
                 column: 'branch_name',
                 definition: 'VARCHAR(255) DEFAULT NULL',
                 after: 'branch_id'
+            },
+            // Add updated_at to restock_transactions table if missing
+            {
+                table: 'restock_transactions',
+                column: 'updated_at',
+                definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+                after: 'created_at'
             }
         ];
 

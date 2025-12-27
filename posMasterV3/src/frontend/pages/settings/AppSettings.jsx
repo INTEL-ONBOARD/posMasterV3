@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { ChevronDown, ChevronUp, FolderOpen } from 'lucide-react';
-import { settingsApi, branchApi } from '../../api/localApi';
+import { ChevronDown, ChevronUp, FolderOpen, RefreshCw, Database, Cloud, Wifi, WifiOff, Bell } from 'lucide-react';
+import { settingsApi, branchApi, cloudSyncApi, appSettingsApi } from '../../api/localApi';
 import ToastContext from '../toasts/ToastService';
 
 function AppSettings() {
@@ -10,10 +10,16 @@ function AppSettings() {
   const [openGeneral, setOpenGeneral] = useState(true);
   const [openPaths, setOpenPaths] = useState(false);
   const [openBranch, setOpenBranch] = useState(false);
+  const [openCloudSync, setOpenCloudSync] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [branches, setBranches] = useState([]);
+
+  // Cloud sync state
+  const [syncStatus, setSyncStatus] = useState({ isOnline: false, isSyncing: false, lastSyncTime: null });
+  const [syncingNow, setSyncingNow] = useState(false);
+  const [ensuringSchema, setEnsuringSchema] = useState(false);
 
   const [settings, setSettings] = useState({
     auto_logout: false,
@@ -65,6 +71,12 @@ function AppSettings() {
             setPaths(prev => ({ ...prev, default_outlet: branchResponse.data[0].name }));
           }
         }
+
+        // Load cloud sync status
+        const syncResponse = await cloudSyncApi.getStatus();
+        if (syncResponse.status === 'success' && syncResponse.data) {
+          setSyncStatus(syncResponse.data);
+        }
       } catch (err) {
         console.error('[AppSettings] Load error:', err);
       } finally {
@@ -73,10 +85,75 @@ function AppSettings() {
     };
 
     loadSettings();
+
+    // Refresh sync status every 10 seconds
+    const interval = setInterval(async () => {
+      try {
+        const syncResponse = await cloudSyncApi.getStatus();
+        if (syncResponse.status === 'success' && syncResponse.data) {
+          setSyncStatus(syncResponse.data);
+        }
+      } catch (err) {
+        console.error('[AppSettings] Sync status refresh error:', err);
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  const handleToggle = (key) => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+  const handleToggle = async (key) => {
+    const newValue = !settings[key];
+    setSettings((prev) => ({ ...prev, [key]: newValue }));
+
+    // Apply setting immediately for real-time effect
+    try {
+      let result;
+      switch (key) {
+        case 'auto_logout':
+          result = await appSettingsApi.setAutoLogout(newValue, 15);
+          if (result.status === 'success') {
+            toast.open(newValue ? 'Auto-logout enabled (15 min)' : 'Auto-logout disabled', 2000, 'Info', 'info');
+          }
+          break;
+        case 'notifications':
+          result = await appSettingsApi.setNotifications(newValue);
+          if (result.status === 'success') {
+            toast.open(newValue ? 'Notifications enabled' : 'Notifications disabled', 2000, 'Info', 'info');
+            // Test notification if enabled
+            if (newValue) {
+              setTimeout(() => appSettingsApi.testNotification(), 500);
+            }
+          }
+          break;
+        case 'cloud_sync':
+          result = await appSettingsApi.setCloudSync(newValue);
+          if (result.status === 'success') {
+            toast.open(newValue ? 'Cloud sync enabled' : 'Cloud sync disabled', 2000, 'Info', 'info');
+          }
+          break;
+        case 'run_on_startup':
+          result = await appSettingsApi.setRunOnStartup(newValue);
+          if (result.status === 'success') {
+            toast.open(result.message, 2000, 'Info', 'info');
+          } else {
+            toast.open(result.message || 'Failed to update startup setting', 3000, 'Error', 'error');
+            // Revert on failure
+            setSettings((prev) => ({ ...prev, [key]: !newValue }));
+          }
+          break;
+        case 'maximize_window':
+          result = await appSettingsApi.setMaximizeOnStart(newValue);
+          if (result.status === 'success') {
+            toast.open(newValue ? 'App will maximize on start' : 'App will start in normal window', 2000, 'Info', 'info');
+          }
+          break;
+        default:
+          // For other settings, just save to database
+          break;
+      }
+    } catch (err) {
+      console.error(`[AppSettings] Failed to apply ${key}:`, err);
+    }
   };
 
   const handlePathChange = (key, value) => {
@@ -160,6 +237,64 @@ function AppSettings() {
       }
     } else {
       toast.open('Folder picker not available', 3000, 'Info', 'info');
+    }
+  };
+
+  // Cloud Sync handlers
+  const handleSyncNow = async () => {
+    try {
+      setSyncingNow(true);
+      toast.open('Starting sync...', 2000, 'Info', 'info');
+
+      const result = await cloudSyncApi.syncNow();
+
+      if (result.status === 'success') {
+        toast.open('Sync completed successfully!', 3000, 'Success', 'success');
+        // Refresh status
+        const statusResult = await cloudSyncApi.getStatus();
+        if (statusResult.status === 'success') {
+          setSyncStatus(statusResult.data);
+        }
+      } else {
+        toast.open(result.message || 'Sync failed', 3000, 'Error', 'error');
+      }
+    } catch (err) {
+      console.error('[AppSettings] Sync error:', err);
+      toast.open('Sync failed: ' + err.message, 3000, 'Error', 'error');
+    } finally {
+      setSyncingNow(false);
+    }
+  };
+
+  const handleEnsureSchema = async () => {
+    try {
+      setEnsuringSchema(true);
+      toast.open('Creating cloud database tables...', 2000, 'Info', 'info');
+
+      const result = await cloudSyncApi.ensureSchema();
+
+      if (result.status === 'success' && result.data?.success) {
+        toast.open('Database tables created successfully!', 3000, 'Success', 'success');
+      } else {
+        toast.open(result.data?.message || result.message || 'Failed to create tables', 3000, 'Error', 'error');
+      }
+    } catch (err) {
+      console.error('[AppSettings] Ensure schema error:', err);
+      toast.open('Failed to create tables: ' + err.message, 3000, 'Error', 'error');
+    } finally {
+      setEnsuringSchema(false);
+    }
+  };
+
+  const handleCheckNetwork = async () => {
+    try {
+      const result = await cloudSyncApi.checkNetwork();
+      if (result.status === 'success') {
+        setSyncStatus(prev => ({ ...prev, isOnline: result.data.isOnline }));
+        toast.open(result.data.isOnline ? 'Connected to network' : 'Network offline', 2000, 'Info', 'info');
+      }
+    } catch (err) {
+      console.error('[AppSettings] Network check error:', err);
     }
   };
 
@@ -397,6 +532,104 @@ function AppSettings() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* Cloud Sync Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <button
+              onClick={() => {
+                setOpenCloudSync(!openCloudSync);
+                if (!openCloudSync) {
+                  setOpenGeneral(false);
+                  setOpenPaths(false);
+                  setOpenBranch(false);
+                }
+              }}
+              className="w-full flex justify-between items-center px-5 py-4 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <Cloud className="w-5 h-5 text-blue-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Cloud Sync</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {syncStatus.isOnline ? (
+                  <Wifi className="w-4 h-4 text-emerald-500" />
+                ) : (
+                  <WifiOff className="w-4 h-4 text-red-400" />
+                )}
+                {openCloudSync ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+              </div>
+            </button>
+            {openCloudSync && (
+              <div className="px-5 pb-5 border-t border-gray-100">
+                <p className="text-xs text-gray-400 italic py-3 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Manage cloud database synchronization
+                </p>
+
+                {/* Status Display */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-gray-700">Connection Status</span>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${syncStatus.isOnline ? 'bg-emerald-500' : 'bg-red-400'}`}></div>
+                      <span className={`text-xs font-semibold ${syncStatus.isOnline ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {syncStatus.isOnline ? 'Online' : 'Offline'}
+                      </span>
+                    </div>
+                  </div>
+                  {syncStatus.lastSyncTime && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Last Sync</span>
+                      <span className="text-xs text-gray-600">{new Date(syncStatus.lastSyncTime).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  <button
+                    onClick={handleSyncNow}
+                    disabled={syncingNow || !syncStatus.isOnline}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#1A318C] text-white rounded-lg text-sm font-medium hover:bg-[#152870] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${syncingNow ? 'animate-spin' : ''}`} />
+                    {syncingNow ? 'Syncing...' : 'Sync Now'}
+                  </button>
+
+                  <button
+                    onClick={handleEnsureSchema}
+                    disabled={ensuringSchema || !syncStatus.isOnline}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Database className={`w-4 h-4 ${ensuringSchema ? 'animate-pulse' : ''}`} />
+                    {ensuringSchema ? 'Creating Tables...' : 'Create Cloud Tables'}
+                  </button>
+
+                  <button
+                    onClick={handleCheckNetwork}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    {syncStatus.isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+                    Check Connection
+                  </button>
+                </div>
+
+                {/* Help Text */}
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <p className="text-xs text-blue-700">
+                    <strong>Sync Now:</strong> Manually sync all data with cloud server.
+                  </p>
+                  <p className="text-xs text-blue-700 mt-1">
+                    <strong>Create Cloud Tables:</strong> Use this if sync fails with "table doesn't exist" errors.
+                  </p>
+                </div>
               </div>
             )}
           </div>
