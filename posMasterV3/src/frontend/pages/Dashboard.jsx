@@ -1,8 +1,9 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import ToastContext from "./toasts/ToastService.jsx";
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar.jsx";
 import { useStatusLog, StatusType } from "../services/StatusLogService.jsx";
+import { appSettingsApi, authApi } from "../api/localApi";
 
 // Get icon and color based on status type
 const getStatusStyle = (type, isLoading) => {
@@ -98,7 +99,78 @@ const formatTime = (date) => {
 function Dashboard() {
   const [activeSection, setActiveSection] = useState(null);
   const toast = useContext(ToastContext);
+  const navigate = useNavigate();
   const { currentStatus, isOnline } = useStatusLog();
+  const [autoLogoutEnabled, setAutoLogoutEnabled] = useState(false);
+
+  // Apply settings and setup auto-logout on mount
+  useEffect(() => {
+    const initializeSettings = async () => {
+      try {
+        // Apply all settings (including auto-logout)
+        const result = await appSettingsApi.applyAll();
+        if (result.status === 'success' && result.data?.auto_logout) {
+          setAutoLogoutEnabled(true);
+        }
+      } catch (err) {
+        console.error('[Dashboard] Failed to apply settings:', err);
+      }
+    };
+
+    initializeSettings();
+
+    // Listen for auto-logout event
+    const handleAutoLogout = async () => {
+      console.log('[Dashboard] Auto-logout triggered');
+      toast.open('Session expired due to inactivity', 3000, 'Warning', 'warning');
+
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          await authApi.logout(token);
+        }
+      } catch (err) {
+        console.error('[Dashboard] Logout error:', err);
+      }
+
+      // Clear localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('username');
+      localStorage.removeItem('email');
+      localStorage.removeItem('_id');
+      localStorage.removeItem('user');
+      localStorage.removeItem('sessionId');
+
+      // Navigate to login
+      navigate('/login', { replace: true, state: { message: 'Session expired due to inactivity' } });
+    };
+
+    if (window.electronAPI?.appSettings?.onAutoLogout) {
+      window.electronAPI.appSettings.onAutoLogout(handleAutoLogout);
+    }
+
+    // Activity tracking - reset timer on user activity
+    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    let debounceTimer = null;
+
+    const resetActivity = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        appSettingsApi.resetActivity().catch(() => {});
+      }, 1000);
+    };
+
+    activityEvents.forEach(event => {
+      document.addEventListener(event, resetActivity, { passive: true });
+    });
+
+    return () => {
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, resetActivity);
+      });
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [navigate, toast]);
 
   const style = getStatusStyle(currentStatus.type, currentStatus.isLoading);
 

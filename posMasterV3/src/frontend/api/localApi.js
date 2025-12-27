@@ -1445,6 +1445,132 @@ export const settingsApi = {
 };
 
 // ============================================
+// APP SETTINGS API (System behavior settings)
+// ============================================
+
+/**
+ * App Settings API - Manage system behavior settings
+ * @namespace
+ */
+export const appSettingsApi = {
+    /**
+     * Get all app settings with applied status
+     * @returns {Promise<ApiResponse>}
+     */
+    getAll: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.appSettings.getAll();
+    },
+
+    /**
+     * Set auto-logout configuration
+     * @param {boolean} enabled - Whether auto-logout is enabled
+     * @param {number} minutes - Timeout in minutes
+     * @returns {Promise<ApiResponse>}
+     */
+    setAutoLogout: async (enabled, minutes = 15) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.appSettings.setAutoLogout(enabled, minutes);
+    },
+
+    /**
+     * Set run on startup
+     * @param {boolean} enabled
+     * @returns {Promise<ApiResponse>}
+     */
+    setRunOnStartup: async (enabled) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.appSettings.setRunOnStartup(enabled);
+    },
+
+    /**
+     * Set maximize on start
+     * @param {boolean} enabled
+     * @returns {Promise<ApiResponse>}
+     */
+    setMaximizeOnStart: async (enabled) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.appSettings.setMaximizeOnStart(enabled);
+    },
+
+    /**
+     * Set notifications enabled
+     * @param {boolean} enabled
+     * @returns {Promise<ApiResponse>}
+     */
+    setNotifications: async (enabled) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.appSettings.setNotifications(enabled);
+    },
+
+    /**
+     * Set cloud sync enabled
+     * @param {boolean} enabled
+     * @returns {Promise<ApiResponse>}
+     */
+    setCloudSync: async (enabled) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.appSettings.setCloudSync(enabled);
+    },
+
+    /**
+     * Send test notification
+     * @returns {Promise<ApiResponse>}
+     */
+    testNotification: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.appSettings.testNotification();
+    },
+
+    /**
+     * Apply all settings (call after login)
+     * @returns {Promise<ApiResponse>}
+     */
+    applyAll: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.appSettings.applyAll();
+    },
+
+    /**
+     * Reset activity timer (call on user interaction to prevent auto-logout)
+     * @returns {Promise<ApiResponse>}
+     */
+    resetActivity: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.appSettings.resetActivity();
+    },
+
+    /**
+     * Check if cloud sync is enabled
+     * @returns {Promise<ApiResponse & {data: {enabled: boolean}}>}
+     */
+    isCloudSyncEnabled: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.appSettings.isCloudSyncEnabled();
+    },
+
+    /**
+     * Listen for auto-logout event
+     * @param {Function} callback
+     */
+    onAutoLogout: (callback) => {
+        const api = getElectronAPI();
+        if (!api) return;
+        api.appSettings.onAutoLogout(callback);
+    }
+};
+
+// ============================================
 // CLOUD SYNC API
 // ============================================
 
@@ -1521,6 +1647,31 @@ export const cloudSyncApi = {
         const api = getElectronAPI();
         if (!api) return { status: 'error', message: 'Not in Electron environment' };
         return api.cloudSync.pushUser(user);
+    },
+
+    /**
+     * Force ensure MySQL schema exists (creates tables if missing)
+     * Use this to fix sync issues when cloud tables are missing
+     * @returns {Promise<ApiResponse & {data: {success: boolean, message: string}}>}
+     * @example
+     * const result = await cloudSyncApi.ensureSchema();
+     * // { status: 'success', data: { success: true, message: 'MySQL schema created/verified successfully' } }
+     */
+    ensureSchema: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.cloudSync.ensureSchema();
+    },
+
+    /**
+     * Initialize MySQL connection manually
+     * Use this to reconnect to MySQL if connection was lost
+     * @returns {Promise<ApiResponse & {data: {initialized: boolean}}>}
+     */
+    initializeMySQL: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.cloudSync.initializeMySQL();
     }
 };
 
