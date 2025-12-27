@@ -21,11 +21,11 @@ const {
 } = require('../database/mysql-connection.cjs');
 const dns = require('dns');
 const { nowISO } = require('../utils/helpers.cjs');
-const { broadcastDataChange, broadcastSyncStatus } = require('../utils/eventBroadcaster.cjs');
+const { broadcastDataChange, broadcastSyncStatus, broadcastRefreshNeeded } = require('../utils/eventBroadcaster.cjs');
 
 // Sync configuration
-const NETWORK_CHECK_INTERVAL_MS = 10000; // Check network every 10 seconds
-const PENDING_SYNC_INTERVAL_MS = 30000; // Try to sync pending changes every 30 seconds
+const NETWORK_CHECK_INTERVAL_MS = 5000; // Check network every 5 seconds (faster for real-time)
+const PENDING_SYNC_INTERVAL_MS = 10000; // Try to sync pending changes every 10 seconds (faster)
 
 const TABLES_TO_SYNC = [
     'users',
@@ -844,6 +844,32 @@ class CloudSyncService {
 
             for (const record of cloudRecords) {
                 try {
+                    // SPECIAL HANDLING FOR active_sessions:
+                    // Use user_id as the unique key, not id
+                    // This ensures only one session record per user exists locally
+                    if (tableName === 'active_sessions' && record.user_id) {
+                        // Delete any existing local record for this user first
+                        db.prepare(`DELETE FROM ${tableName} WHERE user_id = ?`).run(record.user_id);
+
+                        // Build insert values (excluding 'id' to let SQLite auto-generate)
+                        const insertColumns = commonColumns.filter(col => col !== 'id');
+                        const insertValues = insertColumns.map(col => {
+                            const val = record[col];
+                            if (val === null || val === undefined) return null;
+                            if (typeof val === 'boolean') return val ? 1 : 0;
+                            if (val instanceof Date) return val.toISOString();
+                            return val;
+                        });
+
+                        const placeholders = insertColumns.map(() => '?').join(', ');
+                        const insertQuery = `INSERT INTO ${tableName} (${insertColumns.join(', ')}) VALUES (${placeholders})`;
+                        db.prepare(insertQuery).run(...insertValues);
+
+                        console.log(`[CloudSync] Updated active_sessions for user ${record.user_id} with device ${record.device_id}`);
+                        result.downloaded++;
+                        continue;
+                    }
+
                     // For users table, check if we need to preserve local roles
                     let preserveLocalRoles = false;
                     let localRoles = null;
@@ -901,6 +927,11 @@ class CloudSyncService {
                 } catch (error) {
                     console.error(`[CloudSync] Failed to pull record from ${tableName}:`, error.message);
                 }
+            }
+
+            // Broadcast refresh needed if we downloaded any records
+            if (result.downloaded > 0) {
+                broadcastRefreshNeeded(tableName, 'cloud_sync');
             }
 
             return result;

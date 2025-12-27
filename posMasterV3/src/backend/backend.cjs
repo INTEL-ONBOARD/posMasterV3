@@ -97,6 +97,13 @@ function initializeBackend(configPath) {
                 initializeCloudSync().catch(err => {
                     console.error('[Backend] Cloud sync initialization error:', err.message);
                 });
+
+                // Step 6b: Initialize real-time sync service for faster sync
+                console.log('[Backend] Step 6b: Initializing real-time sync service...');
+                const { initializeRealTimeSync } = require('./services/RealTimeSyncService.cjs');
+                initializeRealTimeSync().catch(err => {
+                    console.error('[Backend] Real-time sync initialization error:', err.message);
+                });
             } else {
                 console.log('[Backend] Cloud sync is disabled in settings, skipping initialization');
             }
@@ -105,6 +112,12 @@ function initializeBackend(configPath) {
             const { initializeCloudSync } = require('./services/CloudSyncService.cjs');
             initializeCloudSync().catch(err => {
                 console.error('[Backend] Cloud sync initialization error:', err.message);
+            });
+
+            // Also initialize real-time sync
+            const { initializeRealTimeSync } = require('./services/RealTimeSyncService.cjs');
+            initializeRealTimeSync().catch(err => {
+                console.error('[Backend] Real-time sync initialization error:', err.message);
             });
         }
 
@@ -137,6 +150,15 @@ async function shutdownBackend() {
     try {
         // Stop maintenance tasks
         stopMaintenanceTasks();
+
+        // Cleanup real-time sync service
+        try {
+            const { getRealTimeSyncService } = require('./services/RealTimeSyncService.cjs');
+            const realTimeSync = getRealTimeSyncService();
+            realTimeSync.stop();
+        } catch (err) {
+            console.error('[Backend] Real-time sync cleanup error:', err.message);
+        }
 
         // Cleanup cloud sync service
         try {
