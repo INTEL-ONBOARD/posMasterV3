@@ -8,6 +8,7 @@
 const AuthService = require('./AuthService.cjs');
 const UserService = require('./UserService.cjs');
 const SyncService = require('./SyncService.cjs');
+const SessionValidator = require('./SessionValidator.cjs');
 
 // CloudSyncService is lazily imported to avoid importing Electron modules
 // (like BrowserWindow) before the app is ready
@@ -71,6 +72,7 @@ module.exports = {
     AuthService,
     UserService,
     SyncService,
+    SessionValidator,
     // CloudSyncService exports are proxied through lazy loader
     get CloudSyncService() { return getCloudSyncModule().CloudSyncService; },
     get getCloudSyncService() { return getCloudSyncModule().getCloudSyncService; },
