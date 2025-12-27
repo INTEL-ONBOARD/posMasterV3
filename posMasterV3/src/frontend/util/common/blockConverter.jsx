@@ -2,6 +2,7 @@
 
 /**
  * Transforms API response data by flattening stockData objects into individual items
+ * Supports both nested format (from cloud API) and flat format (from local SQLite)
  * @param {Object} apiResponse - The original API response object
  * @returns {Array} - Array of transformed objects
  */
@@ -15,7 +16,60 @@ export const transformStockData = (apiResponse) => {
     return [];
   }
 
-  return apiResponse.data.flatMap(item => {
+  const data = apiResponse.data;
+
+  // Check if data is in flat format (from local SQLite) - has direct stock fields like batch_code, quantity
+  const isFlat = data.length > 0 && data[0].batch_code !== undefined && data[0].stockData === undefined;
+
+  if (isFlat) {
+    // Transform flat data from local SQLite backend
+    return data.map(item => ({
+      // Item properties
+      _id: item._id || item.cloud_id,
+      id: item.id || item.item_id,
+      stock_id: item.id, // The actual stock record ID
+      item_id: item.item_id,
+      stock_trace: item.stock_trace || [],
+      item_name: item.item_name,
+      item_image_url: item.item_image_url,
+      maximum_capacity: item.maximum_capacity || 100,
+      uom_id: item.uom_id,
+      category_id: item.category_id,
+      branch_id: item.branch_id,
+      inventory_id: item.inventory_id,
+
+      // Stock properties
+      sku: item.sku,
+      batch_code: item.batch_code,
+      quantity: item.quantity,
+      threshold_limit: item.threshold_limit || 20,
+      stock_price: item.stock_price,
+      retail_price: item.retail_price,
+      discount_price: item.discount_price || 0,
+      exp_date: item.expiry_date,
+      expiry_date: item.expiry_date,
+      stock_availability: item.availability,
+      availability: item.availability,
+
+      // Datetime fields
+      stock_update_datetime: item.updated_at,
+      stock_created_datetime: item.created_at,
+
+      // Nested objects from JOINed data
+      uom: {
+        symbol: item.uom_symbol,
+        unit_name: item.uom_unit_name
+      },
+      category: {
+        brand: item.category_brand,
+        type: item.category_type
+      },
+      inventory: null
+    }));
+  }
+
+  // Transform nested format (from cloud API)
+  return data.flatMap(item => {
     if (!item.stockData || !Array.isArray(item.stockData)) {
       return []; // Skip items without stockData
     }
@@ -31,7 +85,7 @@ export const transformStockData = (apiResponse) => {
       uom_id: item.uom_id,
       category_id: item.category_id,
       inventory_id: item.inventory_id,
-      
+
       // Properties from stockData with renamed fields
       sku: stock.sku,
       batch_code: stock.batch_code,
@@ -41,16 +95,16 @@ export const transformStockData = (apiResponse) => {
       discount_price: stock.discount_price,
       exp_date: stock.exp_date,
       stock_availability: stock.availability, // Renamed from availability
-      
+
       // Datetime fields
       stock_update_datetime: stock.date || item.item_update_datetime,
       stock_created_datetime: stock.date || item.item_created_datetime,
-      
+
       // Nested objects
       uom: item.uom || null,
       category: item.category || null,
       inventory: item.inventory || null,
-      
+
       // Other properties
       __v: item.__v
     }));

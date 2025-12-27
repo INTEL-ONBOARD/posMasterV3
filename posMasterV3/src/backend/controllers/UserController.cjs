@@ -95,11 +95,24 @@ function registerUserHandlers() {
      * Response: { success: boolean, message: string }
      */
     ipcMain.handle('users:delete', async (event, payload) => {
-        console.log('[UserController] Delete user request received');
+        console.log('[UserController] Delete user request received, payload:', payload);
 
         try {
+            if (!payload || !payload.userId) {
+                console.error('[UserController] Delete user error: Missing userId in payload');
+                return {
+                    success: false,
+                    status: 'error',
+                    message: 'User ID is required'
+                };
+            }
+
             const { userId, hardDelete = false } = payload;
-            return userService.deleteUser(userId, hardDelete);
+            console.log(`[UserController] Deleting user ${userId}, hardDelete: ${hardDelete}`);
+
+            const result = userService.deleteUser(userId, hardDelete);
+            console.log('[UserController] Delete user result:', result);
+            return result;
 
         } catch (error) {
             console.error('[UserController] Delete user error:', error.message);
