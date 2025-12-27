@@ -559,14 +559,16 @@ class CloudSyncService {
             for (const record of localRecords) {
                 localMap.set(String(record[primaryKey]), record);
             }
+            console.log(`[CloudSync] ${tableName}: Found ${localRecords.length} local records`);
 
             // Get cloud records
             let cloudRecords = [];
             try {
                 cloudRecords = await executeQuery(`SELECT * FROM ${tableName}`) || [];
+                console.log(`[CloudSync] ${tableName}: Found ${cloudRecords.length} cloud records`);
             } catch (error) {
                 // Table might not exist in cloud yet
-                console.log(`[CloudSync] Cloud table ${tableName} may not exist, pushing all local records`);
+                console.log(`[CloudSync] Cloud table ${tableName} may not exist, pushing all local records. Error: ${error.message}`);
             }
 
             const cloudMap = new Map();
@@ -729,7 +731,13 @@ class CloudSyncService {
         const placeholders = syncColumns.map(() => '?').join(', ');
         const query = `REPLACE INTO ${tableName} (${syncColumns.join(', ')}) VALUES (${placeholders})`;
 
-        await executeQuery(query, values);
+        try {
+            await executeQuery(query, values);
+            console.log(`[CloudSync] Pushed record to cloud: ${tableName} (ID: ${record.id || record[Object.keys(record)[0]]})`);
+        } catch (err) {
+            console.error(`[CloudSync] Failed to push record to ${tableName}:`, err.message);
+            throw err;
+        }
     }
 
     /**
