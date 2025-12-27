@@ -1239,6 +1239,31 @@ export const authApi = {
         const api = getElectronAPI();
         if (!api) return { status: 'error', message: 'Not in Electron environment' };
         return api.auth.register(userData);
+    },
+
+    /**
+     * Check session with cloud sync (for single-device enforcement)
+     * This syncs active_sessions from cloud first, then validates the session locally.
+     * If another device has logged in, this will return forcedLogout: true
+     * @param {string} token - Session token
+     * @returns {Promise<{valid: boolean, forcedLogout?: boolean, message?: string}>}
+     */
+    checkSessionWithSync: async (token) => {
+        const api = getElectronAPI();
+        if (!api) return { valid: false, message: 'Not in Electron environment' };
+        return api.auth.checkSessionWithSync(token);
+    },
+
+    /**
+     * Fast session validation (optimized for every API call)
+     * Uses caching and background sync for speed
+     * @param {string} token - Session token
+     * @returns {Promise<{valid: boolean, forcedLogout?: boolean, message?: string}>}
+     */
+    validateSessionFast: async (token) => {
+        const api = getElectronAPI();
+        if (!api) return { valid: false, message: 'Not in Electron environment' };
+        return api.auth.validateSessionFast(token);
     }
 };
 

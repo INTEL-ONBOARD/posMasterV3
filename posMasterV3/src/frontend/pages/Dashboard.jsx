@@ -4,6 +4,7 @@ import { Outlet, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar.jsx";
 import { useStatusLog, StatusType } from "../services/StatusLogService.jsx";
 import { appSettingsApi, authApi } from "../api/localApi";
+import { onSessionEvent, startSessionMonitor } from "../services/SessionGuard";
 
 // Get icon and color based on status type
 const getStatusStyle = (type, isLoading) => {
@@ -102,6 +103,32 @@ function Dashboard() {
   const navigate = useNavigate();
   const { currentStatus, isOnline } = useStatusLog();
   const [autoLogoutEnabled, setAutoLogoutEnabled] = useState(false);
+  const [showKickedModal, setShowKickedModal] = useState(false);
+
+  // Force logout handler - clears session and navigates to login
+  const handleForcedLogout = async (message = 'You have been logged out') => {
+    console.log('[Dashboard] Forced logout:', message);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await authApi.logout(token);
+      }
+    } catch (err) {
+      console.error('[Dashboard] Logout error:', err);
+    }
+
+    // Clear localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('email');
+    localStorage.removeItem('_id');
+    localStorage.removeItem('user');
+    localStorage.removeItem('sessionId');
+
+    // Navigate to login
+    navigate('/login', { replace: true, state: { message } });
+  };
 
   // Apply settings and setup auto-logout on mount
   useEffect(() => {
@@ -119,30 +146,11 @@ function Dashboard() {
 
     initializeSettings();
 
-    // Listen for auto-logout event
+    // Listen for auto-logout event (inactivity)
     const handleAutoLogout = async () => {
       console.log('[Dashboard] Auto-logout triggered');
       toast.open('Session expired due to inactivity', 3000, 'Warning', 'warning');
-
-      try {
-        const token = localStorage.getItem('token');
-        if (token) {
-          await authApi.logout(token);
-        }
-      } catch (err) {
-        console.error('[Dashboard] Logout error:', err);
-      }
-
-      // Clear localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('username');
-      localStorage.removeItem('email');
-      localStorage.removeItem('_id');
-      localStorage.removeItem('user');
-      localStorage.removeItem('sessionId');
-
-      // Navigate to login
-      navigate('/login', { replace: true, state: { message: 'Session expired due to inactivity' } });
+      await handleForcedLogout('Session expired due to inactivity');
     };
 
     if (window.electronAPI?.appSettings?.onAutoLogout) {
@@ -172,10 +180,91 @@ function Dashboard() {
     };
   }, [navigate, toast]);
 
+  // Single-device enforcement: Real-time session monitoring
+  useEffect(() => {
+    // Subscribe to session events (kicked, invalid)
+    const unsubscribe = onSessionEvent((event) => {
+      console.log('[Dashboard] Session event:', event);
+
+      if (event.type === 'kicked') {
+        // Another device logged in - show modal
+        setShowKickedModal(true);
+      } else if (event.type === 'invalid') {
+        // Session expired - logout directly
+        toast.open('Session expired', 3000, 'Warning', 'warning');
+        handleForcedLogout('Session expired');
+      }
+    });
+
+    // Start real-time session monitoring (checks every 10 seconds + on visibility change)
+    const stopMonitor = startSessionMonitor(10000);
+
+    return () => {
+      unsubscribe();
+      stopMonitor();
+    };
+  }, [toast]);
+
   const style = getStatusStyle(currentStatus.type, currentStatus.isLoading);
+
+  // Handler for the kicked modal OK button
+  const handleKickedModalClose = () => {
+    setShowKickedModal(false);
+    handleForcedLogout('Logged out - another device signed in');
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Session Kicked Modal */}
+      {showKickedModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="bg-red-600 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h2 className="text-xl font-bold text-white">Session Ended</h2>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-5">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Logged in from another device
+                  </h3>
+                  <p className="text-gray-600">
+                    Your account has been signed in from another device. For security reasons,
+                    only one active session is allowed at a time.
+                  </p>
+                  <p className="text-gray-500 text-sm mt-3">
+                    If this wasn't you, please change your password immediately.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 flex justify-end">
+              <button
+                onClick={handleKickedModalClose}
+                className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              >
+                OK, Sign In Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main content area */}
       <div className="flex flex-1">
         <Sidebar />

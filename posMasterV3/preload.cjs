@@ -90,7 +90,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
         changePassword: (userId, currentPassword, newPassword) =>
             ipcRenderer.invoke("auth:change-password", { userId, currentPassword, newPassword }),
         importFromCloud: (cloudUser, password) =>
-            ipcRenderer.invoke("auth:import-from-cloud", { cloudUser, password })
+            ipcRenderer.invoke("auth:import-from-cloud", { cloudUser, password }),
+        // Check session with cloud sync - used for single-device enforcement
+        checkSessionWithSync: (token) =>
+            ipcRenderer.invoke("auth:check-session-with-sync", { token }),
+        // Fast session validation - optimized for every API call
+        validateSessionFast: (token) =>
+            ipcRenderer.invoke("auth:validate-session-fast", { token })
     },
 
     // ============================================
