@@ -9,14 +9,15 @@ const { getDatabase } = require('../database/connection.cjs');
 const { getSessionRepository, getActiveSessionRepository } = require('../repositories/index.cjs');
 const SettingsService = require('./SettingsService.cjs');
 const crypto = require('crypto');
+const { broadcastSessionKicked } = require('../utils/eventBroadcaster.cjs');
 
 // Cache for session validation to reduce DB hits
 const sessionCache = new Map();
-const CACHE_TTL = 5000; // 5 seconds cache
+const CACHE_TTL = 2000; // 2 seconds cache (reduced for faster kick detection)
 
 // Track last cloud sync time
 let lastCloudSyncTime = 0;
-const CLOUD_SYNC_INTERVAL = 10000; // Sync from cloud every 10 seconds max
+const CLOUD_SYNC_INTERVAL = 3000; // Sync from cloud every 3 seconds max (faster for real-time)
 
 // Cloud sync in progress flag
 let cloudSyncInProgress = false;
@@ -96,8 +97,15 @@ function validateSessionFast(token) {
                 };
                 sessionCache.set(token, { result, timestamp: Date.now() });
 
-                // Emit session kicked event
+                // Emit session kicked event (internal)
                 sessionEvents.emit('session-kicked', { userId: user.id, deviceName: activeSession.device_name });
+
+                // Broadcast session kicked to UI immediately
+                broadcastSessionKicked({
+                    userId: user.id,
+                    deviceName: activeSession.device_name,
+                    message: 'Session ended - logged in from another device'
+                });
 
                 return result;
             }

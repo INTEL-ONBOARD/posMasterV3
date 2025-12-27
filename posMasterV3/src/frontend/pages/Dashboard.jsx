@@ -182,7 +182,7 @@ function Dashboard() {
 
   // Single-device enforcement: Real-time session monitoring
   useEffect(() => {
-    // Subscribe to session events (kicked, invalid)
+    // Subscribe to session events (kicked, invalid) from SessionGuard
     const unsubscribe = onSessionEvent((event) => {
       console.log('[Dashboard] Session event:', event);
 
@@ -196,11 +196,21 @@ function Dashboard() {
       }
     });
 
-    // Start real-time session monitoring (checks every 10 seconds + on visibility change)
-    const stopMonitor = startSessionMonitor(10000);
+    // Also listen for direct session:kicked broadcasts from backend (faster detection)
+    let unsubscribeKicked = null;
+    if (window.electronAPI?.onSessionKicked) {
+      unsubscribeKicked = window.electronAPI.onSessionKicked((data) => {
+        console.log('[Dashboard] Direct session kicked broadcast:', data);
+        setShowKickedModal(true);
+      });
+    }
+
+    // Start real-time session monitoring (checks every 3 seconds + on visibility change)
+    const stopMonitor = startSessionMonitor(3000);
 
     return () => {
       unsubscribe();
+      unsubscribeKicked?.();
       stopMonitor();
     };
   }, [toast]);

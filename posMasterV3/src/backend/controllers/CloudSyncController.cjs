@@ -135,6 +135,66 @@ class CloudSyncController {
             }
         });
 
+        // Force full sync immediately (for real-time requirements)
+        ipcMain.handle('cloudSync:forceFullSync', async () => {
+            try {
+                const service = getCloudSyncService();
+                console.log('[CloudSyncController] Force full sync requested');
+                const result = await service.performFullSync();
+                return {
+                    status: 'success',
+                    data: result
+                };
+            } catch (error) {
+                console.error('[CloudSyncController] Force full sync error:', error);
+                return { status: 'error', message: error.message };
+            }
+        });
+
+        // Force sync active_sessions immediately (for single-device enforcement)
+        ipcMain.handle('cloudSync:syncActiveSessions', async () => {
+            try {
+                const service = getCloudSyncService();
+                console.log('[CloudSyncController] Syncing active_sessions immediately');
+
+                // Pull active_sessions from cloud first
+                const pullResult = await service.pullFromCloud('active_sessions');
+
+                // Then push local active_sessions to cloud
+                const pushResult = await service.syncTable('active_sessions');
+
+                // Clear session cache to force revalidation
+                const { clearCache } = require('../services/SessionValidator.cjs');
+                clearCache();
+
+                return {
+                    status: 'success',
+                    data: {
+                        pulled: pullResult.downloaded || 0,
+                        pushed: pushResult.uploaded || 0
+                    }
+                };
+            } catch (error) {
+                console.error('[CloudSyncController] Sync active sessions error:', error);
+                return { status: 'error', message: error.message };
+            }
+        });
+
+        // Get real-time sync status
+        ipcMain.handle('cloudSync:getRealTimeStatus', async () => {
+            try {
+                const { getRealTimeSyncService } = require('../services/RealTimeSyncService.cjs');
+                const realTimeSync = getRealTimeSyncService();
+                return {
+                    status: 'success',
+                    data: realTimeSync.getStatus()
+                };
+            } catch (error) {
+                console.error('[CloudSyncController] Get real-time status error:', error);
+                return { status: 'error', message: error.message };
+            }
+        });
+
         console.log('[CloudSyncController] IPC handlers registered');
     }
 }
