@@ -674,12 +674,15 @@ function seedDefaultMember() {
 
 /**
  * Run all seeders
+ * NOTE: Seeders are currently disabled/commented out
  */
 function runSeeders() {
-    console.log('[Seeder] Running database seeders...');
+    console.log('[Seeder] Seeders are currently disabled');
 
+    // SEEDERS DISABLED - Uncomment below to enable seeding
     // Order matters: branches must be seeded before admin (for branch_id assignment)
     // and before items (for branch_id foreign key)
+    /*
     const results = {
         uoms: seedDefaultUoms(),
         categories: seedDefaultCategories(),
@@ -692,6 +695,18 @@ function runSeeders() {
 
     console.log('[Seeder] Seeding complete');
     return results;
+    */
+
+    // Return empty results when disabled
+    return {
+        uoms: { seeded: false, message: 'Seeders disabled' },
+        categories: { seeded: false, message: 'Seeders disabled' },
+        branches: { seeded: false, message: 'Seeders disabled' },
+        admin: { seeded: false, message: 'Seeders disabled' },
+        suppliers: { seeded: false, message: 'Seeders disabled' },
+        members: { seeded: false, message: 'Seeders disabled' },
+        items: { seeded: false, message: 'Seeders disabled' }
+    };
 }
 
 module.exports = {

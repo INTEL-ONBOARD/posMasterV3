@@ -3,6 +3,10 @@
  *
  * Handles synchronization between local SQLite and cloud API.
  * Implements offline-first approach with queue-based sync.
+ *
+ * Strategy: Pull-first-then-push
+ * - Always pull incoming changes from cloud FIRST
+ * - Then push local queued changes to cloud
  */
 
 const axios = require('axios');
@@ -45,7 +49,7 @@ class SyncService {
     }
 
     /**
-     * Process pending sync queue items
+     * Process pending sync queue items using pull-first-then-push strategy
      * @param {string} token - Auth token for cloud API
      * @returns {Object} Sync result
      */
@@ -60,6 +64,7 @@ class SyncService {
         this.isSyncing = true;
 
         const results = {
+            pulled: 0,
             processed: 0,
             succeeded: 0,
             failed: 0,
@@ -77,18 +82,28 @@ class SyncService {
                 };
             }
 
+            // STEP 1: PULL from cloud FIRST - Get latest changes before pushing
+            console.log('[SyncService] Step 1: Pulling latest data from cloud first...');
+            const pullResult = await this._pullUsers({
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` })
+            });
+            results.pulled = pullResult.updated || 0;
+            console.log(`[SyncService] Pulled ${results.pulled} user updates from cloud`);
+
+            // STEP 2: PUSH local queued changes to cloud
             // Get pending items
             const pendingItems = this.syncQueueRepo.getNextPending(20);
 
             if (pendingItems.length === 0) {
                 return {
                     success: true,
-                    message: 'No pending items to sync',
-                    processed: 0
+                    message: `Sync completed: Pulled ${results.pulled} updates, no pending items to push`,
+                    ...results
                 };
             }
 
-            console.log(`[SyncService] Processing ${pendingItems.length} pending items...`);
+            console.log(`[SyncService] Step 2: Pushing ${pendingItems.length} pending items to cloud...`);
 
             for (const item of pendingItems) {
                 results.processed++;
@@ -117,7 +132,7 @@ class SyncService {
 
             return {
                 success: true,
-                message: `Sync completed: ${results.succeeded}/${results.processed} succeeded`,
+                message: `Sync completed: Pulled ${results.pulled} updates, pushed ${results.succeeded}/${results.processed} items`,
                 ...results
             };
 

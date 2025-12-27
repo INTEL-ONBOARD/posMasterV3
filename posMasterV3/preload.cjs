@@ -392,5 +392,38 @@ contextBridge.exposeInMainWorld("electronAPI", {
         // Mark stale sessions (cleanup)
         markStaleSessions: (hoursThreshold) =>
             ipcRenderer.invoke("loginHistory:markStaleSessions", hoursThreshold)
+    },
+
+    // ============================================
+    // REAL-TIME DATA CHANGE EVENTS
+    // ============================================
+
+    /**
+     * Listen for data changes from the backend
+     * The callback will be called with: { table, operation, recordId, record }
+     * - table: string (e.g., 'items', 'stock', 'sales_transactions')
+     * - operation: 'INSERT' | 'UPDATE' | 'DELETE'
+     * - recordId: string | number
+     * - record: object (the changed record data)
+     *
+     * Returns an unsubscribe function
+     */
+    onDataChange: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on("data:changed", handler);
+        // Return unsubscribe function
+        return () => ipcRenderer.removeListener("data:changed", handler);
+    },
+
+    /**
+     * Listen for sync status updates
+     * The callback will be called with: { status, message, isOnline, pendingCount }
+     *
+     * Returns an unsubscribe function
+     */
+    onSyncStatusChange: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on("sync:status-changed", handler);
+        return () => ipcRenderer.removeListener("sync:status-changed", handler);
     }
 });

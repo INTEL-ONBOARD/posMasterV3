@@ -4,11 +4,13 @@
  * Abstract base class for all repositories providing common CRUD operations.
  * Repositories handle direct database interactions and data mapping.
  * Automatically notifies CloudSyncService on data changes for real-time sync.
+ * Broadcasts data changes to update UI immediately.
  */
 
 const { getDatabase } = require('../database/connection.cjs');
 const { notifyDataChange } = require('../services/CloudSyncService.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
+const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
 
 class BaseRepository {
     constructor(tableName) {
@@ -127,10 +129,12 @@ class BaseRepository {
             createdRecord = this.findById(result.lastInsertRowid);
         }
 
-        // Notify CloudSync of the change
+        // Notify CloudSync of the change and broadcast to UI
         if (createdRecord) {
             const recordId = createdRecord.id || result.lastInsertRowid;
             notifyDataChange(this.tableName, 'INSERT', createdRecord, recordId);
+            // Broadcast to update UI immediately
+            broadcastDataChange(this.tableName, 'INSERT', recordId, createdRecord);
         }
 
         return createdRecord;
@@ -170,6 +174,8 @@ class BaseRepository {
         const updatedRecord = this.findById(id);
         if (updatedRecord) {
             notifyDataChange(this.tableName, 'UPDATE', updatedRecord, id);
+            // Broadcast to update UI immediately
+            broadcastDataChange(this.tableName, 'UPDATE', id, updatedRecord);
         }
 
         return updatedRecord;
@@ -187,9 +193,11 @@ class BaseRepository {
         const stmt = this.db.prepare(`DELETE FROM ${this.tableName} WHERE id = ?`);
         const result = stmt.run(id);
 
-        // Notify CloudSync of the deletion
+        // Notify CloudSync of the deletion and broadcast to UI
         if (result.changes > 0 && recordToDelete) {
             notifyDataChange(this.tableName, 'DELETE', recordToDelete, id);
+            // Broadcast to update UI immediately
+            broadcastDataChange(this.tableName, 'DELETE', id, recordToDelete);
         }
 
         return result.changes > 0;

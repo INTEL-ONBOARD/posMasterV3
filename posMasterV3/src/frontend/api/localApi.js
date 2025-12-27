@@ -1288,14 +1288,26 @@ export const userApi = {
     },
 
     /**
-     * Delete a user
+     * Delete a user permanently
+     * @param {string} userId - User UUID
+     * @param {boolean} hardDelete - Whether to permanently delete (default: true)
+     * @returns {Promise<ApiResponse>}
+     */
+    delete: async (userId, hardDelete = true) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.users.delete(userId, hardDelete);
+    },
+
+    /**
+     * Deactivate a user (soft delete - keeps user in database but marks as inactive)
      * @param {string} userId - User UUID
      * @returns {Promise<ApiResponse>}
      */
-    delete: async (userId) => {
+    deactivate: async (userId) => {
         const api = getElectronAPI();
         if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.users.delete(userId);
+        return api.users.delete(userId, false);
     },
 
     /**
@@ -1663,6 +1675,62 @@ export const loginHistoryApi = {
 };
 
 // ============================================
+// REAL-TIME DATA CHANGE LISTENER API
+// ============================================
+
+/**
+ * @typedef {Object} DataChangeEvent
+ * @property {string} table - The table that changed (e.g., 'items', 'stock')
+ * @property {'INSERT'|'UPDATE'|'DELETE'} operation - The operation type
+ * @property {string|number} recordId - The ID of the affected record
+ * @property {Object} record - The record data
+ * @property {string} timestamp - ISO timestamp of the change
+ */
+
+/**
+ * Real-time Data Change Listener API
+ * Subscribe to real-time data changes from the backend
+ * @namespace
+ */
+export const dataChangeApi = {
+    /**
+     * Subscribe to data changes for specific tables
+     * @param {Function} callback - Callback function receiving DataChangeEvent
+     * @returns {Function} Unsubscribe function
+     * @example
+     * const unsubscribe = dataChangeApi.onDataChange((event) => {
+     *   console.log('Data changed:', event.table, event.operation);
+     *   if (event.table === 'items') {
+     *     refetchItems();
+     *   }
+     * });
+     * // Later: unsubscribe();
+     */
+    onDataChange: (callback) => {
+        const api = getElectronAPI();
+        if (!api?.onDataChange) {
+            console.warn('onDataChange not available in this environment');
+            return () => {};
+        }
+        return api.onDataChange(callback);
+    },
+
+    /**
+     * Subscribe to sync status changes
+     * @param {Function} callback - Callback function receiving sync status
+     * @returns {Function} Unsubscribe function
+     */
+    onSyncStatusChange: (callback) => {
+        const api = getElectronAPI();
+        if (!api?.onSyncStatusChange) {
+            console.warn('onSyncStatusChange not available in this environment');
+            return () => {};
+        }
+        return api.onSyncStatusChange(callback);
+    }
+};
+
+// ============================================
 // DEFAULT EXPORT
 // ============================================
 
@@ -1684,5 +1752,6 @@ export default {
     settings: settingsApi,
     cloudSync: cloudSyncApi,
     loginHistory: loginHistoryApi,
+    dataChange: dataChangeApi,
     isElectron
 };
