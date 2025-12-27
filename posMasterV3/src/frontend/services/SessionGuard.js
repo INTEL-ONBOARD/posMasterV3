@@ -8,7 +8,7 @@
 // Session state
 let sessionValid = true;
 let lastValidationTime = 0;
-const VALIDATION_THROTTLE = 2000; // Don't validate more than once per 2 seconds
+const VALIDATION_THROTTLE = 1000; // Don't validate more than once per 1 second (faster for real-time)
 
 // Event listeners
 const sessionListeners = new Set();
