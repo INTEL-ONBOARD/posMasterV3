@@ -5,8 +5,15 @@ const axios = require("axios");
 const fs = require("fs").promises;
 const printer = require("pdf-to-printer");
 
-// Backend initialization
-const { initializeBackend, shutdownBackend, getBackendStatus } = require("./src/backend/backend.cjs");
+// Backend initialization - lazy loaded to avoid importing Electron modules
+// before app is ready
+let _backendModule = null;
+function getBackend() {
+    if (!_backendModule) {
+        _backendModule = require("./src/backend/backend.cjs");
+    }
+    return _backendModule;
+}
 
 // Load the version from package.json
 const appVersion = require(path.join(__dirname, "package.json")).version;
@@ -536,7 +543,7 @@ ipcMain.on("print-silent", async (event, arrayBuffer) => {
 
 // IPC handler for backend status - register early so it's available before backend init
 ipcMain.handle("backend:status", async () => {
-  return getBackendStatus();
+  return getBackend().getBackendStatus();
 });
 
 // IPC handler for app restart (used when app_settings change)
@@ -559,6 +566,18 @@ ipcMain.handle("app:logoutAndRestart", async () => {
 app.whenReady().then(async () => {
   const iconPath = path.join(__dirname, "src", "frontend", "assets", "icon.ico");
 
+  // Try to read maximize_window setting from database
+  let shouldMaximize = true; // Default to true
+  try {
+    // Import after backend is ready
+    const { getAppSettingsService } = require("./src/backend/services/AppSettingsService.cjs");
+    const appSettingsService = getAppSettingsService();
+    shouldMaximize = appSettingsService.getMaximizeOnStart();
+    console.log(`[Electron] maximize_window setting: ${shouldMaximize}`);
+  } catch (e) {
+    console.log("[Electron] Could not read maximize setting, using default:", e.message);
+  }
+
   // Create window and show immediately with splash screen
   console.log("[Electron] Creating window with splash...");
   mainWindow = new BrowserWindow({
@@ -576,7 +595,10 @@ app.whenReady().then(async () => {
     },
   });
 
-  mainWindow.maximize();
+  // Only maximize if setting is enabled
+  if (shouldMaximize) {
+    mainWindow.maximize();
+  }
 
   // Load splash screen HTML immediately (matches Intro.jsx styling)
   const splashHtml = `
@@ -678,7 +700,7 @@ app.whenReady().then(async () => {
 
   // Now initialize backend (user sees splash during this)
   console.log("[Electron] Starting backend initialization...");
-  const backendResult = initializeBackend(defaultFolderPath);
+  const backendResult = getBackend().initializeBackend(defaultFolderPath);
   if (backendResult.success) {
     console.log("[Electron] Backend initialized:", backendResult.dbPath);
   } else {
@@ -762,5 +784,5 @@ app.on("window-all-closed", () => {
 // Cleanup on app quit
 app.on("will-quit", () => {
   console.log("[Electron] Shutting down backend...");
-  shutdownBackend();
+  getBackend().shutdownBackend();
 });

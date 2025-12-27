@@ -51,6 +51,7 @@
   "dependencies": {
     "@emotion/is-prop-valid": "^1.4.0",
     "@react-pdf/renderer": "^4.3.0",
+    "auto-launch": "^5.0.6",
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.5.0",

@@ -340,6 +340,46 @@ contextBridge.exposeInMainWorld("electronAPI", {
     },
 
     // ============================================
+    // APP SETTINGS API (System behavior settings)
+    // ============================================
+
+    appSettings: {
+        // Get all app settings with applied status
+        getAll: () =>
+            ipcRenderer.invoke("appSettings:getAll"),
+        // Set auto-logout configuration
+        setAutoLogout: (enabled, minutes) =>
+            ipcRenderer.invoke("appSettings:setAutoLogout", { enabled, minutes }),
+        // Set run on startup
+        setRunOnStartup: (enabled) =>
+            ipcRenderer.invoke("appSettings:setRunOnStartup", enabled),
+        // Set maximize on start
+        setMaximizeOnStart: (enabled) =>
+            ipcRenderer.invoke("appSettings:setMaximizeOnStart", enabled),
+        // Set notifications enabled
+        setNotifications: (enabled) =>
+            ipcRenderer.invoke("appSettings:setNotifications", enabled),
+        // Set cloud sync enabled
+        setCloudSync: (enabled) =>
+            ipcRenderer.invoke("appSettings:setCloudSync", enabled),
+        // Send test notification
+        testNotification: () =>
+            ipcRenderer.invoke("appSettings:testNotification"),
+        // Apply all settings (call after login)
+        applyAll: () =>
+            ipcRenderer.invoke("appSettings:applyAll"),
+        // Reset activity timer (call on user interaction)
+        resetActivity: () =>
+            ipcRenderer.invoke("appSettings:resetActivity"),
+        // Check if cloud sync is enabled
+        isCloudSyncEnabled: () =>
+            ipcRenderer.invoke("appSettings:isCloudSyncEnabled"),
+        // Listen for auto-logout event
+        onAutoLogout: (callback) =>
+            ipcRenderer.on("app:autoLogout", callback)
+    },
+
+    // ============================================
     // CLOUD SYNC API
     // ============================================
 
@@ -357,7 +397,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
             ipcRenderer.invoke("cloudSync:pullUsers"),
         // Push a user to cloud
         pushUser: (user) =>
-            ipcRenderer.invoke("cloudSync:pushUser", user)
+            ipcRenderer.invoke("cloudSync:pushUser", user),
+        // Force ensure MySQL schema (creates tables if missing)
+        ensureSchema: () =>
+            ipcRenderer.invoke("cloudSync:ensureSchema"),
+        // Initialize MySQL connection
+        initializeMySQL: () =>
+            ipcRenderer.invoke("cloudSync:initializeMySQL")
     },
 
     // ============================================

@@ -105,6 +105,36 @@ class CloudSyncController {
             }
         });
 
+        // Force ensure MySQL schema (creates tables if they don't exist)
+        ipcMain.handle('cloudSync:ensureSchema', async () => {
+            try {
+                const service = getCloudSyncService();
+                const result = await service.ensureMySQLSchema();
+                return {
+                    status: result.success ? 'success' : 'error',
+                    data: result
+                };
+            } catch (error) {
+                console.error('[CloudSyncController] Ensure schema error:', error);
+                return { status: 'error', message: error.message };
+            }
+        });
+
+        // Initialize MySQL manually (useful for reconnection)
+        ipcMain.handle('cloudSync:initializeMySQL', async () => {
+            try {
+                const service = getCloudSyncService();
+                const initialized = await service.initializeMySQL();
+                return {
+                    status: initialized ? 'success' : 'error',
+                    data: { initialized }
+                };
+            } catch (error) {
+                console.error('[CloudSyncController] Initialize MySQL error:', error);
+                return { status: 'error', message: error.message };
+            }
+        });
+
         console.log('[CloudSyncController] IPC handlers registered');
     }
 }

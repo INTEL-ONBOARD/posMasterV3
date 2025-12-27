@@ -205,14 +205,16 @@ class AppSettingsRepository extends BaseRepository {
 
     /**
      * Reset settings to defaults
+     * All settings are enabled by default for new users
      * @returns {Object}
      */
     resetToDefaults() {
         const defaults = {
-            auto_logout: false,
+            auto_logout: true,
+            auto_logout_minutes: 15,
             notifications: true,
-            cloud_sync: false,
-            temp_system: false,
+            cloud_sync: true,
+            temp_system: true,
             run_on_startup: true,
             maximize_window: true,
             temp_path: 'C:\\POS Master\\temp',
