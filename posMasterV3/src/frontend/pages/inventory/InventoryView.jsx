@@ -1,111 +1,75 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import ItemCard from "../../components/ItemCard.jsx";
 import NotFoundImg from "../../assets/nonicons_not-found-16.png";
-import { restockApi, categoryApi } from "../../api/localApi";
-import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Package, CheckCircle, AlertTriangle } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Package, CheckCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import ViewItemModal from "./modals/ViewItemModal.jsx";
-import { useStatusLog } from "../../services/StatusLogService.jsx";
+import { useReactiveData, TABLES } from "../../store";
 
 function InventoryView({ isActive }) {
-  const statusLog = useStatusLog();
+
+  // Use reactive data hooks - automatically updates when data changes
+  const { data: stockItems, loading: isLoadingStock, refetch: refetchStock } = useReactiveData(
+    TABLES.STOCK_ITEMS,
+    null,
+    { enabled: isActive }
+  );
+
+  const { data: categories, loading: isLoadingCategories } = useReactiveData(
+    TABLES.CATEGORIES,
+    null,
+    { enabled: isActive }
+  );
+
+  // Transform stock items to the expected UI format
+  const inventoryItems = useMemo(() => {
+    return (stockItems || []).map(stock => ({
+      id: stock.id,
+      item_id: stock.item_id,
+      sku: stock.sku,
+      item_name: stock.item_name,
+      item_image_url: stock.item_image_url,
+      maximum_capacity: stock.maximum_capacity,
+      batch_code: stock.batch_code,
+      quantity: stock.quantity,
+      threshold_limit: stock.threshold_limit,
+      stock_price: stock.stock_price,
+      retail_price: stock.retail_price,
+      discount_price: stock.discount_price,
+      expiry_date: stock.expiry_date,
+      availability: stock.availability,
+      category: {
+        id: stock.category_id,
+        brand: stock.category_brand,
+        type: stock.category_type
+      },
+      uom: {
+        id: stock.uom_id,
+        symbol: stock.uom_symbol,
+        unit_name: stock.uom_unit_name
+      }
+    }));
+  }, [stockItems]);
+
+  // Extract unique category types
+  const uniqueCategoryTypes = useMemo(() => {
+    return Array.from(new Set((categories || []).map(c => c.type)));
+  }, [categories]);
 
   // modal state: { open: boolean, type: 'success' | 'failed' | null }
   const [modal, setModal] = useState(false);
   const closeModal = () => setModal(false);
   const [selectedItem, setSelectedItem] = useState({});
 
-  const [inventoryItems, setInventoryItems] = useState([]);
-
-  const fetchItems = async () => {
-    statusLog.database("Loading inventory items...", true);
-    try {
-      const response = await restockApi.getStockItems();
-      if (response.status === "success") {
-            // The API returns flat stock rows with joined item data
-            // Transform to the expected format for the UI
-            const items = (response.data || []).map(stock => ({
-              id: stock.id,
-              item_id: stock.item_id,
-              sku: stock.sku,
-              item_name: stock.item_name,
-              item_image_url: stock.item_image_url,
-              maximum_capacity: stock.maximum_capacity,
-              batch_code: stock.batch_code,
-              quantity: stock.quantity,
-              threshold_limit: stock.threshold_limit,
-              stock_price: stock.stock_price,
-              retail_price: stock.retail_price,
-              discount_price: stock.discount_price,
-              expiry_date: stock.expiry_date,
-              availability: stock.availability,
-              category: {
-                id: stock.category_id,
-                brand: stock.category_brand,
-                type: stock.category_type
-              },
-              uom: {
-                id: stock.uom_id,
-                symbol: stock.uom_symbol,
-                unit_name: stock.uom_unit_name
-              }
-            }));
-            setInventoryItems(items);
-            statusLog.success(`Loaded ${items.length} inventory items`);
-      }
-      } catch (error) {
-          console.error("Error fetching inventory items:", error);
-          statusLog.error("Failed to load inventory items");
-      } finally {
-          //setIsLoading(false);
-      }
-    };
-    // Fetch items from API
-    useEffect(() => {
-      if (isActive) {
-          fetchItems();
-      }
-     }, [isActive]);
-
-
-  //category dropdown population(search and item form)
-  const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
-    // Fetch Categories from API and create mapping
-    useEffect(() => {
-      if (isActive) {
-      const fetchCategories = async () => {
-        setIsSearching(true);
-        try {
-          const response = await categoryApi.getAll();
-          if (response.status === "success") {
-            //setItemCategories(response.data);
-            const types = Array.from(new Set((response.data || []).map(c => c.type)));
-            setUniqueCategoryTypes(types);
-          }
-        } catch (error) {
-          console.error("Error fetching categories:", error);
-        } finally {
-          //setLoadingCategories(false); //if more control over categories needed later, use this
-          setIsSearching(false);
-        }
-      };
-
-      fetchCategories();
-      }
-     }, [isActive]);
-
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
-  const [isSearching, setIsSearching] = useState(false);
   const [searchAvailability, setSearchAvailability] = useState("All");
 
-  // search handler to set loading state:
+  // Combined loading state
+  const isLoading = isLoadingStock || isLoadingCategories;
+
+  // search handler
   const handleSearch = (e) => {
-    setIsSearching(true);
     setSearch(e.target.value);
-    // Simulate async search (replace with your real async logic if needed)
-    setTimeout(() => {
-      setIsSearching(false);
-    }, 600); // 600ms delay for demo
   };
 
   //helper method for item availability filtering
@@ -165,9 +129,13 @@ function InventoryView({ isActive }) {
                   className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                 />
               </div>
-              <button className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2">
-                <Search className="w-4 h-4" />
-                Search
+              <button
+                onClick={refetchStock}
+                disabled={isLoading}
+                className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
               </button>
             </div>
             {/* Results count */}
@@ -181,7 +149,7 @@ function InventoryView({ isActive }) {
 
         {/* Items Grid */}
         <div className="h-[calc(100vh-10rem)] overflow-y-auto p-6">
-          {isSearching ? (
+          {isLoading ? (
             <div className="flex flex-col justify-center items-center h-full">
               <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
               <p className="text-gray-500">Searching items...</p>

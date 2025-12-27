@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useRef, useContext } from "react";
+import React, { useState, useEffect, useRef, useContext, useMemo } from "react";
 import SalesItemCard from "../../components/SalesItemCard";
-import { restockApi, categoryApi, settingsApi, userApi, salesApi } from "../../api/localApi";
-import { ChevronDown, ChevronUp, User, Package, Layers, ShoppingCart, CreditCard, Plus, X, DollarSign, AlertTriangle, Wallet, History, UserCheck } from "lucide-react";
+import { salesApi, categoryApi } from "../../api/localApi";
+import { ChevronDown, ChevronUp, User, Package, Layers, ShoppingCart, CreditCard, Plus, X, DollarSign, AlertTriangle, Wallet, History, UserCheck, RefreshCw } from "lucide-react";
 import ToastContext from "../toasts/ToastService.jsx";
 import { localAuth } from "../../api/services/localAuth";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
+import { useReactiveData, TABLES } from "../../store";
+import { transformStockData } from "../../util/common/blockConverter.jsx";
 
 //image imports
 import barcodeImg from "../../assets/barcode.png";
-import { transformStockData } from "../../util/common/blockConverter.jsx";
 
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
@@ -33,6 +34,36 @@ export default function SalesView({ isActive }) {
   const toast = useContext(ToastContext);
   const statusLog = useStatusLog();
 
+  // Use reactive data hooks for stock items, categories, and users
+  const { data: stockItemsRaw, loading: isLoading, refetch: refetchItems } = useReactiveData(
+    TABLES.STOCK_ITEMS,
+    null,
+    { enabled: isActive }
+  );
+
+  const { data: categoriesData } = useReactiveData(
+    TABLES.CATEGORIES,
+    null,
+    { enabled: isActive }
+  );
+
+  const { data: employees } = useReactiveData(
+    TABLES.USERS,
+    null,
+    { enabled: isActive }
+  );
+
+  // Transform stock data for display
+  const inventoryItems = useMemo(() => {
+    if (!stockItemsRaw || stockItemsRaw.length === 0) return [];
+    return transformStockData({ status: 'success', data: stockItemsRaw });
+  }, [stockItemsRaw]);
+
+  // Extract unique category types
+  const uniqueCategoryTypes = useMemo(() => {
+    return Array.from(new Set((categoriesData || []).map(c => c.type)));
+  }, [categoriesData]);
+
   // Collapsible section states
   const [openMemberSection, setOpenMemberSection] = useState(true);
   const [openItemSection, setOpenItemSection] = useState(true);
@@ -55,10 +86,9 @@ export default function SalesView({ isActive }) {
 
   // Current user state
   const [currentUser, setCurrentUser] = useState(null);
-  const [employees, setEmployees] = useState([]);
   const [preparedBy, setPreparedBy] = useState("");
 
-  // Fetch current user and employees
+  // Fetch current user on mount
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
@@ -72,20 +102,8 @@ export default function SalesView({ isActive }) {
       }
     };
 
-    const fetchEmployees = async () => {
-      try {
-        const response = await userApi.getAll();
-        if (response.status === 'success') {
-          setEmployees(response.data || []);
-        }
-      } catch (error) {
-        console.error('[SalesView] Error fetching employees:', error);
-      }
-    };
-
     if (isActive) {
       fetchCurrentUser();
-      fetchEmployees();
     }
   }, [isActive]);
 
@@ -253,57 +271,10 @@ export default function SalesView({ isActive }) {
     });
   };
 
-  const [inventoryItems, setInventoryItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
   const [searchAvailability, setSearchAvailability] = useState("All");
-  const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
-
-  const fetchItems = async (showLoading = true) => {
-    if (showLoading) {
-      setIsLoading(true);
-    }
-    statusLog.database("Loading sales inventory...", true);
-    try {
-      const response = await restockApi.getStockItems();
-      if (response.status === "success") {
-        const transformed = transformStockData(response);
-        setInventoryItems(transformed);
-        statusLog.success(`Sales: Loaded ${transformed.length} items`);
-      } else {
-        console.error('[SalesView] Failed to load items:', response.message);
-        statusLog.error("Failed to load items: " + response.message);
-      }
-    } catch (error) {
-      console.error('[SalesView] Error fetching items:', error);
-      statusLog.error("Failed to load sales inventory");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isActive) {
-      fetchItems();
-    }
-  }, [isActive]);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await categoryApi.getAll();
-        if (response.status === "success") {
-          const types = Array.from(new Set((response.data || []).map(c => c.type)));
-          setUniqueCategoryTypes(types);
-        }
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      }
-    };
-    fetchCategories();
-  }, []);
 
   const handleSearch = (e) => {
     setSearchLoading(true);
@@ -724,7 +695,7 @@ export default function SalesView({ isActive }) {
                 className="w-28 px-2 py-1.5 bg-white border border-gray-200 rounded text-sm text-gray-700 focus:outline-none focus:border-[#1A318C]"
               >
                 <option value="">Select</option>
-                {employees.map(emp => (
+                {(employees || []).map(emp => (
                   <option key={emp.id || emp._id} value={emp.username || emp.name}>
                     {emp.username || emp.name}
                   </option>
@@ -943,7 +914,7 @@ export default function SalesView({ isActive }) {
             <button
               onClick={() => {
                 setRightActiveSection("items");
-                fetchItems(); // Refresh items when opening the panel
+                refetchItems(); // Refresh items when opening the panel
               }}
               className="bg-white rounded-xl p-5 flex flex-col items-center justify-center hover:shadow-lg transition-all border-2 border-transparent hover:border-teal-200 group"
             >

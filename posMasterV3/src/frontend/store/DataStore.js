@@ -1,0 +1,619 @@
+/**
+ * DataStore - Central Reactive Data Store
+ *
+ * A singleton store that manages application data with reactive updates.
+ * Provides caching, subscriptions, and automatic UI updates when data changes.
+ *
+ * Features:
+ * - Centralized data cache for all tables
+ * - Subscription-based reactive updates
+ * - Automatic cache invalidation on data changes
+ * - Optimistic updates for immediate UI feedback
+ * - Works offline (uses local SQLite)
+ * - Syncs with cloud when online
+ *
+ * Usage:
+ *   import { dataStore } from './DataStore';
+ *
+ *   // Subscribe to data changes
+ *   const unsubscribe = dataStore.subscribe('sales_transactions', (state) => {
+ *     console.log('Sales updated:', state.data);
+ *   });
+ *
+ *   // Fetch data
+ *   await dataStore.fetchData('sales_transactions', () => salesApi.getAll());
+ */
+
+import {
+    categoryApi,
+    uomApi,
+    branchApi,
+    supplierApi,
+    itemApi,
+    stockApi,
+    restockApi,
+    memberApi,
+    salesApi,
+    userApi,
+    loginHistoryApi
+} from '../api/localApi';
+
+// Table name constants for type safety
+export const TABLES = {
+    CATEGORIES: 'categories',
+    UOM: 'units_of_measurement',
+    BRANCHES: 'branches',
+    SUPPLIERS: 'suppliers',
+    ITEMS: 'items',
+    STOCK: 'stock',
+    STOCK_ITEMS: 'stock_items', // Combined items + stock view
+    RESTOCK_TRANSACTIONS: 'restock_transactions',
+    MEMBERS: 'members',
+    SALES_TRANSACTIONS: 'sales_transactions',
+    USERS: 'users',
+    LOGIN_HISTORY: 'login_history'
+};
+
+// Default fetch functions for each table
+const DEFAULT_FETCHERS = {
+    [TABLES.CATEGORIES]: () => categoryApi.getAll().then(r => r.data || []),
+    [TABLES.UOM]: () => uomApi.getAll().then(r => r.data || []),
+    [TABLES.BRANCHES]: () => branchApi.getAll().then(r => r.data || []),
+    [TABLES.SUPPLIERS]: () => supplierApi.getAll().then(r => r.data || []),
+    [TABLES.ITEMS]: () => itemApi.getAllExtended().then(r => r.data || []),
+    [TABLES.STOCK]: () => stockApi.getAllWithItems().then(r => r.data || []),
+    [TABLES.STOCK_ITEMS]: () => restockApi.getStockItems().then(r => r.data || []),
+    [TABLES.RESTOCK_TRANSACTIONS]: () => restockApi.getAll().then(r => r.data || []),
+    [TABLES.MEMBERS]: () => memberApi.getAll().then(r => r.data || []),
+    [TABLES.SALES_TRANSACTIONS]: () => salesApi.getAll().then(r => r.data || []),
+    [TABLES.USERS]: () => userApi.getAll().then(r => r.data || []),
+    [TABLES.LOGIN_HISTORY]: () => loginHistoryApi.getAll().then(r => r.data || [])
+};
+
+// Cache TTL in milliseconds (how long before data is considered stale)
+const CACHE_TTL = {
+    [TABLES.CATEGORIES]: 60000,        // 1 minute (rarely changes)
+    [TABLES.UOM]: 60000,               // 1 minute
+    [TABLES.BRANCHES]: 60000,          // 1 minute
+    [TABLES.SUPPLIERS]: 30000,         // 30 seconds
+    [TABLES.ITEMS]: 30000,             // 30 seconds
+    [TABLES.STOCK]: 15000,             // 15 seconds (changes frequently)
+    [TABLES.STOCK_ITEMS]: 15000,       // 15 seconds
+    [TABLES.RESTOCK_TRANSACTIONS]: 30000,
+    [TABLES.MEMBERS]: 30000,           // 30 seconds
+    [TABLES.SALES_TRANSACTIONS]: 10000, // 10 seconds (most volatile)
+    [TABLES.USERS]: 30000,             // 30 seconds
+    [TABLES.LOGIN_HISTORY]: 30000,     // 30 seconds
+    default: 30000                     // 30 seconds default
+};
+
+class DataStore {
+    constructor() {
+        // Data cache: table -> array of records
+        this.cache = new Map();
+
+        // Loading states: table -> boolean
+        this.loading = new Map();
+
+        // Error states: table -> Error|null
+        this.errors = new Map();
+
+        // Last fetch timestamps: table -> timestamp
+        this.lastFetch = new Map();
+
+        // Subscribers: table -> Set of callbacks
+        this.subscribers = new Map();
+
+        // Pending fetches to avoid duplicate requests
+        this.pendingFetches = new Map();
+
+        // Initialize backend event listeners
+        this._setupEventListeners();
+
+        console.log('[DataStore] Initialized');
+    }
+
+    /**
+     * Setup listeners for backend events
+     */
+    _setupEventListeners() {
+        if (typeof window === 'undefined' || !window.electronAPI) {
+            console.warn('[DataStore] Not in Electron environment, skipping event listeners');
+            return;
+        }
+
+        // Listen for data changes from backend (local operations)
+        if (window.electronAPI.onDataChange) {
+            window.electronAPI.onDataChange((event) => {
+                console.log('[DataStore] Data changed:', event.table, event.operation);
+                this._handleDataChange(event);
+            });
+        }
+
+        // Listen for sync status changes
+        if (window.electronAPI.onSyncStatusChange) {
+            window.electronAPI.onSyncStatusChange((status) => {
+                console.log('[DataStore] Sync status changed:', status);
+                this._handleSyncStatusChange(status);
+            });
+        }
+
+        // Listen for refresh needed events (after cloud sync)
+        if (window.electronAPI.onRefreshNeeded) {
+            window.electronAPI.onRefreshNeeded((event) => {
+                console.log('[DataStore] Refresh needed for:', event.table);
+                this._handleRefreshNeeded(event);
+            });
+        }
+
+        // Listen for connection status changes
+        if (window.electronAPI.onConnectionStatusChange) {
+            window.electronAPI.onConnectionStatusChange((status) => {
+                console.log('[DataStore] Connection status:', status.isOnline ? 'online' : 'offline');
+            });
+        }
+
+        // Listen for sync completion events
+        if (window.electronAPI.onSyncCompleted) {
+            window.electronAPI.onSyncCompleted((result) => {
+                console.log('[DataStore] Sync completed:', result.success ? 'success' : 'failed');
+                this._handleSyncCompleted(result);
+            });
+        }
+
+        // Listen for multi-table change events (after full cloud sync)
+        if (window.electronAPI.onMultiTableChanged) {
+            window.electronAPI.onMultiTableChanged((data) => {
+                console.log('[DataStore] Multi-table changed:', data.tables?.length, 'tables');
+                this._handleMultiTableChange(data);
+            });
+        }
+    }
+
+    /**
+     * Handle data change events from backend
+     */
+    _handleDataChange(event) {
+        const { table, operation, recordId, record } = event;
+
+        // Map backend table names to our table constants if needed
+        const normalizedTable = this._normalizeTableName(table);
+
+        if (!this.cache.has(normalizedTable)) {
+            // Table not in cache, nothing to update
+            return;
+        }
+
+        const currentData = this.cache.get(normalizedTable) || [];
+        let newData;
+
+        switch (operation) {
+            case 'INSERT':
+                // Add new record to cache
+                newData = [...currentData, record];
+                break;
+
+            case 'UPDATE':
+                // Update existing record in cache
+                newData = currentData.map(item =>
+                    (item.id === recordId || item.id === record?.id)
+                        ? { ...item, ...record }
+                        : item
+                );
+                break;
+
+            case 'DELETE':
+                // Remove record from cache
+                newData = currentData.filter(item =>
+                    item.id !== recordId && item.id !== record?.id
+                );
+                break;
+
+            default:
+                console.warn('[DataStore] Unknown operation:', operation);
+                return;
+        }
+
+        // Update cache
+        this.cache.set(normalizedTable, newData);
+        this.lastFetch.set(normalizedTable, Date.now());
+
+        // Notify subscribers
+        this._notifySubscribers(normalizedTable);
+
+        // Also update related tables that might be affected
+        this._updateRelatedTables(normalizedTable, operation);
+    }
+
+    /**
+     * Handle sync status changes
+     */
+    _handleSyncStatusChange(status) {
+        // If sync completed, we might need to refresh data
+        if (status.syncStatus === 'completed' || status.status === 'completed') {
+            console.log('[DataStore] Sync completed, refreshing stale caches');
+            this._refreshStaleCaches();
+        }
+    }
+
+    /**
+     * Handle refresh needed events (triggered after cloud sync pulls data)
+     */
+    _handleRefreshNeeded(event) {
+        const { table } = event;
+        const normalizedTable = this._normalizeTableName(table);
+
+        // Invalidate cache for this table
+        this.invalidate(normalizedTable);
+
+        // If there are active subscribers, refetch immediately
+        const subscribers = this.subscribers.get(normalizedTable);
+        if (subscribers && subscribers.size > 0) {
+            this.refetch(normalizedTable);
+        }
+    }
+
+    /**
+     * Handle sync completion events
+     * @param {Object} result - { success, tablesAffected, recordsUpdated, error }
+     */
+    _handleSyncCompleted(result) {
+        if (result.success) {
+            // Refresh all stale caches after successful sync
+            this._refreshStaleCaches();
+
+            // If specific tables were affected, refetch them for active subscribers
+            if (result.tablesAffected && Array.isArray(result.tablesAffected)) {
+                for (const table of result.tablesAffected) {
+                    const normalizedTable = this._normalizeTableName(table);
+                    const subscribers = this.subscribers.get(normalizedTable);
+                    if (subscribers && subscribers.size > 0) {
+                        this.invalidate(normalizedTable);
+                        this.refetch(normalizedTable);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Handle multi-table change events (after full cloud sync)
+     * @param {Object} data - { changes: [{table, count}], totalRecords, tables }
+     */
+    _handleMultiTableChange(data) {
+        const { changes, tables } = data;
+
+        // Invalidate all affected tables
+        if (tables && Array.isArray(tables)) {
+            for (const table of tables) {
+                const normalizedTable = this._normalizeTableName(table);
+                this.invalidate(normalizedTable);
+
+                // Refetch if there are active subscribers
+                const subscribers = this.subscribers.get(normalizedTable);
+                if (subscribers && subscribers.size > 0) {
+                    this.refetch(normalizedTable);
+                }
+            }
+        }
+
+        // Also process individual changes if provided
+        if (changes && Array.isArray(changes)) {
+            for (const change of changes) {
+                if (change.count > 0) {
+                    const normalizedTable = this._normalizeTableName(change.table);
+                    // Only refetch if not already handled above
+                    if (!tables?.includes(change.table)) {
+                        this.invalidate(normalizedTable);
+                        const subscribers = this.subscribers.get(normalizedTable);
+                        if (subscribers && subscribers.size > 0) {
+                            this.refetch(normalizedTable);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Normalize table name to match our constants
+     */
+    _normalizeTableName(table) {
+        // Handle common variations
+        const mapping = {
+            'sales': TABLES.SALES_TRANSACTIONS,
+            'restocks': TABLES.RESTOCK_TRANSACTIONS,
+            'uom': TABLES.UOM,
+            'stock_with_items': TABLES.STOCK_ITEMS
+        };
+        return mapping[table] || table;
+    }
+
+    /**
+     * Update related tables when a table changes
+     */
+    _updateRelatedTables(table, operation) {
+        // Define relationships between tables
+        const relationships = {
+            [TABLES.ITEMS]: [TABLES.STOCK_ITEMS, TABLES.STOCK],
+            [TABLES.STOCK]: [TABLES.STOCK_ITEMS],
+            [TABLES.SALES_TRANSACTIONS]: [TABLES.STOCK, TABLES.STOCK_ITEMS, TABLES.MEMBERS],
+            [TABLES.RESTOCK_TRANSACTIONS]: [TABLES.STOCK, TABLES.STOCK_ITEMS]
+        };
+
+        const relatedTables = relationships[table] || [];
+
+        for (const relatedTable of relatedTables) {
+            // Invalidate related table cache (don't refetch immediately)
+            this.invalidate(relatedTable);
+        }
+    }
+
+    /**
+     * Refresh caches that are stale
+     */
+    _refreshStaleCaches() {
+        const now = Date.now();
+
+        for (const [table, subscribers] of this.subscribers.entries()) {
+            if (subscribers.size === 0) continue;
+
+            const lastFetch = this.lastFetch.get(table) || 0;
+            const ttl = CACHE_TTL[table] || CACHE_TTL.default;
+
+            if (now - lastFetch > ttl) {
+                console.log('[DataStore] Refreshing stale cache for:', table);
+                this.refetch(table);
+            }
+        }
+    }
+
+    /**
+     * Subscribe to a table's data changes
+     * @param {string} table - Table name from TABLES constant
+     * @param {Function} callback - Called with { data, loading, error }
+     * @returns {Function} Unsubscribe function
+     */
+    subscribe(table, callback) {
+        if (!this.subscribers.has(table)) {
+            this.subscribers.set(table, new Set());
+        }
+
+        this.subscribers.get(table).add(callback);
+
+        // Immediately call with current state
+        callback(this.getState(table));
+
+        // Return unsubscribe function
+        return () => {
+            const subs = this.subscribers.get(table);
+            if (subs) {
+                subs.delete(callback);
+                if (subs.size === 0) {
+                    this.subscribers.delete(table);
+                }
+            }
+        };
+    }
+
+    /**
+     * Get current state for a table
+     * @param {string} table - Table name
+     * @returns {{ data: Array, loading: boolean, error: Error|null }}
+     */
+    getState(table) {
+        return {
+            data: this.cache.get(table) || [],
+            loading: this.loading.get(table) || false,
+            error: this.errors.get(table) || null
+        };
+    }
+
+    /**
+     * Notify all subscribers of a table
+     */
+    _notifySubscribers(table) {
+        const subscribers = this.subscribers.get(table);
+        if (!subscribers) return;
+
+        const state = this.getState(table);
+
+        subscribers.forEach(callback => {
+            try {
+                callback(state);
+            } catch (e) {
+                console.error('[DataStore] Subscriber error:', e);
+            }
+        });
+    }
+
+    /**
+     * Fetch data for a table
+     * @param {string} table - Table name from TABLES constant
+     * @param {Function} [fetchFn] - Optional custom fetch function
+     * @param {boolean} [forceRefresh=false] - Force refresh even if cache is valid
+     * @returns {Promise<Array>} The fetched data
+     */
+    async fetchData(table, fetchFn = null, forceRefresh = false) {
+        const fetcher = fetchFn || DEFAULT_FETCHERS[table];
+
+        if (!fetcher) {
+            console.warn('[DataStore] No fetcher available for table:', table);
+            return [];
+        }
+
+        // Check if we have a pending fetch for this table
+        if (this.pendingFetches.has(table)) {
+            return this.pendingFetches.get(table);
+        }
+
+        // Check if cache is still valid
+        if (!forceRefresh) {
+            const lastFetch = this.lastFetch.get(table) || 0;
+            const ttl = CACHE_TTL[table] || CACHE_TTL.default;
+
+            if (Date.now() - lastFetch < ttl && this.cache.has(table)) {
+                return this.cache.get(table);
+            }
+        }
+
+        // Set loading state
+        this.loading.set(table, true);
+        this.errors.set(table, null);
+        this._notifySubscribers(table);
+
+        // Create fetch promise
+        const fetchPromise = (async () => {
+            try {
+                const data = await fetcher();
+
+                // Update cache
+                this.cache.set(table, data);
+                this.lastFetch.set(table, Date.now());
+                this.errors.set(table, null);
+
+                return data;
+            } catch (error) {
+                console.error(`[DataStore] Failed to fetch ${table}:`, error);
+                this.errors.set(table, error);
+                throw error;
+            } finally {
+                this.loading.set(table, false);
+                this.pendingFetches.delete(table);
+                this._notifySubscribers(table);
+            }
+        })();
+
+        // Store pending fetch
+        this.pendingFetches.set(table, fetchPromise);
+
+        return fetchPromise;
+    }
+
+    /**
+     * Force refetch data for a table
+     * @param {string} table - Table name
+     * @returns {Promise<Array>}
+     */
+    async refetch(table) {
+        return this.fetchData(table, null, true);
+    }
+
+    /**
+     * Invalidate cache for a table (next access will refetch)
+     * @param {string} table - Table name
+     */
+    invalidate(table) {
+        this.lastFetch.delete(table);
+    }
+
+    /**
+     * Invalidate all caches
+     */
+    invalidateAll() {
+        this.lastFetch.clear();
+    }
+
+    /**
+     * Optimistically update a record in cache
+     * Used for immediate UI feedback before server confirms
+     * @param {string} table - Table name
+     * @param {string} operation - 'INSERT', 'UPDATE', or 'DELETE'
+     * @param {Object} record - The record data
+     * @param {string|number} [recordId] - The record ID (for UPDATE/DELETE)
+     */
+    optimisticUpdate(table, operation, record, recordId = null) {
+        const currentData = this.cache.get(table) || [];
+        let newData;
+
+        switch (operation) {
+            case 'INSERT':
+                newData = [...currentData, record];
+                break;
+            case 'UPDATE':
+                newData = currentData.map(item =>
+                    item.id === (recordId || record.id) ? { ...item, ...record } : item
+                );
+                break;
+            case 'DELETE':
+                newData = currentData.filter(item => item.id !== (recordId || record.id));
+                break;
+            default:
+                return;
+        }
+
+        this.cache.set(table, newData);
+        this._notifySubscribers(table);
+    }
+
+    /**
+     * Get cached data for a table without triggering a fetch
+     * @param {string} table - Table name
+     * @returns {Array|null} Cached data or null if not in cache
+     */
+    getCached(table) {
+        return this.cache.get(table) || null;
+    }
+
+    /**
+     * Check if data for a table is stale
+     * @param {string} table - Table name
+     * @returns {boolean}
+     */
+    isStale(table) {
+        const lastFetch = this.lastFetch.get(table);
+        if (!lastFetch) return true;
+
+        const ttl = CACHE_TTL[table] || CACHE_TTL.default;
+        return Date.now() - lastFetch > ttl;
+    }
+
+    /**
+     * Preload data for multiple tables
+     * @param {string[]} tables - Array of table names
+     * @returns {Promise<void>}
+     */
+    async preload(tables) {
+        const promises = tables.map(table =>
+            this.fetchData(table).catch(err => {
+                console.warn(`[DataStore] Failed to preload ${table}:`, err.message);
+                return [];
+            })
+        );
+        await Promise.all(promises);
+    }
+
+    /**
+     * Clear all cached data
+     */
+    clear() {
+        this.cache.clear();
+        this.loading.clear();
+        this.errors.clear();
+        this.lastFetch.clear();
+        this.pendingFetches.clear();
+    }
+
+    /**
+     * Get statistics about the store
+     * @returns {Object}
+     */
+    getStats() {
+        return {
+            cachedTables: this.cache.size,
+            activeSubscriptions: Array.from(this.subscribers.entries()).reduce(
+                (acc, [table, subs]) => acc + subs.size, 0
+            ),
+            pendingFetches: this.pendingFetches.size,
+            tables: Array.from(this.cache.keys())
+        };
+    }
+}
+
+// Create singleton instance
+export const dataStore = new DataStore();
+
+// Export class for testing
+export { DataStore };
+
+export default dataStore;

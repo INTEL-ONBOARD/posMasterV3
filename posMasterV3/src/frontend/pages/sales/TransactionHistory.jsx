@@ -1,42 +1,30 @@
-import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Receipt, CreditCard, DollarSign, Clock, CheckCircle } from "lucide-react";
-import { salesApi } from "../../api/localApi";
+import { useState, useMemo } from "react";
+import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Receipt, CreditCard, DollarSign, Clock, RefreshCw } from "lucide-react";
+import { useReactiveData, TABLES } from "../../store";
 
 export default function TransactionHistory({ isActive }) {
-  const [transactions, setTransactions] = useState([]);
+  // Use reactive data hook - automatically updates when data changes
+  const { data: transactions, loading: isLoading, refetch } = useReactiveData(
+    TABLES.SALES_TRANSACTIONS,
+    null,
+    { enabled: isActive }
+  );
+
   const [selectedTransaction, setSelectedTransaction] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterPaymentType, setFilterPaymentType] = useState("All");
   const [sortOrder, setSortOrder] = useState("recent");
   const [openFilter, setOpenFilter] = useState(true);
   const [openOrderBy, setOpenOrderBy] = useState(true);
 
-  useEffect(() => {
-    if (isActive) {
-      fetchTransactions();
-    }
-  }, [isActive]);
-
-  const fetchTransactions = async () => {
-    setIsLoading(true);
-    try {
-      const response = await salesApi.getAll();
-      if (response.status === "success") {
-        setTransactions(response.data || []);
-      }
-    } catch (error) {
-      console.error("[TransactionHistory] Error fetching transactions:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSearch = (e) => {
     setSearch(e.target.value);
   };
 
-  const filteredTransactions = transactions
+  // Safe access to transactions array
+  const safeTransactions = transactions || [];
+
+  const filteredTransactions = safeTransactions
     .filter((t) => {
       const searchTerm = search.toLowerCase();
       const matchesSearch =
@@ -88,8 +76,8 @@ export default function TransactionHistory({ isActive }) {
     }
   };
 
-  const cashTransactions = transactions.filter(t => t.payment_method === 'cash').length;
-  const creditTransactions = transactions.filter(t => t.payment_method === 'credit').length;
+  const cashTransactions = safeTransactions.filter(t => t.payment_method === 'cash').length;
+  const creditTransactions = safeTransactions.filter(t => t.payment_method === 'credit').length;
 
   return (
     <div className="flex flex-row bg-gray-50 w-full h-[calc(100vh-2rem)] relative">
@@ -112,11 +100,12 @@ export default function TransactionHistory({ isActive }) {
                 />
               </div>
               <button
-                onClick={fetchTransactions}
-                className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2"
+                onClick={refetch}
+                disabled={isLoading}
+                className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2 disabled:opacity-50"
               >
-                <Search className="w-4 h-4" />
-                Search
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
               </button>
             </div>
             <div className="mt-3 flex items-center justify-between">
@@ -308,7 +297,7 @@ export default function TransactionHistory({ isActive }) {
                 </div>
                 <div>
                   <p className="text-xs text-[#1A318C] font-medium">Total Sales</p>
-                  <p className="text-xl font-bold text-[#1A318C] tabular-nums">{transactions.length}</p>
+                  <p className="text-xl font-bold text-[#1A318C] tabular-nums">{safeTransactions.length}</p>
                 </div>
               </div>
             </div>

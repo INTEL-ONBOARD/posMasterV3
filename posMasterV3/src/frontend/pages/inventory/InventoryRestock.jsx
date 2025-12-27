@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { supplierApi, userApi, itemApi, categoryApi, restockApi } from "../../api/localApi";
+import React, { useEffect, useState, useMemo } from "react";
+import { restockApi } from "../../api/localApi";
 import { ChevronDown, ChevronUp, Package, Layers, Building2, RotateCcw, Search, ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
 import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
 import { generateUniqueString, generateBillNo } from "../../util/common/generate";
+import { useReactiveData, TABLES } from "../../store";
 
 //modal images
 import successImage from '../../assets/Success.png';
@@ -21,120 +22,40 @@ function InventoryRestock({ isActive }) {
   // success/fail modal state: { open: boolean, type: 'success' | 'failed' | null }
   const [modal, setModal] = useState({ open: false, type: null, description: "" });
   const closeModal = () => setModal({ open: false, type: null,  description: ""});
-  // Fetch Categories from API and create mapping
-  const [suppliers, setSuppliers] = useState([]);
-  // Refetch when section becomes active
-  useEffect(() => {
-    if (isActive) {
-    // user list(to populate dropdowns)
-    const fetchSuppliers = async () => {
-      try {
-        const response = await supplierApi.getAll();
-        if (response.status === "success") {
-          console.log(response.data)
-          setSuppliers(response.data || []);
-          // console.log(response.data)
-        }
-      } catch (error) {
-        console.error("Error fetching suppliers:", error);
-      } finally {
-        //setLoadingCategories(false);
-      }
-    };
 
-    fetchSuppliers();
-  }
-  }, [isActive]);
+  // Use reactive data hooks for suppliers, users, items, and categories
+  const { data: suppliers } = useReactiveData(
+    TABLES.SUPPLIERS,
+    null,
+    { enabled: isActive }
+  );
 
-  // Fetch Users from API and create mapping
-  const [users, setUsers] = useState([]);
-  // Refetch when section becomes active
-  useEffect(() => {
-    if (isActive) {
-    // user list(to populate dropdowns)
-    const fetchUsers = async () => {
-      try {
-        const response = await userApi.getAll();
-        if (response.status === "success") {
-          setUsers(response.data || []);
-          // console.log(response.data)
-        }
-      } catch (error) {
-        console.error("Error fetching users:", error);
-      } finally {
-        //setLoadingCategories(false);
-      }
-    };
+  const { data: users } = useReactiveData(
+    TABLES.USERS,
+    null,
+    { enabled: isActive }
+  );
 
-    fetchUsers();
-  }
-  }, [isActive]);
+  const { data: inventoryItems, loading: isLoading, refetch: refetchItems } = useReactiveData(
+    TABLES.ITEMS,
+    null,
+    { enabled: isActive }
+  );
+
+  const { data: itemCategories } = useReactiveData(
+    TABLES.CATEGORIES,
+    null,
+    { enabled: isActive }
+  );
 
   // right section controls
   const [rightActiveSection, setRightActiveSection] = useState("buttons"); // "buttons" | "dispose" | "add" | "return"
 
-  // registered item list
-  const [inventoryItems, setInventoryItems] = useState([]);
-  const fetchItems = async () => {
-    statusLog.database("Loading restock items...", true);
-    try {
-      const response = await itemApi.getAllExtended();
-      if (response.status === "success") {
-        setInventoryItems(response.data || []);
-        statusLog.success(`Restock: Loaded ${response.data?.length || 0} items`);
-      }
-    } catch (error) {
-      statusLog.error("Failed to load restock items");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  // Fetch items from API
-  // Refetch when section becomes active
-  useEffect(() => {
-    if (isActive) {
-      console.log('items are fetching when active with right active section?');
-    fetchItems();
-    }
-  }, [rightActiveSection]);
-
-
-  // Fetch Categories from API and create mapping
-  // Refetch when section becomes active
-  useEffect(() => {
-    if (isActive) {
-    const fetchCategories = async () => {
-      try {
-        const response = await categoryApi.getAll();
-        if (response.status === "success") {
-          setItemCategories(response.data || []);
-        }
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      } finally {
-        //setLoadingCategories(false);
-      }
-    };
-
-    fetchCategories();
-  }
-  }, [isActive]);
-
-  // State for category/brand mapping
-  const [itemCategories, setItemCategories] = useState([
-    { id: 145, brand: "Close-Up", type: "Oral Care" },
-    { id: 94, brand: "Clogard", type: "Oral Care" },
-    { id: 26, brand: "Pepsi", type: "Beverages" },
-    { id: 7, brand: "Coca-Cola", type: "Beverages" },
-  ]);
-  const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
-
-  useEffect(() => {
-    const types = Array.from(new Set(itemCategories.map(c => c.type)));
-    setUniqueCategoryTypes(types);
+  // Derive unique category types from reactive data
+  const uniqueCategoryTypes = useMemo(() => {
+    if (!itemCategories || itemCategories.length === 0) return [];
+    return Array.from(new Set(itemCategories.map(c => c.type)));
   }, [itemCategories]);
-
-  const [isLoading, setIsLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
@@ -158,28 +79,31 @@ function InventoryRestock({ isActive }) {
   };
 
   // Filter items based on search item name, batch code, category and availability
-  const filteredItems = inventoryItems.filter((item) => {
-    // Category match: either "All" or item.category.type equals selected
-    const matchesCategory =
-      searchCategory === "All" ||
-      (item?.category && item.category.type === searchCategory);
+  const filteredItems = useMemo(() => {
+    if (!inventoryItems || inventoryItems.length === 0) return [];
+    return inventoryItems.filter((item) => {
+      // Category match: either "All" or item.category.type equals selected
+      const matchesCategory =
+        searchCategory === "All" ||
+        (item?.category && item.category.type === searchCategory);
 
-    // Availability match: "All", Available (true), Unavailable (false)
-    const isAvailable = interpretAvailability(item);
-    const matchesAvailability =
-      searchAvailability === "All" ||
-      (searchAvailability === "Available" && isAvailable) ||
-      (searchAvailability === "Unavailable" && !isAvailable);
+      // Availability match: "All", Available (true), Unavailable (false)
+      const isAvailable = interpretAvailability(item);
+      const matchesAvailability =
+        searchAvailability === "All" ||
+        (searchAvailability === "Available" && isAvailable) ||
+        (searchAvailability === "Unavailable" && !isAvailable);
 
-    // Item name or batch code text search match
-    const searchTerm = (search || "").toLowerCase();
-    const matchesSearch =
-      (item?.item_name || "").toLowerCase().includes(searchTerm) ||
-      (item?.batch_code || "").toLowerCase().includes(searchTerm) ||
-      (item?.sku || "").toLowerCase().includes(searchTerm);
+      // Item name or batch code text search match
+      const searchTerm = (search || "").toLowerCase();
+      const matchesSearch =
+        (item?.item_name || "").toLowerCase().includes(searchTerm) ||
+        (item?.batch_code || "").toLowerCase().includes(searchTerm) ||
+        (item?.sku || "").toLowerCase().includes(searchTerm);
 
-    return matchesCategory && matchesAvailability && matchesSearch;
-  });
+      return matchesCategory && matchesAvailability && matchesSearch;
+    });
+  }, [inventoryItems, searchCategory, searchAvailability, search]);
 
 
   // left section controls
@@ -1104,7 +1028,7 @@ function InventoryRestock({ isActive }) {
                       onChange={(e) => {
                         handleSupplierInputChange(e);
                         const selectedSupplierName = e.target.value;
-                        const selectedSupplier = suppliers.find(supplier => supplier?.basic_info?.supplier_name === selectedSupplierName);
+                        const selectedSupplier = (suppliers || []).find(supplier => supplier?.basic_info?.supplier_name === selectedSupplierName);
                         if (selectedSupplier) {
                           setTransactionData(prev => ({
                             ...prev,
@@ -1127,7 +1051,7 @@ function InventoryRestock({ isActive }) {
                       }`}
                     >
                       <option value="">Select supplier</option>
-                      {suppliers.map(supplier => (
+                      {(suppliers || []).map(supplier => (
                         <option key={supplier.id} value={supplier?.basic_info?.supplier_name}>
                           {supplier?.basic_info?.supplier_name}
                         </option>
@@ -1327,15 +1251,15 @@ function InventoryRestock({ isActive }) {
                       </label>
                       <select
                         name="availability"
-                        value={formDataStock.availability}
-                        onChange={handleStockInputChange}
+                        value={String(formDataStock.availability)}
+                        onChange={(e) => setFormDataStock(prev => ({ ...prev, availability: e.target.value === "true" }))}
                         className={`w-full px-4 py-2.5 border rounded-lg text-sm ${
                           formErrors.availability ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
                         } bg-gray-50 focus:outline-none focus:ring-2 transition-all appearance-none cursor-pointer`}
                       >
                         <option value="">Select</option>
-                        <option value={true}>Available</option>
-                        <option value={false}>Unavailable</option>
+                        <option value="true">Available</option>
+                        <option value="false">Unavailable</option>
                       </select>
                     </div>
                   </div>
@@ -1583,7 +1507,7 @@ function InventoryRestock({ isActive }) {
                     onChange={(e) => {
                       handleTransactionDataInputChange(e);
                       const selectedUsername = e.target.value;
-                      const selectedUser = users.find(user => user.username === selectedUsername);
+                      const selectedUser = (users || []).find(user => user.username === selectedUsername);
                       if (selectedUser) {
                         setTransactionData(prev => ({ ...prev, prep_id: selectedUser.id || selectedUser._id }));
                         setTransactionErrors(prev => {
@@ -1600,7 +1524,7 @@ function InventoryRestock({ isActive }) {
                     }`}
                   >
                     <option value="">Select employee</option>
-                    {users.map(user => (
+                    {(users || []).map(user => (
                       <option key={user.id || user._id} value={user.username}>
                         {user.username}
                       </option>
@@ -1620,7 +1544,7 @@ function InventoryRestock({ isActive }) {
                     onChange={(e) => {
                       handleTransactionDataInputChange(e);
                       const selectedUsername = e.target.value;
-                      const selectedUser = users.find(user => user.username === selectedUsername);
+                      const selectedUser = (users || []).find(user => user.username === selectedUsername);
                       if (selectedUser) {
                         setTransactionData(prev => ({ ...prev, auth_id: selectedUser.id || selectedUser._id }));
                         setTransactionErrors(prev => {
@@ -1637,7 +1561,7 @@ function InventoryRestock({ isActive }) {
                     }`}
                   >
                     <option value="">Select employee</option>
-                    {users.map(user => (
+                    {(users || []).map(user => (
                       <option key={user.id || user._id} value={user.username}>
                         {user.username}
                       </option>

@@ -2,6 +2,7 @@ import React, { useEffect, useContext, useRef, useState } from "react";
 import { X, ChevronDown, ChevronUp, Upload } from "lucide-react";
 import { userApi, authApi, branchApi, settingsApi } from "../../api/localApi";
 import ToastContext from "../toasts/ToastService";
+import { useReactiveData, TABLES } from "../../store";
 
 function ManageUser() {
   const toast = useContext(ToastContext);
@@ -10,13 +11,17 @@ function ManageUser() {
   const [openUser, setOpenUser] = useState(true);
   const [openPermission, setOpenPermission] = useState(false);
 
-  // Loading states
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchLoading, setSearchLoading] = useState(false);
+  // Use reactive data hooks for users and branches
+  const { data: userList, loading: isLoading, refetch: refetchUsers } = useReactiveData(
+    TABLES.USERS
+  );
 
-  // Data states
-  const [userList, setUserList] = useState([]);
-  const [branchList, setBranchList] = useState([]);
+  const { data: branchList } = useReactiveData(
+    TABLES.BRANCHES
+  );
+
+  // Search loading state
+  const [searchLoading, setSearchLoading] = useState(false);
   const [rolesList] = useState([
     { value: "admin", label: "Admin" },
     { value: "manager", label: "Manager" },
@@ -94,38 +99,8 @@ function ManageUser() {
     };
   }, []);
 
-  // Fetch users from API
-  const fetchUserList = async () => {
-    try {
-      setIsLoading(true);
-      const response = await userApi.getAll();
-      if (response.status === "success") {
-        setUserList(response.data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      toast.open("Failed to load users", 4000, "Error", "error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fetch branches for dropdown
-  const fetchBranches = async () => {
-    try {
-      const response = await branchApi.getAll();
-      if (response.status === "success") {
-        setBranchList(response.data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching branches:", error);
-    }
-  };
-
-  // Initial data load
+  // Initial data load - just load role permissions, data is handled by reactive hooks
   useEffect(() => {
-    fetchUserList();
-    fetchBranches();
     loadRolePermissions();
   }, []);
 
@@ -137,7 +112,7 @@ function ManageUser() {
   };
 
   // Filter users based on search criteria
-  const filteredUsers = userList.filter((user) => {
+  const filteredUsers = (userList || []).filter((user) => {
     // Role filter
     const userRoles = Array.isArray(user.roles) ? user.roles : [];
     const matchesRole = searchRole === "All" || userRoles.includes(searchRole.toLowerCase());
@@ -275,8 +250,7 @@ function ManageUser() {
             setPermissions({
               SaleAccess: { ...defaultPermissions.SaleAccess, ...loadedPerms.SaleAccess },
               InventoryAccess: { ...defaultPermissions.InventoryAccess, ...loadedPerms.InventoryAccess },
-              UserManagerAccess: { ...defaultPermissions.UserManagerAccess, ...loadedPerms.UserManagerAccess },
-              ReportAccess: { ...defaultPermissions.ReportAccess, ...loadedPerms.ReportAccess },
+              UserAccess: { ...defaultPermissions.UserAccess, ...(loadedPerms.UserAccess || {}) },
             });
           } else {
             // Old structure - use role-based defaults
@@ -536,7 +510,7 @@ function ManageUser() {
       }, 2000);
       toast.open("Failed to create user", 4000, "Error", "error");
     } finally {
-      fetchUserList();
+      refetchUsers();
     }
   };
 
@@ -591,7 +565,7 @@ function ManageUser() {
       }, 2000);
       toast.open("Failed to update user", 4000, "Error", "error");
     } finally {
-      fetchUserList();
+      refetchUsers();
     }
   };
 
@@ -633,7 +607,7 @@ function ManageUser() {
       }, 2000);
       toast.open("Failed to delete user", 4000, "Error", "error");
     } finally {
-      fetchUserList();
+      refetchUsers();
     }
   };
 
@@ -794,7 +768,7 @@ function ManageUser() {
                       </label>
                       <select
                         name="is_active"
-                        value={formData.is_active}
+                        value={formData.is_active ? "true" : "false"}
                         onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.value === "true" }))}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       >
@@ -813,7 +787,7 @@ function ManageUser() {
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       >
                         <option value="">Select Branch</option>
-                        {branchList.map((branch) => (
+                        {(branchList || []).map((branch) => (
                           <option key={branch.id} value={branch.id}>
                             {branch.name}
                           </option>

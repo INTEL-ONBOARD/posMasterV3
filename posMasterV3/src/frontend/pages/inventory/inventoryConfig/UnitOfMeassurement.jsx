@@ -1,12 +1,15 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { Search, Plus, X, Check, Ruler, Trash2 } from "lucide-react";
 import { uomApi } from "../../../api/localApi";
 import ToastContext from "../../toasts/ToastService";
+import { useReactiveData, TABLES } from "../../../store";
 
 function UnitOfMeassurement() {
   const toast = useContext(ToastContext);
-  const [units, setUnits] = useState([]);
-  const [allUnits, setAllUnits] = useState([]);
+
+  // Use reactive data hook for UOMs
+  const { data: allUnits, refetch: refetchUoms } = useReactiveData(TABLES.UOM);
+
   const [formData, setFormData] = useState({
     unit_name: "",
     symbol: ""
@@ -16,34 +19,15 @@ function UnitOfMeassurement() {
   const [error, setError] = useState(null);
   const [editingId, setEditingId] = useState(null);
 
-  const fetchUoms = async () => {
-    try {
-      const response = await uomApi.getAll();
-      if (response.status === 'success') {
-        setUnits(response.data || []);
-        setAllUnits(response.data || []);
-      }
-    } catch (error) {
-      setError(error.message || 'Failed to fetch units');
-    }
-  };
-
-  useEffect(() => {
-    fetchUoms();
-  }, []);
-
-  // Filter units based on search
-  useEffect(() => {
-    if (!searchTerm) {
-      setUnits(allUnits);
-    } else {
-      const filtered = allUnits.filter(unit =>
-        unit.unit_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        unit.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        unit.id.toString().includes(searchTerm)
-      );
-      setUnits(filtered);
-    }
+  // Filter units based on search using useMemo
+  const units = useMemo(() => {
+    if (!allUnits || allUnits.length === 0) return [];
+    if (!searchTerm) return allUnits;
+    return allUnits.filter(unit =>
+      (unit.unit_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (unit.symbol || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      unit.id.toString().includes(searchTerm)
+    );
   }, [searchTerm, allUnits]);
 
   const handleSubmit = async () => {
@@ -64,7 +48,7 @@ function UnitOfMeassurement() {
       }
 
       if (response.status === "success") {
-        fetchUoms();
+        refetchUoms();
         handleClear();
         toast?.open(editingId ? "Unit updated successfully" : "Unit added successfully", 3000, 'Success', 'success');
       } else {
@@ -84,7 +68,7 @@ function UnitOfMeassurement() {
     try {
       const response = await uomApi.delete(id);
       if (response.status === "success") {
-        setAllUnits(prev => prev.filter(unit => unit.id !== id));
+        refetchUoms();
         if (editingId === id) handleClear();
         toast?.open("Unit deleted successfully", 3000, 'Success', 'success');
       }
@@ -255,7 +239,7 @@ function UnitOfMeassurement() {
 
         {/* Summary */}
         <div className="mt-4 text-sm text-gray-500">
-          Showing {units.length} of {allUnits.length} units
+          Showing {units.length} of {(allUnits || []).length} units
         </div>
       </div>
     </div>

@@ -2,59 +2,17 @@ import React, { useEffect, useContext, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, Search, Users, Building2, Trash2, Plus, RefreshCw } from "lucide-react";
 import { supplierApi } from '../../api/localApi';
 import ToastContext from '../toasts/ToastService';
+import { useReactiveData, TABLES } from '../../store';
 
 function SupplierReg() {
   const toast = useContext(ToastContext);
   //left section form block controls
   const [openSupplier, setOpenSupplier] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
 
-  const [supplierList, setSupplierList] = useState([
-    {
-      basic_info: {
-        supplier_name: "Acme Supplies Ltd",
-        contact: "+94 77 123 4567",
-        type: "company",
-        supplier_address: "123 Main Street, Colombo, Sri Lanka",
-        status: true
-      },
-      financial_info: {
-        current_amount: 50000,
-        previous_amount: 30000
-      },
-      payment_info: {
-        account_number: "1234567890",
-        account_related_bank: "Commercial Bank",
-        account_related_branch: "Colombo 07",
-        account_name: "Acme Supplies Ltd",
-        account_nickName: "AcmeBank"
-      },
-      _id: "68afcbf3cf033138151d2740",
-      id: 2,
-      supplier_update_datetime: "2001-01-01T03:24:35.000Z",
-      supplier_created_datetime: "2001-01-01T03:24:35.000Z",
-      __v: 0
-    }
-  ]);
-  const fetchSupplierList = async () => {
-    try {
-      const response = await supplierApi.getAll();
-      if (response.status === "success") {
-        setSupplierList(response.data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching suppliers:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  // Fetch supplier from API
-  useEffect(() => {
-    // if (!loadingUoms) {
-    fetchSupplierList();
-    // }
-    //}, [loadingUoms]);
-  }, []);
+  // Use reactive data hook for suppliers
+  const { data: supplierList, loading: isLoading, refetch: refetchSuppliers } = useReactiveData(
+    TABLES.SUPPLIERS
+  );
 
 
   //supplier searching and filtering operations
@@ -80,7 +38,7 @@ function SupplierReg() {
   };
 
   // Filter suppliers based on search, category and availability
-  const filteredSuppliers = supplierList.filter((supplier) => {
+  const filteredSuppliers = (supplierList || []).filter((supplier) => {
     // category match: either All or supplier.category.type equals selected
     const matchesCategory =
       searchCategory === "All" ||
@@ -304,8 +262,7 @@ function SupplierReg() {
     }
     finally {
       //repopulate items
-      fetchSupplierList();
-      isLoading(false);
+      refetchSuppliers();
       setFormStatus("form");
     }
   };
@@ -384,7 +341,7 @@ function SupplierReg() {
     }
     finally {
       //repopulate items
-      fetchSupplierList();
+      refetchSuppliers();
     }
   };
 
@@ -429,7 +386,7 @@ function SupplierReg() {
     }
     finally {
       //repopulate items
-      fetchSupplierList();
+      refetchSuppliers();
     }
   };
 
@@ -506,12 +463,12 @@ function SupplierReg() {
                         </label>
                         <select
                           name="status"
-                          value={formData.status}
-                          onChange={handleInputChange}
+                          value={String(formData.status)}
+                          onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value === 'true' }))}
                           className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                         >
-                          <option value={true}>Available</option>
-                          <option value={false}>Unavailable</option>
+                          <option value="true">Available</option>
+                          <option value="false">Unavailable</option>
                         </select>
                       </div>
                       <div>
@@ -726,7 +683,7 @@ function SupplierReg() {
               </p>
               <span className="flex items-center gap-1.5 px-2.5 py-1 bg-[#1A318C]/10 rounded-lg text-xs font-semibold text-[#1A318C]">
                 <Users className="w-3.5 h-3.5" />
-                {supplierList.length} Total
+                {(supplierList || []).length} Total
               </span>
             </div>
           </div>
