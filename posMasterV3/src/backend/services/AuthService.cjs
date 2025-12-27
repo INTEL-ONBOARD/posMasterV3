@@ -140,6 +140,21 @@ class AuthService {
                         session_token: session.token
                     });
                     console.log(`[AuthService] Active session recorded for user ${user.username} on device ${deviceData.device_id}`);
+
+                    // Immediately sync active_sessions to cloud (for single-device enforcement)
+                    // This ensures other devices get notified ASAP
+                    setImmediate(async () => {
+                        try {
+                            const { getCloudSyncService } = require('./CloudSyncService.cjs');
+                            const cloudSync = getCloudSyncService();
+                            if (cloudSync.isOnline && cloudSync.mysqlInitialized) {
+                                await cloudSync.syncTable('active_sessions');
+                                console.log('[AuthService] Synced active_sessions to cloud after login');
+                            }
+                        } catch (syncError) {
+                            console.log('[AuthService] Could not sync active_sessions:', syncError.message);
+                        }
+                    });
                 } catch (activeSessionError) {
                     console.error('[AuthService] Failed to record active session:', activeSessionError.message);
                 }

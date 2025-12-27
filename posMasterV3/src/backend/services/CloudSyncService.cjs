@@ -662,13 +662,34 @@ class CloudSyncService {
     /**
      * Push a single record to cloud
      * Filters out local-only columns that don't exist in the cloud database
+     * IMPORTANT: Ensures roles field is always properly set for users
      */
     async pushRecordToCloud(tableName, record, columns) {
         // Filter out local-only columns using the module-level constant
         const syncColumns = columns.filter(col => !LOCAL_ONLY_COLUMNS.includes(col));
 
         const values = syncColumns.map(col => {
-            const val = record[col];
+            let val = record[col];
+
+            // For users table, ensure roles is always a valid JSON string
+            if (tableName === 'users' && col === 'roles') {
+                if (!val || val === '' || val === 'null' || val === '[]') {
+                    // If no roles, set default based on username
+                    val = record.username === 'admin' ? '["admin"]' : '["user"]';
+                    console.log(`[CloudSync] pushRecordToCloud: Setting default roles for ${record.username}: ${val}`);
+                } else if (typeof val === 'object' && Array.isArray(val)) {
+                    // If it's an array, stringify it
+                    val = JSON.stringify(val);
+                }
+                // Ensure it's a valid JSON string
+                try {
+                    JSON.parse(val);
+                } catch (e) {
+                    val = record.username === 'admin' ? '["admin"]' : '["user"]';
+                }
+                return val;
+            }
+
             if (typeof val === 'boolean') return val ? 1 : 0;
             // Skip objects/arrays - these are embedded data, not actual columns
             if (typeof val === 'object' && val !== null) return null;
@@ -684,6 +705,7 @@ class CloudSyncService {
     /**
      * Pull a single record from cloud to local
      * Broadcasts data change event to update UI immediately
+     * IMPORTANT: Preserves critical fields like 'roles' if cloud has empty/null values
      */
     async pullRecordToLocal(tableName, cloudRecord, localColumns, primaryKey) {
         const db = getDatabase();
@@ -692,8 +714,40 @@ class CloudSyncService {
         const columns = Object.keys(cloudRecord);
         const commonColumns = columns.filter(col => localColumns.includes(col));
 
+        // For users table, check if we need to preserve local roles
+        let preserveLocalRoles = false;
+        let localRoles = null;
+        if (tableName === 'users') {
+            const cloudRoles = cloudRecord.roles;
+            // Check if cloud roles is empty/null/invalid
+            const cloudRolesEmpty = !cloudRoles || cloudRoles === '[]' || cloudRoles === 'null' || cloudRoles === '';
+
+            if (cloudRolesEmpty) {
+                // Get local record to preserve roles
+                const localRecord = db.prepare(`SELECT roles FROM users WHERE ${primaryKey} = ?`).get(cloudRecord[primaryKey]);
+                if (localRecord && localRecord.roles) {
+                    try {
+                        const parsedLocalRoles = JSON.parse(localRecord.roles);
+                        if (Array.isArray(parsedLocalRoles) && parsedLocalRoles.length > 0) {
+                            preserveLocalRoles = true;
+                            localRoles = localRecord.roles;
+                            console.log(`[CloudSync] Preserving local roles for user ${cloudRecord.username}: ${localRoles}`);
+                        }
+                    } catch (e) {
+                        // Invalid JSON, don't preserve
+                    }
+                }
+            }
+        }
+
         const values = commonColumns.map(col => {
             const val = cloudRecord[col];
+
+            // Preserve local roles if cloud has empty roles
+            if (tableName === 'users' && col === 'roles' && preserveLocalRoles) {
+                return localRoles;
+            }
+
             if (val === null || val === undefined) return null;
             if (typeof val === 'boolean') return val ? 1 : 0;
             if (val instanceof Date) return val.toISOString();
@@ -790,9 +844,39 @@ class CloudSyncService {
 
             for (const record of cloudRecords) {
                 try {
+                    // For users table, check if we need to preserve local roles
+                    let preserveLocalRoles = false;
+                    let localRoles = null;
+                    if (tableName === 'users') {
+                        const cloudRoles = record.roles;
+                        const cloudRolesEmpty = !cloudRoles || cloudRoles === '[]' || cloudRoles === 'null' || cloudRoles === '';
+
+                        if (cloudRolesEmpty) {
+                            const localRecord = db.prepare(`SELECT roles FROM users WHERE ${primaryKey} = ?`).get(record[primaryKey]);
+                            if (localRecord && localRecord.roles) {
+                                try {
+                                    const parsedLocalRoles = JSON.parse(localRecord.roles);
+                                    if (Array.isArray(parsedLocalRoles) && parsedLocalRoles.length > 0) {
+                                        preserveLocalRoles = true;
+                                        localRoles = localRecord.roles;
+                                        console.log(`[CloudSync] pullFromCloud: Preserving local roles for user ${record.username}: ${localRoles}`);
+                                    }
+                                } catch (e) {
+                                    // Invalid JSON, don't preserve
+                                }
+                            }
+                        }
+                    }
+
                     // Build upsert query for SQLite
                     const values = commonColumns.map(col => {
                         const val = record[col];
+
+                        // Preserve local roles if cloud has empty roles
+                        if (tableName === 'users' && col === 'roles' && preserveLocalRoles) {
+                            return localRoles;
+                        }
+
                         if (val === null || val === undefined) return null;
                         if (typeof val === 'boolean') return val ? 1 : 0;
                         // Handle MySQL date objects
@@ -847,7 +931,24 @@ class CloudSyncService {
             for (const record of localRecords) {
                 try {
                     const values = columns.map(col => {
-                        const val = record[col];
+                        let val = record[col];
+
+                        // For users table, ensure roles is always a valid JSON string
+                        if (tableName === 'users' && col === 'roles') {
+                            if (!val || val === '' || val === 'null' || val === '[]') {
+                                val = record.username === 'admin' ? '["admin"]' : '["user"]';
+                                console.log(`[CloudSync] syncTable: Setting default roles for ${record.username}: ${val}`);
+                            } else if (typeof val === 'object' && Array.isArray(val)) {
+                                val = JSON.stringify(val);
+                            }
+                            try {
+                                JSON.parse(val);
+                            } catch (e) {
+                                val = record.username === 'admin' ? '["admin"]' : '["user"]';
+                            }
+                            return val;
+                        }
+
                         if (typeof val === 'boolean') return val ? 1 : 0;
                         // Skip objects/arrays - these are embedded data, not actual columns
                         if (typeof val === 'object' && val !== null) return null;

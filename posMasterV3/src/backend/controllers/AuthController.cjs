@@ -20,8 +20,16 @@ function getIpcMain() {
  * Register all authentication IPC handlers
  */
 function registerAuthHandlers() {
-    const ipcMain = getIpcMain();
-    const authService = getAuthService();
+    console.log('[AuthController] Starting handler registration...');
+
+    let ipcMain, authService;
+    try {
+        ipcMain = getIpcMain();
+        authService = getAuthService();
+    } catch (error) {
+        console.error('[AuthController] Failed to initialize:', error.message);
+        return;
+    }
 
     /**
      * Handle user login
@@ -185,6 +193,77 @@ function registerAuthHandlers() {
         }
     });
 
+    /**
+     * Check session with cloud sync (for single-device enforcement)
+     * This pulls active_sessions from cloud first, then validates locally
+     * Channel: 'auth:check-session-with-sync'
+     * Payload: { token: string }
+     * Response: { valid: boolean, forcedLogout?: boolean, message?: string, otherDevice?: string }
+     */
+    try {
+        ipcMain.handle('auth:check-session-with-sync', async (event, payload) => {
+            try {
+                const { token } = payload;
+
+                // First, try to sync active_sessions from cloud
+                try {
+                    const { getCloudSyncService } = require('../services/CloudSyncService.cjs');
+                    const cloudSync = getCloudSyncService();
+
+                    if (cloudSync.isOnline && cloudSync.mysqlInitialized) {
+                        // Pull active_sessions from cloud to get latest session state
+                        await cloudSync.pullFromCloud('active_sessions');
+                        console.log('[AuthController] Synced active_sessions from cloud for session check');
+                    }
+                } catch (syncError) {
+                    console.log('[AuthController] Cloud sync skipped:', syncError.message);
+                }
+
+                // Now validate the session (this will check against the synced active_sessions)
+                const result = authService.validateSession(token);
+
+                if (!result.valid && result.forcedLogout) {
+                    console.log('[AuthController] Session was kicked by another device');
+                }
+
+                return result;
+
+            } catch (error) {
+                console.error('[AuthController] Check session with sync error:', error.message);
+                return {
+                    valid: false,
+                    message: 'Session check failed: ' + error.message
+                };
+            }
+        });
+        console.log('[AuthController] Registered: auth:check-session-with-sync');
+    } catch (regError) {
+        console.error('[AuthController] Failed to register auth:check-session-with-sync:', regError.message);
+    }
+
+    /**
+     * Fast session validation (with background cloud sync)
+     * Use this for every API operation - it's optimized for speed
+     * Channel: 'auth:validate-session-fast'
+     * Payload: { token: string }
+     * Response: { valid: boolean, forcedLogout?: boolean, message?: string }
+     */
+    try {
+        ipcMain.handle('auth:validate-session-fast', async (event, payload) => {
+            try {
+                const { token } = payload;
+                const { validateSessionWithSync } = require('../services/SessionValidator.cjs');
+                return await validateSessionWithSync(token);
+            } catch (error) {
+                console.error('[AuthController] Fast validation error:', error.message);
+                return { valid: false, message: 'Validation failed' };
+            }
+        });
+        console.log('[AuthController] Registered: auth:validate-session-fast');
+    } catch (regError) {
+        console.error('[AuthController] Failed to register auth:validate-session-fast:', regError.message);
+    }
+
     console.log('[AuthController] Auth handlers registered');
 }
 
@@ -200,7 +279,9 @@ function unregisterAuthHandlers() {
         'auth:validate-session',
         'auth:get-current-user',
         'auth:change-password',
-        'auth:import-from-cloud'
+        'auth:import-from-cloud',
+        'auth:check-session-with-sync',
+        'auth:validate-session-fast'
     ];
 
     channels.forEach(channel => {
