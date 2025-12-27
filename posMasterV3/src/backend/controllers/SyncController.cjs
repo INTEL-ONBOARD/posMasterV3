@@ -59,10 +59,10 @@ function registerSyncHandlers() {
     });
 
     /**
-     * Process sync queue (push to cloud)
+     * Process sync queue (pull from cloud first, then push to cloud)
      * Channel: 'sync:process-queue'
      * Payload: { token?: string }
-     * Response: { success: boolean, processed: number, succeeded: number, failed: number }
+     * Response: { success: boolean, pulled: number, processed: number, succeeded: number, failed: number }
      */
     ipcMain.handle('sync:process-queue', async (event, payload = {}) => {
         console.log('[SyncController] Process queue request received');

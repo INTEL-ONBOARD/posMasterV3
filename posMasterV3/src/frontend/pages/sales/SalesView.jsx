@@ -261,7 +261,10 @@ export default function SalesView({ isActive }) {
   const [searchAvailability, setSearchAvailability] = useState("All");
   const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
 
-  const fetchItems = async () => {
+  const fetchItems = async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
     statusLog.database("Loading sales inventory...", true);
     try {
       const response = await restockApi.getStockItems();
@@ -269,8 +272,12 @@ export default function SalesView({ isActive }) {
         const transformed = transformStockData(response);
         setInventoryItems(transformed);
         statusLog.success(`Sales: Loaded ${transformed.length} items`);
+      } else {
+        console.error('[SalesView] Failed to load items:', response.message);
+        statusLog.error("Failed to load items: " + response.message);
       }
     } catch (error) {
+      console.error('[SalesView] Error fetching items:', error);
       statusLog.error("Failed to load sales inventory");
     } finally {
       setIsLoading(false);
@@ -365,15 +372,21 @@ export default function SalesView({ isActive }) {
       return;
     }
 
-    if (paymentMethod === "cash" && cashAmount < totalAmount) {
-      toast.error("Cash amount is less than total");
-      return;
-    }
-
     if (paymentMethod === "credit" && !canUseCredit) {
       toast.error("Insufficient credit limit");
       return;
     }
+
+    // For cash payments, use entered amount or default to exact payment
+    const finalCashAmount = paymentMethod === "cash"
+      ? (parseFloat(cashAmount) || 0) >= totalAmount
+        ? parseFloat(cashAmount)
+        : totalAmount  // Default to exact payment if no/insufficient cash entered
+      : 0;
+
+    const finalChangeAmount = paymentMethod === "cash"
+      ? Math.max(0, finalCashAmount - totalAmount)
+      : 0;
 
     try {
       // Prepare sale data
@@ -384,15 +397,18 @@ export default function SalesView({ isActive }) {
         payment_method: paymentMethod,
         total_amount: totalAmount,
         discount_amount: parseFloat(finalDiscount) || 0,
-        cash_amount: parseFloat(cashAmount) || 0,
-        change_amount: changeAmount > 0 ? changeAmount : 0,
+        cash_amount: finalCashAmount,
+        change_amount: finalChangeAmount,
         cashier_name: preparedBy,
         items: selectedItems.map(item => ({
-          item_id: item.id,
+          item_id: item.item_id || item.id,
+          stock_id: item.stock_id || item.id,  // Stock record ID for inventory tracking
+          batch_code: item.batch_code,
           item_name: item.item_name,
           sku: item.sku,
           quantity: item.customer_quantity,
           unit_price: item.retail_price,
+          discount: item.customer_discount || 0,
           total_price: item.retail_price * item.customer_quantity
         }))
       };
@@ -668,7 +684,7 @@ export default function SalesView({ isActive }) {
       {/* Main Content Area */}
       <div className="flex-1 h-full flex flex-col p-3 min-w-0 overflow-hidden">
         {/* Header Section */}
-        <div className="bg-white rounded-xl shadow-sm mb-3 p-3">
+        <div className="bg-white rounded-xl shadow-sm mb-3 p-3 shrink-0">
           <div className="flex items-center gap-4">
             {/* Customer Info Card */}
             <div
@@ -734,7 +750,7 @@ export default function SalesView({ isActive }) {
 
         {/* Credit Warning */}
         {creditWarning && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3 flex items-center gap-3">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3 flex items-center gap-3 shrink-0">
             <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
             <p className="text-sm text-red-700">
               <span className="font-semibold">Insufficient Credit.</span> Available: {formatCurrency(availableCredit)} | Required: {formatCurrency(totalAmount)}
@@ -743,7 +759,7 @@ export default function SalesView({ isActive }) {
         )}
 
         {/* Items Table */}
-        <div className="bg-white rounded-xl shadow-sm flex-1 flex flex-col overflow-hidden max-h-[calc(100vh-320px)]">
+        <div className="bg-white rounded-xl shadow-sm flex-1 flex flex-col overflow-hidden min-h-0">
           {/* Table Header */}
           <div className="bg-slate-800">
             <div className="grid grid-cols-12 gap-3 px-5 py-3">
@@ -811,8 +827,8 @@ export default function SalesView({ isActive }) {
           </div>
         </div>
 
-        {/* Bottom Payment Section */}
-        <div className="bg-white rounded-xl shadow-sm mt-3 px-4 py-3">
+        {/* Bottom Payment Section - Fixed at bottom */}
+        <div className="bg-white rounded-xl shadow-sm mt-3 px-4 py-3 shrink-0">
           <div className="flex items-center gap-4">
             {/* Left Group - Totals */}
             <div className="flex items-center gap-4 shrink-0">
@@ -909,7 +925,7 @@ export default function SalesView({ isActive }) {
               {/* Proceed Button */}
               <button
                 onClick={processSale}
-                disabled={totalAmount <= 0 || (paymentMethod === "cash" && cashAmount < totalAmount) || creditWarning}
+                disabled={totalAmount <= 0 || creditWarning}
                 className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 transition-all text-sm whitespace-nowrap disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 Proceed
@@ -925,7 +941,10 @@ export default function SalesView({ isActive }) {
           <>
             {/* Add Items Card */}
             <button
-              onClick={() => setRightActiveSection("items")}
+              onClick={() => {
+                setRightActiveSection("items");
+                fetchItems(); // Refresh items when opening the panel
+              }}
               className="bg-white rounded-xl p-5 flex flex-col items-center justify-center hover:shadow-lg transition-all border-2 border-transparent hover:border-teal-200 group"
             >
               <div className="w-14 h-14 rounded-2xl bg-teal-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
