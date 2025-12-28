@@ -104,7 +104,16 @@ export default function SalesView({ isActive }) {
 
   // Checkout summary modal state
   const [checkoutModal, setCheckoutModal] = useState(false);
-  const closeCheckoutModal = () => setCheckoutModal(false);
+  const [saleCompleted, setSaleCompleted] = useState(false);
+
+  const closeCheckoutModal = () => {
+    setCheckoutModal(false);
+    // If sale was completed, clear the form now (after modal animation is done)
+    if (saleCompleted) {
+      clearForm();
+      setSaleCompleted(false);
+    }
+  };
 
   // Handle member selection from modal
   const handleSelectMember = (member) => {
@@ -291,8 +300,8 @@ export default function SalesView({ isActive }) {
       if (response.status === "success") {
         // Generate and print bill (don't wait for it)
         generateBillPdf(checkoutData);
-        // Clear form for next customer (modal will close itself after animation)
-        clearForm();
+        // Mark sale as completed - clearForm will be called when modal closes
+        setSaleCompleted(true);
         // Return success for the modal to show animation
         return { success: true, data: response.data };
       } else {

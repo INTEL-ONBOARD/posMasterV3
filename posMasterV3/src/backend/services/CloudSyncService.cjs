@@ -54,7 +54,9 @@ const TABLES_TO_SYNC = [
     'login_history',
     'active_sessions',  // For single-device enforcement across devices
     'payment_methods',  // Payment method configurations
-    'audit_log'         // Audit trail for compliance
+    'audit_log',        // Audit trail for compliance
+    'tea_coop_members', // Tea Coop member data from external API
+    'tea_coop_payments' // Tea Coop payment history from external API
 ];
 
 // Tables that shouldn't sync (local only) - each device has its own settings
@@ -875,6 +877,12 @@ class CloudSyncService {
             return 'push';
         }
 
+        // First, check if the actual data content is the same (ignoring timestamps and sync fields)
+        // This prevents unnecessary updates when data hasn't actually changed
+        if (this.areRecordsEquivalent(localRecord, cloudRecord)) {
+            return 'skip';
+        }
+
         // Get timestamps for comparison
         let localTime = null;
         let cloudTime = null;
@@ -900,6 +908,79 @@ class CloudSyncService {
         } else {
             return 'skip'; // Same timestamp, no sync needed
         }
+    }
+
+    /**
+     * Compare if two records have equivalent data content
+     * Ignores metadata fields like timestamps, sync_status, etc.
+     * @returns {boolean} True if records are equivalent (no sync needed)
+     */
+    areRecordsEquivalent(localRecord, cloudRecord) {
+        // Fields to ignore when comparing record content
+        const ignoreFields = [
+            'updated_at', 'created_at', 'synced_at', 'last_fetched_at',
+            'sync_status', 'is_synced', 'last_sync_at',
+            // Embedded objects that aren't actual DB columns
+            'member', 'cashier', 'items', 'category', 'uom', 'inventory', 'supplier',
+            'added_items', 'return_items', 'prepared_by_name', 'authorized_by_name',
+            'supplier_basic_info', 'uom_symbol', 'uom_unit_name', 'category_brand', 'category_type'
+        ];
+
+        // Get all keys from both records
+        const allKeys = new Set([
+            ...Object.keys(localRecord || {}),
+            ...Object.keys(cloudRecord || {})
+        ]);
+
+        for (const key of allKeys) {
+            // Skip ignored fields
+            if (ignoreFields.includes(key)) continue;
+
+            const localVal = localRecord?.[key];
+            const cloudVal = cloudRecord?.[key];
+
+            // Normalize values for comparison
+            const normalizedLocal = this.normalizeValueForComparison(localVal);
+            const normalizedCloud = this.normalizeValueForComparison(cloudVal);
+
+            if (normalizedLocal !== normalizedCloud) {
+                return false; // Records are different
+            }
+        }
+
+        return true; // All compared fields are equivalent
+    }
+
+    /**
+     * Normalize a value for comparison purposes
+     * Handles nulls, empty strings, booleans, numbers, etc.
+     */
+    normalizeValueForComparison(val) {
+        // Treat null, undefined, and empty string as equivalent
+        if (val === null || val === undefined || val === '') {
+            return null;
+        }
+
+        // Convert booleans to 0/1 for comparison with MySQL tinyint
+        if (typeof val === 'boolean') {
+            return val ? 1 : 0;
+        }
+
+        // Stringify objects/arrays for comparison
+        if (typeof val === 'object') {
+            return JSON.stringify(val);
+        }
+
+        // Convert numbers stored as strings
+        if (typeof val === 'string' && !isNaN(val) && val.trim() !== '') {
+            const num = parseFloat(val);
+            // Only convert if it's a clean numeric string
+            if (String(num) === val.trim()) {
+                return num;
+            }
+        }
+
+        return val;
     }
 
     /**
@@ -983,7 +1064,10 @@ class CloudSyncService {
                 action = 'inserted';
             }
 
-            console.log(`[CloudSync] Pushed record to cloud: ${tableName} (ID: ${record.id}, SKU: ${record.sku || 'N/A'}, action: ${action})`);
+            // Only log for non-tea_coop tables or for inserts (reduce log noise for bulk syncs)
+            if (!tableName.startsWith('tea_coop_') || action === 'inserted') {
+                console.log(`[CloudSync] Pushed record to cloud: ${tableName} (ID: ${record.id}, SKU: ${record.sku || 'N/A'}, action: ${action})`);
+            }
         } catch (err) {
             console.error(`[CloudSync] Failed to push record to ${tableName}:`, err.message);
             console.error(`[CloudSync] Record ID: ${record.id}, SKU: ${record.sku || 'N/A'}`);
@@ -1895,6 +1979,51 @@ class CloudSyncService {
                     INDEX idx_branch_id (branch_id),
                     INDEX idx_timestamp (timestamp),
                     INDEX idx_action (action)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `,
+            tea_coop_members: `
+                CREATE TABLE IF NOT EXISTS tea_coop_members (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    cloud_id VARCHAR(255),
+                    member_id VARCHAR(255) NOT NULL,
+                    member_no VARCHAR(255),
+                    full_name VARCHAR(255) NOT NULL,
+                    contact VARCHAR(255),
+                    address TEXT,
+                    factory_id INT DEFAULT 1,
+                    green_leaf_value DECIMAL(15,2) DEFAULT 0,
+                    loans DECIMAL(15,2) DEFAULT 0,
+                    net_amount DECIMAL(15,2) DEFAULT 0,
+                    is_active TINYINT DEFAULT 1,
+                    last_fetched_at DATETIME,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    sync_status VARCHAR(50) DEFAULT 'pending',
+                    UNIQUE INDEX idx_member_id (member_id),
+                    INDEX idx_member_no (member_no),
+                    INDEX idx_full_name (full_name),
+                    INDEX idx_is_active (is_active)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `,
+            tea_coop_payments: `
+                CREATE TABLE IF NOT EXISTS tea_coop_payments (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    cloud_id VARCHAR(255),
+                    member_id VARCHAR(255) NOT NULL,
+                    year INT NOT NULL,
+                    month INT NOT NULL,
+                    green_leaf_value DECIMAL(15,2) DEFAULT 0,
+                    loans DECIMAL(15,2) DEFAULT 0,
+                    net_amount DECIMAL(15,2) DEFAULT 0,
+                    payment_date DATE,
+                    factory_id INT DEFAULT 1,
+                    last_fetched_at DATETIME,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    sync_status VARCHAR(50) DEFAULT 'pending',
+                    UNIQUE INDEX idx_member_year_month (member_id, year, month),
+                    INDEX idx_member_id (member_id),
+                    INDEX idx_year_month (year, month)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `
         };

@@ -129,62 +129,64 @@ function TransactionDetailModal({ isOpen, closeModal, transaction }) {
           ) : (
             <div className="flex-1 overflow-y-auto">
               {/* Transaction Info Cards */}
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-6 grid grid-cols-4 gap-4">
                 {/* Date & Time */}
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 h-[88px]">
+                  <div className="flex items-center gap-3 h-full">
+                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
                       <Calendar className="w-5 h-5 text-blue-600" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Date & Time</p>
-                      <p className="text-sm font-bold text-gray-800">{formatDate(data?.created_at)}</p>
+                      <p className="text-sm font-bold text-gray-800 truncate">{formatDate(data?.created_at)}</p>
                       <p className="text-xs text-gray-500">{formatTime(data?.created_at)}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Customer */}
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 h-[88px]">
+                  <div className="flex items-center gap-3 h-full">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                       data?.member_id ? 'bg-emerald-100' : 'bg-slate-100'
                     }`}>
                       <User className={`w-5 h-5 ${data?.member_id ? 'text-emerald-600' : 'text-slate-500'}`} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Customer</p>
-                      <p className="text-sm font-bold text-gray-800">{data?.member_name || 'Guest'}</p>
+                      <p className="text-sm font-bold text-gray-800 truncate">{data?.member_name || 'Guest'}</p>
                       <p className="text-xs text-gray-500">{data?.member_id ? `ID: ${data.member_id}` : 'Walk-in'}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Payment Method */}
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-10 h-10 rounded-lg ${paymentBadge.bgLight} flex items-center justify-center`}>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 h-[88px]">
+                  <div className="flex items-center gap-3 h-full">
+                    <div className={`w-10 h-10 rounded-lg ${paymentBadge.bgLight} flex items-center justify-center flex-shrink-0`}>
                       <PaymentIcon className={`w-5 h-5 ${paymentBadge.text}`} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Payment</p>
                       <p className={`text-sm font-bold ${paymentBadge.text}`}>{paymentBadge.label}</p>
-                      {data?.payment_method === 'credit' && data?.credit_months > 0 && (
-                        <p className="text-xs text-gray-500">{data.credit_months} months</p>
-                      )}
+                      <p className="text-xs text-gray-500">
+                        {data?.payment_method === 'credit' && data?.credit_months > 0
+                          ? `${data.credit_months} months`
+                          : '\u00A0'}
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Cashier */}
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 h-[88px]">
+                  <div className="flex items-center gap-3 h-full">
+                    <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
                       <Hash className="w-5 h-5 text-purple-600" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Cashier</p>
-                      <p className="text-sm font-bold text-gray-800">{data?.cashier_name || 'N/A'}</p>
+                      <p className="text-sm font-bold text-gray-800 truncate">{data?.cashier_name || 'N/A'}</p>
                       <p className="text-xs text-gray-500">Staff</p>
                     </div>
                   </div>

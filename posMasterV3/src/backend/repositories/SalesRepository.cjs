@@ -17,6 +17,7 @@ class SalesRepository extends BaseRepository {
 
     /**
      * Find all sales with optional branch filter
+     * Includes member name from both members and tea_coop_members tables
      * @param {Object} options - Query options including branchId
      * @returns {Array}
      */
@@ -29,15 +30,27 @@ class SalesRepository extends BaseRepository {
             branchId = null
         } = options;
 
-        let sql = `SELECT * FROM ${this.tableName}`;
+        let sql = `
+            SELECT
+                s.*,
+                COALESCE(m.full_name, tcm.full_name, 'Guest') as member_name,
+                CASE
+                    WHEN m.id IS NOT NULL THEN 'regular'
+                    WHEN tcm.id IS NOT NULL THEN 'tea_coop'
+                    ELSE NULL
+                END as member_type
+            FROM ${this.tableName} s
+            LEFT JOIN members m ON s.member_id = m.id
+            LEFT JOIN tea_coop_members tcm ON s.member_id = tcm.id
+        `;
         const params = [];
 
         if (branchId) {
-            sql += ` WHERE branch_id = ?`;
+            sql += ` WHERE s.branch_id = ?`;
             params.push(branchId);
         }
 
-        sql += ` ORDER BY ${orderBy} ${order} LIMIT ? OFFSET ?`;
+        sql += ` ORDER BY s.${orderBy} ${order} LIMIT ? OFFSET ?`;
         params.push(limit, offset);
 
         const stmt = this.db.prepare(sql);
@@ -107,6 +120,7 @@ class SalesRepository extends BaseRepository {
 
     /**
      * Find sales by date range (with optional branch filter)
+     * Includes member name from both members and tea_coop_members tables
      * @param {string} startDate - Start date ISO string
      * @param {string} endDate - End date ISO string
      * @param {number|null} branchId - Optional branch ID filter
@@ -114,18 +128,28 @@ class SalesRepository extends BaseRepository {
      */
     findByDateRange(startDate, endDate, branchId = null) {
         let sql = `
-            SELECT * FROM ${this.tableName}
-            WHERE created_at >= ? AND created_at <= ?
-            AND is_held = 0
+            SELECT
+                s.*,
+                COALESCE(m.full_name, tcm.full_name, 'Guest') as member_name,
+                CASE
+                    WHEN m.id IS NOT NULL THEN 'regular'
+                    WHEN tcm.id IS NOT NULL THEN 'tea_coop'
+                    ELSE NULL
+                END as member_type
+            FROM ${this.tableName} s
+            LEFT JOIN members m ON s.member_id = m.id
+            LEFT JOIN tea_coop_members tcm ON s.member_id = tcm.id
+            WHERE s.created_at >= ? AND s.created_at <= ?
+            AND s.is_held = 0
         `;
         const params = [startDate, endDate];
 
         if (branchId) {
-            sql += ` AND branch_id = ?`;
+            sql += ` AND s.branch_id = ?`;
             params.push(branchId);
         }
 
-        sql += ` ORDER BY created_at DESC`;
+        sql += ` ORDER BY s.created_at DESC`;
 
         const stmt = this.db.prepare(sql);
         return stmt.all(...params);
@@ -152,10 +176,21 @@ class SalesRepository extends BaseRepository {
             WHERE si.sale_id = ?
         `).all(id);
 
-        // Get member info
-        const member = sale.member_id ? this.db.prepare(`
-            SELECT * FROM members WHERE id = ?
-        `).get(sale.member_id) : null;
+        // Get member info - check both members and tea_coop_members tables
+        let member = null;
+        if (sale.member_id) {
+            // First check regular members table
+            member = this.db.prepare(`
+                SELECT *, 'regular' as member_type FROM members WHERE id = ?
+            `).get(sale.member_id);
+
+            // If not found, check tea_coop_members table
+            if (!member) {
+                member = this.db.prepare(`
+                    SELECT *, 'tea_coop' as member_type FROM tea_coop_members WHERE id = ?
+                `).get(sale.member_id);
+            }
+        }
 
         // Get cashier info
         const cashier = sale.cashier_id ? this.db.prepare(`
@@ -165,7 +200,10 @@ class SalesRepository extends BaseRepository {
         return {
             ...sale,
             member,
+            member_name: member?.full_name || 'Guest',
+            member_type: member?.member_type || null,
             cashier,
+            cashier_name: cashier?.full_name || cashier?.username || null,
             items: saleItems
         };
     }
