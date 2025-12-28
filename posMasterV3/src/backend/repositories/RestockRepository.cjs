@@ -6,7 +6,7 @@
 
 const BaseRepository = require('./BaseRepository.cjs');
 const { notifyDataChange } = require('../services/CloudSyncService.cjs');
-const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
+const { broadcastDataChange, broadcastBatchChange } = require('../utils/eventBroadcaster.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
 
 class RestockRepository extends BaseRepository {
@@ -319,18 +319,11 @@ class RestockRepository extends BaseRepository {
                 notifyDataChange('return_items', 'INSERT', item, item.id);
             }
 
-            // Broadcast stock updates to UI (stock was added/decreased)
-            for (const item of addedItems) {
-                const itemRecord = this.db.prepare(`SELECT id FROM items WHERE sku = ?`).get(item.sku);
-                if (itemRecord) {
-                    broadcastDataChange('stock', 'UPDATE', null, { item_id: itemRecord.id, batch_code: item.batch_code });
-                }
-            }
-            for (const item of returnItems) {
-                const itemRecord = this.db.prepare(`SELECT id FROM items WHERE sku = ?`).get(item.sku);
-                if (itemRecord) {
-                    broadcastDataChange('stock', 'UPDATE', null, { item_id: itemRecord.id, batch_code: item.batch_code });
-                }
+            // Broadcast a SINGLE batch stock update instead of individual broadcasts per item
+            // This prevents UI refresh storms when restocking many items
+            const totalStockChanges = addedItems.length + returnItems.length;
+            if (totalStockChanges > 0) {
+                broadcastBatchChange('stock', totalStockChanges, 'RESTOCK');
             }
 
             return fullRestock;

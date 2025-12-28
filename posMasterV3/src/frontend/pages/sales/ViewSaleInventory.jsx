@@ -9,9 +9,9 @@ function ViewSaleInventory({ isActive }) {
   const closeModal = () => setModal(false);
   const [selectedItem, setSelectedItem] = useState({});
 
-  // Use reactive data hooks - automatically updates when data changes
-  const { data: items, loading: isLoadingItems } = useReactiveData(
-    TABLES.ITEMS,
+  // Use reactive data hooks - fetch STOCK_ITEMS which includes prices and quantities
+  const { data: stockItems, loading: isLoadingStock } = useReactiveData(
+    TABLES.STOCK_ITEMS,
     null,
     { enabled: isActive }
   );
@@ -22,19 +22,64 @@ function ViewSaleInventory({ isActive }) {
     { enabled: isActive }
   );
 
-  // Transform items data to expected format
+  // Aggregate stock items by SKU - for items with multiple batches,
+  // sum quantities and use the highest retail price for display
   const inventoryItems = useMemo(() => {
-    return (items || []).map(item => ({
-      id: item.id,
-      item_id: item.id,
-      sku: item.sku,
-      item_name: item.item_name,
-      item_image_url: item.item_image_url,
-      quantity: item.quantity || 0,
-      unit_price: item.retail_price || item.unit_price || 0,
-      category: item.category || { id: item.category_id, type: item.category_type }
-    }));
-  }, [items]);
+    const itemMap = new Map();
+
+    (stockItems || []).forEach(stock => {
+      // Skip entries without valid SKU
+      if (!stock.sku) return;
+
+      const existing = itemMap.get(stock.sku);
+
+      if (existing) {
+        // Aggregate: sum quantity across all batches
+        existing.quantity += stock.quantity || 0;
+        existing.batchCount += 1;
+
+        // Use the highest retail price for display (newest stock typically has higher price)
+        if ((stock.retail_price || 0) > (existing.retail_price || 0)) {
+          existing.retail_price = stock.retail_price;
+          existing.stock_price = stock.stock_price;
+          existing.discount_price = stock.discount_price;
+          existing.batch_code = stock.batch_code;
+        }
+      } else {
+        // First occurrence - set initial values
+        itemMap.set(stock.sku, {
+          id: stock.item_id, // Use item_id for unique key
+          item_id: stock.item_id,
+          stock_id: stock.id,
+          sku: stock.sku,
+          item_name: stock.item_name,
+          item_image_url: stock.item_image_url,
+          maximum_capacity: stock.maximum_capacity,
+          batch_code: stock.batch_code,
+          quantity: stock.quantity || 0,
+          threshold_limit: stock.threshold_limit,
+          stock_price: stock.stock_price,
+          retail_price: stock.retail_price,
+          discount_price: stock.discount_price,
+          expiry_date: stock.expiry_date,
+          availability: stock.availability,
+          batchCount: 1,
+          category: {
+            id: stock.category_id,
+            brand: stock.category_brand,
+            type: stock.category_type
+          },
+          uom: {
+            id: stock.uom_id,
+            symbol: stock.uom_symbol,
+            unit_name: stock.uom_unit_name
+          }
+        });
+      }
+    });
+
+    return Array.from(itemMap.values());
+  }, [stockItems]);
 
   // Extract unique category types
   const uniqueCategoryTypes = useMemo(() => {
@@ -50,7 +95,7 @@ function ViewSaleInventory({ isActive }) {
   const [openOrderBy, setOpenOrderBy] = useState(true);
 
   // Combined loading state
-  const isLoading = isLoadingItems || isLoadingCategories;
+  const isLoading = isLoadingStock || isLoadingCategories;
 
   const handleSearch = (e) => {
     setSearch(e.target.value);
@@ -77,9 +122,9 @@ function ViewSaleInventory({ isActive }) {
         case "name_desc":
           return b.item_name.localeCompare(a.item_name);
         case "price_asc":
-          return (a.unit_price || 0) - (b.unit_price || 0);
+          return (a.retail_price || 0) - (b.retail_price || 0);
         case "price_desc":
-          return (b.unit_price || 0) - (a.unit_price || 0);
+          return (b.retail_price || 0) - (a.retail_price || 0);
         case "quantity_asc":
           return (a.quantity || 0) - (b.quantity || 0);
         case "quantity_desc":
@@ -219,7 +264,7 @@ function ViewSaleInventory({ isActive }) {
                       <td className="px-6 py-4 text-sm text-gray-600">{item.category?.type || "-"}</td>
                       <td className="px-6 py-4 text-right">
                         <span className="text-sm font-bold text-gray-800 tabular-nums">
-                          Rs. {(item.unit_price || 0).toFixed(2)}
+                          Rs. {(item.retail_price || 0).toFixed(2)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">

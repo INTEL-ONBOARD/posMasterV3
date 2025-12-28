@@ -9,45 +9,54 @@ import { restockApi } from "../../../api/localApi";
 function ViewItemModal({ isOpen, closeModal, item }) {
   if (!isOpen) return null;
 
-
-    useEffect (() => {
-      fetchStockEntries(item.sku)
-    }, []);
-    
-  //const imageSrc = item.image = null || placeholderImg;
-  const imageSrc = placeholderImg;
-
   //to populate recent batch code changes
   const [stockEntries, setStockEntries] = useState([]);
+
+  useEffect (() => {
+    fetchStockEntries(item.sku)
+  }, [item.sku]);
+
+  const imageSrc = item.item_image_url || item.item_image_blob || placeholderImg;
+
   // fetch stock entries for a given SKU
   const fetchStockEntries = async (sku) => {
     if (!sku) return;
     try {
       const response = await restockApi.getStockData(sku);
-      console.log(response);
+      console.log('[ViewItemModal] Stock data response:', response);
 
       if (response) {
         if (response.status === 'success' && Array.isArray(response.data)) {
           setStockEntries(response.data);
-          console.log(stockEntries);
         } else if (Array.isArray(response)) {
           setStockEntries(response);
         } else if (Array.isArray(response.data)) {
           setStockEntries(response.data);
         } else {
           setStockEntries([]);
-          //setStockFetchError(response.message || 'Unexpected response shape');
         }
-
       } else {
         setStockEntries([]);
-        //setStockFetchError('Empty response from server');
       }
     } catch (err) {
       console.error('Failed to fetch stock entries for', sku, err);
       setStockEntries([]);
     }
   };
+
+  // Get the primary stock entry (first/oldest batch for FIFO, or use item data as fallback)
+  const primaryStock = stockEntries.length > 0 ? stockEntries[0] : null;
+
+  // Calculate totals across all batches
+  const totalQuantity = stockEntries.reduce((sum, s) => sum + (s.qty || 0), 0) || item.quantity || 0;
+
+  // Use primary stock data, falling back to item data
+  const displayBatchCode = primaryStock?.batch_code || item.batch_code || "N/A";
+  const displayStockPrice = primaryStock?.stock_price ?? item.stock_price ?? 0;
+  const displayRetailPrice = primaryStock?.retail_price ?? item.retail_price ?? 0;
+  const displayExpDate = primaryStock?.exp_date || item.expiry_date || item.exp_date;
+  const displayThreshold = primaryStock?.threshold_limit || item.threshold_limit || 10;
+  const maxCapacity = item.maximum_capacity || 100;
 
   return (
     <div
@@ -108,37 +117,40 @@ function ViewItemModal({ isOpen, closeModal, item }) {
                 {/* Batch Code */}
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Batch Code</p>
-                  <p className="text-lg font-semibold text-gray-800">{item.batch_code || "N/A"}</p>
+                  <p className="text-lg font-semibold text-gray-800">{displayBatchCode}</p>
+                  {stockEntries.length > 1 && (
+                    <p className="text-xs text-gray-400 mt-1">+{stockEntries.length - 1} more batches</p>
+                  )}
                 </div>
 
                 {/* Quantity */}
                 <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Quantity</p>
-                  <p className="text-lg font-semibold text-gray-800">{item.quantity || "0"} <span className="text-sm font-normal text-gray-500">/ {item.maximum_capacity || "100"}</span></p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Total Quantity</p>
+                  <p className="text-lg font-semibold text-gray-800">{totalQuantity} <span className="text-sm font-normal text-gray-500">/ {maxCapacity}</span></p>
                 </div>
 
                 {/* Stock Price */}
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Stock Price</p>
-                  <p className="text-lg font-bold text-gray-800 tabular-nums">Rs. {item.stock_price || "0.00"}</p>
+                  <p className="text-lg font-bold text-gray-800 tabular-nums">Rs. {Number(displayStockPrice).toFixed(2)}</p>
                 </div>
 
                 {/* Retail Price */}
                 <div className="bg-[#1A318C]/5 rounded-xl p-4 border border-[#1A318C]/10">
                   <p className="text-xs text-[#1A318C] uppercase tracking-wide font-medium mb-1">Retail Price</p>
-                  <p className="text-xl font-bold text-[#1A318C] tabular-nums">Rs. {item.retail_price || "0.00"}</p>
+                  <p className="text-xl font-bold text-[#1A318C] tabular-nums">Rs. {Number(displayRetailPrice).toFixed(2)}</p>
                 </div>
 
                 {/* Threshold */}
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Low Stock Threshold</p>
-                  <p className="text-lg font-semibold text-amber-600">{item.threshold_limit || "10"} units</p>
+                  <p className="text-lg font-semibold text-amber-600">{displayThreshold} units</p>
                 </div>
 
                 {/* Expiration Date */}
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Expiration Date</p>
-                  <p className="text-lg font-semibold text-gray-800">{extractDateOnly(item.exp_date) || "N/A"}</p>
+                  <p className="text-lg font-semibold text-gray-800">{displayExpDate ? extractDateOnly(displayExpDate) : "N/A"}</p>
                 </div>
               </div>
 
@@ -146,18 +158,18 @@ function ViewItemModal({ isOpen, closeModal, item }) {
               <div className="mt-6 bg-gray-50 rounded-xl p-4">
                 <div className="flex justify-between items-center mb-2">
                   <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Stock Level</p>
-                  <p className="text-sm font-semibold text-gray-800">{Math.round((item.quantity / item.maximum_capacity) * 100) || 0}%</p>
+                  <p className="text-sm font-semibold text-gray-800">{Math.round((totalQuantity / maxCapacity) * 100) || 0}%</p>
                 </div>
                 <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
-                      (item.quantity / item.maximum_capacity) * 100 <= item.threshold_limit
+                      (totalQuantity / maxCapacity) * 100 <= displayThreshold
                         ? 'bg-red-500'
-                        : (item.quantity / item.maximum_capacity) * 100 <= item.threshold_limit + 20
+                        : (totalQuantity / maxCapacity) * 100 <= displayThreshold + 20
                           ? 'bg-amber-500'
                           : 'bg-emerald-500'
                     }`}
-                    style={{ width: `${Math.min((item.quantity / item.maximum_capacity) * 100, 100)}%` }}
+                    style={{ width: `${Math.min((totalQuantity / maxCapacity) * 100, 100)}%` }}
                   ></div>
                 </div>
               </div>
@@ -182,7 +194,7 @@ function ViewItemModal({ isOpen, closeModal, item }) {
 
               {/* Recent Batches */}
               <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-3">Recent Batches</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-3">All Batches ({stockEntries.length})</p>
                 <div className="flex flex-col gap-2 max-h-[16rem] overflow-y-auto pr-2">
                   {stockEntries.length === 0 ? (
                     <div className="text-center py-8">
@@ -191,23 +203,21 @@ function ViewItemModal({ isOpen, closeModal, item }) {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
                       </div>
-                      <p className="text-sm text-gray-400">No recent batches</p>
+                      <p className="text-sm text-gray-400">No stock batches found</p>
                     </div>
                   ) : (
                     stockEntries.map((s, i) => (
                       <div
                         key={s.batch_code + i}
-                        className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-gray-100"
+                        className="bg-white rounded-lg px-3 py-2.5 border border-gray-100"
                       >
-                        <div>
-                          <p className="text-xs text-gray-400 font-medium">Batch</p>
-                          <p className="text-sm font-semibold text-gray-800">{s.batch_code}</p>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs font-semibold text-gray-800">{s.batch_code}</p>
+                          <p className="text-xs font-bold text-emerald-600 tabular-nums">{s.qty} units</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-gray-800 tabular-nums">{s.qty} units</p>
-                          <p className="text-xs text-gray-400">
-                            Exp: {s.exp_date ? extractDateOnly(s.exp_date) : 'N/A'}
-                          </p>
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>Rs. {Number(s.retail_price || 0).toFixed(2)}</span>
+                          <span>Exp: {s.exp_date ? extractDateOnly(s.exp_date) : 'N/A'}</span>
                         </div>
                       </div>
                     ))

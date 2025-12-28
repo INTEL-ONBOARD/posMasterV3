@@ -20,34 +20,63 @@ function InventoryView({ isActive }) {
     { enabled: isActive }
   );
 
-  // Transform stock items to the expected UI format
+  // Aggregate stock items by SKU - for items with multiple batches,
+  // sum quantities and use the highest retail price for display
   const inventoryItems = useMemo(() => {
-    return (stockItems || []).map(stock => ({
-      id: stock.id,
-      item_id: stock.item_id,
-      sku: stock.sku,
-      item_name: stock.item_name,
-      item_image_url: stock.item_image_url,
-      maximum_capacity: stock.maximum_capacity,
-      batch_code: stock.batch_code,
-      quantity: stock.quantity,
-      threshold_limit: stock.threshold_limit,
-      stock_price: stock.stock_price,
-      retail_price: stock.retail_price,
-      discount_price: stock.discount_price,
-      expiry_date: stock.expiry_date,
-      availability: stock.availability,
-      category: {
-        id: stock.category_id,
-        brand: stock.category_brand,
-        type: stock.category_type
-      },
-      uom: {
-        id: stock.uom_id,
-        symbol: stock.uom_symbol,
-        unit_name: stock.uom_unit_name
+    const itemMap = new Map();
+
+    (stockItems || []).forEach(stock => {
+      // Skip entries without valid SKU
+      if (!stock.sku) return;
+
+      const existing = itemMap.get(stock.sku);
+
+      if (existing) {
+        // Aggregate: sum quantity across all batches
+        existing.quantity += stock.quantity || 0;
+        existing.batchCount += 1;
+
+        // Use the highest retail price for display (newest stock typically has higher price)
+        if ((stock.retail_price || 0) > (existing.retail_price || 0)) {
+          existing.retail_price = stock.retail_price;
+          existing.stock_price = stock.stock_price;
+          existing.discount_price = stock.discount_price;
+          existing.batch_code = stock.batch_code;
+        }
+      } else {
+        // First occurrence - set initial values
+        itemMap.set(stock.sku, {
+          id: stock.item_id, // Use item_id for unique key
+          item_id: stock.item_id,
+          stock_id: stock.id,
+          sku: stock.sku,
+          item_name: stock.item_name,
+          item_image_url: stock.item_image_url,
+          maximum_capacity: stock.maximum_capacity,
+          batch_code: stock.batch_code,
+          quantity: stock.quantity || 0,
+          threshold_limit: stock.threshold_limit,
+          stock_price: stock.stock_price,
+          retail_price: stock.retail_price,
+          discount_price: stock.discount_price,
+          expiry_date: stock.expiry_date,
+          availability: stock.availability,
+          batchCount: 1,
+          category: {
+            id: stock.category_id,
+            brand: stock.category_brand,
+            type: stock.category_type
+          },
+          uom: {
+            id: stock.uom_id,
+            symbol: stock.uom_symbol,
+            unit_name: stock.uom_unit_name
+          }
+        });
       }
-    }));
+    });
+
+    return Array.from(itemMap.values());
   }, [stockItems]);
 
   // Extract unique category types
