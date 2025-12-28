@@ -353,9 +353,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
         // Get all app settings with applied status
         getAll: () =>
             ipcRenderer.invoke("appSettings:getAll"),
-        // Set auto-logout configuration
-        setAutoLogout: (enabled, minutes) =>
-            ipcRenderer.invoke("appSettings:setAutoLogout", { enabled, minutes }),
+        // Set logout on close configuration
+        setLogoutOnClose: (enabled) =>
+            ipcRenderer.invoke("appSettings:setLogoutOnClose", enabled),
         // Set run on startup
         setRunOnStartup: (enabled) =>
             ipcRenderer.invoke("appSettings:setRunOnStartup", enabled),
@@ -374,15 +374,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
         // Apply all settings (call after login)
         applyAll: () =>
             ipcRenderer.invoke("appSettings:applyAll"),
-        // Reset activity timer (call on user interaction)
-        resetActivity: () =>
-            ipcRenderer.invoke("appSettings:resetActivity"),
         // Check if cloud sync is enabled
         isCloudSyncEnabled: () =>
-            ipcRenderer.invoke("appSettings:isCloudSyncEnabled"),
-        // Listen for auto-logout event
-        onAutoLogout: (callback) =>
-            ipcRenderer.on("app:autoLogout", callback)
+            ipcRenderer.invoke("appSettings:isCloudSyncEnabled")
     },
 
     // ============================================
@@ -568,5 +562,60 @@ contextBridge.exposeInMainWorld("electronAPI", {
         const handler = (event, data) => callback(data);
         ipcRenderer.on("sync:multi-table-changed", handler);
         return () => ipcRenderer.removeListener("sync:multi-table-changed", handler);
+    },
+
+    // ============================================
+    // BRANCH CONTEXT API
+    // ============================================
+
+    branchContext: {
+        /**
+         * Get the currently selected branch
+         * @returns {Promise<{status: string, data: {id, name, address, contact} | null}>}
+         */
+        getCurrent: () => ipcRenderer.invoke("branch-context:get-current"),
+
+        /**
+         * Set the current branch context
+         * @param {number} branchId - Branch ID to select
+         * @returns {Promise<{status: string, data: object}>}
+         */
+        setCurrent: (branchId) => ipcRenderer.invoke("branch-context:set-current", branchId),
+
+        /**
+         * Clear the current branch selection
+         * @returns {Promise<{status: string}>}
+         */
+        clear: () => ipcRenderer.invoke("branch-context:clear"),
+
+        /**
+         * Check if branch selection is required
+         * @returns {Promise<{status: string, data: {required: boolean, currentBranch: object | null}}>}
+         */
+        isRequired: () => ipcRenderer.invoke("branch-context:is-required"),
+
+        /**
+         * Get branches available to the current user
+         * @returns {Promise<{status: string, data: array}>}
+         */
+        getAvailableBranches: () => ipcRenderer.invoke("branch-context:get-available-branches"),
+
+        /**
+         * Validate if an operation can proceed (checks branch selection)
+         * @param {string} operation - Operation name
+         * @returns {Promise<{status: string, valid: boolean, message?: string}>}
+         */
+        validateOperation: (operation) => ipcRenderer.invoke("branch-context:validate-operation", operation),
+
+        /**
+         * Listen for branch context changes
+         * @param {function} callback - Called when branch changes
+         * @returns {function} Unsubscribe function
+         */
+        onBranchChanged: (callback) => {
+            const handler = (event, data) => callback(data);
+            ipcRenderer.on("branch-context:changed", handler);
+            return () => ipcRenderer.removeListener("branch-context:changed", handler);
+        }
     }
 });

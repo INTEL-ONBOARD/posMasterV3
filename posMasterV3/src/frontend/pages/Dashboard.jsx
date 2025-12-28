@@ -5,6 +5,7 @@ import Sidebar from "../components/Sidebar.jsx";
 import { useStatusLog, StatusType } from "../services/StatusLogService.jsx";
 import { appSettingsApi, authApi } from "../api/localApi";
 import { onSessionEvent, startSessionMonitor } from "../services/SessionGuard";
+import { BranchProvider } from "../context/BranchContext.jsx";
 
 // Get icon and color based on status type
 const getStatusStyle = (type, isLoading) => {
@@ -102,7 +103,6 @@ function Dashboard() {
   const toast = useContext(ToastContext);
   const navigate = useNavigate();
   const { currentStatus, isOnline } = useStatusLog();
-  const [autoLogoutEnabled, setAutoLogoutEnabled] = useState(false);
   const [showKickedModal, setShowKickedModal] = useState(false);
 
   // Force logout handler - clears session and navigates to login
@@ -130,55 +130,19 @@ function Dashboard() {
     navigate('/login', { replace: true, state: { message } });
   };
 
-  // Apply settings and setup auto-logout on mount
+  // Apply settings on mount
   useEffect(() => {
     const initializeSettings = async () => {
       try {
-        // Apply all settings (including auto-logout)
-        const result = await appSettingsApi.applyAll();
-        if (result.status === 'success' && result.data?.auto_logout) {
-          setAutoLogoutEnabled(true);
-        }
+        // Apply all settings (maximize window, etc.)
+        await appSettingsApi.applyAll();
       } catch (err) {
         console.error('[Dashboard] Failed to apply settings:', err);
       }
     };
 
     initializeSettings();
-
-    // Listen for auto-logout event (inactivity)
-    const handleAutoLogout = async () => {
-      console.log('[Dashboard] Auto-logout triggered');
-      toast.open('Session expired due to inactivity', 3000, 'Warning', 'warning');
-      await handleForcedLogout('Session expired due to inactivity');
-    };
-
-    if (window.electronAPI?.appSettings?.onAutoLogout) {
-      window.electronAPI.appSettings.onAutoLogout(handleAutoLogout);
-    }
-
-    // Activity tracking - reset timer on user activity
-    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
-    let debounceTimer = null;
-
-    const resetActivity = () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        appSettingsApi.resetActivity().catch(() => {});
-      }, 1000);
-    };
-
-    activityEvents.forEach(event => {
-      document.addEventListener(event, resetActivity, { passive: true });
-    });
-
-    return () => {
-      activityEvents.forEach(event => {
-        document.removeEventListener(event, resetActivity);
-      });
-      if (debounceTimer) clearTimeout(debounceTimer);
-    };
-  }, [navigate, toast]);
+  }, []);
 
   // Single-device enforcement: Real-time session monitoring
   useEffect(() => {
@@ -224,9 +188,10 @@ function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Session Kicked Modal */}
-      {showKickedModal && (
+    <BranchProvider>
+      <div className="min-h-screen flex flex-col">
+        {/* Session Kicked Modal */}
+        {showKickedModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100]">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in duration-200">
             {/* Header */}
@@ -314,7 +279,8 @@ function Dashboard() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </BranchProvider>
   );
 }
 

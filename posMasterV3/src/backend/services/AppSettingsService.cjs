@@ -22,9 +22,6 @@ class AppSettingsService {
     constructor() {
         this.appSettingsRepo = new AppSettingsRepository();
         this.autoLauncher = null;
-        this.inactivityTimer = null;
-        this.inactivityTimeoutMs = 15 * 60 * 1000; // 15 minutes default
-        this.onAutoLogoutCallback = null;
 
         // Initialize auto-launcher if available
         this._initAutoLauncher();
@@ -89,8 +86,7 @@ class AppSettingsService {
      */
     _getDefaults() {
         return {
-            auto_logout: true,
-            auto_logout_minutes: 15,
+            logout_on_close: true,
             notifications: true,
             cloud_sync: true,
             temp_system: true,
@@ -103,74 +99,24 @@ class AppSettingsService {
     }
 
     // ============================================
-    // AUTO LOGOUT FUNCTIONALITY
+    // LOGOUT ON CLOSE FUNCTIONALITY
     // ============================================
 
     /**
-     * Start auto-logout monitoring
-     * @param {Function} onLogout - Callback when auto-logout triggers
+     * Check if logout on close is enabled
+     * @returns {boolean}
      */
-    startAutoLogoutMonitoring(onLogout) {
-        const settings = this.getAllSettings();
-
-        if (!settings.auto_logout) {
-            console.log('[AppSettingsService] Auto-logout is disabled');
-            return;
-        }
-
-        this.onAutoLogoutCallback = onLogout;
-        const timeoutMinutes = settings.auto_logout_minutes || 15;
-        this.inactivityTimeoutMs = timeoutMinutes * 60 * 1000;
-
-        console.log(`[AppSettingsService] Auto-logout enabled with ${timeoutMinutes} minute timeout`);
-        this.resetInactivityTimer();
+    isLogoutOnCloseEnabled() {
+        return this.getSetting('logout_on_close') ?? true;
     }
 
     /**
-     * Stop auto-logout monitoring
+     * Set logout on close setting
+     * @param {boolean} enabled - Whether to logout when app closes
      */
-    stopAutoLogoutMonitoring() {
-        if (this.inactivityTimer) {
-            clearTimeout(this.inactivityTimer);
-            this.inactivityTimer = null;
-        }
-        this.onAutoLogoutCallback = null;
-        console.log('[AppSettingsService] Auto-logout monitoring stopped');
-    }
-
-    /**
-     * Reset the inactivity timer (call on user activity)
-     */
-    resetInactivityTimer() {
-        if (this.inactivityTimer) {
-            clearTimeout(this.inactivityTimer);
-        }
-
-        if (!this.onAutoLogoutCallback) return;
-
-        this.inactivityTimer = setTimeout(() => {
-            console.log('[AppSettingsService] Inactivity timeout reached, triggering auto-logout');
-            if (this.onAutoLogoutCallback) {
-                this.onAutoLogoutCallback();
-            }
-        }, this.inactivityTimeoutMs);
-    }
-
-    /**
-     * Update auto-logout setting
-     * @param {boolean} enabled - Whether auto-logout is enabled
-     * @param {number} minutes - Timeout in minutes
-     */
-    updateAutoLogout(enabled, minutes = 15) {
-        this.appSettingsRepo.set('auto_logout', enabled, 'boolean');
-        this.appSettingsRepo.set('auto_logout_minutes', minutes, 'number');
-
-        if (enabled && this.onAutoLogoutCallback) {
-            this.inactivityTimeoutMs = minutes * 60 * 1000;
-            this.resetInactivityTimer();
-        } else {
-            this.stopAutoLogoutMonitoring();
-        }
+    setLogoutOnClose(enabled) {
+        this.appSettingsRepo.set('logout_on_close', enabled, 'boolean');
+        console.log(`[AppSettingsService] Logout on close ${enabled ? 'enabled' : 'disabled'}`);
     }
 
     // ============================================
@@ -364,7 +310,6 @@ class AppSettingsService {
      * Apply all settings at once (called on app start or user login)
      * @param {Object} options - Options
      * @param {BrowserWindow} options.mainWindow - Main browser window
-     * @param {Function} options.onAutoLogout - Auto logout callback
      * @returns {Promise<Object>} Applied settings
      */
     async applyAllSettings(options = {}) {
@@ -379,11 +324,6 @@ class AppSettingsService {
         // Apply run on startup
         await this.setRunOnStartup(settings.run_on_startup);
 
-        // Start auto-logout if enabled
-        if (settings.auto_logout && options.onAutoLogout) {
-            this.startAutoLogoutMonitoring(options.onAutoLogout);
-        }
-
         // Ensure temp directory
         if (settings.temp_system) {
             this.ensureTempDirectory();
@@ -396,7 +336,7 @@ class AppSettingsService {
      * Clean up resources
      */
     cleanup() {
-        this.stopAutoLogoutMonitoring();
+        // No longer needed for logout on close, but kept for future cleanup needs
     }
 }
 

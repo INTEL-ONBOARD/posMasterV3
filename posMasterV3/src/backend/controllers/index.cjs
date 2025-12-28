@@ -25,6 +25,7 @@ const CloudSyncController = require('./CloudSyncController.cjs');
 const LoginHistoryController = require('./LoginHistoryController.cjs');
 const AppSettingsController = require('./AppSettingsController.cjs');
 const PaymentMethodController = require('./PaymentMethodController.cjs');
+const { branchContextService } = require('../services/BranchContextService.cjs');
 
 /**
  * Register all IPC handlers
@@ -70,7 +71,19 @@ function registerAllHandlers() {
     const appSettingsController = new AppSettingsController();
     appSettingsController.registerHandlers();
 
+    // Note: BranchContextService IPC handlers are registered in its initialize() method
+    // which is called from main.js after database is ready
+
     console.log('[Controllers] All IPC handlers registered successfully');
+}
+
+/**
+ * Initialize branch context service with database
+ * Call this after database is initialized
+ */
+function initializeBranchContext(db) {
+    branchContextService.initialize(db);
+    return branchContextService;
 }
 
 /**
@@ -93,6 +106,8 @@ function unregisterAllHandlers() {
 module.exports = {
     registerAllHandlers,
     unregisterAllHandlers,
+    initializeBranchContext,
+    branchContextService,
     registerAuthHandlers,
     unregisterAuthHandlers,
     registerUserHandlers,

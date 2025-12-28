@@ -2,19 +2,38 @@
  * Stock Service
  *
  * Business logic for stock/inventory operations.
+ * Branch-aware: Stock is managed per branch/outlet.
  */
 
 const stockRepository = require('../repositories/StockRepository.cjs');
 const itemRepository = require('../repositories/ItemRepository.cjs');
+const { branchContextService } = require('./BranchContextService.cjs');
 
 class StockService {
     /**
-     * Get all stock
+     * Get the current branch ID from context
+     * @returns {number|null}
+     */
+    getCurrentBranchId() {
+        return branchContextService.getCurrentBranchId();
+    }
+
+    /**
+     * Get full branch context for audit logging
+     * @returns {Object}
+     */
+    getBranchContext() {
+        return branchContextService.getBranchContext();
+    }
+
+    /**
+     * Get all stock (filtered by current branch)
      * @returns {Object}
      */
     getAll() {
         try {
-            const stock = stockRepository.findAll({ limit: 10000 });
+            const branchId = this.getCurrentBranchId();
+            const stock = stockRepository.findAll({ limit: 10000, branchId });
             return {
                 status: 'success',
                 data: stock
@@ -29,12 +48,13 @@ class StockService {
     }
 
     /**
-     * Get all stock with item details
+     * Get all stock with item details (filtered by current branch)
      * @returns {Object}
      */
     getAllWithItems() {
         try {
-            const stock = stockRepository.getAllWithItems();
+            const branchId = this.getCurrentBranchId();
+            const stock = stockRepository.getAllWithItems(branchId);
             return {
                 status: 'success',
                 data: stock.map(s => this.formatStockWithItem(s))
@@ -97,12 +117,13 @@ class StockService {
     }
 
     /**
-     * Get low stock items
+     * Get low stock items (filtered by current branch)
      * @returns {Object}
      */
     getLowStock() {
         try {
-            const lowStock = stockRepository.getLowStock();
+            const branchId = this.getCurrentBranchId();
+            const lowStock = stockRepository.getLowStock(branchId);
             return {
                 status: 'success',
                 data: lowStock
@@ -117,13 +138,14 @@ class StockService {
     }
 
     /**
-     * Get expiring stock
+     * Get expiring stock (filtered by current branch)
      * @param {number} days - Days until expiry
      * @returns {Object}
      */
     getExpiringStock(days = 30) {
         try {
-            const expiringStock = stockRepository.getExpiringStock(days);
+            const branchId = this.getCurrentBranchId();
+            const expiringStock = stockRepository.getExpiringStock(days, branchId);
             return {
                 status: 'success',
                 data: expiringStock
@@ -138,12 +160,13 @@ class StockService {
     }
 
     /**
-     * Get stock value summary
+     * Get stock value summary (filtered by current branch)
      * @returns {Object}
      */
     getStockValue() {
         try {
-            const value = stockRepository.getTotalStockValue();
+            const branchId = this.getCurrentBranchId();
+            const value = stockRepository.getTotalStockValue(branchId);
             return {
                 status: 'success',
                 data: value
@@ -158,12 +181,22 @@ class StockService {
     }
 
     /**
-     * Create or update stock
+     * Create or update stock (branch-aware)
      * @param {Object} data - Stock data
      * @returns {Object}
      */
     upsert(data) {
         try {
+            const branchContext = this.getBranchContext();
+
+            // Require branch selection for creating/updating stock
+            if (!branchContext.branchId) {
+                return {
+                    status: 'error',
+                    message: 'Please select a branch/outlet before updating stock'
+                };
+            }
+
             if (!data.item_id && !data.sku) {
                 return {
                     status: 'error',
@@ -200,10 +233,16 @@ class StockService {
                 discount_price: data.discount_price || 0,
                 expiry_date: data.expiry_date || data.exp_date || null,
                 threshold_limit: data.threshold_limit || 0,
-                availability: data.availability !== undefined ? data.availability : 1
+                availability: data.availability !== undefined ? data.availability : 1,
+                // Branch assignment
+                branch_id: branchContext.branchId
             };
 
             const stock = stockRepository.upsertStock(stockData);
+
+            // Log audit entry
+            branchContextService.logAudit('stock', stock.id, 'UPSERT', null, stockData);
+
             return {
                 status: 'success',
                 data: stock,

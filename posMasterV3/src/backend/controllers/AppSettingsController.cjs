@@ -40,16 +40,16 @@ class AppSettingsController {
             }
         });
 
-        // Set auto-logout configuration
-        ipcMain.handle('appSettings:setAutoLogout', async (event, { enabled, minutes }) => {
+        // Set logout on close configuration
+        ipcMain.handle('appSettings:setLogoutOnClose', async (event, enabled) => {
             try {
-                this.service.updateAutoLogout(enabled, minutes || 15);
+                this.service.setLogoutOnClose(enabled);
                 return {
                     status: 'success',
-                    message: enabled ? `Auto-logout enabled (${minutes} minutes)` : 'Auto-logout disabled'
+                    message: enabled ? 'Logout on close enabled' : 'Logout on close disabled'
                 };
             } catch (error) {
-                console.error('[AppSettingsController] Set auto-logout error:', error);
+                console.error('[AppSettingsController] Set logout on close error:', error);
                 return { status: 'error', message: error.message };
             }
         });
@@ -147,13 +147,7 @@ class AppSettingsController {
             try {
                 const mainWindow = BrowserWindow.getAllWindows()[0];
                 const settings = await this.service.applyAllSettings({
-                    mainWindow,
-                    onAutoLogout: () => {
-                        // Send auto-logout event to renderer
-                        if (mainWindow && !mainWindow.isDestroyed()) {
-                            mainWindow.webContents.send('app:autoLogout');
-                        }
-                    }
+                    mainWindow
                 });
 
                 return {
@@ -163,16 +157,6 @@ class AppSettingsController {
                 };
             } catch (error) {
                 console.error('[AppSettingsController] Apply all error:', error);
-                return { status: 'error', message: error.message };
-            }
-        });
-
-        // Reset user activity (for auto-logout timer)
-        ipcMain.handle('appSettings:resetActivity', async () => {
-            try {
-                this.service.resetInactivityTimer();
-                return { status: 'success' };
-            } catch (error) {
                 return { status: 'error', message: error.message };
             }
         });
