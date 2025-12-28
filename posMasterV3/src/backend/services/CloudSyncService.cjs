@@ -601,16 +601,16 @@ class CloudSyncService {
 
                 try {
                     if (!localRecord && cloudRecord) {
-                        // Record exists only in cloud → Pull to local
-                        await this.pullRecordToLocal(tableName, cloudRecord, localColumns, primaryKey);
+                        // Record exists only in cloud → Pull to local (skip individual broadcast, batch later)
+                        await this.pullRecordToLocal(tableName, cloudRecord, localColumns, primaryKey, true);
                         result.pulled++;
                     } else if (localRecord && cloudRecord) {
                         // Record exists in both - compare versions
                         const syncDecision = this.compareVersions(localRecord, cloudRecord, hasUpdatedAt, hasCreatedAt, localPriority);
 
                         if (syncDecision === 'pull') {
-                            // Cloud is newer → Pull to local FIRST
-                            await this.pullRecordToLocal(tableName, cloudRecord, localColumns, primaryKey);
+                            // Cloud is newer → Pull to local FIRST (skip individual broadcast, batch later)
+                            await this.pullRecordToLocal(tableName, cloudRecord, localColumns, primaryKey, true);
                             result.pulled++;
                         }
                     }
@@ -652,6 +652,14 @@ class CloudSyncService {
             }
 
             console.log(`[CloudSync] ${tableName}: pushed=${result.pushed}, pulled=${result.pulled}, skipped=${result.skipped}`);
+
+            // Broadcast a SINGLE batch update for all pulled records (instead of N individual broadcasts)
+            // Skip frequently-polled tables to avoid UI refresh storms
+            const noRefreshTables = ['active_sessions', 'users', 'user_settings'];
+            if (result.pulled > 0 && !noRefreshTables.includes(tableName)) {
+                broadcastBatchChange(tableName, result.pulled, 'SYNC_PULL');
+            }
+
             return result;
         } catch (error) {
             console.error(`[CloudSync] Failed bidirectional sync for ${tableName}:`, error.message);
@@ -747,10 +755,11 @@ class CloudSyncService {
 
     /**
      * Pull a single record from cloud to local
-     * Broadcasts data change event to update UI immediately
+     * Optionally broadcasts data change event to update UI immediately
      * IMPORTANT: Preserves critical fields like 'roles' if cloud has empty/null values
+     * @param {boolean} skipBroadcast - If true, don't broadcast (caller will batch broadcasts)
      */
-    async pullRecordToLocal(tableName, cloudRecord, localColumns, primaryKey) {
+    async pullRecordToLocal(tableName, cloudRecord, localColumns, primaryKey, skipBroadcast = false) {
         const db = getDatabase();
         if (!db) return;
 
@@ -815,8 +824,10 @@ class CloudSyncService {
 
         db.prepare(query).run(...values);
 
-        // Broadcast data change to update UI immediately
-        broadcastDataChange(tableName, operation, cloudRecord[primaryKey], cloudRecord);
+        // Broadcast data change to update UI immediately (unless caller is batching broadcasts)
+        if (!skipBroadcast) {
+            broadcastDataChange(tableName, operation, cloudRecord[primaryKey], cloudRecord);
+        }
     }
 
     /**

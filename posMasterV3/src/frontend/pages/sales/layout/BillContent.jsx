@@ -156,7 +156,7 @@ const BillContent = React.forwardRef(({ billData = {} }, ref) => {
 
         <tbody>
           {items.map((item, index) => (
-            <tr key={index}>
+            <tr key={item.id || item.stock_id || `${item.item_id}-${item.batch_code}-${index}`}>
               <td className="border border-transparent p-2 text-left pr-4">
                 <div>{item.item_name ?? ""}</div>
                 <div className="ml-10">{fmt(item.retail_price)}</div>

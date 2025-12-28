@@ -14,12 +14,18 @@ export default function SalesItemCard({ item, onOpen }) {
     setOverflowing(el.scrollWidth > el.clientWidth);
   }, [item.item_name]);
 
+  // Get safe values with defaults
+  const quantity = item.quantity || 0;
+  const maxCapacity = item.maximum_capacity || 100; // Default to 100 if not set
+  const thresholdLimit = item.threshold_limit || 20; // Default to 20%
+  const retailPrice = item.retail_price || 0;
+
   // Calculate status color based on quantity
-  const percentFull = item.maximum_capacity ? ((item.quantity || 0) / item.maximum_capacity) * 100 : 0;
+  const percentFull = maxCapacity > 0 ? (quantity / maxCapacity) * 100 : 0;
   let statusConfig;
-  if (percentFull <= item.threshold_limit) {
+  if (percentFull <= thresholdLimit) {
     statusConfig = { bg: "bg-red-500", text: "text-red-600", label: "Low" };
-  } else if (percentFull <= item.threshold_limit + 20) {
+  } else if (percentFull <= thresholdLimit + 20) {
     statusConfig = { bg: "bg-amber-500", text: "text-amber-600", label: "Medium" };
   } else {
     statusConfig = { bg: "bg-emerald-500", text: "text-emerald-600", label: "In Stock" };
@@ -96,12 +102,12 @@ export default function SalesItemCard({ item, onOpen }) {
         <div className="flex items-end justify-between pt-2 border-t border-gray-100">
           <div>
             <p className="text-lg font-bold text-gray-800 tabular-nums">
-              Rs.{item.retail_price}
+              Rs.{retailPrice > 0 ? retailPrice.toFixed(2) : '0.00'}
               <span className="text-[10px] font-medium text-gray-400 ml-0.5">/{item.uom?.symbol || 'unit'}</span>
             </p>
           </div>
           <div className={`text-[10px] font-bold ${statusConfig.text} tabular-nums`}>
-            {item.quantity}/{item.maximum_capacity}
+            {quantity}/{maxCapacity}
           </div>
         </div>
       </div>

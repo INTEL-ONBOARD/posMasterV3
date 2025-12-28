@@ -1,21 +1,18 @@
 import React, { useState, useEffect, useRef, useContext, useMemo } from "react";
 import SalesItemCard from "../../components/SalesItemCard";
-import { salesApi, categoryApi } from "../../api/localApi";
-import { ChevronDown, ChevronUp, User, Package, Layers, ShoppingCart, CreditCard, Plus, X, DollarSign, AlertTriangle, Wallet, History, UserCheck, RefreshCw } from "lucide-react";
+import { salesApi } from "../../api/localApi";
+import { ChevronDown, User, Package, ShoppingCart, CreditCard, X, DollarSign, AlertTriangle, Wallet, RefreshCw } from "lucide-react";
 import ToastContext from "../toasts/ToastService.jsx";
 import { localAuth } from "../../api/services/localAuth";
-import { useStatusLog } from "../../services/StatusLogService.jsx";
 import { useReactiveData, TABLES } from "../../store";
-import { transformStockData } from "../../util/common/blockConverter.jsx";
 
-//image imports
-import barcodeImg from "../../assets/barcode.png";
 
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import BillContent from "./layout/BillContent.jsx";
 import BackIcon from "../../assets/back-icon/back_icon.jsx";
 import MemEvaluationModal from "./modals/MemEvaluationModal.jsx";
+import CartItemEditModal from "./modals/CartItemEditModal.jsx";
 
 // Default guest user
 const GUEST_USER = {
@@ -32,7 +29,6 @@ const GUEST_USER = {
 export default function SalesView({ isActive }) {
   const billRef = useRef(null);
   const toast = useContext(ToastContext);
-  const statusLog = useStatusLog();
 
   // Use reactive data hooks for stock items, categories, and users
   const { data: stockItemsRaw, loading: isLoading, refetch: refetchItems } = useReactiveData(
@@ -53,10 +49,38 @@ export default function SalesView({ isActive }) {
     { enabled: isActive }
   );
 
-  // Transform stock data for display
+  // Transform stock data for display (same as InventoryView.jsx)
   const inventoryItems = useMemo(() => {
     if (!stockItemsRaw || stockItemsRaw.length === 0) return [];
-    return transformStockData({ status: 'success', data: stockItemsRaw });
+    return stockItemsRaw.map(stock => ({
+      id: stock.id,
+      stock_id: stock.id,
+      item_id: stock.item_id,
+      sku: stock.sku,
+      item_name: stock.item_name,
+      item_image_url: stock.item_image_url,
+      maximum_capacity: stock.maximum_capacity || 100,
+      batch_code: stock.batch_code,
+      quantity: stock.quantity || 0,
+      threshold_limit: stock.threshold_limit || 20,
+      stock_price: stock.stock_price || 0,
+      retail_price: stock.retail_price || 0,
+      discount_price: stock.discount_price || 0,
+      expiry_date: stock.expiry_date,
+      exp_date: stock.expiry_date,
+      availability: stock.availability,
+      stock_availability: stock.availability,
+      category: {
+        id: stock.category_id,
+        brand: stock.category_brand,
+        type: stock.category_type
+      },
+      uom: {
+        id: stock.uom_id,
+        symbol: stock.uom_symbol,
+        unit_name: stock.uom_unit_name
+      }
+    }));
   }, [stockItemsRaw]);
 
   // Extract unique category types
@@ -64,15 +88,18 @@ export default function SalesView({ isActive }) {
     return Array.from(new Set((categoriesData || []).map(c => c.type)));
   }, [categoriesData]);
 
-  // Collapsible section states
-  const [openMemberSection, setOpenMemberSection] = useState(true);
-  const [openItemSection, setOpenItemSection] = useState(true);
-  const [openStockSection, setOpenStockSection] = useState(true);
-
   // Customer/Member state - default to Guest
   const [selectedMember, setSelectedMember] = useState(GUEST_USER);
   const [modal, setModal] = useState(false);
   const closeModal = () => setModal(false);
+
+  // Cart item edit modal state
+  const [cartItemModal, setCartItemModal] = useState(false);
+  const [selectedCartItem, setSelectedCartItem] = useState(null);
+  const closeCartItemModal = () => {
+    setCartItemModal(false);
+    setSelectedCartItem(null);
+  };
 
   // Handle member selection from modal
   const handleSelectMember = (member) => {
@@ -106,40 +133,6 @@ export default function SalesView({ isActive }) {
       fetchCurrentUser();
     }
   }, [isActive]);
-
-  // Item form data
-  const [formDataRegItem, setFormDataRegItem] = useState({
-    sku: "",
-    id: 0,
-    stock_trace: [0],
-    item_name: "",
-    item_image_url: "",
-    maximum_capacity: 10,
-    uom_id: 10,
-    category_id: 10,
-    inventory_id: 11,
-    uom: { symbol: "", unit_name: "" },
-    category: { brand: "", type: "" },
-  });
-
-  // Stock form data
-  const [formDataStock, setFormDataStock] = useState({
-    batch_code: "",
-    quantity: 0,
-    threshold_limit: 0,
-    stock_price: 0,
-    retail_price: 0,
-    expired_datetime: "",
-    availability: true,
-    customer_quantity: 0,
-    discount_price: 0,
-    customer_discount: 0
-  });
-
-  const handleStockInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormDataStock(prev => ({ ...prev, [name]: value }));
-  };
 
   const [rightActiveSection, setRightActiveSection] = useState("buttons");
   const [selectedItems, setSelectedItems] = useState([]);
@@ -189,41 +182,6 @@ export default function SalesView({ isActive }) {
     });
   };
 
-  const addNewRegItem = () => {
-    if (formDataRegItem.id === 0) return;
-
-    const newRegItem = {
-      sku: formDataRegItem.sku,
-      id: formDataRegItem.id,
-      stock_trace: formDataRegItem.stock_trace,
-      item_name: formDataRegItem.item_name,
-      item_image_url: formDataRegItem.item_image_url,
-      maximum_capacity: formDataRegItem.maximum_capacity,
-      uom_id: formDataRegItem.uom_id,
-      category_id: formDataRegItem.category_id,
-      inventory_id: formDataRegItem.inventory_id,
-      batch_code: formDataStock.batch_code,
-      quantity: parseFloat(formDataStock.quantity) || 0,
-      threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
-      stock_price: parseFloat(formDataStock.stock_price) || 0,
-      retail_price: parseFloat(formDataStock.retail_price) || 0,
-      discount_price: parseFloat(formDataStock.discount_price) || 0,
-      expired_datetime: formDataStock.exp_date,
-      availability: formDataStock.availability,
-      uom: formDataRegItem.uom,
-      category: formDataRegItem.category,
-      customer_discount: formDataStock.customer_discount,
-      customer_quantity: formDataStock.customer_quantity,
-      uom_symbol: formDataRegItem.uom?.symbol
-    };
-
-    setSelectedItems(prev =>
-      prev.map(prevItem =>
-        prevItem.id === formDataRegItem.id ? newRegItem : prevItem
-      )
-    );
-  };
-
   // Calculate totals
   const stockTotal = selectedItems.reduce((total, item) => {
     const discountedPrice = item.retail_price - (item.customer_discount || 0);
@@ -243,38 +201,23 @@ export default function SalesView({ isActive }) {
   const creditWarning = paymentMethod === "credit" && !canUseCredit;
 
   const handleTableRowClick = (item) => {
-    setFormDataRegItem({
-      sku: item.sku,
-      _id: item._id,
-      id: item.id,
-      stock_trace: item.stock_trace,
-      item_name: item.item_name,
-      item_image_url: item.item_image_url,
-      maximum_capacity: item.maximum_capacity,
-      uom_id: item.uom_id,
-      category_id: item.category_id,
-      inventory_id: item.inventory_id,
-      uom: item.uom || { symbol: "", unit_name: "" },
-      category: item.category || { brand: "", type: "" },
-    });
-    setFormDataStock({
-      batch_code: item.batch_code,
-      quantity: item.quantity,
-      threshold_limit: item.threshold_limit,
-      stock_price: item.stock_price,
-      retail_price: item.retail_price,
-      expired_datetime: item.exp_date,
-      availability: item.stock_availability,
-      customer_quantity: item.customer_quantity,
-      discount_price: item.discount_price,
-      customer_discount: item.customer_discount
-    });
+    setSelectedCartItem(item);
+    setCartItemModal(true);
+  };
+
+  // Handle cart item update from modal
+  const handleCartItemUpdate = (updatedItem) => {
+    setSelectedItems(prev =>
+      prev.map(item =>
+        item.id === updatedItem.id ? updatedItem : item
+      )
+    );
   };
 
   const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
-  const [searchAvailability, setSearchAvailability] = useState("All");
+  const [searchAvailability] = useState("All");
 
   const handleSearch = (e) => {
     setSearchLoading(true);
@@ -325,16 +268,6 @@ export default function SalesView({ isActive }) {
     setSelectedMember(GUEST_USER);
     setPaymentMethod("cash");
     generateNewInvoice();
-    setFormDataRegItem({
-      sku: "", id: 0, stock_trace: [0], item_name: "", item_image_url: "",
-      maximum_capacity: 10, uom_id: 10, category_id: 10, inventory_id: 11,
-      uom: { symbol: "", unit_name: "" }, category: { brand: "", type: "" },
-    });
-    setFormDataStock({
-      batch_code: "", quantity: 0, threshold_limit: 0, stock_price: 0,
-      retail_price: 0, expired_datetime: "", availability: true,
-      customer_quantity: 0, discount_price: 0, customer_discount: 0
-    });
   };
 
   const processSale = async () => {
@@ -469,189 +402,6 @@ export default function SalesView({ isActive }) {
         <BillContent ref={billRef} billData={billData} />
       </div>
 
-      {/* Left Sidebar - Customer & Item Info */}
-      <div className="w-[280px] bg-gray-100 h-full p-3 flex flex-col gap-3 shrink-0">
-        {/* Customer Section */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <button
-            onClick={() => setOpenMemberSection(!openMemberSection)}
-            className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                selectedMember?.is_guest ? "bg-gray-200" : "bg-emerald-100"
-              }`}>
-                <User className={`w-4 h-4 ${selectedMember?.is_guest ? "text-gray-600" : "text-emerald-600"}`} />
-              </div>
-              <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Customer</span>
-            </div>
-            {openMemberSection ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
-          </button>
-          {openMemberSection && (
-            <div className="px-4 pb-4 border-t border-gray-100">
-              <div className="pt-4">
-                {/* Customer Info Card */}
-                <div className={`rounded-xl p-4 mb-3 ${selectedMember?.is_guest ? "bg-gray-50" : "bg-emerald-50"}`}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold ${
-                      selectedMember?.is_guest ? "bg-gray-400" : "bg-emerald-500"
-                    }`}>
-                      {selectedMember?.is_guest ? <User className="w-5 h-5" /> : (selectedMember?.full_name || "M")[0]}
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-800">{selectedMember?.full_name || "Guest"}</p>
-                      <p className="text-xs text-gray-500">{selectedMember?.member_no || "-"}</p>
-                    </div>
-                  </div>
-
-                  {/* Credit Info for Members */}
-                  {!selectedMember?.is_guest && (
-                    <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-emerald-200">
-                      <div>
-                        <p className="text-[10px] text-emerald-600 uppercase font-medium">Credit Limit</p>
-                        <p className="text-sm font-bold text-emerald-700">{formatCurrency(selectedMember?.credit_limit || 0)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-amber-600 uppercase font-medium">Used</p>
-                        <p className="text-sm font-bold text-amber-700">{formatCurrency(selectedMember?.credit_balance || 0)}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Change Customer Button */}
-                <button
-                  onClick={() => setModal(true)}
-                  className="w-full py-2.5 bg-[#1A318C] text-white rounded-lg font-medium hover:bg-[#152870] transition-colors text-sm flex items-center justify-center gap-2"
-                >
-                  <UserCheck className="w-4 h-4" />
-                  Change Customer
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Item Description Section */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <button
-            onClick={() => setOpenItemSection(!openItemSection)}
-            className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center">
-                <Package className="w-4 h-4 text-gray-600" />
-              </div>
-              <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Item Description</span>
-            </div>
-            {openItemSection ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
-          </button>
-          {openItemSection && (
-            <div className="px-4 pb-4 border-t border-gray-100">
-              <div className="pt-4 flex items-start gap-4">
-                <div className="flex flex-col items-center">
-                  <img src={barcodeImg} alt="Barcode" className="w-16 h-12 object-contain" />
-                  <p className="text-[10px] text-gray-500 mt-1">{formDataRegItem.sku || "No SKU"}</p>
-                </div>
-                <div className="flex-1">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-xs text-gray-500">NAME</span>
-                      <span className="text-xs font-medium text-gray-800">{formDataRegItem.item_name || "—"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-gray-500">CATEGORY</span>
-                      <span className="text-xs font-medium text-gray-800">{formDataRegItem.category?.type || "—"}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Stock Description Section */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex-1">
-          <button
-            onClick={() => setOpenStockSection(!openStockSection)}
-            className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
-                <Layers className="w-4 h-4 text-teal-600" />
-              </div>
-              <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Stock Description</span>
-            </div>
-            {openStockSection ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
-          </button>
-          {openStockSection && (
-            <div className="px-4 pb-4 border-t border-gray-100 overflow-y-auto max-h-[300px]">
-              <div className="pt-4 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Batch Code</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={formDataStock.batch_code}
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Quantity</label>
-                    <input
-                      type="number"
-                      name="customer_quantity"
-                      value={formDataStock.customer_quantity}
-                      onChange={handleStockInputChange}
-                      className="w-full px-3 py-2 bg-white border-2 border-[#1A318C] rounded-lg text-sm font-semibold focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Unit Price</label>
-                    <input
-                      type="number"
-                      readOnly
-                      value={formDataStock.retail_price}
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Available</label>
-                    <input
-                      type="number"
-                      readOnly
-                      value={formDataStock.quantity}
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Bottom Buttons */}
-        <div className="flex gap-2">
-          <button
-            onClick={clearForm}
-            className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors text-sm"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={addNewRegItem}
-            disabled={formDataRegItem.id === 0}
-            className="flex-1 py-3 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-colors text-sm disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Update
-          </button>
-        </div>
-      </div>
-
       {/* Main Content Area */}
       <div className="flex-1 h-full flex flex-col p-3 min-w-0 overflow-hidden">
         {/* Header Section */}
@@ -756,11 +506,7 @@ export default function SalesView({ isActive }) {
                 <div
                   key={item.id}
                   onClick={() => handleTableRowClick(item)}
-                  className={`grid grid-cols-12 gap-3 px-5 py-3 items-center cursor-pointer transition-all border-b border-gray-100 ${
-                    item.id === formDataRegItem.id
-                      ? 'bg-blue-50 border-l-4 border-l-[#1A318C]'
-                      : 'hover:bg-gray-50'
-                  }`}
+                  className="grid grid-cols-12 gap-3 px-5 py-3 items-center cursor-pointer transition-all border-b border-gray-100 hover:bg-gray-50"
                 >
                   <div className="col-span-1">
                     <span className="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 text-sm font-semibold flex items-center justify-center">
@@ -1066,6 +812,15 @@ export default function SalesView({ isActive }) {
         closeModal={closeModal}
         onSelectMember={handleSelectMember}
         currentMember={selectedMember}
+      />
+
+      {/* Cart Item Edit Modal */}
+      <CartItemEditModal
+        isOpen={cartItemModal}
+        closeModal={closeCartItemModal}
+        item={selectedCartItem}
+        onUpdate={handleCartItemUpdate}
+        onRemove={removeItemFromList}
       />
     </div>
   );

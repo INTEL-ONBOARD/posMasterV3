@@ -555,7 +555,7 @@ function seedDefaultSuppliers() {
 }
 
 /**
- * Seed default items with stock
+ * Seed default items with stock - comprehensive test data with various scenarios
  * @returns {Object} Result of seeding
  */
 function seedDefaultItems() {
@@ -571,51 +571,244 @@ function seedDefaultItems() {
 
     const now = nowISO();
 
-    // Get category and UOM IDs
-    const beveragesCat = db.prepare("SELECT id FROM categories WHERE type = 'Beverages' LIMIT 1").get();
-    const snacksCat = db.prepare("SELECT id FROM categories WHERE type = 'Snacks' LIMIT 1").get();
-    const dairyCat = db.prepare("SELECT id FROM categories WHERE type = 'Dairy' LIMIT 1").get();
-    const groceriesCat = db.prepare("SELECT id FROM categories WHERE type = 'Groceries' LIMIT 1").get();
-    const personalCareCat = db.prepare("SELECT id FROM categories WHERE type = 'Personal Care' LIMIT 1").get();
-
+    // Get UOM IDs
     const pcsUom = db.prepare("SELECT id FROM units_of_measurement WHERE symbol = 'pcs' LIMIT 1").get();
     const kgUom = db.prepare("SELECT id FROM units_of_measurement WHERE symbol = 'kg' LIMIT 1").get();
     const LUom = db.prepare("SELECT id FROM units_of_measurement WHERE symbol = 'L' LIMIT 1").get();
     const packUom = db.prepare("SELECT id FROM units_of_measurement WHERE symbol = 'pack' LIMIT 1").get();
+    const btlUom = db.prepare("SELECT id FROM units_of_measurement WHERE symbol = 'btl' LIMIT 1").get();
 
-    // Get first branch (Morawakkorale Head Branch)
+    // Get actual category IDs from seeded categories (match actual type names in the categories table)
+    const carbonatedCat = db.prepare("SELECT id FROM categories WHERE type = 'Carbonated Drinks' LIMIT 1").get();
+    const milkPowderCat = db.prepare("SELECT id FROM categories WHERE type = 'Milk Powder' LIMIT 1").get();
+    const teaCat = db.prepare("SELECT id FROM categories WHERE type = 'Tea' LIMIT 1").get();
+    const coffeeCat = db.prepare("SELECT id FROM categories WHERE type = 'Instant Coffee' LIMIT 1").get();
+    const biscuitsCat = db.prepare("SELECT id FROM categories WHERE type = 'Cream Biscuits' LIMIT 1").get();
+    const crackersCat = db.prepare("SELECT id FROM categories WHERE type = 'Crackers' LIMIT 1").get();
+    const noodlesCat = db.prepare("SELECT id FROM categories WHERE type = 'Instant Noodles' LIMIT 1").get();
+    const freshMilkCat = db.prepare("SELECT id FROM categories WHERE type = 'Fresh Milk' LIMIT 1").get();
+    const yogurtCat = db.prepare("SELECT id FROM categories WHERE type = 'Yogurt' LIMIT 1").get();
+    const riceCat = db.prepare("SELECT id FROM categories WHERE type = 'White Rice' LIMIT 1").get();
+    const redRiceCat = db.prepare("SELECT id FROM categories WHERE type = 'Red Rice' LIMIT 1").get();
+    const coconutOilCat = db.prepare("SELECT id FROM categories WHERE type = 'Coconut Oil' LIMIT 1").get();
+    const toothpasteCat = db.prepare("SELECT id FROM categories WHERE type = 'Toothpaste' LIMIT 1").get();
+    const shampooCat = db.prepare("SELECT id FROM categories WHERE type = 'Shampoo' LIMIT 1").get();
+    const soapCat = db.prepare("SELECT id FROM categories WHERE type = 'Bath Soap' LIMIT 1").get();
+    const detergentCat = db.prepare("SELECT id FROM categories WHERE type = 'Washing Powder' LIMIT 1").get();
+    const chipsCat = db.prepare("SELECT id FROM categories WHERE type = 'Potato Chips' LIMIT 1").get();
+    const chocolateCat = db.prepare("SELECT id FROM categories WHERE type = 'Chocolates' LIMIT 1").get();
+    const cannedFishCat = db.prepare("SELECT id FROM categories WHERE type = 'Canned Tuna' LIMIT 1").get();
+    const sugarCat = db.prepare("SELECT id FROM categories WHERE type = 'Sugar' LIMIT 1").get();
+    const flourCat = db.prepare("SELECT id FROM categories WHERE type = 'Wheat Flour' LIMIT 1").get();
+    const butterCat = db.prepare("SELECT id FROM categories WHERE type = 'Butter' LIMIT 1").get();
+    const cheeseCat = db.prepare("SELECT id FROM categories WHERE type = 'Cheddar Cheese' LIMIT 1").get();
+
+    // Get first branch
     const branch = db.prepare("SELECT id FROM branches LIMIT 1").get();
 
+    // Date helpers for expiry scenarios
+    const today = new Date();
+    const addDays = (days) => {
+        const d = new Date(today);
+        d.setDate(d.getDate() + days);
+        return d.toISOString().split('T')[0];
+    };
+
+    // Comprehensive test items with different scenarios
+    // Stock scenarios: HIGH (>80%), MEDIUM (40-80%), LOW (<threshold), OUT_OF_STOCK, OVERSTOCKED (>100%)
+    // Price scenarios: Budget (<Rs.100), Mid-range (Rs.100-500), Premium (>Rs.500)
+    // Expiry scenarios: Long shelf life, Normal, Expiring soon (7 days), Expired
+    // Multi-batch scenarios: Items with multiple batches at different prices/expiry dates
+    //
+    // Items with `batches` array will have multiple stock records
+    // Items without `batches` use the single batch format (backwards compatible)
     const defaultItems = [
-        // Beverages
-        { sku: 'BEV001', item_name: 'Coca Cola 500ml', category_id: beveragesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 200, stock_price: 100, retail_price: 130 },
-        { sku: 'BEV002', item_name: 'Pepsi 500ml', category_id: beveragesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 200, stock_price: 95, retail_price: 125 },
-        { sku: 'BEV003', item_name: 'Sprite 500ml', category_id: beveragesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 150, stock_price: 100, retail_price: 130 },
-        { sku: 'BEV004', item_name: 'Elephant House Cream Soda 400ml', category_id: beveragesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 100, stock_price: 80, retail_price: 100 },
-        { sku: 'BEV005', item_name: 'Nestomalt 400g', category_id: beveragesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 50, stock_price: 450, retail_price: 550 },
+        // ========== BEVERAGES - Various stock levels ==========
+        // HIGH STOCK with MULTIPLE BATCHES (different expiry dates and prices)
+        {
+            sku: 'BEV001',
+            item_name: 'Coca Cola 500ml',
+            category_id: carbonatedCat?.id,
+            uom_id: pcsUom?.id,
+            maximum_capacity: 200,
+            threshold: 40,
+            batches: [
+                { batch_code: 'BATCH-BEV001-001', qty: 80, stock_price: 95, retail_price: 125, discount_price: 115, expiry_days: 90 },   // Older batch, lower price
+                { batch_code: 'BATCH-BEV001-002', qty: 60, stock_price: 100, retail_price: 130, discount_price: 120, expiry_days: 180 }, // Mid batch
+                { batch_code: 'BATCH-BEV001-003', qty: 40, stock_price: 105, retail_price: 135, discount_price: 0, expiry_days: 365 }    // Newest batch, higher price
+            ]
+        },
+        {
+            sku: 'BEV002',
+            item_name: 'Pepsi 500ml',
+            category_id: carbonatedCat?.id,
+            uom_id: pcsUom?.id,
+            maximum_capacity: 200,
+            threshold: 40,
+            batches: [
+                { batch_code: 'BATCH-BEV002-001', qty: 75, stock_price: 90, retail_price: 120, discount_price: 110, expiry_days: 60 },   // Expiring soon, discounted
+                { batch_code: 'BATCH-BEV002-002', qty: 100, stock_price: 95, retail_price: 125, discount_price: 0, expiry_days: 300 }    // Fresh batch
+            ]
+        },
+        { sku: 'BEV003', item_name: 'Sprite 500ml', category_id: carbonatedCat?.id, uom_id: pcsUom?.id, maximum_capacity: 150, stock_qty: 140, threshold: 30, stock_price: 100, retail_price: 130, discount_price: 0, expiry_days: 365 },
 
-        // Snacks
-        { sku: 'SNK001', item_name: 'Munchee Lemon Puff', category_id: snacksCat?.id, uom_id: packUom?.id, maximum_capacity: 100, stock_price: 120, retail_price: 150 },
-        { sku: 'SNK002', item_name: 'Maliban Cream Cracker', category_id: snacksCat?.id, uom_id: packUom?.id, maximum_capacity: 80, stock_price: 180, retail_price: 220 },
-        { sku: 'SNK003', item_name: 'CBL Munchee Chocolate Biscuit', category_id: snacksCat?.id, uom_id: packUom?.id, maximum_capacity: 60, stock_price: 250, retail_price: 300 },
-        { sku: 'SNK004', item_name: 'Prima Instant Noodles', category_id: snacksCat?.id, uom_id: pcsUom?.id, maximum_capacity: 300, stock_price: 55, retail_price: 70 },
+        // MEDIUM STOCK (40-60% capacity)
+        { sku: 'BEV004', item_name: 'Elephant House Cream Soda 400ml', category_id: carbonatedCat?.id, uom_id: pcsUom?.id, maximum_capacity: 100, stock_qty: 48, threshold: 20, stock_price: 80, retail_price: 100, discount_price: 0, expiry_days: 180 },
+        { sku: 'BEV005', item_name: 'Fanta Orange 500ml', category_id: carbonatedCat?.id, uom_id: pcsUom?.id, maximum_capacity: 100, stock_qty: 55, threshold: 20, stock_price: 100, retail_price: 130, discount_price: 0, expiry_days: 300 },
+        { sku: 'BEV006', item_name: 'Mountain Dew 500ml', category_id: carbonatedCat?.id, uom_id: pcsUom?.id, maximum_capacity: 80, stock_qty: 40, threshold: 16, stock_price: 105, retail_price: 135, discount_price: 125, expiry_days: 270 },
 
-        // Dairy
-        { sku: 'DRY001', item_name: 'Anchor Milk Powder 400g', category_id: dairyCat?.id, uom_id: pcsUom?.id, maximum_capacity: 50, stock_price: 750, retail_price: 890 },
-        { sku: 'DRY002', item_name: 'Highland Fresh Milk 1L', category_id: dairyCat?.id, uom_id: LUom?.id, maximum_capacity: 40, stock_price: 280, retail_price: 350 },
-        { sku: 'DRY003', item_name: 'Kotmale Curd 400g', category_id: dairyCat?.id, uom_id: pcsUom?.id, maximum_capacity: 30, stock_price: 150, retail_price: 190 },
+        // LOW STOCK (below threshold - needs restock alert)
+        { sku: 'BEV007', item_name: 'Red Bull 250ml', category_id: carbonatedCat?.id, uom_id: pcsUom?.id, maximum_capacity: 50, stock_qty: 8, threshold: 10, stock_price: 280, retail_price: 350, discount_price: 0, expiry_days: 540 },
+        { sku: 'BEV008', item_name: 'Monster Energy 500ml', category_id: carbonatedCat?.id, uom_id: pcsUom?.id, maximum_capacity: 40, stock_qty: 5, threshold: 8, stock_price: 350, retail_price: 450, discount_price: 0, expiry_days: 365 },
 
-        // Groceries
-        { sku: 'GRC001', item_name: 'Astra Margarine 250g', category_id: groceriesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 60, stock_price: 220, retail_price: 280 },
-        { sku: 'GRC002', item_name: 'MD Coconut Oil 500ml', category_id: groceriesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 40, stock_price: 450, retail_price: 520 },
-        { sku: 'GRC003', item_name: 'Raigam Soya Meat 90g', category_id: groceriesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 100, stock_price: 85, retail_price: 110 },
-        { sku: 'GRC004', item_name: 'Red Rice 1kg', category_id: groceriesCat?.id, uom_id: kgUom?.id, maximum_capacity: 100, stock_price: 180, retail_price: 220 },
-        { sku: 'GRC005', item_name: 'White Rice 1kg', category_id: groceriesCat?.id, uom_id: kgUom?.id, maximum_capacity: 100, stock_price: 160, retail_price: 200 },
+        // OUT OF STOCK
+        { sku: 'BEV009', item_name: 'Elephant House Ginger Beer 400ml', category_id: carbonatedCat?.id, uom_id: pcsUom?.id, maximum_capacity: 60, stock_qty: 0, threshold: 12, stock_price: 85, retail_price: 110, discount_price: 0, expiry_days: 180 },
 
-        // Personal Care
-        { sku: 'PRC001', item_name: 'Signal Toothpaste 120g', category_id: personalCareCat?.id, uom_id: pcsUom?.id, maximum_capacity: 50, stock_price: 180, retail_price: 230 },
-        { sku: 'PRC002', item_name: 'Lifebuoy Soap 100g', category_id: personalCareCat?.id, uom_id: pcsUom?.id, maximum_capacity: 80, stock_price: 95, retail_price: 120 },
-        { sku: 'PRC003', item_name: 'Sunsilk Shampoo 180ml', category_id: personalCareCat?.id, uom_id: pcsUom?.id, maximum_capacity: 40, stock_price: 320, retail_price: 400 }
+        // OVERSTOCKED (above 100% capacity)
+        { sku: 'BEV010', item_name: 'Coca Cola 1.5L', category_id: carbonatedCat?.id, uom_id: btlUom?.id, maximum_capacity: 100, stock_qty: 120, threshold: 20, stock_price: 200, retail_price: 260, discount_price: 240, expiry_days: 365 },
+
+        // ========== TEA & COFFEE ==========
+        { sku: 'TEA001', item_name: 'Dilmah Ceylon Tea 100 Bags', category_id: teaCat?.id, uom_id: packUom?.id, maximum_capacity: 50, stock_qty: 42, threshold: 10, stock_price: 450, retail_price: 550, discount_price: 0, expiry_days: 730 },
+        { sku: 'TEA002', item_name: 'Lipton Yellow Label 100 Bags', category_id: teaCat?.id, uom_id: packUom?.id, maximum_capacity: 60, stock_qty: 35, threshold: 12, stock_price: 420, retail_price: 520, discount_price: 0, expiry_days: 730 },
+        { sku: 'TEA003', item_name: 'Zesta Premium Tea 200g', category_id: teaCat?.id, uom_id: packUom?.id, maximum_capacity: 40, stock_qty: 8, threshold: 8, stock_price: 380, retail_price: 480, discount_price: 0, expiry_days: 540 },
+        { sku: 'COF001', item_name: 'Nescafe Classic 100g', category_id: coffeeCat?.id, uom_id: pcsUom?.id, maximum_capacity: 40, stock_qty: 28, threshold: 8, stock_price: 680, retail_price: 850, discount_price: 0, expiry_days: 540 },
+        { sku: 'COF002', item_name: 'Nescafe 3-in-1 Sachet Pack', category_id: coffeeCat?.id, uom_id: packUom?.id, maximum_capacity: 100, stock_qty: 75, threshold: 20, stock_price: 15, retail_price: 25, discount_price: 0, expiry_days: 365 },
+
+        // ========== DAIRY PRODUCTS ==========
+        // Milk Powder with multiple batches (price changes over time)
+        {
+            sku: 'DRY001',
+            item_name: 'Anchor Milk Powder 400g',
+            category_id: milkPowderCat?.id,
+            uom_id: pcsUom?.id,
+            maximum_capacity: 50,
+            threshold: 10,
+            batches: [
+                { batch_code: 'BATCH-DRY001-001', qty: 15, stock_price: 720, retail_price: 850, discount_price: 800, expiry_days: 120 },  // Older stock, old price
+                { batch_code: 'BATCH-DRY001-002', qty: 23, stock_price: 750, retail_price: 890, discount_price: 0, expiry_days: 300 }     // New stock, new price
+            ]
+        },
+        { sku: 'DRY002', item_name: 'Anchor Milk Powder 1kg', category_id: milkPowderCat?.id, uom_id: pcsUom?.id, maximum_capacity: 30, stock_qty: 22, threshold: 6, stock_price: 1800, retail_price: 2150, discount_price: 0, expiry_days: 365 },
+
+        // Fresh Milk with multiple batches (short shelf life, FIFO important)
+        {
+            sku: 'DRY003',
+            item_name: 'Highland Fresh Milk 1L',
+            category_id: freshMilkCat?.id,
+            uom_id: LUom?.id,
+            maximum_capacity: 40,
+            threshold: 8,
+            batches: [
+                { batch_code: 'BATCH-DRY003-001', qty: 10, stock_price: 275, retail_price: 340, discount_price: 300, expiry_days: 3 },   // Expiring very soon - discounted
+                { batch_code: 'BATCH-DRY003-002', qty: 15, stock_price: 280, retail_price: 350, discount_price: 0, expiry_days: 10 },    // Good for a week
+                { batch_code: 'BATCH-DRY003-003', qty: 10, stock_price: 280, retail_price: 350, discount_price: 0, expiry_days: 14 }     // Fresh batch
+            ]
+        },
+        { sku: 'DRY004', item_name: 'Richlife Full Cream Milk 1L', category_id: freshMilkCat?.id, uom_id: LUom?.id, maximum_capacity: 30, stock_qty: 5, threshold: 6, stock_price: 290, retail_price: 360, discount_price: 0, expiry_days: 10 },
+        { sku: 'DRY005', item_name: 'Kotmale Curd 400g', category_id: yogurtCat?.id, uom_id: pcsUom?.id, maximum_capacity: 30, stock_qty: 24, threshold: 6, stock_price: 150, retail_price: 190, discount_price: 0, expiry_days: 21 },
+
+        // Yogurt with multiple batches
+        {
+            sku: 'DRY006',
+            item_name: 'Ambewela Yogurt 80g',
+            category_id: yogurtCat?.id,
+            uom_id: pcsUom?.id,
+            maximum_capacity: 100,
+            threshold: 20,
+            batches: [
+                { batch_code: 'BATCH-DRY006-001', qty: 25, stock_price: 42, retail_price: 60, discount_price: 50, expiry_days: 5 },     // Near expiry
+                { batch_code: 'BATCH-DRY006-002', qty: 35, stock_price: 45, retail_price: 65, discount_price: 0, expiry_days: 12 },     // Normal
+                { batch_code: 'BATCH-DRY006-003', qty: 25, stock_price: 45, retail_price: 65, discount_price: 0, expiry_days: 21 }      // Fresh
+            ]
+        },
+        { sku: 'DRY007', item_name: 'Anchor Butter 200g', category_id: butterCat?.id, uom_id: pcsUom?.id, maximum_capacity: 20, stock_qty: 12, threshold: 4, stock_price: 520, retail_price: 650, discount_price: 0, expiry_days: 90 },
+        { sku: 'DRY008', item_name: 'Happy Cow Cheese 200g', category_id: cheeseCat?.id, uom_id: pcsUom?.id, maximum_capacity: 25, stock_qty: 18, threshold: 5, stock_price: 480, retail_price: 580, discount_price: 0, expiry_days: 180 },
+
+        // EXPIRING SOON (within 7 days) - single batch
+        { sku: 'DRY009', item_name: 'Highland Strawberry Milk 200ml', category_id: freshMilkCat?.id, uom_id: pcsUom?.id, maximum_capacity: 50, stock_qty: 42, threshold: 10, stock_price: 85, retail_price: 110, discount_price: 90, expiry_days: 5 },
+
+        // EXPIRED (past expiry) with multiple batches (some expired, some not)
+        {
+            sku: 'DRY010',
+            item_name: 'Kotmale Drinking Yogurt 180ml',
+            category_id: yogurtCat?.id,
+            uom_id: pcsUom?.id,
+            maximum_capacity: 40,
+            threshold: 8,
+            batches: [
+                { batch_code: 'BATCH-DRY010-001', qty: 15, stock_price: 90, retail_price: 120, discount_price: 0, expiry_days: -3 },    // EXPIRED
+                { batch_code: 'BATCH-DRY010-002', qty: 20, stock_price: 95, retail_price: 125, discount_price: 0, expiry_days: 7 }      // Still good
+            ]
+        },
+
+        // ========== SNACKS & BISCUITS ==========
+        { sku: 'SNK001', item_name: 'Munchee Lemon Puff 200g', category_id: biscuitsCat?.id, uom_id: packUom?.id, maximum_capacity: 100, stock_qty: 78, threshold: 20, stock_price: 120, retail_price: 150, discount_price: 0, expiry_days: 180 },
+        { sku: 'SNK002', item_name: 'Maliban Cream Cracker 500g', category_id: crackersCat?.id, uom_id: packUom?.id, maximum_capacity: 80, stock_qty: 65, threshold: 16, stock_price: 180, retail_price: 220, discount_price: 0, expiry_days: 270 },
+        { sku: 'SNK003', item_name: 'CBL Munchee Chocolate Biscuit', category_id: biscuitsCat?.id, uom_id: packUom?.id, maximum_capacity: 60, stock_qty: 12, threshold: 12, stock_price: 250, retail_price: 300, discount_price: 280, expiry_days: 180 },
+        { sku: 'SNK004', item_name: 'Maliban Marie Biscuit 400g', category_id: biscuitsCat?.id, uom_id: packUom?.id, maximum_capacity: 70, stock_qty: 55, threshold: 14, stock_price: 160, retail_price: 200, discount_price: 0, expiry_days: 365 },
+        { sku: 'SNK005', item_name: 'Tipi Tip Potato Chips 50g', category_id: chipsCat?.id, uom_id: pcsUom?.id, maximum_capacity: 150, stock_qty: 130, threshold: 30, stock_price: 85, retail_price: 110, discount_price: 0, expiry_days: 120 },
+        { sku: 'SNK006', item_name: 'Kandos Chocolate Bar 45g', category_id: chocolateCat?.id, uom_id: pcsUom?.id, maximum_capacity: 100, stock_qty: 88, threshold: 20, stock_price: 150, retail_price: 195, discount_price: 0, expiry_days: 365 },
+        { sku: 'SNK007', item_name: 'Ritzbury Choco Malt 35g', category_id: chocolateCat?.id, uom_id: pcsUom?.id, maximum_capacity: 120, stock_qty: 25, threshold: 24, stock_price: 95, retail_price: 125, discount_price: 0, expiry_days: 270 },
+
+        // ========== INSTANT FOOD ==========
+        // High volume item with multiple batches (price increased over time)
+        {
+            sku: 'INS001',
+            item_name: 'Prima Chicken Noodles 85g',
+            category_id: noodlesCat?.id,
+            uom_id: pcsUom?.id,
+            maximum_capacity: 300,
+            threshold: 60,
+            batches: [
+                { batch_code: 'BATCH-INS001-001', qty: 100, stock_price: 50, retail_price: 65, discount_price: 0, expiry_days: 180 },   // Older batch, old price
+                { batch_code: 'BATCH-INS001-002', qty: 145, stock_price: 55, retail_price: 70, discount_price: 0, expiry_days: 365 }    // New batch, price increase
+            ]
+        },
+        { sku: 'INS002', item_name: 'Prima Kottu Mee 80g', category_id: noodlesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 200, stock_qty: 168, threshold: 40, stock_price: 50, retail_price: 65, discount_price: 0, expiry_days: 365 },
+        { sku: 'INS003', item_name: 'Maggi Instant Noodles 80g', category_id: noodlesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 250, stock_qty: 35, threshold: 50, stock_price: 60, retail_price: 80, discount_price: 0, expiry_days: 365 },
+
+        // ========== RICE & GRAINS ==========
+        { sku: 'GRN001', item_name: 'CIC White Rice 1kg', category_id: riceCat?.id, uom_id: kgUom?.id, maximum_capacity: 100, stock_qty: 75, threshold: 20, stock_price: 160, retail_price: 200, discount_price: 0, expiry_days: 365 },
+        { sku: 'GRN002', item_name: 'CIC Red Rice 1kg', category_id: redRiceCat?.id, uom_id: kgUom?.id, maximum_capacity: 100, stock_qty: 68, threshold: 20, stock_price: 180, retail_price: 220, discount_price: 0, expiry_days: 365 },
+        { sku: 'GRN003', item_name: 'Nipuna Nadu Rice 5kg', category_id: riceCat?.id, uom_id: packUom?.id, maximum_capacity: 40, stock_qty: 28, threshold: 8, stock_price: 750, retail_price: 920, discount_price: 880, expiry_days: 365 },
+        { sku: 'GRN004', item_name: 'Araliya Basmati Rice 1kg', category_id: riceCat?.id, uom_id: kgUom?.id, maximum_capacity: 50, stock_qty: 42, threshold: 10, stock_price: 420, retail_price: 520, discount_price: 0, expiry_days: 730 },
+        { sku: 'GRN005', item_name: 'Prima Wheat Flour 1kg', category_id: flourCat?.id, uom_id: kgUom?.id, maximum_capacity: 60, stock_qty: 48, threshold: 12, stock_price: 220, retail_price: 280, discount_price: 0, expiry_days: 180 },
+        { sku: 'GRN006', item_name: 'White Sugar 1kg', category_id: sugarCat?.id, uom_id: kgUom?.id, maximum_capacity: 80, stock_qty: 62, threshold: 16, stock_price: 230, retail_price: 290, discount_price: 0, expiry_days: 730 },
+
+        // ========== COOKING ESSENTIALS ==========
+        { sku: 'COK001', item_name: 'MD Coconut Oil 500ml', category_id: coconutOilCat?.id, uom_id: btlUom?.id, maximum_capacity: 40, stock_qty: 32, threshold: 8, stock_price: 450, retail_price: 520, discount_price: 0, expiry_days: 365 },
+        { sku: 'COK002', item_name: 'Fortune Sunflower Oil 1L', category_id: coconutOilCat?.id, uom_id: btlUom?.id, maximum_capacity: 30, stock_qty: 22, threshold: 6, stock_price: 680, retail_price: 820, discount_price: 0, expiry_days: 365 },
+        { sku: 'COK003', item_name: 'Laugfs Coconut Oil 1L', category_id: coconutOilCat?.id, uom_id: btlUom?.id, maximum_capacity: 35, stock_qty: 8, threshold: 7, stock_price: 850, retail_price: 1020, discount_price: 0, expiry_days: 365 },
+
+        // ========== CANNED GOODS ==========
+        { sku: 'CAN001', item_name: 'Marina Tuna Chunks 185g', category_id: cannedFishCat?.id, uom_id: pcsUom?.id, maximum_capacity: 60, stock_qty: 48, threshold: 12, stock_price: 320, retail_price: 390, discount_price: 0, expiry_days: 730 },
+        { sku: 'CAN002', item_name: 'Edinborough Fish Curry 425g', category_id: cannedFishCat?.id, uom_id: pcsUom?.id, maximum_capacity: 40, stock_qty: 35, threshold: 8, stock_price: 380, retail_price: 460, discount_price: 0, expiry_days: 730 },
+
+        // ========== PERSONAL CARE ==========
+        { sku: 'PRC001', item_name: 'Signal Toothpaste 120g', category_id: toothpasteCat?.id, uom_id: pcsUom?.id, maximum_capacity: 50, stock_qty: 42, threshold: 10, stock_price: 180, retail_price: 230, discount_price: 0, expiry_days: 730 },
+        { sku: 'PRC002', item_name: 'Colgate MaxFresh 150g', category_id: toothpasteCat?.id, uom_id: pcsUom?.id, maximum_capacity: 50, stock_qty: 38, threshold: 10, stock_price: 220, retail_price: 280, discount_price: 0, expiry_days: 730 },
+        { sku: 'PRC003', item_name: 'Closeup Deep Action 150g', category_id: toothpasteCat?.id, uom_id: pcsUom?.id, maximum_capacity: 40, stock_qty: 6, threshold: 8, stock_price: 200, retail_price: 260, discount_price: 0, expiry_days: 730 },
+        { sku: 'PRC004', item_name: 'Lifebuoy Soap 100g', category_id: soapCat?.id, uom_id: pcsUom?.id, maximum_capacity: 80, stock_qty: 68, threshold: 16, stock_price: 95, retail_price: 120, discount_price: 0, expiry_days: 1095 },
+        { sku: 'PRC005', item_name: 'Lux Soft Touch 100g', category_id: soapCat?.id, uom_id: pcsUom?.id, maximum_capacity: 80, stock_qty: 72, threshold: 16, stock_price: 110, retail_price: 140, discount_price: 0, expiry_days: 1095 },
+        { sku: 'PRC006', item_name: 'Dettol Original 100g', category_id: soapCat?.id, uom_id: pcsUom?.id, maximum_capacity: 60, stock_qty: 15, threshold: 12, stock_price: 150, retail_price: 190, discount_price: 0, expiry_days: 1095 },
+        { sku: 'PRC007', item_name: 'Sunsilk Shampoo 180ml', category_id: shampooCat?.id, uom_id: btlUom?.id, maximum_capacity: 40, stock_qty: 32, threshold: 8, stock_price: 320, retail_price: 400, discount_price: 0, expiry_days: 730 },
+        { sku: 'PRC008', item_name: 'Head & Shoulders 180ml', category_id: shampooCat?.id, uom_id: btlUom?.id, maximum_capacity: 35, stock_qty: 28, threshold: 7, stock_price: 450, retail_price: 550, discount_price: 0, expiry_days: 730 },
+        { sku: 'PRC009', item_name: 'Clear Anti-Dandruff 180ml', category_id: shampooCat?.id, uom_id: btlUom?.id, maximum_capacity: 30, stock_qty: 4, threshold: 6, stock_price: 420, retail_price: 520, discount_price: 0, expiry_days: 730 },
+
+        // ========== HOUSEHOLD ==========
+        { sku: 'HSH001', item_name: 'Surf Excel Washing Powder 1kg', category_id: detergentCat?.id, uom_id: packUom?.id, maximum_capacity: 50, stock_qty: 42, threshold: 10, stock_price: 380, retail_price: 460, discount_price: 0, expiry_days: 1095 },
+        { sku: 'HSH002', item_name: 'Sunlight Washing Powder 1kg', category_id: detergentCat?.id, uom_id: packUom?.id, maximum_capacity: 50, stock_qty: 45, threshold: 10, stock_price: 320, retail_price: 390, discount_price: 0, expiry_days: 1095 },
+        { sku: 'HSH003', item_name: 'Rin Detergent Bar 250g', category_id: detergentCat?.id, uom_id: pcsUom?.id, maximum_capacity: 100, stock_qty: 85, threshold: 20, stock_price: 85, retail_price: 110, discount_price: 0, expiry_days: 1095 },
+
+        // ========== HIGH VALUE ITEMS (Premium) ==========
+        { sku: 'HVL001', item_name: 'Nestle Lactogen 1 400g', category_id: milkPowderCat?.id, uom_id: pcsUom?.id, maximum_capacity: 20, stock_qty: 15, threshold: 4, stock_price: 1850, retail_price: 2250, discount_price: 0, expiry_days: 365 },
+        { sku: 'HVL002', item_name: 'Similac Advance 400g', category_id: milkPowderCat?.id, uom_id: pcsUom?.id, maximum_capacity: 15, stock_qty: 8, threshold: 3, stock_price: 2200, retail_price: 2650, discount_price: 0, expiry_days: 365 },
+        { sku: 'HVL003', item_name: 'Ensure Vanilla 400g', category_id: milkPowderCat?.id, uom_id: pcsUom?.id, maximum_capacity: 12, stock_qty: 6, threshold: 2, stock_price: 3500, retail_price: 4200, discount_price: 0, expiry_days: 540 },
+
+        // ========== BUDGET/LOW PRICE ITEMS ==========
+        { sku: 'BDG001', item_name: 'Maliban Smart Cream Cracker 100g', category_id: crackersCat?.id, uom_id: pcsUom?.id, maximum_capacity: 200, stock_qty: 165, threshold: 40, stock_price: 35, retail_price: 50, discount_price: 0, expiry_days: 180 },
+        { sku: 'BDG002', item_name: 'Prima Noodles Single Pack', category_id: noodlesCat?.id, uom_id: pcsUom?.id, maximum_capacity: 500, stock_qty: 420, threshold: 100, stock_price: 45, retail_price: 60, discount_price: 0, expiry_days: 365 },
+        { sku: 'BDG003', item_name: 'Lifebuoy Handwash Sachet 18ml', category_id: soapCat?.id, uom_id: pcsUom?.id, maximum_capacity: 300, stock_qty: 255, threshold: 60, stock_price: 18, retail_price: 25, discount_price: 0, expiry_days: 730 }
     ];
 
     const itemStmt = db.prepare(`
@@ -625,57 +818,132 @@ function seedDefaultItems() {
 
     const stockStmt = db.prepare(`
         INSERT INTO stock (item_id, batch_code, quantity, threshold_limit, stock_price, retail_price, discount_price, expiry_date, availability, created_at, updated_at, sync_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 'local_only')
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'local_only')
     `);
 
-    // Generate expiry date 6 months from now
-    const expiryDate = new Date();
-    expiryDate.setMonth(expiryDate.getMonth() + 6);
-    const expiryDateStr = expiryDate.toISOString().split('T')[0];
+    let createdCount = 0;
+    let skippedCount = 0;
+    let batchCount = 0;
 
     const insertMany = db.transaction(() => {
         for (const item of defaultItems) {
+            // Skip if no category found (for categories that might not exist)
+            if (!item.category_id) {
+                console.log(`[Seeder] Skipping ${item.item_name} - no matching category found`);
+                skippedCount++;
+                continue;
+            }
+
             // Insert item
             const result = itemStmt.run(
                 item.sku,
                 item.item_name,
                 item.category_id,
-                item.uom_id,
+                item.uom_id || pcsUom?.id,
                 branch?.id,
                 item.maximum_capacity,
                 now,
                 now
             );
 
-            // Insert initial stock for the item
             const itemId = result.lastInsertRowid;
-            const batchCode = `BATCH-${item.sku}-001`;
-            const initialQty = Math.floor(item.maximum_capacity * 0.6); // 60% of max capacity
-            const threshold = Math.floor(item.maximum_capacity * 0.2); // 20% threshold
 
-            stockStmt.run(
-                itemId,
-                batchCode,
-                initialQty,
-                threshold,
-                item.stock_price,
-                item.retail_price,
-                0,
-                expiryDateStr,
-                now,
-                now
-            );
+            // Check if item has multiple batches or single batch format
+            if (item.batches && Array.isArray(item.batches)) {
+                // Multi-batch item: create multiple stock records
+                for (const batch of item.batches) {
+                    const expiryDate = addDays(batch.expiry_days);
+                    const isExpired = batch.expiry_days < 0;
+                    const isOutOfStock = batch.qty === 0;
+                    const availability = (isExpired || isOutOfStock) ? 0 : 1;
+
+                    stockStmt.run(
+                        itemId,
+                        batch.batch_code,
+                        batch.qty,
+                        item.threshold,
+                        batch.stock_price,
+                        batch.retail_price,
+                        batch.discount_price || 0,
+                        expiryDate,
+                        availability,
+                        now,
+                        now
+                    );
+                    batchCount++;
+                }
+            } else {
+                // Single batch item (backwards compatible format)
+                const batchCode = `BATCH-${item.sku}-001`;
+                const expiryDate = addDays(item.expiry_days);
+
+                // Set availability based on expiry and quantity
+                const isExpired = item.expiry_days < 0;
+                const isOutOfStock = item.stock_qty === 0;
+                const availability = (isExpired || isOutOfStock) ? 0 : 1;
+
+                stockStmt.run(
+                    itemId,
+                    batchCode,
+                    item.stock_qty,
+                    item.threshold,
+                    item.stock_price,
+                    item.retail_price,
+                    item.discount_price || 0,
+                    expiryDate,
+                    availability,
+                    now,
+                    now
+                );
+                batchCount++;
+            }
+
+            createdCount++;
         }
     });
 
     insertMany();
 
-    console.log('[Seeder] Default items and stock created:', defaultItems.length);
-    return { seeded: true, message: `Created ${defaultItems.length} items with stock` };
+    console.log('[Seeder] Default items created:', createdCount);
+    console.log('[Seeder] Stock batches created:', batchCount);
+    if (skippedCount > 0) {
+        console.log('[Seeder] Items skipped (no matching category):', skippedCount);
+    }
+
+    // Count items with multiple batches
+    const multiBatchItems = defaultItems.filter(item => item.batches && item.batches.length > 1).length;
+    console.log('[Seeder] Items with multiple batches:', multiBatchItems);
+
+    // Log stock level distribution for verification
+    const stockStats = db.prepare(`
+        SELECT
+            SUM(CASE WHEN (s.quantity * 1.0 / NULLIF(i.maximum_capacity, 0) * 100) > 80 THEN 1 ELSE 0 END) as high_stock,
+            SUM(CASE WHEN (s.quantity * 1.0 / NULLIF(i.maximum_capacity, 0) * 100) BETWEEN 40 AND 80 THEN 1 ELSE 0 END) as medium_stock,
+            SUM(CASE WHEN (s.quantity * 1.0 / NULLIF(i.maximum_capacity, 0) * 100) BETWEEN 1 AND 39 THEN 1 ELSE 0 END) as low_stock,
+            SUM(CASE WHEN s.quantity = 0 THEN 1 ELSE 0 END) as out_of_stock,
+            SUM(CASE WHEN (s.quantity * 1.0 / NULLIF(i.maximum_capacity, 0) * 100) > 100 THEN 1 ELSE 0 END) as overstocked
+        FROM stock s
+        JOIN items i ON s.item_id = i.id
+    `).get();
+
+    console.log('[Seeder] Stock distribution by batch:', stockStats);
+
+    // Log expiry status distribution
+    const expiryStats = db.prepare(`
+        SELECT
+            SUM(CASE WHEN date(expiry_date) < date('now') THEN 1 ELSE 0 END) as expired,
+            SUM(CASE WHEN date(expiry_date) BETWEEN date('now') AND date('now', '+7 days') THEN 1 ELSE 0 END) as expiring_soon,
+            SUM(CASE WHEN date(expiry_date) > date('now', '+7 days') THEN 1 ELSE 0 END) as good
+        FROM stock
+    `).get();
+
+    console.log('[Seeder] Expiry status distribution:', expiryStats);
+
+    return { seeded: true, message: `Created ${createdCount} items with ${batchCount} stock batches (${skippedCount} skipped)` };
 }
 
 /**
- * Seed default members
+ * Seed default members with diverse scenarios
  * @returns {Object} Result of seeding
  */
 function seedDefaultMember() {
@@ -691,28 +959,65 @@ function seedDefaultMember() {
 
     const now = nowISO();
 
+    // Diverse members: different types, locations, contact formats
     const defaultMembers = [
-        { member_no: 'MEM000001', full_name: 'Walk-in Customer', contact: '', address: '', member_type: 'regular' },
-        { member_no: 'MEM000002', full_name: 'Nimal Perera', contact: '077 1234567', address: '45 Galle Road, Colombo', member_type: 'regular' },
-        { member_no: 'MEM000003', full_name: 'Kumari Silva', contact: '071 2345678', address: '78 Kandy Road, Kurunegala', member_type: 'premium' },
-        { member_no: 'MEM000004', full_name: 'Sunil Fernando', contact: '076 3456789', address: '12 Station Road, Galle', member_type: 'regular' },
-        { member_no: 'MEM000005', full_name: 'Anura Bandara', contact: '078 4567890', address: '23 Temple Street, Kandy', member_type: 'premium' }
+        // Walk-in customer (default for anonymous sales)
+        { member_no: 'MEM000001', full_name: 'Walk-in Customer', contact: '', address: '', member_type: 'regular', is_active: 1 },
+
+        // Regular customers from different areas
+        { member_no: 'MEM000002', full_name: 'Nimal Perera', contact: '077 1234567', address: '45 Galle Road, Colombo 03', member_type: 'regular', is_active: 1 },
+        { member_no: 'MEM000003', full_name: 'Sunil Fernando', contact: '076 3456789', address: '12 Station Road, Galle', member_type: 'regular', is_active: 1 },
+        { member_no: 'MEM000004', full_name: 'Lakshmi Jayawardena', contact: '071 5678901', address: '56 Main Street, Matara', member_type: 'regular', is_active: 1 },
+        { member_no: 'MEM000005', full_name: 'Rajitha Bandara', contact: '078 6789012', address: '89 Hill Street, Nuwara Eliya', member_type: 'regular', is_active: 1 },
+        { member_no: 'MEM000006', full_name: 'Chaminda Silva', contact: '070 7890123', address: '34 Beach Road, Negombo', member_type: 'regular', is_active: 1 },
+
+        // Premium customers (higher discount tier)
+        { member_no: 'MEM000007', full_name: 'Kumari Silva', contact: '071 2345678', address: '78 Kandy Road, Kurunegala', member_type: 'premium', is_active: 1 },
+        { member_no: 'MEM000008', full_name: 'Anura Bandara', contact: '078 4567890', address: '23 Temple Street, Kandy', member_type: 'premium', is_active: 1 },
+        { member_no: 'MEM000009', full_name: 'Priya Wickramasinghe', contact: '077 8901234', address: '67 Lake View, Colombo 07', member_type: 'premium', is_active: 1 },
+        { member_no: 'MEM000010', full_name: 'Dr. Sanjay Gupta', contact: '076 9012345', address: '101 Hospital Road, Colombo 08', member_type: 'premium', is_active: 1 },
+
+        // Wholesale/Business customers
+        { member_no: 'MEM000011', full_name: 'ABC Trading Company', contact: '011 2234567', address: '45 Industrial Zone, Ratmalana', member_type: 'wholesale', is_active: 1 },
+        { member_no: 'MEM000012', full_name: 'Fresh Mart Supermarket', contact: '011 3345678', address: '78 Main Street, Moratuwa', member_type: 'wholesale', is_active: 1 },
+        { member_no: 'MEM000013', full_name: 'Quick Stop Grocery', contact: '037 2234455', address: '23 Bus Stand Road, Kurunegala', member_type: 'wholesale', is_active: 1 },
+
+        // Inactive member (for testing filter)
+        { member_no: 'MEM000014', full_name: 'Kamal Dissanayake', contact: '077 1112233', address: '45 Old Road, Kandy', member_type: 'regular', is_active: 0 },
+        { member_no: 'MEM000015', full_name: 'Old Customer Ltd', contact: '011 4456677', address: '89 Closed Lane, Colombo', member_type: 'wholesale', is_active: 0 }
     ];
 
     const stmt = db.prepare(`
         INSERT INTO members (member_no, full_name, contact, address, member_type, is_active, created_at, updated_at, sync_status)
-        VALUES (?, ?, ?, ?, ?, 1, ?, ?, 'local_only')
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'local_only')
     `);
 
     const insertMany = db.transaction(() => {
         for (const member of defaultMembers) {
-            stmt.run(member.member_no, member.full_name, member.contact, member.address, member.member_type, now, now);
+            stmt.run(
+                member.member_no,
+                member.full_name,
+                member.contact,
+                member.address,
+                member.member_type,
+                member.is_active,
+                now,
+                now
+            );
         }
     });
 
     insertMany();
 
+    // Log member type distribution
+    const activeRegular = defaultMembers.filter(m => m.member_type === 'regular' && m.is_active).length;
+    const activePremium = defaultMembers.filter(m => m.member_type === 'premium' && m.is_active).length;
+    const activeWholesale = defaultMembers.filter(m => m.member_type === 'wholesale' && m.is_active).length;
+    const inactive = defaultMembers.filter(m => !m.is_active).length;
+
     console.log('[Seeder] Default members created:', defaultMembers.length);
+    console.log(`[Seeder] Member distribution: ${activeRegular} regular, ${activePremium} premium, ${activeWholesale} wholesale, ${inactive} inactive`);
+
     return { seeded: true, message: `Created ${defaultMembers.length} members` };
 }
 
@@ -731,7 +1036,7 @@ function runSeeders() {
         branches: seedDefaultBranch(),
         admin: seedDefaultAdmin(),  // After branches so admin can be assigned to a branch
         suppliers: seedDefaultSuppliers(),
-        //members: seedDefaultMember(),
+        members: seedDefaultMember(),
         items: seedDefaultItems()
     };
 
