@@ -25,7 +25,7 @@ function AppSettings() {
   const [ensuringSchema, setEnsuringSchema] = useState(false);
 
   const [settings, setSettings] = useState({
-    auto_logout: false,
+    logout_on_close: true,
     notifications: true,
     cloud_sync: false,
     temp_system: false,
@@ -51,7 +51,7 @@ function AppSettings() {
           const data = response.data;
 
           setSettings({
-            auto_logout: data.auto_logout ?? false,
+            logout_on_close: data.logout_on_close ?? true,
             notifications: data.notifications ?? true,
             cloud_sync: data.cloud_sync ?? false,
             temp_system: data.temp_system ?? false,
@@ -110,10 +110,10 @@ function AppSettings() {
     try {
       let result;
       switch (key) {
-        case 'auto_logout':
-          result = await appSettingsApi.setAutoLogout(newValue, 15);
+        case 'logout_on_close':
+          result = await appSettingsApi.setLogoutOnClose(newValue);
           if (result.status === 'success') {
-            toast.open(newValue ? 'Auto-logout enabled (15 min)' : 'Auto-logout disabled', 2000, 'Info', 'info');
+            toast.open(newValue ? 'Logout on close enabled' : 'Logout on close disabled', 2000, 'Info', 'info');
           }
           break;
         case 'notifications':
@@ -170,7 +170,7 @@ function AppSettings() {
         const data = response.data;
 
         setSettings({
-          auto_logout: data.auto_logout ?? false,
+          logout_on_close: data.logout_on_close ?? true,
           notifications: data.notifications ?? true,
           cloud_sync: data.cloud_sync ?? false,
           temp_system: data.temp_system ?? false,
@@ -301,7 +301,7 @@ function AppSettings() {
 
   // Toggle items configuration
   const toggleItems = [
-    { label: 'Automatic Logout', description: 'Log out user after inactivity', key: 'auto_logout', icon: 'logout' },
+    { label: 'Logout on Close', description: 'Log out user when app is closed', key: 'logout_on_close', icon: 'logout' },
     { label: 'System Notifications', description: 'Enable Windows built-in notifications', key: 'notifications', icon: 'bell' },
     { label: 'Cloud Synchronization', description: 'Auto-sync data with cloud server', key: 'cloud_sync', icon: 'cloud' },
     { label: 'Temp File System', description: 'Enable temporary file storage', key: 'temp_system', icon: 'folder' },
@@ -734,7 +734,7 @@ function AppSettings() {
                 </span>
               </div>
 
-              {/* Auto Logout */}
+              {/* Logout on Close */}
               <div className="flex items-center justify-between py-3 px-4 bg-white rounded-xl border border-gray-200">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center">
@@ -742,10 +742,10 @@ function AppSettings() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
                   </div>
-                  <span className="text-sm text-gray-600">Auto Logout</span>
+                  <span className="text-sm text-gray-600">Logout on Close</span>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${settings.auto_logout ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {settings.auto_logout ? 'On' : 'Off'}
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${settings.logout_on_close ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {settings.logout_on_close ? 'On' : 'Off'}
                 </span>
               </div>
             </div>

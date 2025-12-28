@@ -2,6 +2,7 @@
  * Stock Repository
  *
  * Handles database operations for stock/inventory tracking.
+ * Branch-aware: Supports filtering by branch_id.
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
@@ -12,6 +13,35 @@ const { nowISO, getSriLankanDate } = require('../utils/helpers.cjs');
 class StockRepository extends BaseRepository {
     constructor() {
         super('stock');
+    }
+
+    /**
+     * Find all stock with optional branch filter
+     * @param {Object} options - Query options including branchId
+     * @returns {Array}
+     */
+    findAll(options = {}) {
+        const {
+            limit = 10000,
+            offset = 0,
+            orderBy = 'created_at',
+            order = 'DESC',
+            branchId = null
+        } = options;
+
+        let sql = `SELECT * FROM ${this.tableName}`;
+        const params = [];
+
+        if (branchId) {
+            sql += ` WHERE branch_id = ?`;
+            params.push(branchId);
+        }
+
+        sql += ` ORDER BY ${orderBy} ${order} LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+
+        const stmt = this.db.prepare(sql);
+        return stmt.all(...params);
     }
 
     /**
@@ -33,27 +63,46 @@ class StockRepository extends BaseRepository {
     }
 
     /**
-     * Find stock by item and batch
+     * Find stock by item and batch (with optional branch filter)
      * @param {number} itemId - Item ID
      * @param {string} batchCode - Batch code
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Object|null}
      */
-    findByItemAndBatch(itemId, batchCode) {
+    findByItemAndBatch(itemId, batchCode, branchId = null) {
+        if (branchId) {
+            const stmt = this.db.prepare(`
+                SELECT * FROM ${this.tableName}
+                WHERE item_id = ? AND batch_code = ? AND branch_id = ?
+                LIMIT 1
+            `);
+            return stmt.get(itemId, batchCode, branchId) || null;
+        }
         return this.findOneWhere({ item_id: itemId, batch_code: batchCode });
     }
 
     /**
-     * Find available stock for an item
+     * Find available stock for an item (with optional branch filter)
      * @param {number} itemId - Item ID
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    findAvailableByItemId(itemId) {
-        const stmt = this.db.prepare(`
+    findAvailableByItemId(itemId, branchId = null) {
+        let sql = `
             SELECT * FROM ${this.tableName}
             WHERE item_id = ? AND availability = 1 AND quantity > 0
-            ORDER BY expiry_date ASC
-        `);
-        return stmt.all(itemId);
+        `;
+        const params = [itemId];
+
+        if (branchId) {
+            sql += ` AND branch_id = ?`;
+            params.push(branchId);
+        }
+
+        sql += ` ORDER BY expiry_date ASC`;
+
+        const stmt = this.db.prepare(sql);
+        return stmt.all(...params);
     }
 
     /**
@@ -83,11 +132,12 @@ class StockRepository extends BaseRepository {
     }
 
     /**
-     * Get all stock with item details
+     * Get all stock with item details (with optional branch filter)
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    getAllWithItems() {
-        const stmt = this.db.prepare(`
+    getAllWithItems(branchId = null) {
+        let sql = `
             SELECT
                 s.*,
                 i.sku,
@@ -96,7 +146,6 @@ class StockRepository extends BaseRepository {
                 i.maximum_capacity,
                 i.category_id,
                 i.uom_id,
-                i.branch_id,
                 c.brand as category_brand,
                 c.type as category_type,
                 u.symbol as uom_symbol,
@@ -105,17 +154,27 @@ class StockRepository extends BaseRepository {
             JOIN items i ON s.item_id = i.id
             LEFT JOIN categories c ON i.category_id = c.id
             LEFT JOIN units_of_measurement u ON i.uom_id = u.id
-            ORDER BY i.item_name ASC, s.expiry_date ASC
-        `);
-        return stmt.all();
+        `;
+        const params = [];
+
+        if (branchId) {
+            sql += ` WHERE s.branch_id = ?`;
+            params.push(branchId);
+        }
+
+        sql += ` ORDER BY i.item_name ASC, s.expiry_date ASC`;
+
+        const stmt = this.db.prepare(sql);
+        return stmt.all(...params);
     }
 
     /**
-     * Get low stock items (quantity below threshold)
+     * Get low stock items (quantity below threshold, with optional branch filter)
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    getLowStock() {
-        const stmt = this.db.prepare(`
+    getLowStock(branchId = null) {
+        let sql = `
             SELECT
                 s.*,
                 i.sku,
@@ -125,22 +184,32 @@ class StockRepository extends BaseRepository {
             JOIN items i ON s.item_id = i.id
             WHERE s.quantity <= (i.maximum_capacity * s.threshold_limit / 100)
             AND s.availability = 1
-            ORDER BY s.quantity ASC
-        `);
-        return stmt.all();
+        `;
+        const params = [];
+
+        if (branchId) {
+            sql += ` AND s.branch_id = ?`;
+            params.push(branchId);
+        }
+
+        sql += ` ORDER BY s.quantity ASC`;
+
+        const stmt = this.db.prepare(sql);
+        return stmt.all(...params);
     }
 
     /**
-     * Get expiring stock (within specified days)
+     * Get expiring stock (within specified days, with optional branch filter)
      * @param {number} days - Days until expiry
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    getExpiringStock(days = 30) {
+    getExpiringStock(days = 30, branchId = null) {
         const futureDate = getSriLankanDate();
         futureDate.setDate(futureDate.getDate() + days);
         const futureDateStr = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}T23:59:59.999Z`;
 
-        const stmt = this.db.prepare(`
+        let sql = `
             SELECT
                 s.*,
                 i.sku,
@@ -151,9 +220,18 @@ class StockRepository extends BaseRepository {
             AND s.expiry_date <= ?
             AND s.quantity > 0
             AND s.availability = 1
-            ORDER BY s.expiry_date ASC
-        `);
-        return stmt.all(futureDateStr);
+        `;
+        const params = [futureDateStr];
+
+        if (branchId) {
+            sql += ` AND s.branch_id = ?`;
+            params.push(branchId);
+        }
+
+        sql += ` ORDER BY s.expiry_date ASC`;
+
+        const stmt = this.db.prepare(sql);
+        return stmt.all(...params);
     }
 
     /**
@@ -249,12 +327,13 @@ class StockRepository extends BaseRepository {
     }
 
     /**
-     * Create or update stock for item and batch
-     * @param {Object} data - Stock data
+     * Create or update stock for item and batch (branch-aware)
+     * @param {Object} data - Stock data including branch_id
      * @returns {Object}
      */
     upsertStock(data) {
-        const existing = this.findByItemAndBatch(data.item_id, data.batch_code);
+        // When branch_id is provided, look for existing stock in that branch
+        const existing = this.findByItemAndBatch(data.item_id, data.batch_code, data.branch_id);
 
         if (existing) {
             // Update existing - add quantity
@@ -280,6 +359,7 @@ class StockRepository extends BaseRepository {
             expiry_date: data.expiry_date,
             threshold_limit: data.threshold_limit || 0,
             availability: data.availability !== undefined ? data.availability : 1,
+            branch_id: data.branch_id || null,
             created_at: nowISO(),
             updated_at: nowISO(),
             sync_status: 'pending'
@@ -287,11 +367,12 @@ class StockRepository extends BaseRepository {
     }
 
     /**
-     * Get total stock value
+     * Get total stock value (with optional branch filter)
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Object}
      */
-    getTotalStockValue() {
-        const stmt = this.db.prepare(`
+    getTotalStockValue(branchId = null) {
+        let sql = `
             SELECT
                 SUM(quantity * stock_price) as total_stock_value,
                 SUM(quantity * retail_price) as total_retail_value,
@@ -299,8 +380,16 @@ class StockRepository extends BaseRepository {
                 COUNT(DISTINCT item_id) as total_items
             FROM stock
             WHERE availability = 1
-        `);
-        return stmt.get();
+        `;
+        const params = [];
+
+        if (branchId) {
+            sql += ` AND branch_id = ?`;
+            params.push(branchId);
+        }
+
+        const stmt = this.db.prepare(sql);
+        return stmt.get(...params);
     }
 
     /**

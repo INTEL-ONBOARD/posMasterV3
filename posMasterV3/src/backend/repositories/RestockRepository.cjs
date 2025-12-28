@@ -2,6 +2,7 @@
  * Restock Repository
  *
  * Handles database operations for restock transactions.
+ * Branch-aware: Supports filtering by branch_id.
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
@@ -15,8 +16,8 @@ class RestockRepository extends BaseRepository {
     }
 
     /**
-     * Find all restocks with supplier info
-     * @param {Object} options - Query options
+     * Find all restocks with supplier info (with optional branch filter)
+     * @param {Object} options - Query options including branchId
      * @returns {Array}
      */
     findAllWithSupplier(options = {}) {
@@ -24,16 +25,25 @@ class RestockRepository extends BaseRepository {
         const offset = options.offset || 0;
         const orderBy = options.orderBy || 'created_at';
         const order = options.order || 'DESC';
+        const branchId = options.branchId || null;
 
-        const stmt = this.db.prepare(`
+        let sql = `
             SELECT rt.*, s.basic_info as supplier_basic_info
             FROM ${this.tableName} rt
             LEFT JOIN suppliers s ON rt.supplier_id = s.id
-            ORDER BY rt.${orderBy} ${order}
-            LIMIT ? OFFSET ?
-        `);
+        `;
+        const params = [];
 
-        const rows = stmt.all(limit, offset);
+        if (branchId) {
+            sql += ` WHERE rt.branch_id = ?`;
+            params.push(branchId);
+        }
+
+        sql += ` ORDER BY rt.${orderBy} ${order} LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+
+        const stmt = this.db.prepare(sql);
+        const rows = stmt.all(...params);
 
         return rows.map(row => {
             const { supplier_basic_info, ...restockData } = row;
@@ -183,8 +193,8 @@ class RestockRepository extends BaseRepository {
     }
 
     /**
-     * Create full restock transaction with items
-     * @param {Object} data - Restock transaction data
+     * Create full restock transaction with items (branch-aware)
+     * @param {Object} data - Restock transaction data including branch_id
      * @param {Array} addedItems - Items to add
      * @param {Array} returnItems - Items to return
      * @returns {Object}
@@ -209,17 +219,20 @@ class RestockRepository extends BaseRepository {
                 status: 'completed',
                 created_at: now,
                 updated_at: now,
-                sync_status: 'pending'
+                sync_status: 'pending',
+                // Branch and audit fields
+                branch_id: data.branch_id || null,
+                created_by: data.created_by || null
             };
 
             const restockStmt = this.db.prepare(`
                 INSERT INTO restock_transactions
                 (invoice_no, bill_no, supplier_id, prepared_by, authorized_by, payment_method,
                 discount, expenses, total_amount, cash_amount, change_amount, execution_level,
-                status, created_at, updated_at, sync_status)
+                status, created_at, updated_at, sync_status, branch_id, created_by)
                 VALUES (@invoice_no, @bill_no, @supplier_id, @prepared_by, @authorized_by, @payment_method,
                 @discount, @expenses, @total_amount, @cash_amount, @change_amount, @execution_level,
-                @status, @created_at, @updated_at, @sync_status)
+                @status, @created_at, @updated_at, @sync_status, @branch_id, @created_by)
             `);
 
             const result = restockStmt.run(restockData);
@@ -333,13 +346,14 @@ class RestockRepository extends BaseRepository {
     }
 
     /**
-     * Get restock summary by date
+     * Get restock summary by date (with optional branch filter)
      * @param {string} startDate - Start date
      * @param {string} endDate - End date
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Object}
      */
-    getSummary(startDate, endDate) {
-        const stmt = this.db.prepare(`
+    getSummary(startDate, endDate, branchId = null) {
+        let sql = `
             SELECT
                 COUNT(*) as total_transactions,
                 SUM(total_amount) as total_amount,
@@ -347,8 +361,16 @@ class RestockRepository extends BaseRepository {
                 SUM(expenses) as total_expenses
             FROM ${this.tableName}
             WHERE created_at >= ? AND created_at <= ?
-        `);
-        return stmt.get(startDate, endDate);
+        `;
+        const params = [startDate, endDate];
+
+        if (branchId) {
+            sql += ` AND branch_id = ?`;
+            params.push(branchId);
+        }
+
+        const stmt = this.db.prepare(sql);
+        return stmt.get(...params);
     }
 
     /**

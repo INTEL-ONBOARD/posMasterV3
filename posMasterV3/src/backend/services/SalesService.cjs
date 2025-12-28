@@ -2,22 +2,41 @@
  * Sales Service
  *
  * Business logic for sales transaction operations.
+ * Branch-aware: All sales operations are filtered by the current branch context.
  */
 
 const salesRepository = require('../repositories/SalesRepository.cjs');
+const { branchContextService } = require('./BranchContextService.cjs');
 
 class SalesService {
     /**
-     * Get all sales
+     * Get the current branch ID from context
+     * @returns {number|null}
+     */
+    getCurrentBranchId() {
+        return branchContextService.getCurrentBranchId();
+    }
+
+    /**
+     * Get full branch context for audit logging
+     * @returns {Object}
+     */
+    getBranchContext() {
+        return branchContextService.getBranchContext();
+    }
+    /**
+     * Get all sales (filtered by current branch)
      * @param {Object} options - Query options
      * @returns {Object}
      */
     getAll(options = {}) {
         try {
+            const branchId = this.getCurrentBranchId();
             const sales = salesRepository.findAll({
                 limit: options.limit || 100,
                 orderBy: 'created_at',
-                order: 'DESC'
+                order: 'DESC',
+                branchId: branchId // Filter by branch
             });
             return {
                 status: 'success',
@@ -130,12 +149,13 @@ class SalesService {
     }
 
     /**
-     * Get held orders
+     * Get held orders (filtered by current branch)
      * @returns {Object}
      */
     getHeldOrders() {
         try {
-            const heldOrders = salesRepository.findHeldOrders();
+            const branchId = this.getCurrentBranchId();
+            const heldOrders = salesRepository.findHeldOrders(branchId);
             return {
                 status: 'success',
                 data: heldOrders.map(order => salesRepository.getFullDetails(order.id))
@@ -156,6 +176,16 @@ class SalesService {
      */
     create(data) {
         try {
+            const branchContext = this.getBranchContext();
+
+            // Require branch selection for creating sales
+            if (!branchContext.branchId) {
+                return {
+                    status: 'error',
+                    message: 'Please select a branch/outlet before creating a sale'
+                };
+            }
+
             // Generate invoice number if not provided
             const invoiceNo = data.invoice_no || salesRepository.generateInvoiceNo();
 
@@ -180,12 +210,18 @@ class SalesService {
                 cash_received: data.cash_received || 0,
                 change_amount: data.change_amount || 0,
                 status: data.status || 'completed',
-                is_held: data.is_held || false
+                is_held: data.is_held || false,
+                // Branch and audit fields
+                branch_id: branchContext.branchId,
+                created_by: branchContext.userName || branchContext.userId
             };
 
             const items = data.items || [];
 
             const sale = salesRepository.createWithItems(saleData, items);
+
+            // Log audit entry
+            branchContextService.logAudit('sales_transactions', sale.id, 'INSERT', null, saleData);
 
             return {
                 status: 'success',
@@ -267,14 +303,15 @@ class SalesService {
     }
 
     /**
-     * Get sales summary
+     * Get sales summary (filtered by current branch)
      * @param {string} startDate - Start date
      * @param {string} endDate - End date
      * @returns {Object}
      */
     getSummary(startDate, endDate) {
         try {
-            const summary = salesRepository.getSummary(startDate, endDate);
+            const branchId = this.getCurrentBranchId();
+            const summary = salesRepository.getSummary(startDate, endDate, branchId);
             return {
                 status: 'success',
                 data: summary
@@ -289,13 +326,14 @@ class SalesService {
     }
 
     /**
-     * Get daily sales
+     * Get daily sales (filtered by current branch)
      * @param {number} days - Number of days
      * @returns {Object}
      */
     getDailySales(days = 30) {
         try {
-            const dailySales = salesRepository.getDailySales(days);
+            const branchId = this.getCurrentBranchId();
+            const dailySales = salesRepository.getDailySales(days, branchId);
             return {
                 status: 'success',
                 data: dailySales

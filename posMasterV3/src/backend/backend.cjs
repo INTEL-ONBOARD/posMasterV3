@@ -32,7 +32,7 @@
 const { initializeDatabase, closeDatabase, getDatabasePath } = require('./database/connection.cjs');
 const { runMigrations, getStatus } = require('./database/migrator.cjs');
 const { runSeeders } = require('./database/seeder.cjs');
-const { registerAllHandlers, unregisterAllHandlers } = require('./controllers/index.cjs');
+const { registerAllHandlers, unregisterAllHandlers, initializeBranchContext } = require('./controllers/index.cjs');
 const { getSessionRepository } = require('./repositories/index.cjs');
 
 // Note: CloudSyncService and AppSettingsService are imported lazily to avoid
@@ -77,6 +77,10 @@ function initializeBackend(configPath) {
         // Step 4: Register IPC handlers
         console.log('[Backend] Step 4: Registering IPC handlers...');
         registerAllHandlers();
+
+        // Step 4b: Initialize branch context service
+        console.log('[Backend] Step 4b: Initializing branch context service...');
+        initializeBranchContext(require('./database/connection.cjs').getDatabase());
 
         // Step 5: Start session cleanup interval
         console.log('[Backend] Step 5: Starting maintenance tasks...');
@@ -150,6 +154,53 @@ async function shutdownBackend() {
     try {
         // Stop maintenance tasks
         stopMaintenanceTasks();
+
+        // Check if logout on close is enabled before logging out sessions
+        try {
+            const { getAppSettingsService } = require('./services/AppSettingsService.cjs');
+            const appSettingsService = getAppSettingsService();
+            const logoutOnClose = appSettingsService.isLogoutOnCloseEnabled();
+
+            if (logoutOnClose) {
+                console.log('[Backend] Logout on close is enabled, logging out all active sessions...');
+                const LoginHistoryRepository = require('./repositories/LoginHistoryRepository.cjs');
+                const loginHistoryRepo = new LoginHistoryRepository();
+                const { getActiveSessionRepository } = require('./repositories/index.cjs');
+                const activeSessionRepo = getActiveSessionRepository();
+
+                // Get all active sessions
+                const db = require('./database/connection.cjs').getDatabase();
+                const activeSessions = db.prepare(`
+                    SELECT * FROM sessions WHERE is_active = 1
+                `).all();
+
+                console.log(`[Backend] Found ${activeSessions.length} active session(s) to logout`);
+
+                // Record logout for each active session
+                for (const session of activeSessions) {
+                    try {
+                        // Record logout in history
+                        loginHistoryRepo.recordLogout(session.id, 'app_closed');
+                        // Deactivate cloud-synced active session
+                        activeSessionRepo.deactivateForUser(session.user_id);
+                    } catch (sessionErr) {
+                        console.error('[Backend] Error logging out session:', sessionErr.message);
+                    }
+                }
+
+                // Invalidate all sessions
+                const invalidatedCount = db.prepare(`
+                    UPDATE sessions SET is_active = 0, updated_at = datetime('now')
+                    WHERE is_active = 1
+                `).run().changes;
+
+                console.log(`[Backend] Invalidated ${invalidatedCount} session(s)`);
+            } else {
+                console.log('[Backend] Logout on close is disabled, keeping sessions active');
+            }
+        } catch (err) {
+            console.error('[Backend] Session logout error:', err.message);
+        }
 
         // Cleanup real-time sync service
         try {
