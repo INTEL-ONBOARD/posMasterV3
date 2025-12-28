@@ -111,6 +111,12 @@ class DataStore {
         // Pending fetches to avoid duplicate requests
         this.pendingFetches = new Map();
 
+        // Store cleanup functions for event listeners
+        this._eventCleanupFunctions = [];
+
+        // Flag to prevent duplicate listener setup
+        this._listenersInitialized = false;
+
         // Initialize backend event listeners
         this._setupEventListeners();
 
@@ -119,59 +125,124 @@ class DataStore {
 
     /**
      * Setup listeners for backend events
+     * Returns cleanup functions that can be called to remove listeners
      */
     _setupEventListeners() {
+        // Prevent duplicate listener setup
+        if (this._listenersInitialized) {
+            console.warn('[DataStore] Event listeners already initialized');
+            return;
+        }
+
         if (typeof window === 'undefined' || !window.electronAPI) {
             console.warn('[DataStore] Not in Electron environment, skipping event listeners');
             return;
         }
 
+        // Clear any existing cleanup functions
+        this._eventCleanupFunctions = [];
+
         // Listen for data changes from backend (local operations)
         if (window.electronAPI.onDataChange) {
-            window.electronAPI.onDataChange((event) => {
+            const cleanup = window.electronAPI.onDataChange((event) => {
                 console.log('[DataStore] Data changed:', event.table, event.operation);
                 this._handleDataChange(event);
             });
+            if (typeof cleanup === 'function') {
+                this._eventCleanupFunctions.push(cleanup);
+            }
         }
 
         // Listen for sync status changes
         if (window.electronAPI.onSyncStatusChange) {
-            window.electronAPI.onSyncStatusChange((status) => {
+            const cleanup = window.electronAPI.onSyncStatusChange((status) => {
                 console.log('[DataStore] Sync status changed:', status);
                 this._handleSyncStatusChange(status);
             });
+            if (typeof cleanup === 'function') {
+                this._eventCleanupFunctions.push(cleanup);
+            }
         }
 
         // Listen for refresh needed events (after cloud sync)
         if (window.electronAPI.onRefreshNeeded) {
-            window.electronAPI.onRefreshNeeded((event) => {
+            const cleanup = window.electronAPI.onRefreshNeeded((event) => {
                 console.log('[DataStore] Refresh needed for:', event.table);
                 this._handleRefreshNeeded(event);
             });
+            if (typeof cleanup === 'function') {
+                this._eventCleanupFunctions.push(cleanup);
+            }
         }
 
         // Listen for connection status changes
         if (window.electronAPI.onConnectionStatusChange) {
-            window.electronAPI.onConnectionStatusChange((status) => {
+            const cleanup = window.electronAPI.onConnectionStatusChange((status) => {
                 console.log('[DataStore] Connection status:', status.isOnline ? 'online' : 'offline');
             });
+            if (typeof cleanup === 'function') {
+                this._eventCleanupFunctions.push(cleanup);
+            }
         }
 
         // Listen for sync completion events
         if (window.electronAPI.onSyncCompleted) {
-            window.electronAPI.onSyncCompleted((result) => {
+            const cleanup = window.electronAPI.onSyncCompleted((result) => {
                 console.log('[DataStore] Sync completed:', result.success ? 'success' : 'failed');
                 this._handleSyncCompleted(result);
             });
+            if (typeof cleanup === 'function') {
+                this._eventCleanupFunctions.push(cleanup);
+            }
         }
 
         // Listen for multi-table change events (after full cloud sync)
         if (window.electronAPI.onMultiTableChanged) {
-            window.electronAPI.onMultiTableChanged((data) => {
+            const cleanup = window.electronAPI.onMultiTableChanged((data) => {
                 console.log('[DataStore] Multi-table changed:', data.tables?.length, 'tables');
                 this._handleMultiTableChange(data);
             });
+            if (typeof cleanup === 'function') {
+                this._eventCleanupFunctions.push(cleanup);
+            }
         }
+
+        this._listenersInitialized = true;
+        console.log('[DataStore] Event listeners initialized, cleanup functions:', this._eventCleanupFunctions.length);
+    }
+
+    /**
+     * Cleanup event listeners to prevent memory leaks
+     * Call this when the store is no longer needed
+     */
+    cleanup() {
+        // Call all cleanup functions
+        for (const cleanupFn of this._eventCleanupFunctions) {
+            try {
+                cleanupFn();
+            } catch (e) {
+                console.error('[DataStore] Error during cleanup:', e);
+            }
+        }
+        this._eventCleanupFunctions = [];
+        this._listenersInitialized = false;
+
+        // Clear all data
+        this.clear();
+
+        // Clear all subscribers
+        this.subscribers.clear();
+
+        console.log('[DataStore] Cleaned up');
+    }
+
+    /**
+     * Reinitialize the store (cleanup and setup again)
+     */
+    reinitialize() {
+        this.cleanup();
+        this._setupEventListeners();
+        console.log('[DataStore] Reinitialized');
     }
 
     /**

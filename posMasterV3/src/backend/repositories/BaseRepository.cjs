@@ -44,9 +44,56 @@ function getBroadcastDataChange() {
 // These tables are device-specific and don't need reactive UI updates
 const NO_BROADCAST_TABLES = ['app_settings', 'sessions', 'sync_queue', 'migrations'];
 
+// Valid column names for ORDER BY (whitelist to prevent SQL injection)
+const VALID_ORDER_COLUMNS = [
+    'id', 'created_at', 'updated_at', 'name', 'item_name', 'sku', 'batch_code',
+    'quantity', 'stock_price', 'retail_price', 'expiry_date', 'invoice_no',
+    'total', 'total_amount', 'grand_total', 'subtotal', 'discount', 'tax',
+    'brand', 'type', 'symbol', 'unit_name', 'full_name', 'username', 'email',
+    'address', 'contact', 'phone', 'is_active', 'availability', 'status',
+    'sync_status', 'cloud_id', 'branch_id', 'category_id', 'uom_id', 'item_id',
+    'member_id', 'supplier_id', 'user_id', 'cashier_id', 'threshold_limit',
+    'maximum_capacity', 'points', 'total_points', 'setting_key', 'setting_value'
+];
+
+// Valid order directions
+const VALID_ORDER_DIRECTIONS = ['ASC', 'DESC'];
+
 class BaseRepository {
     constructor(tableName) {
         this.tableName = tableName;
+    }
+
+    /**
+     * Sanitize ORDER BY column to prevent SQL injection
+     * @param {string} column - The column name
+     * @returns {string} Sanitized column name
+     */
+    sanitizeOrderColumn(column) {
+        const col = String(column).toLowerCase();
+        // Check if it's a valid column name (alphanumeric and underscore only)
+        if (!/^[a-z_][a-z0-9_]*$/i.test(col)) {
+            return 'created_at';
+        }
+        // Check against whitelist
+        if (VALID_ORDER_COLUMNS.includes(col)) {
+            return col;
+        }
+        // Default fallback
+        return 'created_at';
+    }
+
+    /**
+     * Sanitize ORDER direction to prevent SQL injection
+     * @param {string} direction - The order direction
+     * @returns {string} Sanitized direction
+     */
+    sanitizeOrderDirection(direction) {
+        const dir = String(direction).toUpperCase();
+        if (VALID_ORDER_DIRECTIONS.includes(dir)) {
+            return dir;
+        }
+        return 'DESC';
     }
 
     /**
@@ -96,9 +143,13 @@ class BaseRepository {
             order = 'DESC'
         } = options;
 
+        // Sanitize ORDER BY to prevent SQL injection
+        const safeOrderBy = this.sanitizeOrderColumn(orderBy);
+        const safeOrder = this.sanitizeOrderDirection(order);
+
         const stmt = this.db.prepare(`
             SELECT * FROM ${this.tableName}
-            ORDER BY ${orderBy} ${order}
+            ORDER BY ${safeOrderBy} ${safeOrder}
             LIMIT ? OFFSET ?
         `);
 

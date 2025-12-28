@@ -108,13 +108,14 @@ class RestockService {
     }
 
     /**
-     * Get restocks by supplier
+     * Get restocks by supplier (filtered by current branch)
      * @param {number} supplierId - Supplier ID
      * @returns {Object}
      */
     getBySupplierId(supplierId) {
         try {
-            const restocks = restockRepository.findBySupplierId(supplierId);
+            const branchId = this.getCurrentBranchId();
+            const restocks = restockRepository.findBySupplierId(supplierId, branchId);
             return {
                 status: 'success',
                 data: restocks
@@ -129,14 +130,15 @@ class RestockService {
     }
 
     /**
-     * Get restocks by date range
+     * Get restocks by date range (filtered by current branch)
      * @param {string} startDate - Start date
      * @param {string} endDate - End date
      * @returns {Object}
      */
     getByDateRange(startDate, endDate) {
         try {
-            const restocks = restockRepository.findByDateRange(startDate, endDate);
+            const branchId = this.getCurrentBranchId();
+            const restocks = restockRepository.findByDateRange(startDate, endDate, branchId);
             return {
                 status: 'success',
                 data: restocks
@@ -151,13 +153,14 @@ class RestockService {
     }
 
     /**
-     * Get stock data by SKU (for restock form)
+     * Get stock data by SKU (for restock form, filtered by current branch)
      * @param {string} sku - Item SKU
      * @returns {Object}
      */
     getStockDataBySku(sku) {
         try {
-            const stockData = stockRepository.getStockDataBySku(sku);
+            const branchId = this.getCurrentBranchId();
+            const stockData = stockRepository.getStockDataBySku(sku, branchId);
             return {
                 status: 'success',
                 data: stockData
