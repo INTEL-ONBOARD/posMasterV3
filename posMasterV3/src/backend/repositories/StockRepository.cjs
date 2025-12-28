@@ -45,20 +45,38 @@ class StockRepository extends BaseRepository {
     }
 
     /**
-     * Find stock by item ID
+     * Find stock by item ID (with optional branch filter)
+     * Stock is branch-specific, but we include NULL branch_id for backwards compatibility
      * @param {number} itemId - Item ID
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    findByItemId(itemId) {
+    findByItemId(itemId, branchId = null) {
+        if (branchId) {
+            const stmt = this.db.prepare(`
+                SELECT * FROM ${this.tableName}
+                WHERE item_id = ? AND (branch_id = ? OR branch_id IS NULL)
+            `);
+            return stmt.all(itemId, branchId);
+        }
         return this.findWhere({ item_id: itemId });
     }
 
     /**
-     * Find stock by batch code
+     * Find stock by batch code (with optional branch filter)
+     * Stock is branch-specific, but we include NULL branch_id for backwards compatibility
      * @param {string} batchCode - Batch code
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    findByBatchCode(batchCode) {
+    findByBatchCode(batchCode, branchId = null) {
+        if (branchId) {
+            const stmt = this.db.prepare(`
+                SELECT * FROM ${this.tableName}
+                WHERE batch_code = ? AND (branch_id = ? OR branch_id IS NULL)
+            `);
+            return stmt.all(batchCode, branchId);
+        }
         return this.findWhere({ batch_code: batchCode });
     }
 
@@ -106,12 +124,13 @@ class StockRepository extends BaseRepository {
     }
 
     /**
-     * Get stock data by SKU (for restock form)
+     * Get stock data by SKU (for restock form, with optional branch filter)
      * @param {string} sku - Item SKU
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    getStockDataBySku(sku) {
-        const stmt = this.db.prepare(`
+    getStockDataBySku(sku, branchId = null) {
+        let sql = `
             SELECT
                 s.id,
                 s.batch_code,
@@ -126,9 +145,18 @@ class StockRepository extends BaseRepository {
             FROM stock s
             JOIN items i ON s.item_id = i.id
             WHERE i.sku = ?
-            ORDER BY s.created_at DESC
-        `);
-        return stmt.all(sku);
+        `;
+        const params = [sku];
+
+        if (branchId) {
+            sql += ` AND (s.branch_id = ? OR s.branch_id IS NULL)`;
+            params.push(branchId);
+        }
+
+        sql += ` ORDER BY s.created_at DESC`;
+
+        const stmt = this.db.prepare(sql);
+        return stmt.all(...params);
     }
 
     /**
@@ -158,7 +186,7 @@ class StockRepository extends BaseRepository {
         const params = [];
 
         if (branchId) {
-            sql += ` WHERE s.branch_id = ?`;
+            sql += ` WHERE (s.branch_id = ? OR s.branch_id IS NULL)`;
             params.push(branchId);
         }
 
@@ -188,7 +216,7 @@ class StockRepository extends BaseRepository {
         const params = [];
 
         if (branchId) {
-            sql += ` AND s.branch_id = ?`;
+            sql += ` AND (s.branch_id = ? OR s.branch_id IS NULL)`;
             params.push(branchId);
         }
 
@@ -224,7 +252,7 @@ class StockRepository extends BaseRepository {
         const params = [futureDateStr];
 
         if (branchId) {
-            sql += ` AND s.branch_id = ?`;
+            sql += ` AND (s.branch_id = ? OR s.branch_id IS NULL)`;
             params.push(branchId);
         }
 
@@ -290,14 +318,18 @@ class StockRepository extends BaseRepository {
             return null;
         }
 
-        // Use atomic SQL UPDATE with MAX to prevent negative stock
+        // Use atomic SQL UPDATE with CASE to prevent negative stock
+        // Using CASE instead of MAX() for better SQLite compatibility
         const stmt = this.db.prepare(`
             UPDATE ${this.tableName}
-            SET quantity = MAX(0, quantity - ?),
+            SET quantity = CASE
+                    WHEN quantity - ? < 0 THEN 0
+                    ELSE quantity - ?
+                END,
                 updated_at = ?
             WHERE id = ?
         `);
-        const result = stmt.run(amount, new Date().toISOString(), id);
+        const result = stmt.run(amount, amount, new Date().toISOString(), id);
 
         if (result.changes === 0) return null;
 

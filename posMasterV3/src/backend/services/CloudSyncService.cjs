@@ -102,6 +102,9 @@ const LOCAL_ONLY_COLUMNS = [
 // This ensures we have the latest cloud data before pushing local changes
 const PULL_FIRST_TABLES = ['users', 'user_settings', 'active_sessions'];
 
+// Maximum retry attempts for failed sync operations
+const MAX_RETRY_ATTEMPTS = 3;
+
 class CloudSyncService {
     constructor() {
         this.networkCheckInterval = null;
@@ -115,6 +118,116 @@ class CloudSyncService {
         this.pendingChanges = []; // Queue of changes to sync when online
         this.mysqlInitialized = false;
         this.wasOffline = false; // Track if we were offline before
+
+        // Track pending change keys to prevent duplicates
+        this._pendingChangeKeys = new Set();
+
+        // Track retry counts for failed operations
+        this._retryCountMap = new Map();
+
+        // Sync lock to prevent concurrent syncs
+        this._syncLock = false;
+        this._syncLockQueue = [];
+    }
+
+    /**
+     * Acquire sync lock with optional timeout
+     * @param {number} timeout - Max time to wait in ms (default: 30000)
+     * @returns {Promise<boolean>} Whether lock was acquired
+     */
+    async _acquireSyncLock(timeout = 30000) {
+        if (!this._syncLock) {
+            this._syncLock = true;
+            return true;
+        }
+
+        // Wait for lock to be released
+        return new Promise((resolve) => {
+            const timeoutId = setTimeout(() => {
+                // Remove from queue and return false
+                const idx = this._syncLockQueue.indexOf(resolver);
+                if (idx >= 0) this._syncLockQueue.splice(idx, 1);
+                resolve(false);
+            }, timeout);
+
+            const resolver = () => {
+                clearTimeout(timeoutId);
+                this._syncLock = true;
+                resolve(true);
+            };
+
+            this._syncLockQueue.push(resolver);
+        });
+    }
+
+    /**
+     * Release sync lock
+     */
+    _releaseSyncLock() {
+        if (this._syncLockQueue.length > 0) {
+            const nextResolver = this._syncLockQueue.shift();
+            nextResolver();
+        } else {
+            this._syncLock = false;
+        }
+    }
+
+    /**
+     * Generate a unique key for a pending change (for deduplication)
+     */
+    _getChangeKey(tableName, operation, recordId) {
+        return `${tableName}:${operation}:${recordId}`;
+    }
+
+    /**
+     * Check if a change is already pending
+     */
+    _isChangePending(tableName, operation, recordId) {
+        const key = this._getChangeKey(tableName, operation, recordId);
+        return this._pendingChangeKeys.has(key);
+    }
+
+    /**
+     * Add change key to pending set
+     */
+    _addPendingKey(tableName, operation, recordId) {
+        const key = this._getChangeKey(tableName, operation, recordId);
+        this._pendingChangeKeys.add(key);
+    }
+
+    /**
+     * Remove change key from pending set
+     */
+    _removePendingKey(tableName, operation, recordId) {
+        const key = this._getChangeKey(tableName, operation, recordId);
+        this._pendingChangeKeys.delete(key);
+    }
+
+    /**
+     * Get retry count for a change
+     */
+    _getRetryCount(tableName, recordId) {
+        const key = `${tableName}:${recordId}`;
+        return this._retryCountMap.get(key) || 0;
+    }
+
+    /**
+     * Increment retry count for a change
+     * @returns {number} New retry count
+     */
+    _incrementRetryCount(tableName, recordId) {
+        const key = `${tableName}:${recordId}`;
+        const count = (this._retryCountMap.get(key) || 0) + 1;
+        this._retryCountMap.set(key, count);
+        return count;
+    }
+
+    /**
+     * Reset retry count for a change
+     */
+    _resetRetryCount(tableName, recordId) {
+        const key = `${tableName}:${recordId}`;
+        this._retryCountMap.delete(key);
     }
 
     /**
@@ -282,6 +395,12 @@ class CloudSyncService {
             return;
         }
 
+        // Check for duplicate changes (deduplication)
+        if (this._isChangePending(tableName, operation, recordId)) {
+            console.log(`[CloudSync] Skipping duplicate change: ${operation} on ${tableName} (ID: ${recordId})`);
+            return;
+        }
+
         const change = {
             tableName,
             operation,
@@ -302,14 +421,17 @@ class CloudSyncService {
 
                 // Now push our local change to cloud
                 await this.syncSingleChange(change);
+                this._resetRetryCount(tableName, recordId); // Reset retry count on success
                 console.log(`[CloudSync] Real-time sync: ${operation} on ${tableName} (ID: ${recordId})`);
             } catch (error) {
                 console.error(`[CloudSync] Real-time sync failed, queuing:`, error.message);
+                this._addPendingKey(tableName, operation, recordId);
                 this.pendingChanges.push(change);
                 this.updateLocalSyncStatus(tableName, recordId, 'pending');
             }
         } else {
-            // Offline - queue the change
+            // Offline - queue the change (with deduplication tracking)
+            this._addPendingKey(tableName, operation, recordId);
             this.pendingChanges.push(change);
             this.updateLocalSyncStatus(tableName, recordId, 'pending');
             console.log(`[CloudSync] Queued change: ${operation} on ${tableName} (ID: ${recordId}). Queue size: ${this.pendingChanges.length}`);
@@ -385,10 +507,17 @@ class CloudSyncService {
      */
     async syncPendingChanges() {
         if (this.pendingChanges.length === 0) {
-            return { synced: 0, failed: 0 };
+            return { synced: 0, failed: 0, dropped: 0 };
+        }
+
+        // Use lock to prevent concurrent syncs
+        const lockAcquired = await this._acquireSyncLock(5000);
+        if (!lockAcquired) {
+            return { status: 'skipped', reason: 'already_syncing' };
         }
 
         if (this.isSyncing) {
+            this._releaseSyncLock();
             return { status: 'skipped', reason: 'already_syncing' };
         }
 
@@ -398,47 +527,70 @@ class CloudSyncService {
 
         let synced = 0;
         let failed = 0;
+        let dropped = 0;
         const failedChanges = [];
 
-        // Test connection first
-        if (!await testConnection()) {
-            this.isSyncing = false;
-            this.syncStatus = 'connection_failed';
-            return { status: 'failed', reason: 'connection_failed' };
-        }
-
-        // Process each pending change
-        while (this.pendingChanges.length > 0) {
-            const change = this.pendingChanges.shift();
-
-            try {
-                await this.syncSingleChange(change);
-                synced++;
-            } catch (error) {
-                console.error(`[CloudSync] Failed to sync change:`, error.message);
-                failedChanges.push(change);
-                failed++;
+        try {
+            // Test connection first
+            if (!await testConnection()) {
+                this.isSyncing = false;
+                this.syncStatus = 'connection_failed';
+                this._releaseSyncLock();
+                return { status: 'failed', reason: 'connection_failed' };
             }
+
+            // Process each pending change
+            while (this.pendingChanges.length > 0) {
+                const change = this.pendingChanges.shift();
+                const { tableName, operation, recordId } = change;
+
+                // Remove from pending keys set
+                this._removePendingKey(tableName, operation, recordId);
+
+                // Check retry count
+                const retryCount = this._getRetryCount(tableName, recordId);
+                if (retryCount >= MAX_RETRY_ATTEMPTS) {
+                    console.warn(`[CloudSync] Dropping change after ${MAX_RETRY_ATTEMPTS} failed attempts: ${operation} on ${tableName} (ID: ${recordId})`);
+                    this._resetRetryCount(tableName, recordId);
+                    this.updateLocalSyncStatus(tableName, recordId, 'failed');
+                    dropped++;
+                    continue;
+                }
+
+                try {
+                    await this.syncSingleChange(change);
+                    this._resetRetryCount(tableName, recordId);
+                    synced++;
+                } catch (error) {
+                    console.error(`[CloudSync] Failed to sync change (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS}):`, error.message);
+                    this._incrementRetryCount(tableName, recordId);
+                    this._addPendingKey(tableName, operation, recordId);
+                    failedChanges.push(change);
+                    failed++;
+                }
+            }
+
+            // Re-queue failed changes (they will be retried next interval)
+            this.pendingChanges = [...failedChanges, ...this.pendingChanges];
+
+            this.lastSyncTime = nowISO();
+            this.syncStatus = failed > 0 ? 'partial' : 'completed';
+
+            console.log(`[CloudSync] Pending sync complete. Synced: ${synced}, Failed: ${failed}, Dropped: ${dropped}`);
+
+            // If we were offline before, do a full sync to catch any missed data
+            if (this.wasOffline && synced > 0) {
+                this.wasOffline = false;
+                this.performFullSync().catch(err =>
+                    console.error('[CloudSync] Post-offline full sync failed:', err.message)
+                );
+            }
+
+            return { synced, failed, dropped };
+        } finally {
+            this.isSyncing = false;
+            this._releaseSyncLock();
         }
-
-        // Re-queue failed changes
-        this.pendingChanges = [...failedChanges, ...this.pendingChanges];
-
-        this.lastSyncTime = nowISO();
-        this.syncStatus = failed > 0 ? 'partial' : 'completed';
-        this.isSyncing = false;
-
-        console.log(`[CloudSync] Pending sync complete. Synced: ${synced}, Failed: ${failed}`);
-
-        // If we were offline before, do a full sync to catch any missed data
-        if (this.wasOffline && synced > 0) {
-            this.wasOffline = false;
-            this.performFullSync().catch(err =>
-                console.error('[CloudSync] Post-offline full sync failed:', err.message)
-            );
-        }
-
-        return { synced, failed };
     }
 
     /**
@@ -449,15 +601,24 @@ class CloudSyncService {
      * - New records on either side get synced to the other
      */
     async performFullSync() {
+        // Use lock to prevent concurrent syncs
+        const lockAcquired = await this._acquireSyncLock(10000);
+        if (!lockAcquired) {
+            return { status: 'skipped', reason: 'lock_timeout' };
+        }
+
         if (this.isSyncing) {
+            this._releaseSyncLock();
             return { status: 'skipped', reason: 'already_syncing' };
         }
 
         if (!this.isOnline) {
+            this._releaseSyncLock();
             return { status: 'skipped', reason: 'offline' };
         }
 
         if (!await testConnection()) {
+            this._releaseSyncLock();
             return { status: 'skipped', reason: 'connection_failed' };
         }
 
@@ -510,6 +671,9 @@ class CloudSyncService {
         this.lastSyncTime = nowISO();
         this.syncStatus = 'completed';
         this.isSyncing = false;
+
+        // Release lock
+        this._releaseSyncLock();
 
         console.log(`[CloudSync] Bidirectional sync completed in ${duration}ms. Pushed: ${results.uploaded}, Pulled: ${results.downloaded}, Conflicts: ${results.conflicts}`);
 

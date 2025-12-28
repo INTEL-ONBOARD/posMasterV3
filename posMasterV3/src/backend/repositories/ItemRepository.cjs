@@ -63,6 +63,8 @@ class ItemRepository extends BaseRepository {
 
     /**
      * Get all items with extended data (category, uom, stock info)
+     * Items are GLOBAL - shared across all branches
+     * Stock data is aggregated across all branches (total quantity)
      * @returns {Array}
      */
     getAllExtended() {

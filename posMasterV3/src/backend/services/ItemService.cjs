@@ -2,6 +2,8 @@
  * Item Service
  *
  * Business logic for item (registry) operations.
+ * Items are GLOBAL - shared across all branches.
+ * Stock quantities are branch-specific.
  */
 
 const itemRepository = require('../repositories/ItemRepository.cjs');
@@ -9,7 +11,7 @@ const { nowISO } = require('../utils/helpers.cjs');
 
 class ItemService {
     /**
-     * Get all items
+     * Get all items (global - not filtered by branch)
      * @returns {Object}
      */
     getAll() {
@@ -30,6 +32,7 @@ class ItemService {
 
     /**
      * Get all items with extended data (category, uom, stock)
+     * Items are global, but stock data is branch-filtered
      * @returns {Object}
      */
     getAllExtended() {
@@ -151,7 +154,7 @@ class ItemService {
     }
 
     /**
-     * Create a new item
+     * Create a new item (global - not branch-specific)
      * @param {Object} data - Item data
      * @returns {Object}
      */
@@ -184,7 +187,7 @@ class ItemService {
                 maximum_capacity: data.maximum_capacity || 0,
                 category_id: data.category_id || null,
                 uom_id: data.uom_id || null,
-                branch_id: data.inventory_id || data.branch_id || null,
+                branch_id: data.inventory_id || data.branch_id || null, // Optional - items are global
                 availability: data.availability !== undefined ? (data.availability ? 1 : 0) : 1,
                 created_at: nowISO(),
                 updated_at: nowISO(),

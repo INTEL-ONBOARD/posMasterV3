@@ -39,10 +39,32 @@ export default function BranchSelectionModal({
         try {
             const response = await branchContextApi.getAvailableBranches();
             if (response.status === 'success') {
-                setBranches(response.data || []);
-                // If only one branch is available, auto-select it
-                if (response.data?.length === 1) {
-                    setSelectedBranchId(response.data[0].id);
+                const availableBranches = response.data || [];
+                setBranches(availableBranches);
+
+                // If only one branch is available (user has assigned branch), auto-select AND auto-confirm
+                if (availableBranches.length === 1) {
+                    const singleBranch = availableBranches[0];
+                    setSelectedBranchId(singleBranch.id);
+
+                    // Check if this is user's assigned branch - if so, auto-confirm
+                    const userData = localStorage.getItem('user');
+                    if (userData) {
+                        try {
+                            const user = JSON.parse(userData);
+                            if (user.branch_id === singleBranch.id) {
+                                // User's assigned branch - auto-confirm without showing modal
+                                console.log('[BranchSelectionModal] Auto-confirming user assigned branch:', singleBranch.name);
+                                const confirmResponse = await branchContextApi.setCurrent(singleBranch.id);
+                                if (confirmResponse.status === 'success') {
+                                    onBranchSelected?.(confirmResponse.data);
+                                    return; // Exit early - modal will close
+                                }
+                            }
+                        } catch (parseError) {
+                            console.error('[BranchSelectionModal] Error parsing user data:', parseError);
+                        }
+                    }
                 }
             } else {
                 setError(response.message || 'Failed to load branches');

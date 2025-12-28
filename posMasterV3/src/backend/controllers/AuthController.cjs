@@ -6,6 +6,7 @@
  */
 
 const { getAuthService } = require('../services/index.cjs');
+const { branchContextService } = require('../services/BranchContextService.cjs');
 
 // Lazy load ipcMain to ensure electron is ready
 let _ipcMain = null;
@@ -35,7 +36,7 @@ function registerAuthHandlers() {
      * Handle user login
      * Channel: 'auth:login'
      * Payload: { email: string, password: string, deviceInfo?: string }
-     * Response: { success: boolean, status: string, message: string, data?: User, token?: string }
+     * Response: { success: boolean, status: string, message: string, data?: User, token?: string, branch?: Object }
      */
     ipcMain.handle('auth:login', async (event, payload) => {
         console.log('[AuthController] Login request received');
@@ -47,6 +48,31 @@ function registerAuthHandlers() {
                 { email, password },
                 { deviceInfo }
             );
+
+            // If login successful, set user context in BranchContextService
+            // and auto-select branch if user has one assigned
+            if (result.success && result.data) {
+                const user = result.data;
+
+                // Set user context so BranchContextService knows the user's branch_id
+                branchContextService.setCurrentUser(user);
+                console.log('[AuthController] User context set for:', user.username, 'branch_id:', user.branch_id);
+
+                // If user has an assigned branch, auto-select it
+                if (user.branch_id) {
+                    try {
+                        const branchResult = await branchContextService.setCurrentBranch(user.branch_id);
+                        if (branchResult.status === 'success') {
+                            result.branch = branchResult.data;
+                            result.branchAutoSelected = true;
+                            console.log('[AuthController] Auto-selected branch:', branchResult.data?.name);
+                        }
+                    } catch (branchError) {
+                        console.error('[AuthController] Failed to auto-select branch:', branchError.message);
+                        // Don't fail login if branch selection fails
+                    }
+                }
+            }
 
             return result;
 

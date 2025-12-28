@@ -3,9 +3,11 @@ import { ChevronDown, ChevronUp, FolderOpen, RefreshCw, Database, Cloud, Wifi, W
 import { settingsApi, cloudSyncApi, appSettingsApi } from '../../api/localApi';
 import ToastContext from '../toasts/ToastService';
 import { useReactiveData, TABLES } from '../../store';
+import { useBranchContext } from '../../context/BranchContext';
 
 function AppSettings() {
   const toast = useContext(ToastContext);
+  const { currentBranch, branchName } = useBranchContext();
 
   // Section collapse states
   const [openGeneral, setOpenGeneral] = useState(true);
@@ -95,12 +97,14 @@ function AppSettings() {
     return () => clearInterval(interval);
   }, []);
 
-  // Set default outlet when branches load from reactive data
+  // Sync default_outlet with current branch from BranchContext
   useEffect(() => {
-    if (branches && branches.length > 0 && !paths.default_outlet) {
+    if (branchName) {
+      setPaths(prev => ({ ...prev, default_outlet: branchName }));
+    } else if (branches && branches.length > 0 && !paths.default_outlet) {
       setPaths(prev => ({ ...prev, default_outlet: branches[0].name }));
     }
-  }, [branches, paths.default_outlet]);
+  }, [branchName, branches, paths.default_outlet]);
 
   const handleToggle = async (key) => {
     const newValue = !settings[key];

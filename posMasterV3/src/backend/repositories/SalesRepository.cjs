@@ -54,20 +54,38 @@ class SalesRepository extends BaseRepository {
     }
 
     /**
-     * Find sales by member
+     * Find sales by member (with optional branch filter)
      * @param {number} memberId - Member ID
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    findByMemberId(memberId) {
+    findByMemberId(memberId, branchId = null) {
+        if (branchId) {
+            const stmt = this.db.prepare(`
+                SELECT * FROM ${this.tableName}
+                WHERE member_id = ? AND branch_id = ?
+                ORDER BY created_at DESC
+            `);
+            return stmt.all(memberId, branchId);
+        }
         return this.findWhere({ member_id: memberId });
     }
 
     /**
-     * Find sales by cashier
+     * Find sales by cashier (with optional branch filter)
      * @param {string} cashierId - Cashier user ID
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    findByCashierId(cashierId) {
+    findByCashierId(cashierId, branchId = null) {
+        if (branchId) {
+            const stmt = this.db.prepare(`
+                SELECT * FROM ${this.tableName}
+                WHERE cashier_id = ? AND branch_id = ?
+                ORDER BY created_at DESC
+            `);
+            return stmt.all(cashierId, branchId);
+        }
         return this.findWhere({ cashier_id: cashierId });
     }
 
@@ -88,19 +106,29 @@ class SalesRepository extends BaseRepository {
     }
 
     /**
-     * Find sales by date range
+     * Find sales by date range (with optional branch filter)
      * @param {string} startDate - Start date ISO string
      * @param {string} endDate - End date ISO string
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    findByDateRange(startDate, endDate) {
-        const stmt = this.db.prepare(`
+    findByDateRange(startDate, endDate, branchId = null) {
+        let sql = `
             SELECT * FROM ${this.tableName}
             WHERE created_at >= ? AND created_at <= ?
             AND is_held = 0
-            ORDER BY created_at DESC
-        `);
-        return stmt.all(startDate, endDate);
+        `;
+        const params = [startDate, endDate];
+
+        if (branchId) {
+            sql += ` AND branch_id = ?`;
+            params.push(branchId);
+        }
+
+        sql += ` ORDER BY created_at DESC`;
+
+        const stmt = this.db.prepare(sql);
+        return stmt.all(...params);
     }
 
     /**

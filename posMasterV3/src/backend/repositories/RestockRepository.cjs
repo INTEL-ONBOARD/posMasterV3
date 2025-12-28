@@ -74,27 +74,46 @@ class RestockRepository extends BaseRepository {
     }
 
     /**
-     * Find restocks by supplier
+     * Find restocks by supplier (with optional branch filter)
      * @param {number} supplierId - Supplier ID
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    findBySupplierId(supplierId) {
+    findBySupplierId(supplierId, branchId = null) {
+        if (branchId) {
+            const stmt = this.db.prepare(`
+                SELECT * FROM ${this.tableName}
+                WHERE supplier_id = ? AND branch_id = ?
+                ORDER BY created_at DESC
+            `);
+            return stmt.all(supplierId, branchId);
+        }
         return this.findWhere({ supplier_id: supplierId });
     }
 
     /**
-     * Find restocks by date range
+     * Find restocks by date range (with optional branch filter)
      * @param {string} startDate - Start date ISO string
      * @param {string} endDate - End date ISO string
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    findByDateRange(startDate, endDate) {
-        const stmt = this.db.prepare(`
+    findByDateRange(startDate, endDate, branchId = null) {
+        let sql = `
             SELECT * FROM ${this.tableName}
             WHERE created_at >= ? AND created_at <= ?
-            ORDER BY created_at DESC
-        `);
-        return stmt.all(startDate, endDate);
+        `;
+        const params = [startDate, endDate];
+
+        if (branchId) {
+            sql += ` AND branch_id = ?`;
+            params.push(branchId);
+        }
+
+        sql += ` ORDER BY created_at DESC`;
+
+        const stmt = this.db.prepare(sql);
+        return stmt.all(...params);
     }
 
     /**
@@ -245,14 +264,16 @@ class RestockRepository extends BaseRepository {
             `);
 
             const findItemStmt = this.db.prepare(`SELECT id FROM items WHERE sku = ?`);
+            const branchId = data.branch_id || null;
             const upsertStockStmt = this.db.prepare(`
-                INSERT INTO stock (item_id, batch_code, quantity, stock_price, retail_price, expiry_date, availability, created_at, updated_at, sync_status)
-                VALUES (@item_id, @batch_code, @quantity, @stock_price, @retail_price, @expiry_date, 1, @created_at, @updated_at, 'pending')
+                INSERT INTO stock (item_id, batch_code, quantity, stock_price, retail_price, expiry_date, availability, branch_id, created_at, updated_at, sync_status)
+                VALUES (@item_id, @batch_code, @quantity, @stock_price, @retail_price, @expiry_date, 1, @branch_id, @created_at, @updated_at, 'pending')
                 ON CONFLICT(item_id, batch_code) DO UPDATE SET
                     quantity = quantity + @quantity,
                     stock_price = @stock_price,
                     retail_price = @retail_price,
                     expiry_date = COALESCE(@expiry_date, expiry_date),
+                    branch_id = COALESCE(@branch_id, branch_id),
                     updated_at = @updated_at
             `);
 
@@ -270,7 +291,7 @@ class RestockRepository extends BaseRepository {
                     item.exp_date
                 );
 
-                // Update stock
+                // Update stock with branch_id
                 const now = nowISO();
                 upsertStockStmt.run({
                     item_id: itemRecord.id,
@@ -279,6 +300,7 @@ class RestockRepository extends BaseRepository {
                     stock_price: item.stock_price,
                     retail_price: item.retail_price,
                     expiry_date: item.exp_date,
+                    branch_id: branchId,
                     created_at: now,
                     updated_at: now
                 });
