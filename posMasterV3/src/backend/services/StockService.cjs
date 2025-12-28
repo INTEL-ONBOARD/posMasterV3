@@ -69,13 +69,14 @@ class StockService {
     }
 
     /**
-     * Get stock by item SKU
+     * Get stock by item SKU (filtered by current branch)
      * @param {string} sku - Item SKU
      * @returns {Object}
      */
     getByItemSku(sku) {
         try {
-            const stockData = stockRepository.getStockDataBySku(sku);
+            const branchId = this.getCurrentBranchId();
+            const stockData = stockRepository.getStockDataBySku(sku, branchId);
             return {
                 status: 'success',
                 data: stockData

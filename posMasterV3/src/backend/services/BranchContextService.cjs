@@ -39,10 +39,11 @@ class BranchContextService {
         ];
 
         // Tables that CAN be branch-specific but also global
-        // (NULL branch_id means shared, specific ID means branch-only)
+        // (NULL branch_id means shared across all branches, specific ID means branch-only)
+        // Items are GLOBAL - shared across all branches
+        // Stock is BRANCH-SPECIFIC - each branch has its own stock quantities
         this.optionalBranchTables = [
-            'items',
-            'members'
+            'members' // Members can be global (shared across branches)
         ];
     }
 
@@ -173,6 +174,13 @@ class BranchContextService {
         this.db.prepare(`
             INSERT INTO app_settings (id, setting_key, setting_value, setting_type, description, created_at, updated_at)
             VALUES ('selected_branch_name', 'selected_branch_name', ?, 'string', 'Currently selected branch name', ?, ?)
+            ON CONFLICT(id) DO UPDATE SET setting_value = ?, updated_at = ?
+        `).run(branch.name, now, now, branch.name, now);
+
+        // Also update default_outlet for AppSettings consistency
+        this.db.prepare(`
+            INSERT INTO app_settings (id, setting_key, setting_value, setting_type, description, created_at, updated_at)
+            VALUES ('default_outlet', 'default_outlet', ?, 'string', 'Default outlet/branch name', ?, ?)
             ON CONFLICT(id) DO UPDATE SET setting_value = ?, updated_at = ?
         `).run(branch.name, now, now, branch.name, now);
 

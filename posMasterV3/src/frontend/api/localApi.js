@@ -322,6 +322,39 @@ const getElectronAPI = () => {
     return window.electronAPI;
 };
 
+/**
+ * Wrap an API call with error handling
+ * @param {Function} apiCall - The API call function
+ * @param {string} [operationName] - Name of the operation for logging
+ * @returns {Promise<ApiResponse>}
+ */
+const wrapApiCall = async (apiCall, operationName = 'API call') => {
+    try {
+        const result = await apiCall();
+        return result;
+    } catch (error) {
+        console.error(`[LocalAPI] ${operationName} failed:`, error);
+        return {
+            status: 'error',
+            message: error?.message || 'An unexpected error occurred'
+        };
+    }
+};
+
+/**
+ * Create a safe API method that wraps the call with error handling
+ * @param {Function} method - The original API method
+ * @param {string} name - Name of the method for logging
+ * @returns {Function} Wrapped method
+ */
+const safeApiMethod = (method, name) => {
+    return async (...args) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return wrapApiCall(() => method(api, ...args), name);
+    };
+};
+
 // ============================================
 // CATEGORY API
 // ============================================

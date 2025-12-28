@@ -106,13 +106,14 @@ class SalesService {
     }
 
     /**
-     * Get sales by member
+     * Get sales by member (filtered by current branch)
      * @param {number} memberId - Member ID
      * @returns {Object}
      */
     getByMemberId(memberId) {
         try {
-            const sales = salesRepository.findByMemberId(memberId);
+            const branchId = this.getCurrentBranchId();
+            const sales = salesRepository.findByMemberId(memberId, branchId);
             return {
                 status: 'success',
                 data: sales
@@ -127,14 +128,15 @@ class SalesService {
     }
 
     /**
-     * Get sales by date range
+     * Get sales by date range (filtered by current branch)
      * @param {string} startDate - Start date
      * @param {string} endDate - End date
      * @returns {Object}
      */
     getByDateRange(startDate, endDate) {
         try {
-            const sales = salesRepository.findByDateRange(startDate, endDate);
+            const branchId = this.getCurrentBranchId();
+            const sales = salesRepository.findByDateRange(startDate, endDate, branchId);
             return {
                 status: 'success',
                 data: sales

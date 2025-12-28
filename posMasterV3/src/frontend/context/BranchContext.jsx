@@ -58,8 +58,30 @@ export function BranchProvider({ children }) {
             const response = await branchContextApi.getCurrent();
             if (response.status === 'success') {
                 setCurrentBranch(response.data);
-                // If no branch is set, show the selection modal
+
+                // If no branch is set, check if we need to show the modal
                 if (!response.data) {
+                    // Check if user has an assigned branch (from localStorage user data)
+                    const userData = localStorage.getItem('user');
+                    if (userData) {
+                        try {
+                            const user = JSON.parse(userData);
+                            if (user.branch_id) {
+                                // User has an assigned branch - try to auto-select it
+                                console.log('[BranchContext] User has assigned branch_id:', user.branch_id);
+                                const setBranchResponse = await branchContextApi.setCurrent(user.branch_id);
+                                if (setBranchResponse.status === 'success') {
+                                    setCurrentBranch(setBranchResponse.data);
+                                    console.log('[BranchContext] Auto-selected user branch:', setBranchResponse.data?.name);
+                                    return; // Don't show modal
+                                }
+                            }
+                        } catch (parseError) {
+                            console.error('[BranchContext] Error parsing user data:', parseError);
+                        }
+                    }
+
+                    // No branch assigned or auto-select failed - show selection modal
                     setShowSelectionModal(true);
                 }
             }

@@ -155,6 +155,50 @@ function safeJsonParse(str, defaultValue = null) {
     }
 }
 
+/**
+ * Wrap an IPC handler with consistent error handling
+ * Returns { status: 'error', message: string } for any uncaught errors
+ * @param {Function} handler - The async handler function
+ * @returns {Function} Wrapped handler with error handling
+ */
+function wrapIpcHandler(handler) {
+    return async (...args) => {
+        try {
+            return await handler(...args);
+        } catch (error) {
+            console.error('[IPC Handler Error]', error);
+            return {
+                status: 'error',
+                message: error.message || 'An unexpected error occurred'
+            };
+        }
+    };
+}
+
+/**
+ * Create a standardized success response
+ * @param {any} data - The response data
+ * @param {string} message - Optional success message
+ * @returns {Object} Standardized success response
+ */
+function successResponse(data, message = null) {
+    const response = { status: 'success', data };
+    if (message) response.message = message;
+    return response;
+}
+
+/**
+ * Create a standardized error response
+ * @param {string} message - Error message
+ * @param {string} code - Optional error code
+ * @returns {Object} Standardized error response
+ */
+function errorResponse(message, code = null) {
+    const response = { status: 'error', message };
+    if (code) response.code = code;
+    return response;
+}
+
 module.exports = {
     generateUUID,
     generateToken,
@@ -166,6 +210,9 @@ module.exports = {
     toSriLankanTime,
     formatSriLankanDate,
     safeJsonParse,
+    wrapIpcHandler,
+    successResponse,
+    errorResponse,
     SRI_LANKA_TIMEZONE,
     SRI_LANKA_OFFSET_HOURS,
     SRI_LANKA_OFFSET_MINUTES
