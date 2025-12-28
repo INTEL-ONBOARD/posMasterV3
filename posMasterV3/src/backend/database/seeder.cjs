@@ -731,7 +731,7 @@ function runSeeders() {
         branches: seedDefaultBranch(),
         admin: seedDefaultAdmin(),  // After branches so admin can be assigned to a branch
         suppliers: seedDefaultSuppliers(),
-        members: seedDefaultMember(),
+        //members: seedDefaultMember(),
         items: seedDefaultItems()
     };
 
