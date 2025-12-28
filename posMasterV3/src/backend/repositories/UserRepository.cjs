@@ -211,9 +211,28 @@ class UserRepository extends BaseRepository {
     _parseUser(user) {
         if (!user) return null;
 
+        // Handle roles - might be string (from DB) or already array (from cloud)
+        let parsedRoles = [];
+        if (user.roles) {
+            if (Array.isArray(user.roles)) {
+                parsedRoles = user.roles;
+            } else if (typeof user.roles === 'string') {
+                try {
+                    parsedRoles = JSON.parse(user.roles);
+                    // Ensure it's an array after parsing
+                    if (!Array.isArray(parsedRoles)) {
+                        parsedRoles = [parsedRoles];
+                    }
+                } catch (e) {
+                    // If parsing fails, treat as single role string
+                    parsedRoles = [user.roles];
+                }
+            }
+        }
+
         return {
             ...user,
-            roles: user.roles ? JSON.parse(user.roles) : [],
+            roles: parsedRoles,
             is_active: !!user.is_active
         };
     }

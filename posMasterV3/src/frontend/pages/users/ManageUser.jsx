@@ -27,7 +27,8 @@ function ManageUser() {
     { value: "admin", label: "Admin" },
     { value: "manager", label: "Manager" },
     { value: "cashier", label: "Cashier" },
-    { value: "assistant", label: "Assistant" }
+    { value: "assistant", label: "Assistant" },
+    { value: "user", label: "User" }
   ]);
   
   // Default permissions structure
@@ -118,10 +119,25 @@ function ManageUser() {
     setTimeout(() => setSearchLoading(false), 400);
   };
 
+  // Parse roles - handle string or array format (for filtering)
+  const parseUserRoles = (roles) => {
+    if (!roles) return [];
+    if (Array.isArray(roles)) return roles;
+    if (typeof roles === 'string') {
+      try {
+        const parsed = JSON.parse(roles);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch (e) {
+        return [roles];
+      }
+    }
+    return [];
+  };
+
   // Filter users based on search criteria
   const filteredUsers = (userList || []).filter((user) => {
     // Role filter
-    const userRoles = Array.isArray(user.roles) ? user.roles : [];
+    const userRoles = parseUserRoles(user.roles);
     const matchesRole = searchRole === "All" || userRoles.includes(searchRole.toLowerCase());
 
     // Status filter
@@ -190,6 +206,18 @@ function ManageUser() {
       },
       UserAccess: { user_manage: false, user_role_manage: false },
     },
+    user: {
+      SaleAccess: {
+        sale_process: true, sale_history: false, sale_view_inventory: true,
+        sale_reports: false, sale_configurations: false, sale_discounts: false,
+      },
+      InventoryAccess: {
+        inventory_view: true, inventory_register_item: false, inventory_restock: false,
+        inventory_suppliers: false, inventory_discount: false, inventory_price_change: false,
+        inventory_history: false, inventory_configurations: false, inventory_reports: false,
+      },
+      UserAccess: { user_manage: false, user_role_manage: false },
+    },
   };
 
   // Role permissions state (can be modified by admin in ManageRole)
@@ -219,7 +247,8 @@ function ManageUser() {
     setIsUserEditing(true);
 
     let profileImg = "";
-    const userRole = Array.isArray(user.roles) ? user.roles[0] : "cashier";
+    const parsedUserRoles = parseUserRoles(user.roles);
+    const userRole = parsedUserRoles.length > 0 ? parsedUserRoles[0] : "cashier";
 
     // Load user permissions and profile image
     try {
@@ -280,6 +309,10 @@ function ManageUser() {
 
     console.log("[ManageUser] Final profileImg value:", profileImg ? profileImg.substring(0, 80) + "..." : "EMPTY");
 
+    // Parse roles to ensure it's an array
+    const parsedRoles = parseUserRoles(user.roles);
+    const finalRoles = parsedRoles.length > 0 ? parsedRoles : ["cashier"];
+
     setFormData({
       id: user.id,
       username: user.username || "",
@@ -287,13 +320,14 @@ function ManageUser() {
       full_name: user.full_name || "",
       password: "",
       confirm_password: "",
-      roles: Array.isArray(user.roles) ? user.roles : ["cashier"],
+      roles: finalRoles,
       is_active: user.is_active !== undefined ? user.is_active : true,
       branch_id: user.branch_id || "",
       profile_image: profileImg,
     });
 
     console.log("[ManageUser] FormData updated with profile_image:", profileImg ? "YES" : "NO");
+    console.log("[ManageUser] User roles:", user.roles, "-> Parsed:", finalRoles);
   };
 
   // Clear form
@@ -492,9 +526,11 @@ function ManageUser() {
           }
         }
 
-        setFormStatus("form");
         setStatusModal({ open: true, type: 'success', description: `User "${formData.full_name}" created successfully` });
         clearUserInput();
+        // Refetch users after successful creation
+        await refetchUsers();
+        setFormStatus("form");
       } else {
         setFormStatus("form");
         setStatusModal({ open: true, type: 'failed', description: response.message || 'Failed to create user' });
@@ -503,8 +539,6 @@ function ManageUser() {
       console.error("Create user error:", err);
       setFormStatus("form");
       setStatusModal({ open: true, type: 'failed', description: err.message || 'Failed to create user' });
-    } finally {
-      refetchUsers();
     }
   };
 
@@ -534,9 +568,11 @@ function ManageUser() {
         // Update user permissions
         await settingsApi.updateUserPermissions(formData.id, permissions);
 
-        setFormStatus("form");
         setStatusModal({ open: true, type: 'success', description: `User "${formData.full_name}" updated successfully` });
         clearUserInput();
+        // Refetch users after successful update
+        await refetchUsers();
+        setFormStatus("form");
       } else {
         setFormStatus("form");
         setStatusModal({ open: true, type: 'failed', description: response.message || 'Failed to update user' });
@@ -545,8 +581,6 @@ function ManageUser() {
       console.error("Update user error:", err);
       setFormStatus("form");
       setStatusModal({ open: true, type: 'failed', description: err.message || 'Failed to update user' });
-    } finally {
-      refetchUsers();
     }
   };
 
@@ -563,9 +597,11 @@ function ManageUser() {
       const response = await userApi.delete(formData.id);
 
       if (response.status === "success") {
-        setFormStatus("form");
         setStatusModal({ open: true, type: 'success', description: 'User deleted successfully' });
         clearUserInput();
+        // Refetch users after successful deletion
+        await refetchUsers();
+        setFormStatus("form");
       } else {
         setFormStatus("form");
         setStatusModal({ open: true, type: 'failed', description: response.message || 'Failed to delete user' });
@@ -574,15 +610,14 @@ function ManageUser() {
       console.error("Delete user error:", err);
       setFormStatus("form");
       setStatusModal({ open: true, type: 'failed', description: err.message || 'Failed to delete user' });
-    } finally {
-      refetchUsers();
     }
   };
 
   // Get role display name
   const getRoleDisplay = (roles) => {
-    if (!roles || !Array.isArray(roles) || roles.length === 0) return "No Role";
-    return roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", ");
+    const parsedRoles = parseUserRoles(roles);
+    if (parsedRoles.length === 0) return "No Role";
+    return parsedRoles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(", ");
   };
 
   return (
