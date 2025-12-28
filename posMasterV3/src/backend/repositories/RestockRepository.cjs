@@ -6,6 +6,7 @@
 
 const BaseRepository = require('./BaseRepository.cjs');
 const { notifyDataChange } = require('../services/CloudSyncService.cjs');
+const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
 
 class RestockRepository extends BaseRepository {
@@ -307,12 +308,29 @@ class RestockRepository extends BaseRepository {
             // Notify CloudSync of the new restock
             notifyDataChange('restock_transactions', 'INSERT', fullRestock, restockId);
 
+            // Broadcast to UI for immediate update
+            broadcastDataChange('restock_transactions', 'INSERT', restockId, fullRestock);
+
             // Also notify for each restock item and stock update
             for (const item of fullRestock.added_items) {
                 notifyDataChange('restock_items', 'INSERT', item, item.id);
             }
             for (const item of fullRestock.return_items) {
                 notifyDataChange('return_items', 'INSERT', item, item.id);
+            }
+
+            // Broadcast stock updates to UI (stock was added/decreased)
+            for (const item of addedItems) {
+                const itemRecord = this.db.prepare(`SELECT id FROM items WHERE sku = ?`).get(item.sku);
+                if (itemRecord) {
+                    broadcastDataChange('stock', 'UPDATE', null, { item_id: itemRecord.id, batch_code: item.batch_code });
+                }
+            }
+            for (const item of returnItems) {
+                const itemRecord = this.db.prepare(`SELECT id FROM items WHERE sku = ?`).get(item.sku);
+                if (itemRecord) {
+                    broadcastDataChange('stock', 'UPDATE', null, { item_id: itemRecord.id, batch_code: item.batch_code });
+                }
             }
 
             return fullRestock;

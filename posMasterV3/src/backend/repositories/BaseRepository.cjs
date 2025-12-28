@@ -40,9 +40,21 @@ function getBroadcastDataChange() {
     return _broadcastDataChange;
 }
 
+// Tables that should NOT trigger UI broadcasts (local-only settings)
+// These tables are device-specific and don't need reactive UI updates
+const NO_BROADCAST_TABLES = ['app_settings', 'sessions', 'sync_queue', 'migrations'];
+
 class BaseRepository {
     constructor(tableName) {
         this.tableName = tableName;
+    }
+
+    /**
+     * Check if this table should broadcast UI updates
+     * @returns {boolean}
+     */
+    shouldBroadcast() {
+        return !NO_BROADCAST_TABLES.includes(this.tableName);
     }
 
     /**
@@ -161,8 +173,10 @@ class BaseRepository {
         if (createdRecord) {
             const recordId = createdRecord.id || result.lastInsertRowid;
             getNotifyDataChange()(this.tableName, 'INSERT', createdRecord, recordId);
-            // Broadcast to update UI immediately
-            getBroadcastDataChange()(this.tableName, 'INSERT', recordId, createdRecord);
+            // Broadcast to update UI immediately (skip for local-only tables)
+            if (this.shouldBroadcast()) {
+                getBroadcastDataChange()(this.tableName, 'INSERT', recordId, createdRecord);
+            }
         }
 
         return createdRecord;
@@ -202,8 +216,10 @@ class BaseRepository {
         const updatedRecord = this.findById(id);
         if (updatedRecord) {
             getNotifyDataChange()(this.tableName, 'UPDATE', updatedRecord, id);
-            // Broadcast to update UI immediately
-            getBroadcastDataChange()(this.tableName, 'UPDATE', id, updatedRecord);
+            // Broadcast to update UI immediately (skip for local-only tables)
+            if (this.shouldBroadcast()) {
+                getBroadcastDataChange()(this.tableName, 'UPDATE', id, updatedRecord);
+            }
         }
 
         return updatedRecord;
@@ -224,8 +240,10 @@ class BaseRepository {
         // Notify CloudSync of the deletion and broadcast to UI
         if (result.changes > 0 && recordToDelete) {
             getNotifyDataChange()(this.tableName, 'DELETE', recordToDelete, id);
-            // Broadcast to update UI immediately
-            getBroadcastDataChange()(this.tableName, 'DELETE', id, recordToDelete);
+            // Broadcast to update UI immediately (skip for local-only tables)
+            if (this.shouldBroadcast()) {
+                getBroadcastDataChange()(this.tableName, 'DELETE', id, recordToDelete);
+            }
         }
 
         return result.changes > 0;

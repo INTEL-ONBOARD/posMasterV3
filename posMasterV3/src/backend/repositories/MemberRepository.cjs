@@ -5,6 +5,8 @@
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
+const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
+const { notifyDataChange } = require('../services/CloudSyncService.cjs');
 
 class MemberRepository extends BaseRepository {
     constructor() {
@@ -85,7 +87,16 @@ class MemberRepository extends BaseRepository {
         const result = stmt.run(amount, new Date().toISOString(), id);
 
         if (result.changes === 0) return null;
-        return this.findById(id);
+
+        const updatedMember = this.findById(id);
+
+        // Notify CloudSync and broadcast to UI
+        if (updatedMember) {
+            notifyDataChange(this.tableName, 'UPDATE', updatedMember, id);
+            broadcastDataChange(this.tableName, 'UPDATE', id, updatedMember);
+        }
+
+        return updatedMember;
     }
 
     /**
@@ -110,7 +121,16 @@ class MemberRepository extends BaseRepository {
         const result = stmt.run(amount, new Date().toISOString(), id);
 
         if (result.changes === 0) return null;
-        return this.findById(id);
+
+        const updatedMember = this.findById(id);
+
+        // Notify CloudSync and broadcast to UI
+        if (updatedMember) {
+            notifyDataChange(this.tableName, 'UPDATE', updatedMember, id);
+            broadcastDataChange(this.tableName, 'UPDATE', id, updatedMember);
+        }
+
+        return updatedMember;
     }
 
     /**

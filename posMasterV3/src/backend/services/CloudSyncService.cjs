@@ -525,13 +525,19 @@ class CloudSyncService {
         });
 
         // If any records were downloaded, broadcast multi-table change to refresh UI
+        // Exclude tables that are polled frequently to avoid constant UI refreshes
         if (results.downloaded > 0) {
-            // Build list of tables that had changes
-            const tableChanges = TABLES_TO_SYNC.map(table => ({
-                table,
-                count: Math.ceil(results.downloaded / TABLES_TO_SYNC.length) // Approximate distribution
-            }));
-            broadcastMultiTableChange(tableChanges);
+            const noRefreshTables = ['active_sessions', 'users', 'user_settings'];
+            // Build list of tables that had changes, excluding no-refresh tables
+            const tableChanges = TABLES_TO_SYNC
+                .filter(table => !noRefreshTables.includes(table))
+                .map(table => ({
+                    table,
+                    count: Math.ceil(results.downloaded / TABLES_TO_SYNC.length) // Approximate distribution
+                }));
+            if (tableChanges.length > 0) {
+                broadcastMultiTableChange(tableChanges);
+            }
         }
 
         return { status: 'success', duration, ...results };
@@ -859,7 +865,7 @@ class CloudSyncService {
         const db = getDatabase();
         if (!db) throw new Error('Local database not initialized');
 
-        const result = { downloaded: 0 };
+        const result = { downloaded: 0, actuallyChanged: 0 };
 
         try {
             // Get all records from cloud
@@ -885,49 +891,64 @@ class CloudSyncService {
                     // Use user_id as the unique key, not id
                     // This ensures only one session record per user exists locally
                     if (tableName === 'active_sessions' && record.user_id) {
-                        // Delete any existing local record for this user first
-                        db.prepare(`DELETE FROM ${tableName} WHERE user_id = ?`).run(record.user_id);
+                        // Check if the existing record is actually different
+                        const existingSession = db.prepare(`SELECT * FROM ${tableName} WHERE user_id = ?`).get(record.user_id);
 
-                        // Build insert values (excluding 'id' to let SQLite auto-generate)
-                        const insertColumns = commonColumns.filter(col => col !== 'id');
-                        const insertValues = insertColumns.map(col => {
-                            const val = record[col];
-                            if (val === null || val === undefined) return null;
-                            if (typeof val === 'boolean') return val ? 1 : 0;
-                            if (val instanceof Date) return val.toISOString();
-                            return val;
-                        });
+                        let sessionChanged = !existingSession; // New record = changed
 
-                        const placeholders = insertColumns.map(() => '?').join(', ');
-                        const insertQuery = `INSERT INTO ${tableName} (${insertColumns.join(', ')}) VALUES (${placeholders})`;
-                        db.prepare(insertQuery).run(...insertValues);
+                        if (existingSession && !sessionChanged) {
+                            // Compare key fields to detect actual changes
+                            if (existingSession.device_id !== record.device_id ||
+                                existingSession.session_id !== record.session_id ||
+                                existingSession.is_active !== (record.is_active ? 1 : 0)) {
+                                sessionChanged = true;
+                            }
+                        }
 
-                        console.log(`[CloudSync] Updated active_sessions for user ${record.user_id} with device ${record.device_id}`);
+                        // Only update if there's an actual change
+                        if (sessionChanged) {
+                            // Delete any existing local record for this user first
+                            db.prepare(`DELETE FROM ${tableName} WHERE user_id = ?`).run(record.user_id);
+
+                            // Build insert values (excluding 'id' to let SQLite auto-generate)
+                            const insertColumns = commonColumns.filter(col => col !== 'id');
+                            const insertValues = insertColumns.map(col => {
+                                const val = record[col];
+                                if (val === null || val === undefined) return null;
+                                if (typeof val === 'boolean') return val ? 1 : 0;
+                                if (val instanceof Date) return val.toISOString();
+                                return val;
+                            });
+
+                            const placeholders = insertColumns.map(() => '?').join(', ');
+                            const insertQuery = `INSERT INTO ${tableName} (${insertColumns.join(', ')}) VALUES (${placeholders})`;
+                            db.prepare(insertQuery).run(...insertValues);
+
+                            console.log(`[CloudSync] Updated active_sessions for user ${record.user_id} with device ${record.device_id}`);
+                            result.actuallyChanged++;
+                        }
+
                         result.downloaded++;
                         continue;
                     }
 
-                    // For users table, check if we need to preserve local roles
+                    // Check if local record exists and compare data to see if it actually changed
+                    const existingRecord = db.prepare(`SELECT * FROM ${tableName} WHERE ${primaryKey} = ?`).get(record[primaryKey]);
+                    let recordChanged = !existingRecord; // New record = changed
+
+                    // For users table, ALWAYS prefer local roles over cloud roles
+                    // This ensures roles set locally are not overwritten by cloud sync
                     let preserveLocalRoles = false;
                     let localRoles = null;
-                    if (tableName === 'users') {
-                        const cloudRoles = record.roles;
-                        const cloudRolesEmpty = !cloudRoles || cloudRoles === '[]' || cloudRoles === 'null' || cloudRoles === '';
-
-                        if (cloudRolesEmpty) {
-                            const localRecord = db.prepare(`SELECT roles FROM users WHERE ${primaryKey} = ?`).get(record[primaryKey]);
-                            if (localRecord && localRecord.roles) {
-                                try {
-                                    const parsedLocalRoles = JSON.parse(localRecord.roles);
-                                    if (Array.isArray(parsedLocalRoles) && parsedLocalRoles.length > 0) {
-                                        preserveLocalRoles = true;
-                                        localRoles = localRecord.roles;
-                                        console.log(`[CloudSync] pullFromCloud: Preserving local roles for user ${record.username}: ${localRoles}`);
-                                    }
-                                } catch (e) {
-                                    // Invalid JSON, don't preserve
-                                }
+                    if (tableName === 'users' && existingRecord && existingRecord.roles) {
+                        try {
+                            const parsedLocalRoles = JSON.parse(existingRecord.roles);
+                            if (Array.isArray(parsedLocalRoles) && parsedLocalRoles.length > 0) {
+                                preserveLocalRoles = true;
+                                localRoles = existingRecord.roles;
                             }
+                        } catch (e) {
+                            // Invalid JSON, don't preserve - use cloud roles
                         }
                     }
 
@@ -947,6 +968,28 @@ class CloudSyncService {
                         return val;
                     });
 
+                    // Compare existing record with new values to detect actual changes
+                    if (existingRecord && !recordChanged) {
+                        for (let i = 0; i < commonColumns.length; i++) {
+                            const col = commonColumns[i];
+                            const newVal = values[i];
+                            let oldVal = existingRecord[col];
+
+                            // Normalize values for comparison
+                            if (oldVal === undefined) oldVal = null;
+                            if (typeof oldVal === 'boolean') oldVal = oldVal ? 1 : 0;
+
+                            // Skip updated_at and synced_at columns for change detection
+                            if (col === 'updated_at' || col === 'synced_at' || col === 'sync_status') continue;
+
+                            // Compare as strings to handle type differences
+                            if (String(newVal) !== String(oldVal)) {
+                                recordChanged = true;
+                                break;
+                            }
+                        }
+                    }
+
                     const placeholders = commonColumns.map(() => '?').join(', ');
                     const updateSet = commonColumns
                         .filter(col => col !== primaryKey)
@@ -961,15 +1004,28 @@ class CloudSyncService {
 
                     db.prepare(query).run(...values);
                     result.downloaded++;
+
+                    if (recordChanged) {
+                        result.actuallyChanged++;
+                    }
                 } catch (error) {
-                    console.error(`[CloudSync] Failed to pull record from ${tableName}:`, error.message);
+                    // Handle FOREIGN KEY constraint failures gracefully
+                    // This happens when syncing user_settings/login_history before their parent user exists
+                    if (error.message && error.message.includes('FOREIGN KEY constraint failed')) {
+                        // Silently skip - the record will be synced later when the parent user exists
+                        // Don't log as error since this is expected during initial sync
+                    } else {
+                        console.error(`[CloudSync] Failed to pull record from ${tableName}:`, error.message);
+                    }
                 }
             }
 
-            // Broadcast batch change if we downloaded any records
-            // Note: Only send one event to avoid duplicate refreshes in the frontend
-            if (result.downloaded > 0) {
-                broadcastBatchChange(tableName, result.downloaded, 'SYNC_PULL');
+            // Broadcast batch change ONLY if records actually changed
+            // Skip broadcasting for tables that are polled frequently (active_sessions, users, user_settings)
+            // These cause UI refreshes every few seconds when polling, which is undesirable
+            const noRefreshTables = ['active_sessions', 'users', 'user_settings'];
+            if (result.actuallyChanged > 0 && !noRefreshTables.includes(tableName)) {
+                broadcastBatchChange(tableName, result.actuallyChanged, 'SYNC_PULL');
             }
 
             return result;

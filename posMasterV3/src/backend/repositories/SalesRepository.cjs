@@ -6,6 +6,7 @@
 
 const BaseRepository = require('./BaseRepository.cjs');
 const { notifyDataChange } = require('../services/CloudSyncService.cjs');
+const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
 const { nowISO, getSriLankanDate } = require('../utils/helpers.cjs');
 
 class SalesRepository extends BaseRepository {
@@ -202,9 +203,24 @@ class SalesRepository extends BaseRepository {
             // Notify CloudSync of the new sale
             notifyDataChange('sales_transactions', 'INSERT', fullSale, saleId);
 
+            // Broadcast to UI for immediate update
+            broadcastDataChange('sales_transactions', 'INSERT', saleId, fullSale);
+
             // Also notify for each sale item
             for (const item of fullSale.items) {
                 notifyDataChange('sales_items', 'INSERT', item, item.id);
+            }
+
+            // Broadcast stock changes to UI (stock was decreased)
+            for (const item of items) {
+                if (!data.is_held && item.stock_id) {
+                    broadcastDataChange('stock', 'UPDATE', item.stock_id, null);
+                }
+            }
+
+            // Broadcast member update if member was involved
+            if (data.member_id && !data.is_held) {
+                broadcastDataChange('members', 'UPDATE', data.member_id, null);
             }
 
             return fullSale;
@@ -247,9 +263,16 @@ class SalesRepository extends BaseRepository {
                     nowISO(),
                     item.stock_id
                 );
+                // Broadcast stock update
+                broadcastDataChange('stock', 'UPDATE', item.stock_id, null);
             }
 
-            return this.getFullDetails(id);
+            const completedSale = this.getFullDetails(id);
+
+            // Broadcast the sale update
+            broadcastDataChange('sales_transactions', 'UPDATE', id, completedSale);
+
+            return completedSale;
         });
 
         return transaction();
@@ -277,9 +300,11 @@ class SalesRepository extends BaseRepository {
                     nowISO(),
                     item.stock_id
                 );
+                // Broadcast stock restore
+                broadcastDataChange('stock', 'UPDATE', item.stock_id, null);
             }
 
-            // Update sale status
+            // Update sale status (this.update already broadcasts via BaseRepository)
             this.update(id, { status: 'cancelled' });
 
             return true;

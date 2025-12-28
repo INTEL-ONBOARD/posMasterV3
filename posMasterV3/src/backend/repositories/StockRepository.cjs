@@ -5,6 +5,8 @@
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
+const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
+const { notifyDataChange } = require('../services/CloudSyncService.cjs');
 const { nowISO, getSriLankanDate } = require('../utils/helpers.cjs');
 
 class StockRepository extends BaseRepository {
@@ -186,7 +188,16 @@ class StockRepository extends BaseRepository {
         const result = stmt.run(amount, new Date().toISOString(), id);
 
         if (result.changes === 0) return null;
-        return this.findById(id);
+
+        const updatedStock = this.findById(id);
+
+        // Notify CloudSync and broadcast to UI
+        if (updatedStock) {
+            notifyDataChange(this.tableName, 'UPDATE', updatedStock, id);
+            broadcastDataChange(this.tableName, 'UPDATE', id, updatedStock);
+        }
+
+        return updatedStock;
     }
 
     /**
@@ -211,7 +222,16 @@ class StockRepository extends BaseRepository {
         const result = stmt.run(amount, new Date().toISOString(), id);
 
         if (result.changes === 0) return null;
-        return this.findById(id);
+
+        const updatedStock = this.findById(id);
+
+        // Notify CloudSync and broadcast to UI
+        if (updatedStock) {
+            notifyDataChange(this.tableName, 'UPDATE', updatedStock, id);
+            broadcastDataChange(this.tableName, 'UPDATE', id, updatedStock);
+        }
+
+        return updatedStock;
     }
 
     /**
