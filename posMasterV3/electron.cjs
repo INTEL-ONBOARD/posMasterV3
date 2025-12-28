@@ -77,17 +77,21 @@ async function loadDTOs() {
   };
 }
 
-try {
-  if (!app.isPackaged) {
-    require("electron-reload")(__dirname, {
-      awaitWriteFinish: true,
-      ignored: /node_modules|[\/\\]\.git|dist|dist-react/,
-    });
-    console.log("electron-reload enabled");
-  }
-} catch (e) {
-  console.log("electron-reload not available, skipping hot reload");
-}
+// DISABLED: electron-reload was causing full app reloads on any file change
+// including database writes and sync operations. Vite HMR handles React hot-reload.
+// If you need backend hot-reload, use nodemon or restart manually.
+//
+// try {
+//   if (!app.isPackaged) {
+//     require("electron-reload")(__dirname, {
+//       awaitWriteFinish: true,
+//       ignored: /node_modules|[\/\\]\.git|dist|dist-react|\.db|\.sqlite|\.json|\.log/,
+//     });
+//     console.log("electron-reload enabled");
+//   }
+// } catch (e) {
+//   console.log("electron-reload not available, skipping hot reload");
+// }
 
 // IPC to open folder selector
 ipcMain.handle("select-folder", async () => {

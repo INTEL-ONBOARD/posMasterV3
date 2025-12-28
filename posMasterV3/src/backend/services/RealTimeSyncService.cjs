@@ -193,9 +193,9 @@ class RealTimeSyncService extends EventEmitter {
 
             this.lastActiveSessionCheck = Date.now();
 
-            // If we pulled any changes, immediately validate current session
+            // If there were ACTUAL changes (not just synced same data), validate session
             // This triggers the kick detection if another device logged in
-            if (pullResult.downloaded > 0) {
+            if (pullResult.actuallyChanged > 0) {
                 console.log('[RealTimeSync] Active sessions changed, validating current session...');
 
                 // Get current token from main process storage or try to validate
