@@ -133,7 +133,7 @@ class UserService {
 
             const updatedUser = this.userRepo.update(userId, safeData);
 
-            // Queue for cloud sync
+            // Queue for REST API cloud sync (legacy)
             this.syncQueueRepo.enqueue({
                 entity_type: 'user',
                 entity_id: userId,
@@ -145,6 +145,29 @@ class UserService {
                 },
                 priority: 5
             });
+
+            // Immediately push to MySQL cloud (real-time sync)
+            try {
+                const { getCloudSyncService } = require('./CloudSyncService.cjs');
+                const cloudSync = getCloudSyncService();
+                if (cloudSync && cloudSync.isOnline && cloudSync.mysqlInitialized) {
+                    // Get the full updated user record for syncing
+                    const fullUser = this.userRepo.findById(userId);
+                    if (fullUser) {
+                        // Re-serialize roles if they were parsed
+                        const userToSync = {
+                            ...fullUser,
+                            roles: Array.isArray(fullUser.roles) ? JSON.stringify(fullUser.roles) : fullUser.roles
+                        };
+                        cloudSync.pushUser(userToSync, false).catch(err => {
+                            console.error('[UserService] Cloud push failed (will retry):', err.message);
+                        });
+                        console.log('[UserService] User update pushed to cloud:', userId);
+                    }
+                }
+            } catch (syncError) {
+                console.error('[UserService] Cloud sync error (non-fatal):', syncError.message);
+            }
 
             return {
                 success: true,

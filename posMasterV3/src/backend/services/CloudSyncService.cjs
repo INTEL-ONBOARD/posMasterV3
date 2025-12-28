@@ -494,13 +494,30 @@ class CloudSyncService {
             const values = columns.map(col => {
                 const val = record[col];
                 if (typeof val === 'boolean') return val ? 1 : 0;
-                // Skip objects/arrays - these are embedded data, not actual columns
+                // For roles and other JSON fields, stringify arrays
+                if (Array.isArray(val)) return JSON.stringify(val);
+                // Skip other objects (not arrays) - these are embedded data, not actual columns
                 if (typeof val === 'object' && val !== null) return null;
                 return val;
             });
 
             const placeholders = columns.map(() => '?').join(', ');
-            const query = `REPLACE INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`;
+
+            // For users table, use INSERT ... ON DUPLICATE KEY UPDATE to ensure all fields are updated
+            let query;
+            if (tableName === 'users') {
+                const updateClauses = columns
+                    .filter(col => col !== 'id')
+                    .map(col => `${col} = VALUES(${col})`)
+                    .join(', ');
+                query = `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateClauses}`;
+
+                // Log roles value for debugging
+                const rolesIndex = columns.indexOf('roles');
+                console.log(`[CloudSync] syncSingleChange pushing user: roles=${rolesIndex >= 0 ? values[rolesIndex] : 'NOT_IN_COLUMNS'}`);
+            } else {
+                query = `REPLACE INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`;
+            }
 
             await executeQuery(query, values);
         }
@@ -987,29 +1004,32 @@ class CloudSyncService {
         const columns = Object.keys(cloudRecord);
         const commonColumns = columns.filter(col => localColumns.includes(col));
 
-        // For users table, check if we need to preserve local roles
+        // For users table, ALWAYS preserve local roles (local is source of truth for roles)
         let preserveLocalRoles = false;
         let localRoles = null;
         if (tableName === 'users') {
             const cloudRoles = cloudRecord.roles;
-            // Check if cloud roles is empty/null/invalid
-            const cloudRolesEmpty = !cloudRoles || cloudRoles === '[]' || cloudRoles === 'null' || cloudRoles === '';
+            const cloudRolesValid = cloudRoles && cloudRoles !== '' && cloudRoles !== 'null' && cloudRoles !== '[]';
 
-            if (cloudRolesEmpty) {
-                // Get local record to preserve roles
-                const localRecord = db.prepare(`SELECT roles FROM users WHERE ${primaryKey} = ?`).get(cloudRecord[primaryKey]);
-                if (localRecord && localRecord.roles) {
-                    try {
-                        const parsedLocalRoles = JSON.parse(localRecord.roles);
-                        if (Array.isArray(parsedLocalRoles) && parsedLocalRoles.length > 0) {
-                            preserveLocalRoles = true;
-                            localRoles = localRecord.roles;
-                            console.log(`[CloudSync] Preserving local roles for user ${cloudRecord.username}: ${localRoles}`);
-                        }
-                    } catch (e) {
-                        // Invalid JSON, don't preserve
+            // Check if local has valid roles - always prefer local over cloud
+            const localRecord = db.prepare(`SELECT roles FROM users WHERE ${primaryKey} = ?`).get(cloudRecord[primaryKey]);
+            if (localRecord && localRecord.roles) {
+                try {
+                    const parsedLocalRoles = JSON.parse(localRecord.roles);
+                    if (Array.isArray(parsedLocalRoles) && parsedLocalRoles.length > 0) {
+                        preserveLocalRoles = true;
+                        localRoles = localRecord.roles;
                     }
+                } catch (e) {
+                    // Invalid JSON, don't preserve
                 }
+            }
+
+            // If neither has valid roles, set default
+            if (!preserveLocalRoles && !cloudRolesValid) {
+                localRoles = cloudRecord.username === 'admin' ? '["admin"]' : '["cashier"]';
+                preserveLocalRoles = true;
+                console.log(`[CloudSync] Setting default roles for user ${cloudRecord.username}: ${localRoles}`);
             }
         }
 
@@ -1189,19 +1209,33 @@ class CloudSyncService {
                     const existingRecord = db.prepare(`SELECT * FROM ${tableName} WHERE ${primaryKey} = ?`).get(record[primaryKey]);
                     let recordChanged = !existingRecord; // New record = changed
 
-                    // For users table, ALWAYS prefer local roles over cloud roles
-                    // This ensures roles set locally are not overwritten by cloud sync
+                    // For users table, handle roles carefully:
+                    // 1. If cloud roles is NULL/empty and local has valid roles -> preserve local
+                    // 2. If cloud roles is valid and local has valid roles -> prefer local (local is truth)
+                    // 3. If neither has valid roles -> set default based on username
                     let preserveLocalRoles = false;
                     let localRoles = null;
-                    if (tableName === 'users' && existingRecord && existingRecord.roles) {
-                        try {
-                            const parsedLocalRoles = JSON.parse(existingRecord.roles);
-                            if (Array.isArray(parsedLocalRoles) && parsedLocalRoles.length > 0) {
-                                preserveLocalRoles = true;
-                                localRoles = existingRecord.roles;
+                    if (tableName === 'users') {
+                        const cloudRoles = record.roles;
+                        const cloudRolesValid = cloudRoles && cloudRoles !== '' && cloudRoles !== 'null' && cloudRoles !== '[]';
+
+                        // Check if local has valid roles
+                        if (existingRecord && existingRecord.roles) {
+                            try {
+                                const parsedLocalRoles = JSON.parse(existingRecord.roles);
+                                if (Array.isArray(parsedLocalRoles) && parsedLocalRoles.length > 0) {
+                                    preserveLocalRoles = true;
+                                    localRoles = existingRecord.roles;
+                                }
+                            } catch (e) {
+                                // Invalid JSON, don't preserve
                             }
-                        } catch (e) {
-                            // Invalid JSON, don't preserve - use cloud roles
+                        }
+
+                        // If neither cloud nor local has valid roles, set default
+                        if (!preserveLocalRoles && !cloudRolesValid) {
+                            localRoles = record.username === 'admin' ? '["admin"]' : '["cashier"]';
+                            preserveLocalRoles = true;
                         }
                     }
 
@@ -1403,7 +1437,24 @@ class CloudSyncService {
                     });
 
                     const placeholders = columns.map(() => '?').join(', ');
-                    const query = `REPLACE INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`;
+
+                    // For users table, use INSERT ... ON DUPLICATE KEY UPDATE to ensure roles are updated
+                    let query;
+                    if (tableName === 'users') {
+                        const updateClauses = columns
+                            .filter(col => col !== 'id')
+                            .map(col => `${col} = VALUES(${col})`)
+                            .join(', ');
+                        query = `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateClauses}`;
+
+                        const rolesIndex = columns.indexOf('roles');
+                        console.log(`[CloudSync] Pushing user ${record.username} to cloud:`, {
+                            id: record.id,
+                            roles_value: rolesIndex >= 0 ? values[rolesIndex] : 'NOT_FOUND'
+                        });
+                    } else {
+                        query = `REPLACE INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`;
+                    }
 
                     await executeQuery(query, values);
                     result.uploaded++;
