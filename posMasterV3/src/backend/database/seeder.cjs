@@ -21,7 +21,7 @@ function seedDefaultAdmin() {
 
     if (existingUser) {
         // Check if admin user exists but has no roles - fix it
-        const adminUser = db.prepare("SELECT id, roles FROM users WHERE username = 'admin' LIMIT 1").get();
+        const adminUser = db.prepare("SELECT id, roles, sync_status FROM users WHERE username = 'admin' LIMIT 1").get();
         if (adminUser) {
             let fixed = false;
             const roles = adminUser.roles ? JSON.parse(adminUser.roles) : [];
@@ -32,6 +32,15 @@ function seedDefaultAdmin() {
                 const stmt = db.prepare('UPDATE users SET roles = ?, updated_at = ? WHERE id = ?');
                 stmt.run(JSON.stringify(['admin']), nowISO(), adminUser.id);
                 console.log('[Seeder] Admin user roles fixed: ["admin"]');
+                fixed = true;
+            }
+
+            // Fix sync_status if it's 'local_only' - admin should sync to cloud
+            if (adminUser.sync_status === 'local_only') {
+                console.log('[Seeder] Admin user has local_only sync status, fixing to pending...');
+                const stmt = db.prepare('UPDATE users SET sync_status = ?, updated_at = ? WHERE id = ?');
+                stmt.run('pending', nowISO(), adminUser.id);
+                console.log('[Seeder] Admin user sync_status fixed to pending');
                 fixed = true;
             }
 
@@ -86,7 +95,7 @@ function seedDefaultAdmin() {
         roles: JSON.stringify(['admin']),
         branch_id: null, // Admin can select any branch
         is_active: 1,
-        sync_status: 'local_only',
+        sync_status: 'pending', // Should sync to cloud
         created_at: nowISO(),
         updated_at: nowISO()
     };
@@ -793,6 +802,41 @@ function seedDefaultMember() {
 }
 
 /**
+ * Seed Credit 1 Month payment method if it doesn't exist
+ * This handles existing databases that were created before this payment method was added
+ */
+function seedCredit1MonthPayment() {
+    const db = getDatabase();
+
+    // Check if Credit 1 Month already exists
+    const existing = db.prepare("SELECT id FROM payment_methods WHERE name = 'Credit 1 Month' LIMIT 1").get();
+
+    if (existing) {
+        return { seeded: false, message: 'Credit 1 Month already exists' };
+    }
+
+    // Check if payment_methods table exists
+    const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='payment_methods'").get();
+    if (!tableExists) {
+        return { seeded: false, message: 'payment_methods table does not exist yet' };
+    }
+
+    // Insert Credit 1 Month payment method
+    const stmt = db.prepare(`
+        INSERT INTO payment_methods (name, description, type, credit_months, is_active, is_member_only, display_order, icon, color, sync_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+    `);
+
+    stmt.run('Credit 1 Month', '1 month credit payment', 'credit', 1, 1, 1, 2, 'CreditCard', 'cyan');
+
+    // Update display_order for other credit methods to make room
+    db.prepare("UPDATE payment_methods SET display_order = display_order + 1 WHERE display_order >= 2 AND name != 'Credit 1 Month'").run();
+
+    console.log('[Seeder] Credit 1 Month payment method created');
+    return { seeded: true, message: 'Credit 1 Month payment method created' };
+}
+
+/**
  * Run all seeders
  * Seeds default data when the database is first initialized
  */
@@ -806,7 +850,8 @@ function runSeeders() {
         admin: seedDefaultAdmin(),
         suppliers: seedDefaultSuppliers(),
         members: seedDefaultMember(),
-        items: seedDefaultItems()
+        items: seedDefaultItems(),
+        credit1Month: seedCredit1MonthPayment()
     };
 
     console.log('[Seeder] Seeding complete');
@@ -821,5 +866,6 @@ module.exports = {
     seedDefaultSuppliers,
     seedDefaultMember,
     seedDefaultItems,
+    seedCredit1MonthPayment,
     runSeeders
 };

@@ -163,26 +163,26 @@ class BranchContextService {
         this.currentBranch = branch;
 
         // Update app_settings with selected branch
-        // Using the correct column names: setting_key, setting_value
+        // Using ON CONFLICT(setting_key) since setting_key has UNIQUE constraint
         const now = new Date().toISOString();
         this.db.prepare(`
             INSERT INTO app_settings (id, setting_key, setting_value, setting_type, description, created_at, updated_at)
             VALUES ('selected_branch_id', 'selected_branch_id', ?, 'number', 'Currently selected branch ID', ?, ?)
-            ON CONFLICT(id) DO UPDATE SET setting_value = ?, updated_at = ?
-        `).run(branchId.toString(), now, now, branchId.toString(), now);
+            ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at
+        `).run(branchId.toString(), now, now);
 
         this.db.prepare(`
             INSERT INTO app_settings (id, setting_key, setting_value, setting_type, description, created_at, updated_at)
             VALUES ('selected_branch_name', 'selected_branch_name', ?, 'string', 'Currently selected branch name', ?, ?)
-            ON CONFLICT(id) DO UPDATE SET setting_value = ?, updated_at = ?
-        `).run(branch.name, now, now, branch.name, now);
+            ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at
+        `).run(branch.name, now, now);
 
         // Also update default_outlet for AppSettings consistency
         this.db.prepare(`
             INSERT INTO app_settings (id, setting_key, setting_value, setting_type, description, created_at, updated_at)
             VALUES ('default_outlet', 'default_outlet', ?, 'string', 'Default outlet/branch name', ?, ?)
-            ON CONFLICT(id) DO UPDATE SET setting_value = ?, updated_at = ?
-        `).run(branch.name, now, now, branch.name, now);
+            ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at
+        `).run(branch.name, now, now);
 
         // Broadcast branch change to all windows
         this.broadcastBranchChange(branch);

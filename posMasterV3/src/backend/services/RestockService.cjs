@@ -222,7 +222,7 @@ class RestockService {
                 execution_level: data.exe_level || data.execution_level || 'medium',
                 // Branch and audit fields
                 branch_id: branchContext.branchId,
-                created_by: branchContext.userName || branchContext.userId
+                created_by: branchContext.userId // Must be user ID (UUID), not username
             };
 
             const addedItems = data.added_items || [];

@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, Shield, Users, Settings } from "lucide-react";
 import { settingsApi } from "../../api/localApi";
 import ToastContext from "../toasts/ToastService";
 import { useReactiveData, TABLES } from "../../store";
+import StatusModal from "../../components/StatusModal.jsx";
 
 function ManageRole() {
   const toast = useContext(ToastContext);
@@ -191,7 +192,13 @@ function ManageRole() {
   // Form states
   const [isRoleEditing, setIsRoleEditing] = useState(false);
   const [formStatus, setFormStatus] = useState("form");
+  const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
   const timerRef = useRef(null);
+
+  const closeStatusModal = () => {
+    setStatusModal({ open: false, type: null, description: "" });
+    setFormStatus("form");
+  };
 
   // Form data
   const [formData, setFormData] = useState({
@@ -368,23 +375,14 @@ function ManageRole() {
 
       await settingsApi.updateAppSettings({ custom_roles: customRoles });
 
-      setFormStatus("success");
-      timerRef.current = setTimeout(() => {
-        setFormStatus("form");
-        timerRef.current = null;
-      }, 2000);
-
+      setFormStatus("form");
+      setStatusModal({ open: true, type: 'success', description: `Role "${formData.name}" created successfully` });
       clearRoleInput();
-      toast.open("Role created successfully", 4000, "Success", "success");
       fetchRoles();
     } catch (err) {
       console.error("Create role error:", err);
-      setFormStatus("fail");
-      timerRef.current = setTimeout(() => {
-        setFormStatus("form");
-        timerRef.current = null;
-      }, 2000);
-      toast.open("Failed to create role", 4000, "Error", "error");
+      setFormStatus("form");
+      setStatusModal({ open: true, type: 'failed', description: err.message || 'Failed to create role' });
     }
   };
 
@@ -423,26 +421,16 @@ function ManageRole() {
         customRoles = customRoles.map(r => r.id === formData.id ? roleData : r);
 
         await settingsApi.updateAppSettings({ custom_roles: customRoles });
-
-        toast.open("Role updated successfully", 4000, "Success", "success");
       }
 
-      setFormStatus("success");
-      timerRef.current = setTimeout(() => {
-        setFormStatus("form");
-        timerRef.current = null;
-      }, 2000);
-
+      setFormStatus("form");
+      setStatusModal({ open: true, type: 'success', description: `Role "${formData.name}" updated successfully` });
       clearRoleInput();
       fetchRoles();
     } catch (err) {
       console.error("Update role error:", err);
-      setFormStatus("fail");
-      timerRef.current = setTimeout(() => {
-        setFormStatus("form");
-        timerRef.current = null;
-      }, 2000);
-      toast.open("Failed to update role", 4000, "Error", "error");
+      setFormStatus("form");
+      setStatusModal({ open: true, type: 'failed', description: err.message || 'Failed to update role' });
     }
   };
 
@@ -473,23 +461,14 @@ function ManageRole() {
 
       await settingsApi.updateAppSettings({ custom_roles: customRoles });
 
-      setFormStatus("success");
-      timerRef.current = setTimeout(() => {
-        setFormStatus("form");
-        timerRef.current = null;
-      }, 2000);
-
+      setFormStatus("form");
+      setStatusModal({ open: true, type: 'success', description: 'Role deleted successfully' });
       clearRoleInput();
-      toast.open("Role deleted successfully", 4000, "Success", "success");
       fetchRoles();
     } catch (err) {
       console.error("Delete role error:", err);
-      setFormStatus("fail");
-      timerRef.current = setTimeout(() => {
-        setFormStatus("form");
-        timerRef.current = null;
-      }, 2000);
-      toast.open("Failed to delete role", 4000, "Error", "error");
+      setFormStatus("form");
+      setStatusModal({ open: true, type: 'failed', description: err.message || 'Failed to delete role' });
     }
   };
 
@@ -689,27 +668,7 @@ function ManageRole() {
           <h2 className="text-gray-700 font-semibold">Processing...</h2>
           <p className="text-sm text-gray-400 mt-1">Please wait</p>
         </div>
-      ) : formStatus === "success" ? (
-        <div className="w-[28rem] h-[calc(100vh-2rem)] p-5 flex flex-col justify-center items-center bg-white rounded-xl m-4 shadow-sm">
-          <div className="w-20 h-20 rounded-2xl bg-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-emerald-200">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h2 className="font-bold text-xl text-gray-800">Success!</h2>
-          <p className="text-sm text-gray-400 mt-1">Operation completed</p>
-        </div>
-      ) : (
-        <div className="w-[28rem] h-[calc(100vh-2rem)] p-5 flex flex-col justify-center items-center bg-white rounded-xl m-4 shadow-sm">
-          <div className="w-20 h-20 rounded-2xl bg-red-500 flex items-center justify-center mb-4 shadow-lg shadow-red-200">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-          <h2 className="font-bold text-xl text-gray-800">Failed</h2>
-          <p className="text-sm text-gray-400 mt-1">Something went wrong</p>
-        </div>
-      )}
+      ) : null}
 
       {/* Table section (middle) */}
       <div className="bg-white flex-1 h-[calc(100vh-2rem)] rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
@@ -888,6 +847,15 @@ function ManageRole() {
           </div>
         </div>
       </div>
+
+      {/* Status Modal */}
+      <StatusModal
+        isOpen={statusModal.open}
+        closeModal={closeStatusModal}
+        type={statusModal.type}
+        description={statusModal.description}
+        context="role"
+      />
     </div>
   );
 }
