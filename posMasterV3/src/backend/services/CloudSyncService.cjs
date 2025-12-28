@@ -724,6 +724,11 @@ class CloudSyncService {
         const primaryKey = this.getPrimaryKeyColumn(tableName);
 
         try {
+            // Disable foreign key checks during sync to avoid FK constraint failures
+            // when syncing child records before parent records exist
+            // This is safe because we sync tables in dependency order
+            db.pragma('foreign_keys = OFF');
+
             // Get local records
             const localRecords = db.prepare(`SELECT * FROM ${tableName}`).all();
             const localMap = new Map();
@@ -830,6 +835,9 @@ class CloudSyncService {
         } catch (error) {
             console.error(`[CloudSync] Failed bidirectional sync for ${tableName}:`, error.message);
             throw error;
+        } finally {
+            // Always re-enable foreign key checks after sync
+            db.pragma('foreign_keys = ON');
         }
     }
 
@@ -1008,6 +1016,9 @@ class CloudSyncService {
         const primaryKey = this.getPrimaryKeyColumn(tableName);
 
         try {
+            // Disable foreign key checks during sync
+            db.pragma('foreign_keys = OFF');
+
             // Get the specific record from cloud
             const cloudRecords = await executeQuery(
                 `SELECT * FROM ${tableName} WHERE ${primaryKey} = ?`,
@@ -1031,6 +1042,9 @@ class CloudSyncService {
         } catch (error) {
             // If table doesn't exist in cloud or other error, just log and continue
             console.log(`[CloudSync] Could not pull ${tableName} record ${recordId} from cloud:`, error.message);
+        } finally {
+            // Always re-enable foreign key checks
+            db.pragma('foreign_keys = ON');
         }
     }
 
@@ -1045,6 +1059,10 @@ class CloudSyncService {
         const result = { downloaded: 0, actuallyChanged: 0 };
 
         try {
+            // Disable foreign key checks during sync to avoid FK constraint failures
+            // when syncing child records before parent records exist
+            db.pragma('foreign_keys = OFF');
+
             // Get all records from cloud
             const cloudRecords = await executeQuery(`SELECT * FROM ${tableName}`);
             if (!cloudRecords || cloudRecords.length === 0) {
@@ -1244,6 +1262,9 @@ class CloudSyncService {
         } catch (error) {
             console.error(`[CloudSync] Failed to pull from cloud ${tableName}:`, error.message);
             throw error;
+        } finally {
+            // Always re-enable foreign key checks after sync
+            db.pragma('foreign_keys = ON');
         }
     }
 
