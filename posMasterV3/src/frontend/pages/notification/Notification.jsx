@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Bell, HelpCircle, Send, CheckCircle, XCircle, Trash2, BellRing,
   TrendingUp, Package, Users, AlertTriangle, DollarSign, ShoppingCart,
@@ -9,7 +9,7 @@ import {
 import NotificationCard from '../../components/NotificationCard';
 import { localAuth } from '../../api/services/localAuth';
 import { salesApi, loginHistoryApi } from '../../api/localApi';
-import { useReactiveData, TABLES, useSyncStatus } from '../../store';
+import { useReactiveData, useDataChangeSubscription, TABLES, useSyncStatus } from '../../store';
 
 function Dashboard() {
   // User state
@@ -155,6 +155,29 @@ function Dashboard() {
       fetchSalesStats();
     }
   }, [currentUser, isAdmin, fetchSalesStats]);
+
+  // REACTIVE: Subscribe to sales transaction changes for live updates
+  // This will automatically refetch sales stats when any sale is created/updated/deleted
+  useDataChangeSubscription(TABLES.SALES_TRANSACTIONS, useCallback((state) => {
+    // When sales data changes (and not loading), refetch the stats
+    if (!state.loading && currentUser) {
+      console.log('[Dashboard] Sales data changed, refreshing stats...');
+      fetchSalesStats();
+    }
+  }, [currentUser, fetchSalesStats]));
+
+  // LIVE: Auto-refresh sales stats every 30 seconds for real-time updates
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const REFRESH_INTERVAL = 30000; // 30 seconds
+    const intervalId = setInterval(() => {
+      console.log('[Dashboard] Auto-refreshing sales stats...');
+      fetchSalesStats();
+    }, REFRESH_INTERVAL);
+
+    return () => clearInterval(intervalId);
+  }, [currentUser, fetchSalesStats]);
 
   // Generate notifications from reactive data
   useEffect(() => {
