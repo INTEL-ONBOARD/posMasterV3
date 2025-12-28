@@ -1,7 +1,8 @@
-import React, { useEffect, useContext, useRef, useState } from "react";
+import React, { useEffect, useContext, useRef, useState, useMemo } from "react";
 import { ChevronDown, ChevronUp, Shield, Users, Settings } from "lucide-react";
-import { settingsApi, userApi } from "../../api/localApi";
+import { settingsApi } from "../../api/localApi";
 import ToastContext from "../toasts/ToastService";
+import { useReactiveData, TABLES } from "../../store";
 
 function ManageRole() {
   const toast = useContext(ToastContext);
@@ -16,11 +17,28 @@ function ManageRole() {
 
   // Data states
   const [rolesList, setRolesList] = useState([]);
-  const [userStats, setUserStats] = useState({
-    totalUsers: 0,
-    activeUsers: 0,
-    roleBreakdown: {}
-  });
+
+  // Use reactive data for users - auto-updates when users change
+  const { data: users } = useReactiveData(TABLES.USERS);
+
+  // Compute user stats from reactive data
+  const userStats = useMemo(() => {
+    const userList = users || [];
+    const roleBreakdown = {};
+
+    userList.forEach(user => {
+      const userRoles = Array.isArray(user.roles) ? user.roles : [];
+      userRoles.forEach(role => {
+        roleBreakdown[role] = (roleBreakdown[role] || 0) + 1;
+      });
+    });
+
+    return {
+      totalUsers: userList.length,
+      activeUsers: userList.filter(u => u.is_active).length,
+      roleBreakdown
+    };
+  }, [users]);
 
   // Predefined roles with default permissions
   const predefinedRoles = [
@@ -192,8 +210,8 @@ function ManageRole() {
     };
   }, []);
 
-  // Fetch roles and user statistics
-  const fetchRolesAndStats = async () => {
+  // Fetch roles (user stats now come from reactive data)
+  const fetchRoles = async () => {
     try {
       setIsLoading(true);
 
@@ -214,36 +232,12 @@ function ManageRole() {
         } else {
           setRolesList(predefinedRoles);
         }
-      } catch (error) {
+      } catch {
         console.log("No saved role settings found, using predefined roles");
         setRolesList(predefinedRoles);
       }
-
-      // Fetch user stats
-      try {
-        const usersResponse = await userApi.getAll();
-        if (usersResponse.status === "success" && usersResponse.data) {
-          const users = usersResponse.data;
-          const roleBreakdown = {};
-
-          users.forEach(user => {
-            const userRoles = Array.isArray(user.roles) ? user.roles : [];
-            userRoles.forEach(role => {
-              roleBreakdown[role] = (roleBreakdown[role] || 0) + 1;
-            });
-          });
-
-          setUserStats({
-            totalUsers: users.length,
-            activeUsers: users.filter(u => u.is_active).length,
-            roleBreakdown
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching user stats:", error);
-      }
-    } catch (error) {
-      console.error("Error fetching roles:", error);
+    } catch (err) {
+      console.error("Error fetching roles:", err);
       toast.open("Failed to load roles", 4000, "Error", "error");
     } finally {
       setIsLoading(false);
@@ -252,7 +246,8 @@ function ManageRole() {
 
   // Initial data load
   useEffect(() => {
-    fetchRolesAndStats();
+    fetchRoles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Search handler with debounce
@@ -381,7 +376,7 @@ function ManageRole() {
 
       clearRoleInput();
       toast.open("Role created successfully", 4000, "Success", "success");
-      fetchRolesAndStats();
+      fetchRoles();
     } catch (err) {
       console.error("Create role error:", err);
       setFormStatus("fail");
@@ -439,7 +434,7 @@ function ManageRole() {
       }, 2000);
 
       clearRoleInput();
-      fetchRolesAndStats();
+      fetchRoles();
     } catch (err) {
       console.error("Update role error:", err);
       setFormStatus("fail");
@@ -486,7 +481,7 @@ function ManageRole() {
 
       clearRoleInput();
       toast.open("Role deleted successfully", 4000, "Success", "success");
-      fetchRolesAndStats();
+      fetchRoles();
     } catch (err) {
       console.error("Delete role error:", err);
       setFormStatus("fail");

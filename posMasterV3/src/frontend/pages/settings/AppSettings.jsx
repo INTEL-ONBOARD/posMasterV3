@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { ChevronDown, ChevronUp, FolderOpen, RefreshCw, Database, Cloud, Wifi, WifiOff, Bell } from 'lucide-react';
-import { settingsApi, branchApi, cloudSyncApi, appSettingsApi } from '../../api/localApi';
+import { settingsApi, cloudSyncApi, appSettingsApi } from '../../api/localApi';
 import ToastContext from '../toasts/ToastService';
+import { useReactiveData, TABLES } from '../../store';
 
 function AppSettings() {
   const toast = useContext(ToastContext);
@@ -14,7 +15,9 @@ function AppSettings() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [branches, setBranches] = useState([]);
+
+  // Use reactive data for branches - auto-updates when branches change
+  const { data: branches } = useReactiveData(TABLES.BRANCHES);
 
   // Cloud sync state
   const [syncStatus, setSyncStatus] = useState({ isOnline: false, isSyncing: false, lastSyncTime: null });
@@ -63,15 +66,6 @@ function AppSettings() {
           });
         }
 
-        const branchResponse = await branchApi.getAll();
-        if (branchResponse.status === 'success' && branchResponse.data) {
-          setBranches(branchResponse.data);
-          // Set default outlet to first branch if not set
-          if (!paths.default_outlet && branchResponse.data.length > 0) {
-            setPaths(prev => ({ ...prev, default_outlet: branchResponse.data[0].name }));
-          }
-        }
-
         // Load cloud sync status
         const syncResponse = await cloudSyncApi.getStatus();
         if (syncResponse.status === 'success' && syncResponse.data) {
@@ -100,6 +94,13 @@ function AppSettings() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Set default outlet when branches load from reactive data
+  useEffect(() => {
+    if (branches && branches.length > 0 && !paths.default_outlet) {
+      setPaths(prev => ({ ...prev, default_outlet: branches[0].name }));
+    }
+  }, [branches, paths.default_outlet]);
 
   const handleToggle = async (key) => {
     const newValue = !settings[key];
@@ -187,7 +188,7 @@ function AppSettings() {
       } else {
         toast.open('Failed to reset settings', 3000, 'Error', 'error');
       }
-    } catch (err) {
+    } catch {
       toast.open('Failed to reset settings', 3000, 'Error', 'error');
     } finally {
       setSaving(false);
@@ -218,7 +219,7 @@ function AppSettings() {
       } else {
         toast.open('Failed to save settings', 3000, 'Error', 'error');
       }
-    } catch (err) {
+    } catch {
       toast.open('Failed to save settings', 3000, 'Error', 'error');
     } finally {
       setSaving(false);
@@ -499,7 +500,7 @@ function AppSettings() {
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                   >
                     <option value="">Select Branch</option>
-                    {branches.map((branch) => (
+                    {(branches || []).map((branch) => (
                       <option key={branch.id} value={branch.name}>
                         {branch.name}
                       </option>
@@ -509,11 +510,11 @@ function AppSettings() {
                 </div>
 
                 {/* Branch List Preview */}
-                {branches.length > 0 && (
+                {(branches || []).length > 0 && (
                   <div className="mt-4">
                     <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">Available Branches</label>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {branches.map((branch) => (
+                      {(branches || []).map((branch) => (
                         <div
                           key={branch.id}
                           className={`flex items-center justify-between py-2 px-3 rounded-lg transition-colors ${

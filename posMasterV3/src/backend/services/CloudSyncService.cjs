@@ -24,7 +24,6 @@ const { nowISO } = require('../utils/helpers.cjs');
 const {
     broadcastDataChange,
     broadcastSyncStatus,
-    broadcastRefreshNeeded,
     broadcastSyncComplete,
     broadcastBatchChange,
     broadcastMultiTableChange
@@ -967,10 +966,10 @@ class CloudSyncService {
                 }
             }
 
-            // Broadcast batch change and refresh needed if we downloaded any records
+            // Broadcast batch change if we downloaded any records
+            // Note: Only send one event to avoid duplicate refreshes in the frontend
             if (result.downloaded > 0) {
                 broadcastBatchChange(tableName, result.downloaded, 'SYNC_PULL');
-                broadcastRefreshNeeded(tableName, 'cloud_sync');
             }
 
             return result;
