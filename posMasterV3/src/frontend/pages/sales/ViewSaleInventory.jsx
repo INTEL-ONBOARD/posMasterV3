@@ -1,53 +1,45 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import ItemCard from "../../components/ItemCard.jsx";
-import { itemApi, categoryApi } from "../../api/localApi";
 import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Package, Grid3X3, List, CheckCircle, AlertTriangle, Tag } from "lucide-react";
 import ViewItemModal from "./modals/ViewItemModal.jsx";
+import { useReactiveData, TABLES } from "../../store";
 
 function ViewSaleInventory({ isActive }) {
   const [modal, setModal] = useState(false);
   const closeModal = () => setModal(false);
   const [selectedItem, setSelectedItem] = useState({});
 
-  const [inventoryItems, setInventoryItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use reactive data hooks - automatically updates when data changes
+  const { data: items, loading: isLoadingItems } = useReactiveData(
+    TABLES.ITEMS,
+    null,
+    { enabled: isActive }
+  );
 
-  const fetchItems = async () => {
-    setIsLoading(true);
-    try {
-      const response = await itemApi.getAllExtended();
-      if (response.status === "success") {
-        setInventoryItems(response.data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching items:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { data: categories, loading: isLoadingCategories } = useReactiveData(
+    TABLES.CATEGORIES,
+    null,
+    { enabled: isActive }
+  );
 
-  useEffect(() => {
-    if (isActive) {
-      fetchItems();
-    }
-  }, [isActive]);
+  // Transform items data to expected format
+  const inventoryItems = useMemo(() => {
+    return (items || []).map(item => ({
+      id: item.id,
+      item_id: item.id,
+      sku: item.sku,
+      item_name: item.item_name,
+      item_image_url: item.item_image_url,
+      quantity: item.quantity || 0,
+      unit_price: item.retail_price || item.unit_price || 0,
+      category: item.category || { id: item.category_id, type: item.category_type }
+    }));
+  }, [items]);
 
-  const [uniqueCategoryTypes, setUniqueCategoryTypes] = useState([]);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await categoryApi.getAll();
-        if (response.status === "success") {
-          const types = Array.from(new Set((response.data || []).map((c) => c.type)));
-          setUniqueCategoryTypes(types);
-        }
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      }
-    };
-    fetchCategories();
-  }, []);
+  // Extract unique category types
+  const uniqueCategoryTypes = useMemo(() => {
+    return Array.from(new Set((categories || []).map((c) => c.type)));
+  }, [categories]);
 
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
@@ -56,6 +48,9 @@ function ViewSaleInventory({ isActive }) {
   const [viewMode, setViewMode] = useState("grid");
   const [openFilter, setOpenFilter] = useState(true);
   const [openOrderBy, setOpenOrderBy] = useState(true);
+
+  // Combined loading state
+  const isLoading = isLoadingItems || isLoadingCategories;
 
   const handleSearch = (e) => {
     setSearch(e.target.value);
@@ -117,13 +112,6 @@ function ViewSaleInventory({ isActive }) {
                   className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                 />
               </div>
-              <button
-                onClick={fetchItems}
-                className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2"
-              >
-                <Search className="w-4 h-4" />
-                Search
-              </button>
               <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
                 <button
                   onClick={() => setViewMode("grid")}

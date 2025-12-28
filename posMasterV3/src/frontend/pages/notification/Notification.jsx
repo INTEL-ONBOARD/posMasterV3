@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Bell, HelpCircle, Send, CheckCircle, XCircle, Trash2, BellRing,
   TrendingUp, Package, Users, AlertTriangle, DollarSign, ShoppingCart,
@@ -8,35 +8,14 @@ import {
 } from 'lucide-react';
 import NotificationCard from '../../components/NotificationCard';
 import { localAuth } from '../../api/services/localAuth';
-import { salesApi, stockApi, memberApi, supplierApi, itemApi, userApi, loginHistoryApi } from '../../api/localApi';
+import { salesApi, loginHistoryApi } from '../../api/localApi';
+import { useReactiveData, TABLES, useSyncStatus } from '../../store';
 
 function Dashboard() {
   // User state
   const [currentUser, setCurrentUser] = useState(null);
   const [greeting, setGreeting] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
-
-  // Statistics state
-  const [stats, setStats] = useState({
-    todaySales: 0,
-    totalItems: 0,
-    lowStockItems: 0,
-    totalMembers: 0,
-    totalSuppliers: 0,
-    expiringItems: 0,
-    totalUsers: 0,
-    activeSessions: 0,
-    totalSalesCount: 0,
-    weekSales: 0,
-    monthSales: 0,
-  });
-  const [loadingStats, setLoadingStats] = useState(true);
-
-  // Admin-specific data
-  const [recentSales, setRecentSales] = useState([]);
-  const [lowStockList, setLowStockList] = useState([]);
-  const [recentLogins, setRecentLogins] = useState([]);
-  const [dailySales, setDailySales] = useState([]);
 
   // Feedback state
   const [feedbackText, setFeedbackText] = useState('');
@@ -47,6 +26,68 @@ function Dashboard() {
 
   // Notifications state
   const [notifications, setNotifications] = useState([]);
+
+  // Loading state for manual refresh
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Admin-specific data that needs custom fetching (date-based)
+  const [recentSales, setRecentSales] = useState([]);
+  const [recentLogins, setRecentLogins] = useState([]);
+  const [salesStats, setSalesStats] = useState({
+    todaySales: 0,
+    weekSales: 0,
+    monthSales: 0,
+    totalSalesCount: 0
+  });
+
+  // Use reactive data hooks - automatically updates when data changes
+  const { data: items, loading: loadingItems, refetch: refetchItems } = useReactiveData(TABLES.ITEMS);
+  const { data: stock, loading: loadingStock, refetch: refetchStock } = useReactiveData(TABLES.STOCK);
+  const { data: members, loading: loadingMembers, refetch: refetchMembers } = useReactiveData(TABLES.MEMBERS);
+  const { data: suppliers, loading: loadingSuppliers, refetch: refetchSuppliers } = useReactiveData(TABLES.SUPPLIERS);
+  const { data: users, loading: loadingUsers, refetch: refetchUsers } = useReactiveData(TABLES.USERS);
+  const { data: loginHistory, loading: loadingLoginHistory, refetch: refetchLoginHistory } = useReactiveData(TABLES.LOGIN_HISTORY);
+
+  // Get sync status
+  const { isOnline } = useSyncStatus();
+
+  // Combined loading state
+  const isLoadingReactiveData = loadingItems || loadingStock || loadingMembers || loadingSuppliers || loadingUsers || loadingLoginHistory;
+
+  // Compute stats from reactive data
+  const stats = useMemo(() => {
+    const lowStockItems = (stock || []).filter(s => s.quantity <= (s.threshold_limit || 10));
+    const expiringItems = (stock || []).filter(s => {
+      if (!s.expiry_date) return false;
+      const expiryDate = new Date(s.expiry_date);
+      const thirtyDaysFromNow = new Date();
+      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+      return expiryDate <= thirtyDaysFromNow && expiryDate > new Date();
+    });
+
+    const activeSessions = (loginHistory || []).filter(l => l.status === 'active');
+
+    return {
+      todaySales: salesStats.todaySales,
+      totalSalesCount: salesStats.totalSalesCount,
+      weekSales: salesStats.weekSales,
+      monthSales: salesStats.monthSales,
+      totalItems: (items || []).length,
+      lowStockItems: lowStockItems.length,
+      totalMembers: (members || []).length,
+      totalSuppliers: (suppliers || []).length,
+      expiringItems: expiringItems.length,
+      totalUsers: (users || []).length,
+      activeSessions: activeSessions.length,
+    };
+  }, [items, stock, members, suppliers, users, loginHistory, salesStats]);
+
+  // Low stock list for admin view
+  const lowStockList = useMemo(() => {
+    return (stock || [])
+      .filter(s => s.quantity <= (s.threshold_limit || 10))
+      .slice(0, 5);
+  }, [stock]);
 
   // Get greeting based on time
   useEffect(() => {
@@ -62,7 +103,6 @@ function Dashboard() {
       try {
         const user = await localAuth.getCurrentUser();
         setCurrentUser(user);
-        // Check if user is admin
         const userRoles = user?.roles || [];
         setIsAdmin(userRoles.includes('admin') || userRoles.includes('superadmin') || userRoles.includes('Admin'));
       } catch (error) {
@@ -72,107 +112,82 @@ function Dashboard() {
     fetchUser();
   }, []);
 
-  // Fetch statistics
-  useEffect(() => {
-    const fetchStats = async () => {
-      setLoadingStats(true);
-      try {
-        // Get date ranges
-        const now = new Date();
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
-        const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  // Fetch sales stats (date-based, not in reactive store)
+  const fetchSalesStats = useCallback(async () => {
+    try {
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+      const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-        // Basic stats for all users
-        const basicPromises = [
-          salesApi.getSummary(startOfDay, endOfDay).catch(() => ({ data: { total_sales: 0, count: 0 } })),
-          itemApi.getAll().catch(() => ({ data: [] })),
-          stockApi.getLowStock().catch(() => ({ data: [] })),
-          memberApi.getAll().catch(() => ({ data: [] })),
-          supplierApi.getAll().catch(() => ({ data: [] })),
-          stockApi.getExpiring(30).catch(() => ({ data: [] })),
-        ];
+      const [todayRes, weekRes, monthRes] = await Promise.all([
+        salesApi.getSummary(startOfDay, endOfDay).catch(() => ({ data: { total_sales: 0, count: 0 } })),
+        salesApi.getSummary(startOfWeek, endOfDay).catch(() => ({ data: { total_sales: 0 } })),
+        salesApi.getSummary(startOfMonth, endOfDay).catch(() => ({ data: { total_sales: 0 } }))
+      ]);
 
-        // Admin-only stats
-        const adminPromises = isAdmin ? [
-          userApi.getAll().catch(() => ({ data: [] })),
-          loginHistoryApi.getActiveSessions().catch(() => ({ data: [] })),
-          salesApi.getSummary(startOfWeek, endOfDay).catch(() => ({ data: { total_sales: 0 } })),
-          salesApi.getSummary(startOfMonth, endOfDay).catch(() => ({ data: { total_sales: 0 } })),
+      setSalesStats({
+        todaySales: todayRes?.data?.total_sales || todayRes?.data?.total_amount || 0,
+        totalSalesCount: todayRes?.data?.count || todayRes?.data?.total_count || 0,
+        weekSales: weekRes?.data?.total_sales || weekRes?.data?.total_amount || 0,
+        monthSales: monthRes?.data?.total_sales || monthRes?.data?.total_amount || 0
+      });
+
+      // Fetch recent sales for admin
+      if (isAdmin) {
+        const [recentSalesRes, loginsRes] = await Promise.all([
           salesApi.getAll({ limit: 5 }).catch(() => ({ data: [] })),
-          salesApi.getDaily(7).catch(() => ({ data: [] })),
-          loginHistoryApi.getAll({ limit: 5 }).catch(() => ({ data: [] })),
-        ] : [];
+          loginHistoryApi.getAll({ limit: 5 }).catch(() => ({ data: [] }))
+        ]);
 
-        const [salesRes, itemsRes, lowStockRes, membersRes, suppliersRes, expiringRes] = await Promise.all(basicPromises);
-
-        let adminData = {};
-        if (isAdmin && adminPromises.length > 0) {
-          const [usersRes, sessionsRes, weekSalesRes, monthSalesRes, recentSalesRes, dailySalesRes, loginsRes] = await Promise.all(adminPromises);
-          adminData = {
-            totalUsers: usersRes?.data?.length || 0,
-            activeSessions: sessionsRes?.data?.length || 0,
-            weekSales: weekSalesRes?.data?.total_sales || weekSalesRes?.data?.total_amount || 0,
-            monthSales: monthSalesRes?.data?.total_sales || monthSalesRes?.data?.total_amount || 0,
-          };
-          setRecentSales(recentSalesRes?.data || []);
-          setLowStockList((lowStockRes?.data || []).slice(0, 5));
-          setDailySales(dailySalesRes?.data || []);
-          setRecentLogins(loginsRes?.data || []);
-        }
-
-        setStats({
-          todaySales: salesRes?.data?.total_sales || salesRes?.data?.total_amount || 0,
-          totalSalesCount: salesRes?.data?.count || salesRes?.data?.total_count || 0,
-          totalItems: itemsRes?.data?.length || 0,
-          lowStockItems: lowStockRes?.data?.length || 0,
-          totalMembers: membersRes?.data?.length || 0,
-          totalSuppliers: suppliersRes?.data?.length || 0,
-          expiringItems: expiringRes?.data?.length || 0,
-          ...adminData,
-        });
-
-        // Generate notifications
-        const newNotifications = [];
-        if (lowStockRes?.data?.length > 0) {
-          newNotifications.push({
-            id: 1,
-            title: 'Low Stock Alert',
-            description: `${lowStockRes.data.length} item(s) are running low on stock`,
-            date: 'Now',
-            type: 'warning'
-          });
-        }
-        if (expiringRes?.data?.length > 0) {
-          newNotifications.push({
-            id: 2,
-            title: 'Expiring Items',
-            description: `${expiringRes.data.length} item(s) will expire within 30 days`,
-            date: 'Now',
-            type: 'error'
-          });
-        }
-        newNotifications.push({
-          id: 3,
-          title: 'System Ready',
-          description: 'All systems are operational and running smoothly',
-          date: 'Just now',
-          type: 'success'
-        });
-
-        setNotifications(newNotifications);
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-      } finally {
-        setLoadingStats(false);
+        setRecentSales(recentSalesRes?.data || []);
+        setRecentLogins(loginsRes?.data || []);
       }
-    };
-
-    if (currentUser) {
-      fetchStats();
+    } catch (error) {
+      console.error('Error fetching sales stats:', error);
     }
-  }, [currentUser, isAdmin]);
+  }, [isAdmin]);
+
+  // Initial fetch of sales stats
+  useEffect(() => {
+    if (currentUser) {
+      fetchSalesStats();
+    }
+  }, [currentUser, isAdmin, fetchSalesStats]);
+
+  // Generate notifications from reactive data
+  useEffect(() => {
+    const newNotifications = [];
+
+    if (stats.lowStockItems > 0) {
+      newNotifications.push({
+        id: 1,
+        title: 'Low Stock Alert',
+        description: `${stats.lowStockItems} item(s) are running low on stock`,
+        date: 'Now',
+        type: 'warning'
+      });
+    }
+    if (stats.expiringItems > 0) {
+      newNotifications.push({
+        id: 2,
+        title: 'Expiring Items',
+        description: `${stats.expiringItems} item(s) will expire within 30 days`,
+        date: 'Now',
+        type: 'error'
+      });
+    }
+    newNotifications.push({
+      id: 3,
+      title: 'System Ready',
+      description: 'All systems are operational and running smoothly',
+      date: 'Just now',
+      type: 'success'
+    });
+
+    setNotifications(newNotifications);
+  }, [stats.lowStockItems, stats.expiringItems]);
 
   // Handle notification removal
   const handleRemoveNotification = (id) => {
@@ -221,10 +236,28 @@ function Dashboard() {
     day: 'numeric'
   });
 
-  // Refresh handler
-  const handleRefresh = () => {
-    window.location.reload();
+  // Refresh handler - NO page reload, just refetch data
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      // Refetch all reactive data in parallel
+      await Promise.all([
+        refetchItems(),
+        refetchStock(),
+        refetchMembers(),
+        refetchSuppliers(),
+        refetchUsers(),
+        refetchLoginHistory(),
+        fetchSalesStats()
+      ]);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
+
+  const loadingStats = isLoadingReactiveData || refreshing;
 
   // ============================================
   // ADMIN DASHBOARD
@@ -253,9 +286,18 @@ function Dashboard() {
             </div>
 
             <div className="flex items-center gap-4">
+              {/* Connection status indicator */}
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${isOnline ? 'bg-emerald-100' : 'bg-red-100'}`}>
+                {isOnline ? <Wifi className="w-4 h-4 text-emerald-600" /> : <WifiOff className="w-4 h-4 text-red-500" />}
+                <span className={`text-xs font-medium ${isOnline ? 'text-emerald-700' : 'text-red-600'}`}>
+                  {isOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
+
               <button
                 onClick={handleRefresh}
-                className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors"
+                disabled={refreshing}
+                className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
                 title="Refresh Dashboard"
               >
                 <RefreshCw className={`w-5 h-5 text-gray-600 ${loadingStats ? 'animate-spin' : ''}`} />
@@ -600,9 +642,18 @@ function Dashboard() {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Connection status indicator */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${isOnline ? 'bg-emerald-100' : 'bg-red-100'}`}>
+              {isOnline ? <Wifi className="w-4 h-4 text-emerald-600" /> : <WifiOff className="w-4 h-4 text-red-500" />}
+              <span className={`text-xs font-medium ${isOnline ? 'text-emerald-700' : 'text-red-600'}`}>
+                {isOnline ? 'Online' : 'Offline'}
+              </span>
+            </div>
+
             <button
               onClick={handleRefresh}
-              className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors"
+              disabled={refreshing}
+              className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-5 h-5 text-gray-600 ${loadingStats ? 'animate-spin' : ''}`} />
             </button>
