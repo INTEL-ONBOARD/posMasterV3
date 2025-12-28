@@ -1191,6 +1191,41 @@ class CloudSyncService {
                     if (error.message && error.message.includes('FOREIGN KEY constraint failed')) {
                         // Silently skip - the record will be synced later when the parent user exists
                         // Don't log as error since this is expected during initial sync
+                    } else if (error.message && error.message.includes('UNIQUE constraint failed') && tableName === 'users') {
+                        // Handle UNIQUE constraint on email/username for users table
+                        // This happens when cloud has a user with same email but different ID
+                        // In this case, we should update the existing local user instead
+                        try {
+                            const email = record.email;
+                            const username = record.username;
+
+                            // Find existing user by email or username
+                            const existingByEmail = email ? db.prepare('SELECT id FROM users WHERE email = ?').get(email) : null;
+                            const existingByUsername = username ? db.prepare('SELECT id FROM users WHERE username = ?').get(username) : null;
+
+                            if (existingByEmail || existingByUsername) {
+                                const existingId = existingByEmail?.id || existingByUsername?.id;
+
+                                // Update the existing user with cloud data (except id)
+                                const updateColumns = commonColumns.filter(col => col !== 'id');
+                                const updateValues = updateColumns.map(col => {
+                                    const val = record[col];
+                                    if (val === null || val === undefined) return null;
+                                    if (typeof val === 'boolean') return val ? 1 : 0;
+                                    if (val instanceof Date) return val.toISOString();
+                                    return val;
+                                });
+
+                                const updateSet = updateColumns.map(col => `${col} = ?`).join(', ');
+                                const updateQuery = `UPDATE users SET ${updateSet} WHERE id = ?`;
+
+                                db.prepare(updateQuery).run(...updateValues, existingId);
+                                // Silently handled - don't log as this is expected
+                            }
+                        } catch (updateError) {
+                            // If update also fails, log but continue
+                            console.warn(`[CloudSync] Could not resolve UNIQUE constraint for user:`, updateError.message);
+                        }
                     } else {
                         console.error(`[CloudSync] Failed to pull record from ${tableName}:`, error.message);
                     }

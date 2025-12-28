@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, Sparkles, Package, RotateCcw } from 'lucide-react';
+import { CheckCircle2, XCircle, Sparkles, Package, RotateCcw, UserPlus, Settings, ShoppingCart, Truck } from 'lucide-react';
 
-function StatusModal({ isOpen, closeModal, type, description }) {
+/**
+ * StatusModal - A reusable success/fail modal component with animations
+ *
+ * @param {boolean} isOpen - Whether the modal is visible
+ * @param {function} closeModal - Function to close the modal
+ * @param {string} type - 'success' or 'failed'
+ * @param {string} description - Optional custom description message
+ * @param {string} context - Optional context for the icon (e.g., 'inventory', 'user', 'sale', 'supplier')
+ */
+function StatusModal({ isOpen, closeModal, type, description, context = 'default' }) {
   const [step, setStep] = useState(0);
 
   // Reset and animate when modal opens
@@ -20,6 +29,64 @@ function StatusModal({ isOpen, closeModal, type, description }) {
   if (!isOpen) return null;
 
   const isSuccess = type === 'success';
+
+  // Get context-specific messages and icons
+  const getContextInfo = () => {
+    switch (context) {
+      case 'inventory':
+      case 'restock':
+        return {
+          successIcon: <Package className="w-5 h-5 text-white/80" />,
+          failIcon: <RotateCcw className="w-5 h-5 text-white/80" />,
+          successMsg: 'Inventory has been updated',
+          failMsg: 'Please check your input and try again'
+        };
+      case 'user':
+        return {
+          successIcon: <UserPlus className="w-5 h-5 text-white/80" />,
+          failIcon: <RotateCcw className="w-5 h-5 text-white/80" />,
+          successMsg: 'User has been saved successfully',
+          failMsg: 'Please check user details and try again'
+        };
+      case 'role':
+        return {
+          successIcon: <Settings className="w-5 h-5 text-white/80" />,
+          failIcon: <RotateCcw className="w-5 h-5 text-white/80" />,
+          successMsg: 'Role has been saved successfully',
+          failMsg: 'Please check role details and try again'
+        };
+      case 'sale':
+        return {
+          successIcon: <ShoppingCart className="w-5 h-5 text-white/80" />,
+          failIcon: <RotateCcw className="w-5 h-5 text-white/80" />,
+          successMsg: 'Sale completed successfully',
+          failMsg: 'Transaction failed. Please try again'
+        };
+      case 'supplier':
+        return {
+          successIcon: <Truck className="w-5 h-5 text-white/80" />,
+          failIcon: <RotateCcw className="w-5 h-5 text-white/80" />,
+          successMsg: 'Supplier has been saved successfully',
+          failMsg: 'Please check supplier details and try again'
+        };
+      case 'item':
+        return {
+          successIcon: <Package className="w-5 h-5 text-white/80" />,
+          failIcon: <RotateCcw className="w-5 h-5 text-white/80" />,
+          successMsg: 'Item has been saved successfully',
+          failMsg: 'Please check item details and try again'
+        };
+      default:
+        return {
+          successIcon: <CheckCircle2 className="w-5 h-5 text-white/80" />,
+          failIcon: <RotateCcw className="w-5 h-5 text-white/80" />,
+          successMsg: 'Operation completed successfully',
+          failMsg: 'Please check your input and try again'
+        };
+    }
+  };
+
+  const contextInfo = getContextInfo();
 
   return (
     <div
@@ -46,9 +113,9 @@ function StatusModal({ isOpen, closeModal, type, description }) {
 
           {/* Animated background circles */}
           <div className="absolute inset-0 overflow-hidden">
-            <div className={`absolute -top-10 -left-10 w-32 h-32 rounded-full ${isSuccess ? 'bg-white/10' : 'bg-white/10'} transition-all duration-700 ${step >= 1 ? 'scale-150 opacity-100' : 'scale-0 opacity-0'}`}></div>
-            <div className={`absolute -bottom-16 -right-16 w-48 h-48 rounded-full ${isSuccess ? 'bg-white/5' : 'bg-white/5'} transition-all duration-700 delay-100 ${step >= 1 ? 'scale-150 opacity-100' : 'scale-0 opacity-0'}`}></div>
-            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full ${isSuccess ? 'bg-white/5' : 'bg-white/5'} transition-all duration-700 delay-200 ${step >= 2 ? 'scale-150 opacity-100' : 'scale-0 opacity-0'}`}></div>
+            <div className={`absolute -top-10 -left-10 w-32 h-32 rounded-full bg-white/10 transition-all duration-700 ${step >= 1 ? 'scale-150 opacity-100' : 'scale-0 opacity-0'}`}></div>
+            <div className={`absolute -bottom-16 -right-16 w-48 h-48 rounded-full bg-white/5 transition-all duration-700 delay-100 ${step >= 1 ? 'scale-150 opacity-100' : 'scale-0 opacity-0'}`}></div>
+            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-white/5 transition-all duration-700 delay-200 ${step >= 2 ? 'scale-150 opacity-100' : 'scale-0 opacity-0'}`}></div>
           </div>
 
           {/* Sparkle particles for success */}
@@ -96,7 +163,7 @@ function StatusModal({ isOpen, closeModal, type, description }) {
               </h2>
               <p className={`text-base ${isSuccess ? 'text-emerald-100' : 'text-red-100'}`}>
                 {description || (isSuccess
-                  ? 'Transaction completed successfully'
+                  ? 'Operation completed successfully'
                   : 'Something went wrong. Please try again.')}
               </p>
             </div>
@@ -106,13 +173,13 @@ function StatusModal({ isOpen, closeModal, type, description }) {
               <div className="flex items-center justify-center gap-3">
                 {isSuccess ? (
                   <>
-                    <Package className="w-5 h-5 text-white/80" />
-                    <span className="text-white/90 text-sm font-medium">Inventory has been updated</span>
+                    {contextInfo.successIcon}
+                    <span className="text-white/90 text-sm font-medium">{contextInfo.successMsg}</span>
                   </>
                 ) : (
                   <>
-                    <RotateCcw className="w-5 h-5 text-white/80" />
-                    <span className="text-white/90 text-sm font-medium">Please check your input and try again</span>
+                    {contextInfo.failIcon}
+                    <span className="text-white/90 text-sm font-medium">{contextInfo.failMsg}</span>
                   </>
                 )}
               </div>

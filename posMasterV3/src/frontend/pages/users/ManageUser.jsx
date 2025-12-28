@@ -3,6 +3,7 @@ import { X, ChevronDown, ChevronUp, Upload, RefreshCw } from "lucide-react";
 import { userApi, authApi, branchApi, settingsApi } from "../../api/localApi";
 import ToastContext from "../toasts/ToastService";
 import { useReactiveData, TABLES } from "../../store";
+import StatusModal from "../../components/StatusModal.jsx";
 
 function ManageUser() {
   const toast = useContext(ToastContext);
@@ -74,7 +75,13 @@ function ManageUser() {
   // Form states
   const [isUserEditing, setIsUserEditing] = useState(false);
   const [formStatus, setFormStatus] = useState("form");
+  const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
   const timerRef = useRef(null);
+
+  const closeStatusModal = () => {
+    setStatusModal({ open: false, type: null, description: "" });
+    setFormStatus("form");
+  };
 
   // Form data
   const [formData, setFormData] = useState({
@@ -485,30 +492,17 @@ function ManageUser() {
           }
         }
 
-        setFormStatus("success");
-        timerRef.current = setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 2000);
-
+        setFormStatus("form");
+        setStatusModal({ open: true, type: 'success', description: `User "${formData.full_name}" created successfully` });
         clearUserInput();
-        toast.open("User created successfully", 4000, "Success", "success");
       } else {
-        setFormStatus("fail");
-        timerRef.current = setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 2000);
-        toast.open(response.message || "Failed to create user", 4000, "Error", "error");
+        setFormStatus("form");
+        setStatusModal({ open: true, type: 'failed', description: response.message || 'Failed to create user' });
       }
     } catch (err) {
       console.error("Create user error:", err);
-      setFormStatus("fail");
-      timerRef.current = setTimeout(() => {
-        setFormStatus("form");
-        timerRef.current = null;
-      }, 2000);
-      toast.open("Failed to create user", 4000, "Error", "error");
+      setFormStatus("form");
+      setStatusModal({ open: true, type: 'failed', description: err.message || 'Failed to create user' });
     } finally {
       refetchUsers();
     }
@@ -540,30 +534,17 @@ function ManageUser() {
         // Update user permissions
         await settingsApi.updateUserPermissions(formData.id, permissions);
 
-        setFormStatus("success");
-        timerRef.current = setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 2000);
-
+        setFormStatus("form");
+        setStatusModal({ open: true, type: 'success', description: `User "${formData.full_name}" updated successfully` });
         clearUserInput();
-        toast.open("User updated successfully", 4000, "Success", "success");
       } else {
-        setFormStatus("fail");
-        timerRef.current = setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 2000);
-        toast.open(response.message || "Failed to update user", 4000, "Error", "error");
+        setFormStatus("form");
+        setStatusModal({ open: true, type: 'failed', description: response.message || 'Failed to update user' });
       }
     } catch (err) {
       console.error("Update user error:", err);
-      setFormStatus("fail");
-      timerRef.current = setTimeout(() => {
-        setFormStatus("form");
-        timerRef.current = null;
-      }, 2000);
-      toast.open("Failed to update user", 4000, "Error", "error");
+      setFormStatus("form");
+      setStatusModal({ open: true, type: 'failed', description: err.message || 'Failed to update user' });
     } finally {
       refetchUsers();
     }
@@ -582,30 +563,17 @@ function ManageUser() {
       const response = await userApi.delete(formData.id);
 
       if (response.status === "success") {
-        setFormStatus("success");
-        timerRef.current = setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 2000);
-
+        setFormStatus("form");
+        setStatusModal({ open: true, type: 'success', description: 'User deleted successfully' });
         clearUserInput();
-        toast.open("User deleted successfully", 4000, "Success", "success");
       } else {
-        setFormStatus("fail");
-        timerRef.current = setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 2000);
-        toast.open(response.message || "Failed to delete user", 4000, "Error", "error");
+        setFormStatus("form");
+        setStatusModal({ open: true, type: 'failed', description: response.message || 'Failed to delete user' });
       }
     } catch (err) {
       console.error("Delete user error:", err);
-      setFormStatus("fail");
-      timerRef.current = setTimeout(() => {
-        setFormStatus("form");
-        timerRef.current = null;
-      }, 2000);
-      toast.open("Failed to delete user", 4000, "Error", "error");
+      setFormStatus("form");
+      setStatusModal({ open: true, type: 'failed', description: err.message || 'Failed to delete user' });
     } finally {
       refetchUsers();
     }
@@ -906,33 +874,13 @@ function ManageUser() {
             </button>
           </div>
         </div>
-      ) : formStatus === "loading" ? (
+      ) : (
         <div className="w-[28rem] h-[calc(100vh-2rem)] p-5 flex flex-col justify-center items-center bg-white rounded-xl m-4 shadow-sm">
           <div className="w-16 h-16 rounded-2xl bg-[#1A318C]/10 flex items-center justify-center mb-4">
             <div className="animate-spin rounded-full border-4 border-[#1A318C]/20 border-t-[#1A318C] h-8 w-8"></div>
           </div>
           <h2 className="text-gray-700 font-semibold">Processing...</h2>
           <p className="text-sm text-gray-400 mt-1">Please wait</p>
-        </div>
-      ) : formStatus === "success" ? (
-        <div className="w-[28rem] h-[calc(100vh-2rem)] p-5 flex flex-col justify-center items-center bg-white rounded-xl m-4 shadow-sm">
-          <div className="w-20 h-20 rounded-2xl bg-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-emerald-200">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h2 className="font-bold text-xl text-gray-800">Success!</h2>
-          <p className="text-sm text-gray-400 mt-1">Operation completed</p>
-        </div>
-      ) : (
-        <div className="w-[28rem] h-[calc(100vh-2rem)] p-5 flex flex-col justify-center items-center bg-white rounded-xl m-4 shadow-sm">
-          <div className="w-20 h-20 rounded-2xl bg-red-500 flex items-center justify-center mb-4 shadow-lg shadow-red-200">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-          <h2 className="font-bold text-xl text-gray-800">Failed</h2>
-          <p className="text-sm text-gray-400 mt-1">Something went wrong</p>
         </div>
       )}
 
@@ -1092,6 +1040,15 @@ function ManageUser() {
           </div>
         </div>
       </div>
+
+      {/* Status Modal */}
+      <StatusModal
+        isOpen={statusModal.open}
+        closeModal={closeStatusModal}
+        type={statusModal.type}
+        description={statusModal.description}
+        context="user"
+      />
     </div>
   );
 }

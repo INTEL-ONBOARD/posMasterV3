@@ -222,6 +222,41 @@ class RestockRepository extends BaseRepository {
         const transaction = this.db.transaction(() => {
             // Create main transaction
             const now = nowISO();
+
+            // DEBUG: Log incoming data to help identify FK issues
+            console.log('[RestockRepository] Creating restock with data:', {
+                supplier_id: data.supplier_id,
+                branch_id: data.branch_id,
+                created_by: data.created_by,
+                prepared_by: data.prepared_by,
+                authorized_by: data.authorized_by,
+                addedItemsCount: addedItems.length,
+                returnItemsCount: returnItems.length
+            });
+
+            // Validate foreign keys before insert
+            if (data.supplier_id) {
+                const supplier = this.db.prepare('SELECT id FROM suppliers WHERE id = ?').get(data.supplier_id);
+                if (!supplier) {
+                    console.error('[RestockRepository] FK ERROR: supplier_id', data.supplier_id, 'does not exist in suppliers table');
+                    throw new Error(`Supplier with id ${data.supplier_id} not found`);
+                }
+            }
+            if (data.branch_id) {
+                const branch = this.db.prepare('SELECT id FROM branches WHERE id = ?').get(data.branch_id);
+                if (!branch) {
+                    console.error('[RestockRepository] FK ERROR: branch_id', data.branch_id, 'does not exist in branches table');
+                    throw new Error(`Branch with id ${data.branch_id} not found`);
+                }
+            }
+            if (data.created_by) {
+                const user = this.db.prepare('SELECT id FROM users WHERE id = ?').get(data.created_by);
+                if (!user) {
+                    console.error('[RestockRepository] FK ERROR: created_by', data.created_by, 'does not exist in users table');
+                    throw new Error(`User with id ${data.created_by} not found`);
+                }
+            }
+
             const restockData = {
                 invoice_no: data.invoice_no,
                 bill_no: data.bill_no,
@@ -244,6 +279,8 @@ class RestockRepository extends BaseRepository {
                 created_by: data.created_by || null
             };
 
+            console.log('[RestockRepository] Inserting restock transaction:', restockData);
+
             const restockStmt = this.db.prepare(`
                 INSERT INTO restock_transactions
                 (invoice_no, bill_no, supplier_id, prepared_by, authorized_by, payment_method,
@@ -255,6 +292,7 @@ class RestockRepository extends BaseRepository {
             `);
 
             const result = restockStmt.run(restockData);
+            console.log('[RestockRepository] Restock transaction inserted, id:', result.lastInsertRowid);
             const restockId = result.lastInsertRowid;
 
             // Insert added items and update stock
