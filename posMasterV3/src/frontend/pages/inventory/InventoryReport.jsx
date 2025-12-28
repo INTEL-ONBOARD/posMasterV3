@@ -5,13 +5,15 @@ import { itemApi } from "../../api/localApi";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import InventoryRep from "./layout/InventoryRep";
+import RestockRep from "./layout/RestockRep";
 
 export default function InventoryReport({ isActive }) {
   //switches between reports for printing
-  const [reportType, setReportType] = useState("basic");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [reportType, setReportType] = useState("basic"); // basic || restock
+  const [searchTermBasic, setSearchTermBasic] = useState("");
+  const [searchLoadingBasic, setSearchLoadingBasic] = useState(false);
+  const [isLoadingBasic, setIsLoadingBasic] = useState(true);
+  const [isLoadingRestock, setIsLoadingRestock] = useState(false);
   const [openFilters, setOpenFilters] = useState(true);
   const [openSort, setOpenSort] = useState(true);
   const [sortOrder, setSortOrder] = useState("name_asc");
@@ -19,7 +21,8 @@ export default function InventoryReport({ isActive }) {
   const [filterStock, setFilterStock] = useState("all");
 
   const [inventoryItems, setInventoryItems] = useState([]);
-  const inventoryReportRef = useRef(null); // single ref pointing to printable container
+  const inventoryReportRef = useRef(null); // single ref pointing to basic inventory printable container
+    const restockReportRef = useRef(null); // single ref pointing to restock printable container
   const [pdfGenerating, setPdfGenerating] = useState(false);
 
 const generateInventoryReportPdf = async () => {
@@ -68,7 +71,7 @@ const generateInventoryReportPdf = async () => {
   useEffect(() => {
     const fetchItems = async () => {
       if (!isActive) return;
-      setIsLoading(true);
+      setIsLoadingBasic(true);
       try {
         const response = await itemApi.getAllExtended();
         if (response.status === "success") {
@@ -77,7 +80,7 @@ const generateInventoryReportPdf = async () => {
       } catch (error) {
         console.error("Error fetching items:", error);
       } finally {
-        setIsLoading(false);
+        setIsLoadingBasic(false);
       }
     };
     fetchItems();
@@ -94,18 +97,18 @@ const generateInventoryReportPdf = async () => {
 
   // Search handler
   const handleSearch = (e) => {
-    setSearchLoading(true);
-    setSearchTerm(e.target.value);
-    setTimeout(() => setSearchLoading(false), 400);
+    setSearchLoadingBasic(true);
+    setSearchTermBasic(e.target.value);
+    setTimeout(() => setSearchLoadingBasic(false), 400);
   };
 
   // Filter and sort items
-  const filteredItems = inventoryItems
+  const filteredItemsBasic = inventoryItems
     .filter(item => {
-      const matchesSearch = searchTerm === "" ||
-        item.item_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.category?.type?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = searchTermBasic === "" ||
+        item.item_name?.toLowerCase().includes(searchTermBasic.toLowerCase()) ||
+        item.sku?.toLowerCase().includes(searchTermBasic.toLowerCase()) ||
+        item.category?.type?.toLowerCase().includes(searchTermBasic.toLowerCase());
 
       const matchesCategory = filterCategory === "all" || item.category?.type === filterCategory;
 
@@ -161,7 +164,7 @@ const generateInventoryReportPdf = async () => {
                 </div>
                 <input
                   type="text"
-                  value={searchTerm}
+                  value={searchTermBasic}
                   onChange={handleSearch}
                   placeholder="Search by item name, SKU, or category..."
                   className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
@@ -180,7 +183,7 @@ const generateInventoryReportPdf = async () => {
             {/* Results count */}
             <div className="mt-3 flex items-center justify-between">
               <p className="text-sm text-gray-500">
-                Showing <span className="font-semibold text-gray-800">{filteredItems.length}</span> of {totalItems} items
+                Showing <span className="font-semibold text-gray-800">{filteredItemsBasic.length}</span> of {totalItems} items
               </p>
             </div>
           </div>
@@ -243,19 +246,22 @@ const generateInventoryReportPdf = async () => {
           </div>
         </div>
 
-        {/* Report Table */}
+
+
+      {/* Conditionally render only one report section */}
+      {reportType === "basic" ? (
         <div className="flex-1 p-6">
-          {isLoading ? (
+          {isLoadingBasic ? (
             <div className="flex flex-col items-center justify-center h-full">
               <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
               <p className="text-gray-500">Loading inventory data...</p>
             </div>
-          ) : searchLoading ? (
+          ) : searchLoadingBasic ? (
             <div className="flex flex-col items-center justify-center h-full">
               <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
               <p className="text-gray-500">Searching...</p>
             </div>
-          ) : filteredItems.length === 0 ? (
+          ) : filteredItemsBasic.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full">
               <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
                 <BarChart3 className="w-10 h-10 text-gray-300" />
@@ -263,19 +269,47 @@ const generateInventoryReportPdf = async () => {
               <h3 className="text-lg font-semibold text-gray-800">No inventory data found</h3>
               <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
             </div>
-            ) : (
-              <InventoryRep
-                ref={inventoryReportRef}
-                items={filteredItems}
-                getStockStatus={getStockStatus}
-                maxHeight="calc(100vh - 300px)"
-                onRowClick={(item) => console.log("row clicked", item)}
-              />
-            )}
+          ) : (
+            <InventoryRep
+              ref={inventoryReportRef}
+              items={filteredItemsBasic}
+              getStockStatus={getStockStatus}
+              maxHeight="calc(100vh - 300px)"
+              onRowClick={(item) => console.log("row clicked", item)}
+            />
+          )}
         </div>
+      ) : (
+        <div className="flex-1 p-6">
+          {isLoadingRestock ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
+              <p className="text-gray-500">Loading inventory data...</p>
+            </div>
+          ) : (
+            <RestockRep
+              ref={restockReportRef}
+              maxHeight="calc(100vh - 300px)"
+            />
+          )}
+          {/* You can uncomment and add the empty state when ready */}
+          {/* : filteredItemsRestock.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                <BarChart3 className="w-10 h-10 text-gray-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">No inventory data found</h3>
+              <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
+            </div>
+          ) : (
+            <RestockRep ... />
+          ) */}
+        </div>
+      )}
+
       </div>
 
-      {/* Right Filter Section */}
+      {/* Right Filter Section*/}
       <div className="bg-gray-100 w-72 h-full p-3">
         <div className="flex flex-col h-full gap-3">
           {/* Report Type Block */}
@@ -404,12 +438,12 @@ const generateInventoryReportPdf = async () => {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Filtered Items</span>
-                <span className="text-sm font-bold text-gray-800">{filteredItems.length}</span>
+                <span className="text-sm font-bold text-gray-800">{filteredItemsBasic.length}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Filtered Value</span>
                 <span className="text-sm font-bold text-[#1A318C]">
-                  Rs.{filteredItems.reduce((sum, item) => sum + ((item.retail_price || 0) * (item.quantity || 0)), 0).toLocaleString()}
+                  Rs.{filteredItemsBasic.reduce((sum, item) => sum + ((item.retail_price || 0) * (item.quantity || 0)), 0).toLocaleString()}
                 </span>
               </div>
             </div>
