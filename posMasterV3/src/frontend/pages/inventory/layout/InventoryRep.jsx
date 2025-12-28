@@ -1,6 +1,22 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+/* =======================
+   CONFIG
+======================= */
+const ROWS_PER_PAGE = 18; // safe for A4 portrait
+
+const paginateItems = (items, rowsPerPage) => {
+  const pages = [];
+  for (let i = 0; i < items.length; i += rowsPerPage) {
+    pages.push(items.slice(i, i + rowsPerPage));
+  }
+  return pages;
+};
+
+/* =======================
+   STYLES
+======================= */
 const styles = {
   scrollContainer: (maxHeight) => ({
     overflow: "auto",
@@ -46,7 +62,6 @@ const styles = {
     justifyContent: "space-between",
     fontSize: "12px",
     color: "#4b5563",
-    lineHeight: 1.4,
   },
 
   tableWrapper: {
@@ -66,34 +81,22 @@ const styles = {
 
   th: {
     padding: "10px 12px",
-    textAlign: "left",
     textTransform: "uppercase",
     fontSize: "11px",
-    letterSpacing: "0.05em",
   },
 
   td: {
     padding: "12px",
     borderBottom: "1px solid #e5e7eb",
-    verticalAlign: "top",
     color: "#374151",
   },
 
-  tdRight: {
-    textAlign: "right",
-  },
-
-  tdCenter: {
-    textAlign: "center",
-  },
+  tdRight: { textAlign: "right" },
+  tdCenter: { textAlign: "center" },
 
   itemName: {
     fontWeight: 600,
     color: "#1f2937",
-  },
-
-  muted: {
-    color: "#6b7280",
   },
 
   mono: {
@@ -120,6 +123,9 @@ const styles = {
   }),
 };
 
+/* =======================
+   COMPONENT
+======================= */
 const InventoryRep = React.forwardRef(function InventoryRep(
   {
     items,
@@ -132,122 +138,158 @@ const InventoryRep = React.forwardRef(function InventoryRep(
   },
   ref
 ) {
-  const totalValue = items.reduce(
-    (sum, i) => sum + (i.retail_price || 0) * (i.quantity || 0),
-    0
-  );
+  const pages = paginateItems(items, ROWS_PER_PAGE);
 
   return (
     <div style={styles.scrollContainer(maxHeight)}>
-      {/* Printable area */}
-      <div ref={ref} style={styles.reportWrapper}>
-        {/* Header */}
-        <div style={styles.header}>
-          <h1 style={styles.title}>{title}</h1>
-          {subTitle && <div style={styles.subTitle}>{subTitle}</div>}
-        </div>
-
-        {/* Meta / sub-header */}
-        <div style={styles.metaSection}>
-          <div style={styles.metaRow}>
-            <div>
-              <div>Report type: Inventory status</div>
-              <div>Total items: {items.length}</div>
+      <div ref={ref}>
+        {pages.map((pageItems, pageIndex) => (
+          <div
+            className="report-page"
+            key={pageIndex}
+            style={{
+              ...styles.reportWrapper,
+              marginBottom: "24px",
+              pageBreakAfter: "always",
+            }}
+          >
+            {/* Header */}
+            <div style={styles.header}>
+              <h1 style={styles.title}>{title}</h1>
+              {subTitle && <div style={styles.subTitle}>{subTitle}</div>}
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div>Generated: {new Date().toLocaleString()}</div>
-              <div>Total value: Rs.{totalValue.toLocaleString()}</div>
+
+            {/* Meta */}
+            <div style={styles.metaSection}>
+              <div style={styles.metaRow}>
+                <div>
+                  <div>Report type: Inventory status</div>
+                  <div>
+                    Items {pageIndex * ROWS_PER_PAGE + 1}–
+                    {pageIndex * ROWS_PER_PAGE + pageItems.length} of{" "}
+                    {items.length}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div>Generated: {new Date().toLocaleString()}</div>
+                  <div>
+                    Page {pageIndex + 1} of {pages.length}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Table */}
-        <div style={styles.tableWrapper}>
-          <table style={styles.table}>
-            <thead style={styles.thead}>
-              <tr>
-                <th style={styles.th}>#</th>
-                <th style={styles.th}>Item Name</th>
-                <th style={styles.th}>SKU</th>
-                <th style={styles.th}>Category</th>
-                <th style={{ ...styles.th, textAlign: "center" }}>Stock</th>
-                <th style={{ ...styles.th, textAlign: "right" }}>Unit Price</th>
-                <th style={{ ...styles.th, textAlign: "right" }}>Total Value</th>
-                <th style={{ ...styles.th, textAlign: "center" }}>Status</th>
-              </tr>
-            </thead>
+            {/* Table */}
+            <div style={styles.tableWrapper}>
+              <table style={styles.table}>
+                <thead style={styles.thead}>
+                  <tr>
+                    <th style={styles.th}>#</th>
+                    <th style={styles.th}>Item Name</th>
+                    <th style={styles.th}>SKU</th>
+                    <th style={styles.th}>Category</th>
+                    <th style={{ ...styles.th, textAlign: "center" }}>Stock</th>
+                    <th style={{ ...styles.th, textAlign: "right" }}>
+                      Unit Price
+                    </th>
+                    <th style={{ ...styles.th, textAlign: "right" }}>
+                      Total Value
+                    </th>
+                    <th style={{ ...styles.th, textAlign: "center" }}>Status</th>
+                  </tr>
+                </thead>
 
-            <tbody>
-              {items.map((item, index) => {
-                const status = getStockStatus(item);
-                return (
-                  <tr
-                    key={item.id || index}
-                    onClick={() => onRowClick && onRowClick(item)}
-                    style={{ cursor: onRowClick ? "pointer" : "default" }}
-                  >
-                    <td style={styles.td}>{index + 1}</td>
+                <tbody>
+                  {pageItems.map((item, rowIndex) => {
+                    const index =
+                      pageIndex * ROWS_PER_PAGE + rowIndex;
+                    const status = getStockStatus(item);
 
-                    <td style={styles.td}>
-                      <div style={styles.itemName}>{item.item_name}</div>
-                    </td>
-
-                    <td style={{ ...styles.td, ...styles.mono }}>
-                      {item.sku}
-                    </td>
-
-                    <td style={styles.td}>
-                      {item.category?.type || "N/A"}
-                    </td>
-
-                    <td style={{ ...styles.td, ...styles.tdCenter }}>
-                      {item.quantity || 0} {item.uom?.symbol || "pcs"}
-                    </td>
-
-                    <td style={{ ...styles.td, ...styles.tdRight }}>
-                      Rs.{item.retail_price || 0}
-                    </td>
-
-                    <td style={{ ...styles.td, ...styles.tdRight }}>
-                      Rs.
-                      {(
-                        (item.retail_price || 0) *
-                        (item.quantity || 0)
-                      ).toLocaleString()}
-                    </td>
-
-                    <td style={{ ...styles.td, ...styles.tdCenter }}>
-                      <span
+                    return (
+                      <tr
+                        key={item.id || index}
+                        onClick={() =>
+                          onRowClick && onRowClick(item)
+                        }
                         style={{
-                          ...styles.statusBadge,
-                          backgroundColor:
-                            status.text === "Low Stock"
-                              ? "#fee2e2"
-                              : status.text === "Medium"
-                              ? "#fef3c7"
-                              : "#d1fae5",
-                          color:
-                            status.text === "Low Stock"
-                              ? "#b91c1c"
-                              : status.text === "Medium"
-                              ? "#92400e"
-                              : "#065f46",
+                          cursor: onRowClick ? "pointer" : "default",
                         }}
                       >
-                        {status.text}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                        <td style={styles.td}>{index + 1}</td>
 
-        {/* Footer space */}
-        <div style={styles.footerSpacer(footerHeight)}>
-          Footer space reserved
-        </div>
+                        <td style={styles.td}>
+                          <div style={styles.itemName}>
+                            {item.item_name}
+                          </div>
+                        </td>
+
+                        <td style={{ ...styles.td, ...styles.mono }}>
+                          {item.sku}
+                        </td>
+
+                        <td style={styles.td}>
+                          {item.category?.type || "N/A"}
+                        </td>
+
+                        <td
+                          style={{ ...styles.td, ...styles.tdCenter }}
+                        >
+                          {item.quantity || 0}{" "}
+                          {item.uom?.symbol || "pcs"}
+                        </td>
+
+                        <td
+                          style={{ ...styles.td, ...styles.tdRight }}
+                        >
+                          Rs.{item.retail_price || 0}
+                        </td>
+
+                        <td
+                          style={{ ...styles.td, ...styles.tdRight }}
+                        >
+                          Rs.
+                          {(
+                            (item.retail_price || 0) *
+                            (item.quantity || 0)
+                          ).toLocaleString()}
+                        </td>
+
+                        <td
+                          style={{ ...styles.td, ...styles.tdCenter }}
+                        >
+                          <span
+                            style={{
+                              ...styles.statusBadge,
+                              backgroundColor:
+                                status.text === "Low Stock"
+                                  ? "#fee2e2"
+                                  : status.text === "Medium"
+                                  ? "#fef3c7"
+                                  : "#d1fae5",
+                              color:
+                                status.text === "Low Stock"
+                                  ? "#b91c1c"
+                                  : status.text === "Medium"
+                                  ? "#92400e"
+                                  : "#065f46",
+                            }}
+                          >
+                            {status.text}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div style={styles.footerSpacer(footerHeight)}>
+              Inventory System · Confidential
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

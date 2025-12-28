@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, FileText, Printer, Package, DollarSign, AlertTriangle, Tag, ChevronDown, ChevronUp, Filter, SortAsc, BarChart3 } from "lucide-react";
 import { itemApi } from "../../api/localApi";
-//to print inventory report
+// to print inventory report
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import InventoryRep from "./layout/InventoryRep";
 
 export default function InventoryReport({ isActive }) {
+  //switches between reports for printing
   const [reportType, setReportType] = useState("basic");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
@@ -18,69 +19,51 @@ export default function InventoryReport({ isActive }) {
   const [filterStock, setFilterStock] = useState("all");
 
   const [inventoryItems, setInventoryItems] = useState([]);
-  const inventoryReportRef = useRef(null); //used to store inventory report pdf format
-  
-  //open print window dialog to print inventory report
+  const inventoryReportRef = useRef(null); // single ref pointing to printable container
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+
 const generateInventoryReportPdf = async () => {
+  if (pdfGenerating) return;
+
   try {
-    if (!inventoryReportRef.current) {
-      console.error("inventoryReportRef is null");
-      return;
-    }
+    setPdfGenerating(true);
 
-    const element = inventoryReportRef.current;
+    const pages = document.querySelectorAll(".report-page");
+    if (!pages.length) return;
 
-    // Temporarily disable scrolling so full height is captured
-    const originalOverflow = element.style.overflow;
-    element.style.overflow = "visible";
-
-    const canvas = await html2canvas(element, {
-      scale: window.devicePixelRatio || 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      scrollX: 0,
-      scrollY: -window.scrollY,
-    });
-
-    element.style.overflow = originalOverflow;
-
-    const imgData = canvas.toDataURL("image/png");
-
-    const pdf = new jsPDF({
-      orientation: "p",
-      unit: "pt",
-      format: "a4",
-    });
-
+    const pdf = new jsPDF("p", "pt", "a4");
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
 
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
+    for (let i = 0; i < pages.length; i++) {
+      const pageEl = pages[i];
 
-    const scale = pdfWidth / imgWidth;
-    const scaledHeight = imgHeight * scale;
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
 
-    let position = 0;
-    let heightLeft = scaledHeight;
+      const imgData = canvas.toDataURL("image/png");
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
 
-    pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
-    heightLeft -= pdfHeight;
+      const scale = pdfWidth / imgWidth;
+      const pdfHeight = imgHeight * scale;
 
-    while (heightLeft > 0) {
-      position -= pdfHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
-      heightLeft -= pdfHeight;
+      if (i > 0) pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
     }
 
     pdf.save(`inventory-report-${new Date().toISOString().slice(0, 10)}.pdf`);
-  } catch (error) {
-    console.error("generateInventoryReportPdf error:", error);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setPdfGenerating(false);
   }
 };
 
-  
+
+
   // Fetch items from API
   useEffect(() => {
     const fetchItems = async () => {
@@ -187,10 +170,11 @@ const generateInventoryReportPdf = async () => {
 
               <button
                 onClick={generateInventoryReportPdf}
-                className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2"
+                disabled={pdfGenerating}
+                className="h-12 px-6 bg-[#1A318C] disabled:opacity-60 text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2"
               >
                 <Printer className="w-4 h-4" />
-                Print
+                {pdfGenerating ? "Generating..." : "Print"}
               </button>
             </div>
             {/* Results count */}
@@ -261,7 +245,6 @@ const generateInventoryReportPdf = async () => {
 
         {/* Report Table */}
         <div className="flex-1 p-6">
-
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full">
               <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
@@ -281,7 +264,6 @@ const generateInventoryReportPdf = async () => {
               <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
             </div>
             ) : (
-
               <InventoryRep
                 ref={inventoryReportRef}
                 items={filteredItems}
@@ -318,14 +300,14 @@ const generateInventoryReportPdf = async () => {
                 Basic Report
               </button>
               <button
-                onClick={() => setReportType("advanced")}
+                onClick={() => setReportType("restock")}
                 className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
-                  reportType === "advanced"
+                  reportType === "restock"
                     ? "bg-[#1A318C] text-white"
                     : "bg-gray-50 text-gray-600 hover:bg-gray-100"
                 }`}
               >
-                Advanced Report
+                Restock Report
               </button>
             </div>
           </div>
