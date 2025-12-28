@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext, useMemo } from "react";
 import SalesItemCard from "../../components/SalesItemCard";
 import { salesApi } from "../../api/localApi";
-import { ChevronDown, User, Package, ShoppingCart, CreditCard, X, DollarSign, AlertTriangle, Wallet, RefreshCw } from "lucide-react";
+import { ChevronDown, User, Package, ShoppingCart, X, DollarSign, RefreshCw, Pause, Trash2 } from "lucide-react";
 import ToastContext from "../toasts/ToastService.jsx";
 import { localAuth } from "../../api/services/localAuth";
 import { useReactiveData, TABLES } from "../../store";
@@ -13,6 +13,7 @@ import BillContent from "./layout/BillContent.jsx";
 import BackIcon from "../../assets/back-icon/back_icon.jsx";
 import MemEvaluationModal from "./modals/MemEvaluationModal.jsx";
 import CartItemEditModal from "./modals/CartItemEditModal.jsx";
+import CheckoutSummaryModal from "./modals/CheckoutSummaryModal.jsx";
 
 // Default guest user
 const GUEST_USER = {
@@ -101,13 +102,13 @@ export default function SalesView({ isActive }) {
     setSelectedCartItem(null);
   };
 
+  // Checkout summary modal state
+  const [checkoutModal, setCheckoutModal] = useState(false);
+  const closeCheckoutModal = () => setCheckoutModal(false);
+
   // Handle member selection from modal
   const handleSelectMember = (member) => {
     setSelectedMember(member);
-    // If guest, force cash payment
-    if (member?.is_guest) {
-      setPaymentMethod("cash");
-    }
     closeModal();
   };
 
@@ -188,18 +189,6 @@ export default function SalesView({ isActive }) {
     return total + (discountedPrice * item.customer_quantity);
   }, 0);
 
-  const [cashAmount, setCashAmount] = useState(0);
-  const [finalDiscount, setFinalDiscount] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-
-  const totalAmount = stockTotal - parseFloat(finalDiscount || 0);
-  const changeAmount = parseFloat(cashAmount || 0) - totalAmount;
-
-  // Credit validation
-  const availableCredit = (selectedMember?.credit_limit || 0) - (selectedMember?.credit_balance || 0);
-  const canUseCredit = !selectedMember?.is_guest && availableCredit >= totalAmount;
-  const creditWarning = paymentMethod === "credit" && !canUseCredit;
-
   const handleTableRowClick = (item) => {
     setSelectedCartItem(item);
     setCartItemModal(true);
@@ -263,34 +252,14 @@ export default function SalesView({ isActive }) {
 
   const clearForm = () => {
     setSelectedItems([]);
-    setCashAmount(0);
-    setFinalDiscount(0);
     setSelectedMember(GUEST_USER);
-    setPaymentMethod("cash");
     generateNewInvoice();
   };
 
-  const processSale = async () => {
-    if (totalAmount <= 0) {
-      toast.error("Please add items to the sale");
-      return;
-    }
-
-    if (paymentMethod === "credit" && !canUseCredit) {
-      toast.error("Insufficient credit limit");
-      return;
-    }
-
-    // For cash payments, use entered amount or default to exact payment
-    const finalCashAmount = paymentMethod === "cash"
-      ? (parseFloat(cashAmount) || 0) >= totalAmount
-        ? parseFloat(cashAmount)
-        : totalAmount  // Default to exact payment if no/insufficient cash entered
-      : 0;
-
-    const finalChangeAmount = paymentMethod === "cash"
-      ? Math.max(0, finalCashAmount - totalAmount)
-      : 0;
+  // Handle checkout from summary modal
+  // Returns a promise that resolves when sale is complete (for success animation)
+  const handleConfirmSale = async (checkoutData) => {
+    const { finalDiscount, paymentMethod, cashAmount, totalAmount, changeAmount } = checkoutData;
 
     try {
       // Prepare sale data
@@ -300,43 +269,70 @@ export default function SalesView({ isActive }) {
         member_name: selectedMember?.full_name || "Guest",
         payment_method: paymentMethod,
         total_amount: totalAmount,
-        discount_amount: parseFloat(finalDiscount) || 0,
-        cash_amount: finalCashAmount,
-        change_amount: finalChangeAmount,
+        discount_amount: finalDiscount,
+        cash_amount: cashAmount,
+        change_amount: changeAmount,
         cashier_name: preparedBy,
         items: selectedItems.map(item => ({
           item_id: item.item_id || item.id,
-          stock_id: item.stock_id || item.id,  // Stock record ID for inventory tracking
+          stock_id: item.stock_id || item.id,
           batch_code: item.batch_code,
           item_name: item.item_name,
           sku: item.sku,
           quantity: item.customer_quantity,
           unit_price: item.retail_price,
           discount: item.customer_discount || 0,
-          total_price: item.retail_price * item.customer_quantity
+          total_price: (item.retail_price - (item.customer_discount || 0)) * item.customer_quantity
         }))
       };
 
       const response = await salesApi.create(saleData);
 
       if (response.status === "success") {
-        toast.success("Sale completed successfully!");
-        // Generate and print bill
-        await generateBillPdf();
-        // Clear form for next customer
+        // Generate and print bill (don't wait for it)
+        generateBillPdf(checkoutData);
+        // Clear form for next customer (modal will close itself after animation)
         clearForm();
+        // Return success for the modal to show animation
+        return { success: true, data: response.data };
       } else {
         toast.error(response.message || "Failed to process sale");
+        throw new Error(response.message || "Failed to process sale");
       }
     } catch (error) {
       console.error("[SalesView] Error processing sale:", error);
       toast.error("Failed to process sale");
+      throw error;
     }
   };
 
-  const generateBillPdf = async () => {
+  // Open checkout modal
+  const handleProceedClick = () => {
+    if (selectedItems.length === 0) {
+      toast.error("Please add items to the sale");
+      return;
+    }
+    setCheckoutModal(true);
+  };
+
+  // Hold sale for later (placeholder)
+  const handleHoldSale = () => {
+    if (selectedItems.length === 0) {
+      toast.error("No items to hold");
+      return;
+    }
+    toast.info("Sale held for later");
+    // TODO: Implement hold functionality - save to local storage or database
+  };
+
+  // Store checkout data for bill generation
+  const checkoutDataRef = useRef(null);
+
+  const generateBillPdf = async (checkoutData) => {
     try {
       if (!billRef.current) return;
+      // Store checkout data for bill rendering
+      checkoutDataRef.current = checkoutData;
 
       const canvas = await html2canvas(billRef.current, { scale: 2, useCORS: true });
       const widthPt = 311.81;
@@ -376,119 +372,134 @@ export default function SalesView({ isActive }) {
 
   const stock_items = selectedItems.map((item) => ({
     ...item,
-    total_price: item.retail_price * item.customer_quantity,
+    total_price: (item.retail_price - (item.customer_discount || 0)) * item.customer_quantity,
   }));
 
+  // Bill data uses checkout ref for payment details
   const billData = {
     invoiceNo: invoiceNo,
     cashier_name: currentUser?.username || "-",
-    payment_method: paymentMethod,
+    payment_method: checkoutDataRef.current?.paymentMethod || "cash",
     date_time: formattedDate,
     member_no: selectedMember?.member_no || "-",
     stock_items: stock_items,
     totalAmount: stockTotal,
-    discountAmount: finalDiscount,
-    finalAmount: totalAmount,
-    cashAmount: cashAmount,
-    changeAmount: changeAmount,
+    discountAmount: checkoutDataRef.current?.finalDiscount || 0,
+    finalAmount: checkoutDataRef.current?.totalAmount || stockTotal,
+    cashAmount: checkoutDataRef.current?.cashAmount || 0,
+    changeAmount: checkoutDataRef.current?.changeAmount || 0,
   };
 
   const formatCurrency = (amount) => `Rs. ${(parseFloat(amount) || 0).toFixed(2)}`;
 
   return (
-    <div className="flex h-[calc(100vh-2rem)] bg-gray-50 overflow-hidden">
+    <div className="flex h-[calc(100vh-2rem)] bg-gradient-to-br from-slate-100 to-slate-50 overflow-hidden">
       {/* Off-screen bill content */}
       <div className="absolute top-[-9999px] left-[-9999px]">
         <BillContent ref={billRef} billData={billData} />
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 h-full flex flex-col p-3 min-w-0 overflow-hidden">
+      <div className="flex-1 h-full flex flex-col p-4 min-w-0 overflow-hidden">
         {/* Header Section */}
-        <div className="bg-white rounded-xl shadow-sm mb-3 p-3 shrink-0">
-          <div className="flex items-center gap-4">
+        <div className="bg-white rounded-2xl shadow-sm mb-4 p-4 shrink-0 border border-slate-100">
+          <div className="flex items-center gap-5">
             {/* Customer Info Card */}
             <div
               onClick={() => setModal(true)}
-              className={`flex items-center gap-3 px-5 py-3 rounded-lg cursor-pointer transition-all hover:opacity-90 shrink-0 ${
+              className={`flex items-center gap-4 px-5 py-3.5 rounded-xl cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] shrink-0 ${
                 selectedMember?.is_guest
-                  ? "bg-slate-600"
-                  : "bg-emerald-500"
+                  ? "bg-gradient-to-r from-slate-700 to-slate-600"
+                  : "bg-gradient-to-r from-emerald-600 to-emerald-500"
               }`}
             >
-              <div className="w-11 h-11 rounded-lg bg-white/20 flex items-center justify-center">
-                <User className="w-5 h-5 text-white" />
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <User className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-white/70 text-[9px] font-semibold uppercase">Customer</p>
-                <p className="text-white font-bold text-base truncate max-w-[120px]">{selectedMember?.full_name || "Guest"}</p>
-                <p className="text-white/60 text-[10px]">{selectedMember?.member_no || "Walk-in"}</p>
+                <p className="text-white/80 text-[10px] font-semibold uppercase tracking-wider">Customer</p>
+                <p className="text-white font-bold text-base truncate max-w-[140px]">{selectedMember?.full_name || "Guest"}</p>
+                <p className="text-white/60 text-[11px] font-medium">{selectedMember?.member_no || "Walk-in"}</p>
               </div>
-              <ChevronDown className="w-4 h-4 text-white/50" />
+              <ChevronDown className="w-5 h-5 text-white/60" />
             </div>
 
-            {/* Date */}
-            <div className="px-4 shrink-0">
-              <p className="text-gray-400 text-[9px] font-semibold uppercase">Date</p>
-              <p className="text-gray-800 font-bold text-lg">{formattedDate}</p>
+            {/* Date Card */}
+            <div className="bg-slate-50 rounded-xl px-5 py-3 border border-slate-100 shrink-0">
+              <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">Date</p>
+              <p className="text-slate-800 font-bold text-lg">{formattedDate}</p>
+            </div>
+
+            {/* Prepared By Card */}
+            <div className="bg-slate-50 rounded-xl px-5 py-3 border border-slate-100 shrink-0">
+              <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">Prepared By</p>
+              <select
+                value={preparedBy}
+                onChange={(e) => setPreparedBy(e.target.value)}
+                className="text-slate-800 font-bold text-lg bg-transparent border-none p-0 focus:outline-none focus:ring-0 cursor-pointer appearance-none"
+              >
+                <option value="">Select</option>
+                {/* Show current user first if logged in and not in employees list */}
+                {currentUser && !(employees || []).some(emp =>
+                  (emp.username || emp.name) === (currentUser.username || currentUser.name)
+                ) && (
+                  <option
+                    key={currentUser.id || currentUser._id}
+                    value={currentUser.username || currentUser.name}
+                  >
+                    {currentUser.username || currentUser.name} (You)
+                  </option>
+                )}
+                {(employees || []).map(emp => {
+                  const empName = emp.username || emp.name;
+                  const isCurrentUser = currentUser && empName === (currentUser.username || currentUser.name);
+                  return (
+                    <option key={emp.id || emp._id} value={empName}>
+                      {empName}{isCurrentUser ? ' (You)' : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {/* Invoice Card */}
+            <div className="bg-slate-50 rounded-xl px-5 py-3 border border-slate-100 shrink-0">
+              <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">Invoice No</p>
+              <p className="text-slate-800 font-bold text-lg tracking-wider">{invoiceNo}</p>
             </div>
 
             {/* Spacer */}
             <div className="flex-1 min-w-0"></div>
 
-            {/* Prepared By */}
-            <div className="shrink-0">
-              <p className="text-gray-400 text-[9px] font-semibold uppercase mb-0.5">Prepared By</p>
-              <select
-                value={preparedBy}
-                onChange={(e) => setPreparedBy(e.target.value)}
-                className="w-28 px-2 py-1.5 bg-white border border-gray-200 rounded text-sm text-gray-700 focus:outline-none focus:border-[#1A318C]"
+            {/* Refresh & Clear Buttons */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => refetchItems()}
+                className="w-11 h-11 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl flex items-center justify-center transition-all hover:scale-105"
+                title="Refresh Items"
               >
-                <option value="">Select</option>
-                {(employees || []).map(emp => (
-                  <option key={emp.id || emp._id} value={emp.username || emp.name}>
-                    {emp.username || emp.name}
-                  </option>
-                ))}
-              </select>
+                <RefreshCw className="w-5 h-5" />
+              </button>
+              <button
+                onClick={clearForm}
+                className="px-5 py-2.5 bg-white border-2 border-slate-200 text-slate-600 rounded-xl font-semibold hover:bg-slate-50 hover:border-slate-300 transition-all text-sm"
+              >
+                Clear All
+              </button>
             </div>
-
-            {/* Invoice Badge */}
-            <div className="bg-[#1A318C] px-5 py-3 rounded-lg text-center shrink-0">
-              <p className="text-blue-300 text-[9px] font-semibold uppercase">Invoice No</p>
-              <p className="text-white font-bold text-lg tracking-wide">{invoiceNo}</p>
-            </div>
-
-            {/* Clear Button */}
-            <button
-              onClick={clearForm}
-              className="px-5 py-3 bg-white border border-gray-200 text-gray-600 rounded-lg font-semibold hover:bg-gray-50 hover:border-gray-300 transition-all text-sm shrink-0"
-            >
-              Clear All
-            </button>
           </div>
         </div>
 
-        {/* Credit Warning */}
-        {creditWarning && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3 flex items-center gap-3 shrink-0">
-            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
-            <p className="text-sm text-red-700">
-              <span className="font-semibold">Insufficient Credit.</span> Available: {formatCurrency(availableCredit)} | Required: {formatCurrency(totalAmount)}
-            </p>
-          </div>
-        )}
-
         {/* Items Table */}
-        <div className="bg-white rounded-xl shadow-sm flex-1 flex flex-col overflow-hidden min-h-0">
+        <div className="bg-white rounded-2xl shadow-sm flex-1 flex flex-col overflow-hidden min-h-0 border border-slate-100">
           {/* Table Header */}
-          <div className="bg-slate-800">
-            <div className="grid grid-cols-12 gap-3 px-5 py-3">
-              <div className="col-span-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">#</div>
-              <div className="col-span-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Item Details</div>
-              <div className="col-span-2 text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Qty</div>
-              <div className="col-span-2 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Unit Price</div>
-              <div className="col-span-2 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Total</div>
+          <div className="bg-gradient-to-r from-slate-800 to-slate-700">
+            <div className="grid grid-cols-12 gap-4 px-6 py-4">
+              <div className="col-span-1 text-[11px] font-bold text-slate-300 uppercase tracking-wider">#</div>
+              <div className="col-span-4 text-[11px] font-bold text-slate-300 uppercase tracking-wider">Item Details</div>
+              <div className="col-span-2 text-[11px] font-bold text-slate-300 uppercase tracking-wider text-center">Qty</div>
+              <div className="col-span-2 text-[11px] font-bold text-slate-300 uppercase tracking-wider text-right">Unit Price</div>
+              <div className="col-span-2 text-[11px] font-bold text-slate-300 uppercase tracking-wider text-right">Total</div>
               <div className="col-span-1"></div>
             </div>
           </div>
@@ -496,44 +507,56 @@ export default function SalesView({ isActive }) {
           {/* Table Body */}
           <div className="flex-1 overflow-y-auto">
             {selectedItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400 py-12">
-                <ShoppingCart className="w-16 h-16 text-gray-200 mb-4" />
-                <p className="text-base font-medium text-gray-500">No items added yet</p>
-                <p className="text-sm text-gray-400 mt-1">Click "Add Items" from the right panel</p>
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 py-16">
+                <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                  <ShoppingCart className="w-10 h-10 text-slate-300" />
+                </div>
+                <p className="text-base font-semibold text-slate-500">No items added yet</p>
+                <p className="text-sm text-slate-400 mt-1">Click "Add Items" from the right panel</p>
               </div>
             ) : (
               selectedItems.map((item, index) => (
                 <div
                   key={item.id}
                   onClick={() => handleTableRowClick(item)}
-                  className="grid grid-cols-12 gap-3 px-5 py-3 items-center cursor-pointer transition-all border-b border-gray-100 hover:bg-gray-50"
+                  className="grid grid-cols-12 gap-4 px-6 py-4 items-center cursor-pointer transition-all border-b border-slate-100 hover:bg-gradient-to-r hover:from-teal-50/50 hover:to-transparent group"
                 >
                   <div className="col-span-1">
-                    <span className="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 text-sm font-semibold flex items-center justify-center">
+                    <span className="w-8 h-8 rounded-xl bg-slate-100 group-hover:bg-teal-100 text-slate-600 group-hover:text-teal-700 text-sm font-bold flex items-center justify-center transition-colors">
                       {index + 1}
                     </span>
                   </div>
                   <div className="col-span-4">
-                    <p className="text-sm font-semibold text-gray-800">{item.item_name}</p>
-                    <p className="text-xs text-gray-400">{item.sku}</p>
+                    <p className="text-sm font-bold text-slate-800 group-hover:text-teal-800 transition-colors">{item.item_name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[11px] text-slate-400 font-mono">{item.sku}</span>
+                      {item.batch_code && (
+                        <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">
+                          {item.batch_code}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="col-span-2 text-center">
-                    <span className="inline-flex items-center justify-center px-3 py-1 bg-gray-100 rounded-lg text-sm font-bold text-gray-700">
+                    <span className="inline-flex items-center justify-center px-4 py-1.5 bg-emerald-100 rounded-xl text-sm font-bold text-emerald-700">
                       {item.customer_quantity}
                     </span>
                   </div>
                   <div className="col-span-2 text-right">
-                    <span className="text-sm text-gray-500 tabular-nums">{formatCurrency(item.retail_price)}</span>
+                    <span className="text-sm text-slate-500 tabular-nums font-medium">{formatCurrency(item.retail_price)}</span>
+                    {item.customer_discount > 0 && (
+                      <p className="text-[10px] text-orange-500 font-medium">-{formatCurrency(item.customer_discount)}</p>
+                    )}
                   </div>
                   <div className="col-span-2 text-right">
-                    <span className="text-sm font-bold text-gray-800 tabular-nums">
-                      {formatCurrency(item.retail_price * item.customer_quantity)}
+                    <span className="text-sm font-bold text-slate-800 tabular-nums">
+                      {formatCurrency((item.retail_price - (item.customer_discount || 0)) * item.customer_quantity)}
                     </span>
                   </div>
                   <div className="col-span-1 flex justify-end">
                     <button
                       onClick={(e) => { e.stopPropagation(); removeItemFromList(item.id); }}
-                      className="w-7 h-7 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition-colors"
+                      className="w-8 h-8 rounded-xl bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-all hover:scale-110"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -543,236 +566,112 @@ export default function SalesView({ isActive }) {
             )}
           </div>
         </div>
-
-        {/* Bottom Payment Section - Fixed at bottom */}
-        <div className="bg-white rounded-xl shadow-sm mt-3 px-4 py-3 shrink-0">
-          <div className="flex items-center gap-4">
-            {/* Left Group - Totals */}
-            <div className="flex items-center gap-4 shrink-0">
-              {/* Subtotal */}
-              <div>
-                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">Subtotal</p>
-                <p className="text-base font-bold text-gray-800 tabular-nums">{formatCurrency(stockTotal)}</p>
-              </div>
-
-              {/* Discount */}
-              <div>
-                <p className="text-[10px] font-medium text-orange-500 uppercase tracking-wide mb-0.5">Discount</p>
-                <input
-                  type="number"
-                  value={finalDiscount}
-                  onChange={(e) => setFinalDiscount(e.target.value)}
-                  className="w-20 px-2 py-1.5 bg-orange-50 border border-orange-200 rounded-lg font-bold text-sm text-orange-600 focus:outline-none focus:border-orange-400 tabular-nums"
-                  placeholder="0.00"
-                />
-              </div>
-
-              {/* Net Amount */}
-              <div className="bg-[#1A318C] rounded-lg px-4 py-2">
-                <p className="text-[9px] font-semibold text-blue-300 uppercase tracking-wide">Net Amount</p>
-                <p className="text-lg font-bold text-white tabular-nums">{formatCurrency(totalAmount)}</p>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="w-px h-12 bg-gray-200 shrink-0"></div>
-
-            {/* Center Group - Payment Fields */}
-            <div className="flex items-center gap-3 shrink-0">
-              {/* Payment Type */}
-              <div>
-                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">Payment</p>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  disabled={selectedMember?.is_guest}
-                  className={`w-24 px-2 py-1.5 border rounded-lg text-sm font-medium focus:outline-none ${
-                    selectedMember?.is_guest
-                      ? "bg-gray-100 border-gray-200 text-gray-400"
-                      : "bg-white border-gray-200 text-gray-700 focus:border-[#1A318C]"
-                  }`}
-                >
-                  <option value="cash">Cash</option>
-                  {!selectedMember?.is_guest && <option value="credit">Credit</option>}
-                </select>
-              </div>
-
-              {/* Cash Amount */}
-              <div>
-                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">Cash</p>
-                <input
-                  type="number"
-                  value={cashAmount}
-                  onChange={(e) => setCashAmount(e.target.value)}
-                  className="w-24 px-2 py-1.5 text-sm font-semibold text-gray-800 bg-white border border-gray-200 rounded-lg focus:border-[#1A318C] focus:outline-none tabular-nums"
-                  placeholder="0.00"
-                />
-              </div>
-
-              {/* Change */}
-              <div>
-                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">Change</p>
-                <div className={`w-24 px-2 py-1.5 rounded-lg text-sm font-bold tabular-nums text-center ${
-                  changeAmount >= 0 ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'
-                }`}>
-                  {changeAmount.toFixed(2)}
-                </div>
-              </div>
-            </div>
-
-            {/* Spacer */}
-            <div className="flex-1 min-w-0"></div>
-
-            {/* Right Group - Items & Actions */}
-            <div className="flex items-center gap-3 shrink-0">
-              {/* Items Badge */}
-              <div className="bg-slate-100 px-3 py-2 rounded-lg">
-                <span className="text-xs text-slate-500 font-medium">Items: </span>
-                <span className="text-sm font-bold text-slate-800">{selectedItems.length}</span>
-              </div>
-
-              {/* Cancel Button */}
-              <button
-                onClick={clearForm}
-                className="px-4 py-2 bg-white border border-gray-300 text-gray-600 rounded-lg font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all text-sm"
-              >
-                Cancel
-              </button>
-
-              {/* Proceed Button */}
-              <button
-                onClick={processSale}
-                disabled={totalAmount <= 0 || creditWarning}
-                className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 transition-all text-sm whitespace-nowrap disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                Proceed
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Right Sidebar - Action Cards */}
-      <div className="w-[300px] bg-gray-100 h-full p-3 flex flex-col gap-3 shrink-0">
-        {rightActiveSection === "buttons" ? (
-          <>
-            {/* Add Items Card */}
-            <button
-              onClick={() => {
-                setRightActiveSection("items");
-                refetchItems(); // Refresh items when opening the panel
-              }}
-              className="bg-white rounded-xl p-5 flex flex-col items-center justify-center hover:shadow-lg transition-all border-2 border-transparent hover:border-teal-200 group"
-            >
-              <div className="w-14 h-14 rounded-2xl bg-teal-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <ShoppingCart className="w-7 h-7 text-teal-600" />
-              </div>
-              <span className="text-sm font-bold text-gray-800">Add Items</span>
-              <span className="text-xs text-gray-500 mt-1">Add registered items to sale</span>
-            </button>
-
-            {/* Select Customer Card */}
-            <button
-              onClick={() => setModal(true)}
-              className="bg-white rounded-xl p-5 flex flex-col items-center justify-center hover:shadow-lg transition-all border-2 border-transparent hover:border-emerald-200 group"
-            >
-              <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <User className="w-7 h-7 text-emerald-600" />
-              </div>
-              <span className="text-sm font-bold text-gray-800">Select Customer</span>
-              <span className="text-xs text-gray-500 mt-1">Member or Guest</span>
-            </button>
-
-            {/* Credit Payment Card - Only for members */}
-            {!selectedMember?.is_guest && (
+      <div className="w-[320px] bg-gradient-to-b from-slate-100 to-slate-50 h-full p-4 flex flex-col gap-3 shrink-0 border-l border-slate-200">
+        {/* Main Content Area - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          {rightActiveSection === "buttons" ? (
+            <div className="flex flex-col gap-3">
+              {/* Add Items Card */}
               <button
-                onClick={() => setPaymentMethod("credit")}
-                disabled={!canUseCredit}
-                className={`bg-white rounded-xl p-5 flex flex-col items-center justify-center hover:shadow-lg transition-all border-2 ${
-                  paymentMethod === "credit"
-                    ? "border-amber-500 bg-amber-50"
-                    : "border-transparent hover:border-amber-200"
-                } ${!canUseCredit ? "opacity-50 cursor-not-allowed" : ""} group`}
+                onClick={() => {
+                  setRightActiveSection("items");
+                  refetchItems(); // Refresh items when opening the panel
+                }}
+                className="bg-white rounded-2xl p-5 flex flex-col items-center justify-center hover:shadow-xl transition-all border border-slate-100 hover:border-teal-300 group relative overflow-hidden"
               >
-                <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <CreditCard className="w-7 h-7 text-amber-600" />
+                <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg shadow-teal-500/30">
+                  <ShoppingCart className="w-8 h-8 text-white" />
                 </div>
-                <span className="text-sm font-bold text-gray-800">Credit Payment</span>
-                <span className="text-xs text-gray-500 mt-1">
-                  Available: {formatCurrency(availableCredit)}
-                </span>
+                <span className="relative text-base font-bold text-slate-800">Add Items</span>
+                <span className="relative text-xs text-slate-500 mt-1">Add registered items to sale</span>
               </button>
-            )}
 
-            {/* Cash Payment Card */}
-            <button
-              onClick={() => setPaymentMethod("cash")}
-              className={`bg-white rounded-xl p-5 flex flex-col items-center justify-center hover:shadow-lg transition-all border-2 ${
-                paymentMethod === "cash"
-                  ? "border-emerald-500 bg-emerald-50"
-                  : "border-transparent hover:border-emerald-200"
-              } group`}
-            >
-              <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Wallet className="w-7 h-7 text-emerald-600" />
-              </div>
-              <span className="text-sm font-bold text-gray-800">Cash Payment</span>
-              <span className="text-xs text-gray-500 mt-1">Pay with cash</span>
-            </button>
-
-            {/* Sale Summary */}
-            <div className="bg-white rounded-xl p-4 flex-1">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Sale Summary</p>
-              <div className="space-y-3">
-                <div className="bg-emerald-50 rounded-xl p-3 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center">
-                    <ShoppingCart className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-emerald-600 font-medium">Items</p>
-                    <p className="text-xl font-bold text-emerald-700 tabular-nums">{selectedItems.length}</p>
-                  </div>
+              {/* Select Customer Card */}
+              <button
+                onClick={() => setModal(true)}
+                className="bg-white rounded-2xl p-5 flex flex-col items-center justify-center hover:shadow-xl transition-all border border-slate-100 hover:border-emerald-300 group relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-500/30">
+                  <User className="w-8 h-8 text-white" />
                 </div>
+                <span className="relative text-base font-bold text-slate-800">Select Customer</span>
+                <span className="relative text-xs text-slate-500 mt-1">Member or Guest</span>
+              </button>
 
-                <div className="bg-[#1A318C]/5 rounded-xl p-3 flex items-center gap-3 border border-[#1A318C]/10">
-                  <div className="w-10 h-10 rounded-xl bg-[#1A318C] flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-white" />
+              {/* Sale Summary */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Sale Summary</p>
+                <div className="space-y-4">
+                  {/* Items Count */}
+                  <div className="bg-gradient-to-r from-teal-50 to-transparent rounded-xl p-4 flex items-center gap-4 border border-teal-100">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-lg shadow-teal-500/30">
+                      <Package className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-teal-600 font-semibold uppercase tracking-wide">Total Items</p>
+                      <p className="text-2xl font-bold text-teal-700 tabular-nums">{selectedItems.length}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-[#1A318C] font-medium">Total Amount</p>
-                    <p className="text-xl font-bold text-[#1A318C] tabular-nums">{formatCurrency(totalAmount)}</p>
+
+                  {/* Total Amount */}
+                  <div className="bg-gradient-to-r from-[#1A318C]/10 to-transparent rounded-xl p-4 flex items-center gap-4 border border-[#1A318C]/20">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A318C] to-[#2541B2] flex items-center justify-center shadow-lg shadow-[#1A318C]/30">
+                      <DollarSign className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-[#1A318C] font-semibold uppercase tracking-wide">Total Amount</p>
+                      <p className="text-2xl font-bold text-[#1A318C] tabular-nums">{formatCurrency(stockTotal)}</p>
+                    </div>
+                  </div>
+
+                  {/* Customer Info */}
+                  <div className="bg-gradient-to-r from-slate-50 to-transparent rounded-xl p-4 border border-slate-200">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                        selectedMember?.is_guest ? "bg-slate-500" : "bg-emerald-500"
+                      }`}>
+                        <User className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">Customer</p>
+                        <p className="text-sm font-bold text-slate-700 truncate">{selectedMember?.full_name || "Guest"}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </>
-        ) : (
-          /* Items List View */
-          <div className="flex flex-col h-full bg-white rounded-xl overflow-hidden">
-            {/* Search Header */}
-            <div className="p-4 border-b border-gray-100">
-              <div className="flex items-center gap-2 mb-3">
-                <button
-                  onClick={() => setRightActiveSection("buttons")}
-                  className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
-                >
-                  <BackIcon />
-                </button>
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={handleSearch}
-                    placeholder="Search items..."
-                    className="w-full pl-4 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20"
-                  />
+          ) : (
+            /* Items List View */
+            <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+              {/* Search Header */}
+              <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+                <div className="flex items-center gap-3 mb-3">
+                  <button
+                    onClick={() => setRightActiveSection("buttons")}
+                    className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-all hover:scale-105"
+                  >
+                    <BackIcon />
+                  </button>
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={handleSearch}
+                      placeholder="Search items..."
+                      className="w-full pl-4 pr-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition-all"
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-2">
                 <select
                   value={searchCategory}
                   onChange={(e) => setSearchCategory(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none"
+                  className="w-full px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition-all"
                 >
                   <option value="All">All Categories</option>
                   {uniqueCategoryTypes.map(type => (
@@ -780,30 +679,83 @@ export default function SalesView({ isActive }) {
                   ))}
                 </select>
               </div>
-            </div>
 
-            {/* Items List */}
-            <div className="flex-1 overflow-y-auto p-3">
-              {(isLoading || searchLoading) ? (
-                <div className="flex flex-col items-center justify-center h-full">
-                  <div className="w-10 h-10 border-3 border-gray-200 border-t-[#1A318C] rounded-full animate-spin mb-3"></div>
-                  <span className="text-gray-500 text-sm">Loading items...</span>
-                </div>
-              ) : filteredItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                  <Package className="w-16 h-16 mb-3 text-gray-200" />
-                  <span className="text-sm font-medium">No items found</span>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredItems.map((item) => (
-                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={() => loadItemtoList(item)} />
-                  ))}
-                </div>
-              )}
+              {/* Items List */}
+              <div className="flex-1 overflow-y-auto p-3">
+                {(isLoading || searchLoading) ? (
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <div className="w-12 h-12 border-4 border-slate-200 border-t-teal-500 rounded-full animate-spin mb-4"></div>
+                    <span className="text-slate-500 text-sm font-medium">Loading items...</span>
+                  </div>
+                ) : filteredItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-400 py-12">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                      <Package className="w-8 h-8 text-slate-300" />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-500">No items found</span>
+                    <span className="text-xs text-slate-400 mt-1">Try a different search</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredItems.map((item) => (
+                      <SalesItemCard key={item.id ?? item._id} item={item} onOpen={() => loadItemtoList(item)} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sticky Footer - Action Bar */}
+        <div className="shrink-0 bg-white rounded-2xl border border-slate-200 shadow-lg mt-3 overflow-hidden">
+          {/* Items & Total Summary */}
+          <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-slate-400" />
+                <span className="text-sm text-slate-500 font-medium">Items:</span>
+                <span className="text-lg font-bold text-slate-800">{selectedItems.length}</span>
+              </div>
+            </div>
+            <div className="mt-1">
+              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Total Amount</p>
+              <p className="text-xl font-bold text-slate-800 tabular-nums">{formatCurrency(stockTotal)}</p>
             </div>
           </div>
-        )}
+
+          {/* Action Buttons */}
+          <div className="p-3 flex flex-col gap-2">
+            {/* Clear & Hold Row */}
+            <div className="flex gap-2">
+              <button
+                onClick={clearForm}
+                disabled={selectedItems.length === 0}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-red-200 text-red-500 rounded-xl font-semibold hover:bg-red-50 hover:border-red-300 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="w-4 h-4" />
+                Clear
+              </button>
+              <button
+                onClick={handleHoldSale}
+                disabled={selectedItems.length === 0}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-amber-200 text-amber-600 rounded-xl font-semibold hover:bg-amber-50 hover:border-amber-300 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Pause className="w-4 h-4" />
+                Hold
+              </button>
+            </div>
+
+            {/* Proceed Button */}
+            <button
+              onClick={handleProceedClick}
+              disabled={selectedItems.length === 0}
+              className="w-full flex items-center justify-center px-4 py-3.5 bg-gradient-to-r from-[#1A318C] to-[#2541B2] text-white rounded-xl font-bold hover:from-[#162970] hover:to-[#1E3699] transition-all text-base disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed shadow-lg shadow-[#1A318C]/30 disabled:shadow-none"
+            >
+              Proceed
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Member Selection Modal */}
@@ -821,6 +773,16 @@ export default function SalesView({ isActive }) {
         item={selectedCartItem}
         onUpdate={handleCartItemUpdate}
         onRemove={removeItemFromList}
+      />
+
+      {/* Checkout Summary Modal */}
+      <CheckoutSummaryModal
+        isOpen={checkoutModal}
+        closeModal={closeCheckoutModal}
+        selectedItems={selectedItems}
+        selectedMember={selectedMember}
+        stockTotal={stockTotal}
+        onConfirmSale={handleConfirmSale}
       />
     </div>
   );

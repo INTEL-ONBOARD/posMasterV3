@@ -34,6 +34,7 @@ import {
     restockApi,
     memberApi,
     salesApi,
+    paymentMethodApi,
     userApi,
     loginHistoryApi
 } from '../api/localApi';
@@ -50,6 +51,7 @@ export const TABLES = {
     RESTOCK_TRANSACTIONS: 'restock_transactions',
     MEMBERS: 'members',
     SALES_TRANSACTIONS: 'sales_transactions',
+    PAYMENT_METHODS: 'payment_methods',
     USERS: 'users',
     LOGIN_HISTORY: 'login_history'
 };
@@ -66,6 +68,7 @@ const DEFAULT_FETCHERS = {
     [TABLES.RESTOCK_TRANSACTIONS]: () => restockApi.getAll().then(r => r.data || []),
     [TABLES.MEMBERS]: () => memberApi.getAll().then(r => r.data || []),
     [TABLES.SALES_TRANSACTIONS]: () => salesApi.getAll().then(r => r.data || []),
+    [TABLES.PAYMENT_METHODS]: () => paymentMethodApi.getAll().then(r => r.data || []),
     [TABLES.USERS]: () => userApi.getAll().then(r => r.data || []),
     [TABLES.LOGIN_HISTORY]: () => loginHistoryApi.getAll().then(r => r.data || [])
 };
@@ -82,6 +85,7 @@ const CACHE_TTL = {
     [TABLES.RESTOCK_TRANSACTIONS]: 30000,
     [TABLES.MEMBERS]: 30000,           // 30 seconds
     [TABLES.SALES_TRANSACTIONS]: 10000, // 10 seconds (most volatile)
+    [TABLES.PAYMENT_METHODS]: 60000,   // 1 minute (rarely changes)
     [TABLES.USERS]: 30000,             // 30 seconds
     [TABLES.LOGIN_HISTORY]: 30000,     // 30 seconds
     default: 30000                     // 30 seconds default

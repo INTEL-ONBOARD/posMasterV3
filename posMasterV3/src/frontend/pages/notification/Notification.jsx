@@ -42,7 +42,7 @@ function Dashboard() {
 
   // Use reactive data hooks - automatically updates when data changes
   const { data: items, loading: loadingItems, refetch: refetchItems } = useReactiveData(TABLES.ITEMS);
-  const { data: stock, loading: loadingStock, refetch: refetchStock } = useReactiveData(TABLES.STOCK);
+  const { data: stockItems, loading: loadingStockItems, refetch: refetchStockItems } = useReactiveData(TABLES.STOCK_ITEMS);
   const { data: members, loading: loadingMembers, refetch: refetchMembers } = useReactiveData(TABLES.MEMBERS);
   const { data: suppliers, loading: loadingSuppliers, refetch: refetchSuppliers } = useReactiveData(TABLES.SUPPLIERS);
   const { data: users, loading: loadingUsers, refetch: refetchUsers } = useReactiveData(TABLES.USERS);
@@ -52,12 +52,12 @@ function Dashboard() {
   const { isOnline } = useSyncStatus();
 
   // Combined loading state
-  const isLoadingReactiveData = loadingItems || loadingStock || loadingMembers || loadingSuppliers || loadingUsers || loadingLoginHistory;
+  const isLoadingReactiveData = loadingItems || loadingStockItems || loadingMembers || loadingSuppliers || loadingUsers || loadingLoginHistory;
 
   // Compute stats from reactive data
   const stats = useMemo(() => {
-    const lowStockItems = (stock || []).filter(s => s.quantity <= (s.threshold_limit || 10));
-    const expiringItems = (stock || []).filter(s => {
+    const lowStockItems = (stockItems || []).filter(s => s.quantity <= (s.threshold_limit || 10));
+    const expiringItems = (stockItems || []).filter(s => {
       if (!s.expiry_date) return false;
       const expiryDate = new Date(s.expiry_date);
       const thirtyDaysFromNow = new Date();
@@ -80,14 +80,14 @@ function Dashboard() {
       totalUsers: (users || []).length,
       activeSessions: activeSessions.length,
     };
-  }, [items, stock, members, suppliers, users, loginHistory, salesStats]);
+  }, [items, stockItems, members, suppliers, users, loginHistory, salesStats]);
 
-  // Low stock list for admin view
+  // Low stock list for admin view - uses stockItems which includes item_name and sku
   const lowStockList = useMemo(() => {
-    return (stock || [])
+    return (stockItems || [])
       .filter(s => s.quantity <= (s.threshold_limit || 10))
       .slice(0, 5);
-  }, [stock]);
+  }, [stockItems]);
 
   // Get greeting based on time
   useEffect(() => {
@@ -243,7 +243,7 @@ function Dashboard() {
       // Refetch all reactive data in parallel
       await Promise.all([
         refetchItems(),
-        refetchStock(),
+        refetchStockItems(),
         refetchMembers(),
         refetchSuppliers(),
         refetchUsers(),

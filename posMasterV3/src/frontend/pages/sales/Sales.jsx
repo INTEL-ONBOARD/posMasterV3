@@ -5,6 +5,7 @@ import SalesView from "./SalesView";
 import OffersDiscountView from "./OffersDiscountView";
 import TransactionHistory from "./TransactionHistory";
 import ViewSaleInventory from "./ViewSaleInventory";
+import SalesConfig from "./SalesConfig";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
 
 // Section labels for status bar
@@ -75,10 +76,7 @@ export default function Sales() {
         </div>
 
         <div className={isVisible("sales-config")}>
-          <div className="p-4 lg:p-8">
-            <h2 className="text-xl lg:text-2xl font-bold mb-4">Sales Configurations</h2>
-            <p>Sales configurations content will go here...</p>
-          </div>
+          <SalesConfig isActive={activeSection === "sales-config"} />
         </div>
       </div>
     </div>

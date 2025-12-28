@@ -386,6 +386,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
     },
 
     // ============================================
+    // PAYMENT METHODS API
+    // ============================================
+
+    paymentMethods: {
+        getAll: () => ipcRenderer.invoke("payment-methods:get-all"),
+        getActive: () => ipcRenderer.invoke("payment-methods:get-active"),
+        getForMembers: () => ipcRenderer.invoke("payment-methods:get-for-members"),
+        getForNonMembers: () => ipcRenderer.invoke("payment-methods:get-for-non-members"),
+        getById: (id) => ipcRenderer.invoke("payment-methods:get-by-id", id),
+        search: (searchTerm) => ipcRenderer.invoke("payment-methods:search", searchTerm),
+        create: (data) => ipcRenderer.invoke("payment-methods:create", data),
+        update: (id, data) => ipcRenderer.invoke("payment-methods:update", id, data),
+        toggleActive: (id) => ipcRenderer.invoke("payment-methods:toggle-active", id),
+        delete: (id) => ipcRenderer.invoke("payment-methods:delete", id)
+    },
+
+    // ============================================
     // CLOUD SYNC API
     // ============================================
 
