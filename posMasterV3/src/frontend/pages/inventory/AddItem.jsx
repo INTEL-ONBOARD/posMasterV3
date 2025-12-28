@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { X, Printer, ChevronDown, ChevronUp, Search, Package, Filter, SortAsc, Upload, Image } from "lucide-react";
 import AddItemCard from "../../components/AddItemCard.jsx";
 import ConfirmDeleteModal from "../../components/ConfirmDeleteModal.jsx";
+import StatusModal from "../../components/StatusModal.jsx";
 import barcodeImg from "../../assets/barcode.png";
 import ToastContext from "../toasts/ToastService.jsx";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
@@ -233,31 +234,19 @@ function AddItem({ isActive }) {
       if (response.status === "success") {
         // Add new item to local state
         //clear data upon successful response
-        setFormStatus("success");
+        setFormStatus("form");
+        setStatusModal({ open: true, type: 'success', description: `Item "${formData.item_name}" registered successfully` });
         statusLog.success(`Item "${formData.item_name}" registered successfully`);
-        // after 4 seconds, flip back to the form
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
         clearUserInput();
       } else {
-        setFormStatus("fail");
+        setFormStatus("form");
+        setStatusModal({ open: true, type: 'failed', description: 'Failed to register item. Please try again.' });
         statusLog.error("Failed to register item");
-        // after 4 seconds, flip back to the form
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
       }
     } catch (err) {
-      setFormStatus("fail");
+      setFormStatus("form");
+      setStatusModal({ open: true, type: 'failed', description: err.message || 'Item registration failed' });
       statusLog.error("Item registration failed");
-        // after 4 seconds, flip back to the form
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
       toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
     }
     finally {
@@ -292,36 +281,22 @@ function AddItem({ isActive }) {
       const response = await registerItemService.updateItem(formData.id, requestData);
 
       if (response.status === "success") {
-        setFormStatus("success");
+        setFormStatus("form");
+        setStatusModal({ open: true, type: 'success', description: `Item "${formData.item_name}" updated successfully` });
         statusLog.success(`Item "${formData.item_name}" updated successfully`);
-        // after 4 seconds, flip back to the form
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
-        toast.open("Item updated successfully", 4000, 'Success', 'success');
         //clear data upon successful response
         clearUserInput();
         setUserEditing(false);
       } else {
-        setFormStatus("fail");
+        setFormStatus("form");
+        setStatusModal({ open: true, type: 'failed', description: 'Failed to update item. Please try again.' });
         statusLog.error("Failed to update item");
-        // after 4 seconds, flip back to the form
-        timerRef.current = window.setTimeout(() => {
-          setFormStatus("form");
-          timerRef.current = null;
-        }, 4000);
-        toast.open("Failed to update the item, please try again", 4000, 'Request failed', 'error');
       }
     } catch (err) {
-      setFormStatus("fail");
+      setFormStatus("form");
+      setStatusModal({ open: true, type: 'failed', description: err.message || 'Item update failed' });
       statusLog.error("Item update failed");
-      // after 4 seconds, flip back to the form
-      timerRef.current = window.setTimeout(() => {
-        setFormStatus("form");
-        timerRef.current = null;
-      }, 4000);
-      toast.open("Update item operation faild. Please try again", 4000, 'Item update Failed', 'error');
+      toast.open("Update item operation failed. Please try again", 4000, 'Item update Failed', 'error');
     }
     finally {
       //repopulate items
@@ -418,6 +393,8 @@ function AddItem({ isActive }) {
   const [openPrimary, setOpenPrimary] = useState(true);
 
   const [formStatus, setFormStatus] = useState("form");   // possible values: "form" | "loading" | "success" | "fail"
+  const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
+
   // keep the timer ID so we can clear it if the component unmounts early
   const timerRef = useRef(null);
   useEffect(() => {
@@ -427,6 +404,11 @@ function AddItem({ isActive }) {
       }
     };
   }, []);
+
+  const closeStatusModal = () => {
+    setStatusModal({ open: false, type: null, description: "" });
+    setFormStatus("form");
+  };
 
   //right filter section controls
   const [openFilter, setOpenFilter] = useState(true);
@@ -708,36 +690,12 @@ function AddItem({ isActive }) {
             </button>
           </div>
         </div>
-      ) : formStatus === "loading" ? (
+      ) : (
         <div className="bg-gray-100 w-[28rem] h-[calc(100vh-2rem)] p-3 z-10 flex flex-col items-center justify-center">
           <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col items-center">
             <div className="animate-spin mb-4 rounded-full border-4 border-gray-200 border-t-[#1A318C] h-14 w-14"></div>
             <h2 className="text-lg font-semibold text-gray-800">Processing...</h2>
             <p className="text-sm text-gray-500 mt-1">Please wait</p>
-          </div>
-        </div>
-      ) : formStatus === "success" ? (
-        <div className="bg-gray-100 w-[28rem] h-[calc(100vh-2rem)] p-3 z-10 flex flex-col items-center justify-center">
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col items-center">
-            <div className="w-20 h-20 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-200 mb-4">
-              <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-gray-800">Success!</h2>
-            <p className="text-sm text-gray-500 mt-1">Item saved successfully</p>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-gray-100 w-[28rem] h-[calc(100vh-2rem)] p-3 z-10 flex flex-col items-center justify-center">
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col items-center">
-            <div className="w-20 h-20 rounded-2xl bg-red-500 flex items-center justify-center shadow-lg shadow-red-200 mb-4">
-              <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-gray-800">Failed</h2>
-            <p className="text-sm text-gray-500 mt-1">Please try again</p>
           </div>
         </div>
       )}
@@ -911,8 +869,16 @@ function AddItem({ isActive }) {
         onCancel={handleCancelDelete}
         onSuccess={refetchItems}
       />
-    </div>
 
+      {/* Status Modal */}
+      <StatusModal
+        isOpen={statusModal.open}
+        closeModal={closeStatusModal}
+        type={statusModal.type}
+        description={statusModal.description}
+        context="item"
+      />
+    </div>
   );
 }
 

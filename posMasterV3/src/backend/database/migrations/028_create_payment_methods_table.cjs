@@ -42,11 +42,12 @@ function up(db) {
 
     const defaultMethods = [
         { name: 'Cash', description: 'Pay with cash', type: 'cash', credit_months: 0, is_active: 1, is_member_only: 0, display_order: 1, icon: 'Wallet', color: 'emerald' },
-        { name: 'Credit 3 Months', description: '3 months credit payment', type: 'credit', credit_months: 3, is_active: 1, is_member_only: 1, display_order: 2, icon: 'CreditCard', color: 'blue' },
-        { name: 'Credit 6 Months', description: '6 months credit payment', type: 'credit', credit_months: 6, is_active: 1, is_member_only: 1, display_order: 3, icon: 'CreditCard', color: 'indigo' },
-        { name: 'Credit 9 Months', description: '9 months credit payment', type: 'credit', credit_months: 9, is_active: 1, is_member_only: 1, display_order: 4, icon: 'CreditCard', color: 'purple' },
-        { name: 'Welfare', description: 'Welfare payment scheme', type: 'special', credit_months: 0, is_active: 1, is_member_only: 1, display_order: 5, icon: 'Heart', color: 'pink' },
-        { name: 'Society', description: 'Society payment scheme', type: 'special', credit_months: 0, is_active: 1, is_member_only: 1, display_order: 6, icon: 'Users', color: 'amber' }
+        { name: 'Credit 1 Month', description: '1 month credit payment', type: 'credit', credit_months: 1, is_active: 1, is_member_only: 1, display_order: 2, icon: 'CreditCard', color: 'cyan' },
+        { name: 'Credit 3 Months', description: '3 months credit payment', type: 'credit', credit_months: 3, is_active: 1, is_member_only: 1, display_order: 3, icon: 'CreditCard', color: 'blue' },
+        { name: 'Credit 6 Months', description: '6 months credit payment', type: 'credit', credit_months: 6, is_active: 1, is_member_only: 1, display_order: 4, icon: 'CreditCard', color: 'indigo' },
+        { name: 'Credit 9 Months', description: '9 months credit payment', type: 'credit', credit_months: 9, is_active: 1, is_member_only: 1, display_order: 5, icon: 'CreditCard', color: 'purple' },
+        { name: 'Welfare', description: 'Welfare payment scheme', type: 'special', credit_months: 0, is_active: 1, is_member_only: 1, display_order: 6, icon: 'Heart', color: 'pink' },
+        { name: 'Society', description: 'Society payment scheme', type: 'special', credit_months: 0, is_active: 1, is_member_only: 1, display_order: 7, icon: 'Users', color: 'amber' }
     ];
 
     for (const method of defaultMethods) {

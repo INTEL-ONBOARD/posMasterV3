@@ -215,7 +215,7 @@ class SalesService {
                 is_held: data.is_held || false,
                 // Branch and audit fields
                 branch_id: branchContext.branchId,
-                created_by: branchContext.userName || branchContext.userId
+                created_by: branchContext.userId // Must be user ID (UUID), not username
             };
 
             const items = data.items || [];

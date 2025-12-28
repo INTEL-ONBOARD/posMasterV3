@@ -1,20 +1,17 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { restockApi } from "../../api/localApi";
-import { ChevronDown, ChevronUp, Package, Layers, Building2, RotateCcw, Search, ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Package, Layers, Building2, RotateCcw, Search, ArrowLeft, Plus, Trash2, Sparkles } from "lucide-react";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
 import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
 import { generateUniqueString, generateBillNo } from "../../util/common/generate";
 import { useReactiveData, TABLES } from "../../store";
 
-//modal images
-import successImage from '../../assets/Success.png';
-import failedImage from '../../assets/Failed.png';
 //date conversions
 import { appendCurrentTimeToDate, extractDateOnly, getCurrentDate, getCurrentDateTime } from "../../util/common/date";
 //form validations
 import { validateReturnForm, validateStockForm } from "../../util/inventory/validate";
-import StatusModal from "./modals/StatusModal";
+import StatusModal from "../../components/StatusModal.jsx";
 
 function InventoryRestock({ isActive }) {
   const statusLog = useStatusLog();
@@ -173,6 +170,19 @@ function InventoryRestock({ isActive }) {
     if (totalAmount > 0 && parseFloat(cashAmount) <= 0) {
       errors.cashAmount = "Please enter the cash amount";
     }
+
+    // DEBUG: Log validation status
+    console.log('[InventoryRestock] Validation check:', {
+      supplier_id: transactionData.supplier_id,
+      prep_id: transactionData.prep_id,
+      auth_id: transactionData.auth_id,
+      payment_method: formDataSupplier.payment_method,
+      totalAmount,
+      cashAmount,
+      stockItemsCount: selectedStockItemList.length,
+      returnItemsCount: selectedReturnItemList.length,
+      errors
+    });
 
     setTransactionErrors(errors);
     return Object.keys(errors).length === 0;
@@ -977,14 +987,14 @@ function InventoryRestock({ isActive }) {
         //generate a new invoice number
         setInvoiceGenerate(invoiceGenerate + 1);
 
-        setModal({ open: true, type: 'success' });
+        setModal({ open: true, type: 'success', description: 'Restock transaction completed successfully' });
         statusLog.success("Restock transaction completed successfully");
       } else {
-        setModal({ open: true, type: 'failed' });
+        setModal({ open: true, type: 'failed', description: response.message || 'Restock transaction failed' });
         statusLog.error("Restock transaction failed");
       }
     } catch (err) {
-      setModal({ open: true, type: 'failed' });
+      setModal({ open: true, type: 'failed', description: err.message || 'An error occurred during the transaction' });
       statusLog.error("Restock transaction error");
     }
     finally {
@@ -1071,6 +1081,7 @@ function InventoryRestock({ isActive }) {
                         type="text"
                         name="invoice_no"
                         value={formDataSupplier.invoice_no}
+                        onChange={handleSupplierInputChange}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       />
                     </div>
@@ -1197,37 +1208,52 @@ function InventoryRestock({ isActive }) {
             {(openFormBlock == 'stock') && (
               <div className="px-4 pb-4 border-t border-gray-100 h-[34rem] overflow-y-auto">
                 <div className="space-y-3 pt-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
-                        Batch Code
-                      </label>
+                  {/* Batch Code - Full Width */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                      Batch Code
+                    </label>
+                    <div className="flex gap-2">
                       <input
                         type="text"
                         name="batch_code"
                         value={formDataStock.batch_code}
                         onChange={handleStockInputChange}
-                        className={`w-full px-4 py-2.5 border rounded-lg text-sm ${
+                        className={`flex-1 px-4 py-2.5 border rounded-lg text-sm ${
                           formErrors.batch_code ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
                         } bg-gray-50 focus:outline-none focus:ring-2 transition-all`}
                       />
-                      {formErrors.batch_code && <p className="text-red-500 text-xs mt-1">{formErrors.batch_code}</p>}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const sku = formDataRegItem.sku || 'ITEM';
+                          const batchNum = String(stockEntries.length + 1).padStart(3, '0');
+                          const newBatchCode = `BATCH-${sku}-${batchNum}`;
+                          setFormDataStock(prev => ({ ...prev, batch_code: newBatchCode }));
+                        }}
+                        className="px-3 py-2.5 bg-[#1A318C] hover:bg-[#152870] text-white rounded-lg transition-colors flex items-center justify-center"
+                        title="Generate Batch Code"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                      </button>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
-                        Quantity
-                      </label>
-                      <input
-                        type="number"
-                        name="quantity"
-                        value={formDataStock.quantity}
-                        onChange={handleStockInputChange}
-                        className={`w-full px-4 py-2.5 border rounded-lg text-sm tabular-nums ${
-                          formErrors.quantity ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
-                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all`}
-                      />
-                      {formErrors.quantity && <p className="text-red-500 text-xs mt-1">{formErrors.quantity}</p>}
-                    </div>
+                    {formErrors.batch_code && <p className="text-red-500 text-xs mt-1">{formErrors.batch_code}</p>}
+                  </div>
+                  {/* Quantity - Full Width */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                      Quantity
+                    </label>
+                    <input
+                      type="number"
+                      name="quantity"
+                      value={formDataStock.quantity}
+                      onChange={handleStockInputChange}
+                      className={`w-full px-4 py-2.5 border rounded-lg text-sm tabular-nums ${
+                        formErrors.quantity ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                      } bg-gray-50 focus:outline-none focus:ring-2 transition-all`}
+                    />
+                    {formErrors.quantity && <p className="text-red-500 text-xs mt-1">{formErrors.quantity}</p>}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -2020,12 +2046,14 @@ function InventoryRestock({ isActive }) {
       </div>
 
 
-      {/* integrage this modal later */}
-      {/* MODAL OVERLAY */}
-        <StatusModal 
+      {/* Status Modal */}
+        <StatusModal
           isOpen={modal.open}
           closeModal={closeModal}
-          type={modal.type}/>
+          type={modal.type}
+          description={modal.description}
+          context="restock"
+        />
 
     </div>
   );
