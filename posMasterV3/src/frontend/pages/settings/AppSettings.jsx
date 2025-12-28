@@ -7,7 +7,7 @@ import { useBranchContext } from '../../context/BranchContext';
 
 function AppSettings() {
   const toast = useContext(ToastContext);
-  const { currentBranch, branchName } = useBranchContext();
+  const { currentBranch, branchName, setBranch } = useBranchContext();
 
   // Section collapse states
   const [openGeneral, setOpenGeneral] = useState(true);
@@ -97,14 +97,18 @@ function AppSettings() {
     return () => clearInterval(interval);
   }, []);
 
-  // Sync default_outlet with current branch from BranchContext
+  // Initialize default_outlet from current branch on first load only
+  const [initialBranchLoaded, setInitialBranchLoaded] = useState(false);
   useEffect(() => {
-    if (branchName) {
-      setPaths(prev => ({ ...prev, default_outlet: branchName }));
-    } else if (branches && branches.length > 0 && !paths.default_outlet) {
-      setPaths(prev => ({ ...prev, default_outlet: branches[0].name }));
+    if (!initialBranchLoaded && !loading) {
+      if (branchName) {
+        setPaths(prev => ({ ...prev, default_outlet: branchName }));
+      } else if (branches && branches.length > 0 && !paths.default_outlet) {
+        setPaths(prev => ({ ...prev, default_outlet: branches[0].name }));
+      }
+      setInitialBranchLoaded(true);
     }
-  }, [branchName, branches, paths.default_outlet]);
+  }, [branchName, branches, loading, initialBranchLoaded, paths.default_outlet]);
 
   const handleToggle = async (key) => {
     const newValue = !settings[key];
@@ -203,6 +207,10 @@ function AppSettings() {
     try {
       setSaving(true);
 
+      // Check if branch is being changed
+      const selectedBranch = branches?.find(b => b.name === paths.default_outlet);
+      const branchChanged = selectedBranch && selectedBranch.id !== currentBranch?.id;
+
       const allSettings = {
         ...settings,
         ...paths
@@ -211,14 +219,21 @@ function AppSettings() {
       const response = await settingsApi.updateAppSettings(allSettings);
 
       if (response.status === 'success') {
-        toast.open('Settings saved! App will restart to apply changes...', 3000, 'Success', 'success');
+        // If branch changed, update the BranchContext and restart
+        if (branchChanged && selectedBranch) {
+          toast.open('Branch changed! App will restart with fresh data...', 3000, 'Success', 'success');
 
-        // If app settings require restart, trigger logout and restart
-        if (response.requiresRestart && window.electronAPI?.app?.logoutAndRestart) {
-          // Give user time to see the toast message
-          setTimeout(async () => {
-            await window.electronAPI.app.logoutAndRestart();
-          }, 1500);
+          // Update branch context
+          await setBranch(selectedBranch.id);
+
+          // Restart the app to clear cached data
+          if (window.electronAPI?.app?.logoutAndRestart) {
+            setTimeout(async () => {
+              await window.electronAPI.app.logoutAndRestart();
+            }, 1500);
+          }
+        } else {
+          toast.open('Settings saved successfully!', 3000, 'Success', 'success');
         }
       } else {
         toast.open('Failed to save settings', 3000, 'Error', 'error');
