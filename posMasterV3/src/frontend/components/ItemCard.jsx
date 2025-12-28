@@ -15,17 +15,23 @@ export default function ItemCard({ item, onOpen, onRemove }) {
     setOverflowing(el.scrollWidth > el.clientWidth);
   }, [item.item_name]);
 
-  const percentFull = item.maximum_capacity ? ((item.quantity || 0) / item.maximum_capacity) * 100 : 0;
+  // Get safe values with defaults
+  const quantity = item.quantity || 0;
+  const maxCapacity = item.maximum_capacity || 100;
+  const thresholdLimit = item.threshold_limit || 30;
+  const retailPrice = item.retail_price || item.stock_price || 0;
+
+  const percentFull = maxCapacity > 0 ? (quantity / maxCapacity) * 100 : 0;
   let statusConfig;
-  if (percentFull <= (item.threshold_limit || 30)) {
+  if (percentFull <= thresholdLimit) {
     statusConfig = { bg: "bg-red-500", ring: "ring-red-200", text: "text-red-600", label: "Low Stock" };
-  } else if (percentFull <= item.threshold_limit + 20) {
+  } else if (percentFull <= thresholdLimit + 20) {
     statusConfig = { bg: "bg-amber-500", ring: "ring-amber-200", text: "text-amber-600", label: "Medium" };
   } else {
     statusConfig = { bg: "bg-emerald-500", ring: "ring-emerald-200", text: "text-emerald-600", label: "In Stock" };
   }
 
-  const imageSrc = item.image || placeholderImg;
+  const imageSrc = item.item_image_url || item.image || placeholderImg;
 
   return (
     <div
@@ -81,7 +87,7 @@ export default function ItemCard({ item, onOpen, onRemove }) {
             <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">{item.sku}</span>
           </div>
           <div className={`text-[10px] font-bold ${statusConfig.text}`}>
-            {item.quantity}/{item.maximum_capacity}
+            {quantity}/{maxCapacity}
           </div>
         </div>
 
@@ -110,7 +116,7 @@ export default function ItemCard({ item, onOpen, onRemove }) {
           <div>
             <p className="text-[10px] text-gray-400 uppercase tracking-wide">Retail Price</p>
             <p className="text-xl font-bold text-gray-800 tabular-nums">
-              Rs.{item.stock_price}
+              Rs.{retailPrice > 0 ? retailPrice.toFixed(2) : '0.00'}
               <span className="text-xs font-medium text-gray-400 ml-1">/{item.uom?.symbol || 'unit'}</span>
             </p>
           </div>

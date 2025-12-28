@@ -12,21 +12,17 @@ export default function AddItemCard({ item, onOpen, onRemove }) {
     setOverflowing(el.scrollWidth > el.clientWidth);
   }, [item.item_name]);
 
-  // compute filled % once per render
-  const percentFull = item.maximum_capacity ? ((item.quantity || 0) / item.maximum_capacity) * 100 : 0;
+  // For item registry, show availability status (not stock status)
+  const isAvailable = item.availability === true || item.availability === 1 || item.availability === "true";
   let statusColorClass, statusBgClass, statusText;
-  if (percentFull <= (item.threshold_limit || 30)) {
-    statusColorClass = "bg-red-500";
-    statusBgClass = "bg-red-50 text-red-600";
-    statusText = "Low";
-  } else if (percentFull <= item.threshold_limit + 20) {
-    statusColorClass = "bg-amber-500";
-    statusBgClass = "bg-amber-50 text-amber-600";
-    statusText = "Medium";
-  } else {
+  if (isAvailable) {
     statusColorClass = "bg-emerald-500";
     statusBgClass = "bg-emerald-50 text-emerald-600";
-    statusText = "Good";
+    statusText = "Available";
+  } else {
+    statusColorClass = "bg-gray-400";
+    statusBgClass = "bg-gray-100 text-gray-500";
+    statusText = "Unavailable";
   }
 
   // Prioritize blob image over URL, fallback to placeholder
@@ -75,9 +71,10 @@ export default function AddItemCard({ item, onOpen, onRemove }) {
               {item.category?.brand || 'Unknown'}
             </span>
           </div>
-          <div className="flex items-baseline gap-1 mt-2">
-            <span className="text-2xl font-bold text-gray-800 tabular-nums">Rs.{item.retail_price}</span>
-            <span className="text-sm text-gray-400">/{item.uom?.symbol || 'unit'}</span>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-sm text-gray-500">Max Capacity:</span>
+            <span className="text-sm font-bold text-gray-800 tabular-nums">{item.maximum_capacity || 0}</span>
+            <span className="text-sm text-gray-400">{item.uom?.symbol || 'units'}</span>
           </div>
         </div>
       </div>
@@ -99,9 +96,9 @@ export default function AddItemCard({ item, onOpen, onRemove }) {
         </button>
         <img src={imageSrc} alt={item.item_name} className="w-full h-full object-cover" />
 
-        {/* Quantity Badge */}
+        {/* UOM Badge */}
         <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur rounded-lg px-2 py-1 shadow-sm">
-          <p className="text-xs font-bold text-gray-800 tabular-nums">{item.quantity} <span className="text-gray-400 font-normal">in stock</span></p>
+          <p className="text-xs font-bold text-gray-800">{item.uom?.unit_name || 'Unit'}</p>
         </div>
       </div>
     </div>

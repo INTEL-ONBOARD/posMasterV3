@@ -357,7 +357,7 @@ function CheckHistory({ isActive }) {
                     {selectedTrans.added_items?.map((item, index) => {
                       const qty = item.quantity || item.qty || 0;
                       return (
-                        <tr key={index} className="hover:bg-gray-50 transition-colors">
+                        <tr key={item.id || `${item.sku}-${item.batch_code}-${index}`} className="hover:bg-gray-50 transition-colors">
                           <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
                           <td className="px-6 py-4 text-sm font-medium text-gray-800 font-mono">{item.sku}</td>
                           <td className="px-6 py-4 text-sm text-gray-600">{item.batch_code}</td>
@@ -400,7 +400,7 @@ function CheckHistory({ isActive }) {
                       {selectedTrans.return_items?.map((item, index) => {
                         const qty = item.quantity || item.qty || 0;
                         return (
-                          <tr key={index} className="hover:bg-red-50/50 transition-colors">
+                          <tr key={item.id || `return-${item.sku}-${item.batch_code}-${index}`} className="hover:bg-red-50/50 transition-colors">
                             <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
                             <td className="px-6 py-4 text-sm font-medium text-gray-800 font-mono">{item.sku}</td>
                             <td className="px-6 py-4 text-sm text-gray-600">{item.batch_code}</td>

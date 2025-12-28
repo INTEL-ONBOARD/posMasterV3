@@ -6,7 +6,7 @@
 
 const BaseRepository = require('./BaseRepository.cjs');
 const { notifyDataChange } = require('../services/CloudSyncService.cjs');
-const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
+const { broadcastDataChange, broadcastBatchChange } = require('../utils/eventBroadcaster.cjs');
 const { nowISO, getSriLankanDate } = require('../utils/helpers.cjs');
 
 class SalesRepository extends BaseRepository {
@@ -211,11 +211,10 @@ class SalesRepository extends BaseRepository {
                 notifyDataChange('sales_items', 'INSERT', item, item.id);
             }
 
-            // Broadcast stock changes to UI (stock was decreased)
-            for (const item of items) {
-                if (!data.is_held && item.stock_id) {
-                    broadcastDataChange('stock', 'UPDATE', item.stock_id, null);
-                }
+            // Broadcast a SINGLE batch stock update instead of individual broadcasts per item
+            // This prevents UI refresh storms when selling many items
+            if (!data.is_held && items.length > 0) {
+                broadcastBatchChange('stock', items.length, 'SALE');
             }
 
             // Broadcast member update if member was involved
@@ -263,14 +262,17 @@ class SalesRepository extends BaseRepository {
                     nowISO(),
                     item.stock_id
                 );
-                // Broadcast stock update
-                broadcastDataChange('stock', 'UPDATE', item.stock_id, null);
             }
 
             const completedSale = this.getFullDetails(id);
 
             // Broadcast the sale update
             broadcastDataChange('sales_transactions', 'UPDATE', id, completedSale);
+
+            // Broadcast a SINGLE batch stock update instead of per-item
+            if (items.length > 0) {
+                broadcastBatchChange('stock', items.length, 'SALE_COMPLETE');
+            }
 
             return completedSale;
         });
@@ -300,12 +302,15 @@ class SalesRepository extends BaseRepository {
                     nowISO(),
                     item.stock_id
                 );
-                // Broadcast stock restore
-                broadcastDataChange('stock', 'UPDATE', item.stock_id, null);
             }
 
             // Update sale status (this.update already broadcasts via BaseRepository)
             this.update(id, { status: 'cancelled' });
+
+            // Broadcast a SINGLE batch stock update instead of per-item
+            if (sale.items.length > 0) {
+                broadcastBatchChange('stock', sale.items.length, 'SALE_CANCEL');
+            }
 
             return true;
         });
