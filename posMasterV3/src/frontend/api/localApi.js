@@ -1647,15 +1647,14 @@ export const appSettingsApi = {
     },
 
     /**
-     * Set auto-logout configuration
-     * @param {boolean} enabled - Whether auto-logout is enabled
-     * @param {number} minutes - Timeout in minutes
+     * Set logout on close configuration
+     * @param {boolean} enabled - Whether to logout when app closes
      * @returns {Promise<ApiResponse>}
      */
-    setAutoLogout: async (enabled, minutes = 15) => {
+    setLogoutOnClose: async (enabled) => {
         const api = getElectronAPI();
         if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.appSettings.setAutoLogout(enabled, minutes);
+        return api.appSettings.setLogoutOnClose(enabled);
     },
 
     /**
@@ -1723,16 +1722,6 @@ export const appSettingsApi = {
     },
 
     /**
-     * Reset activity timer (call on user interaction to prevent auto-logout)
-     * @returns {Promise<ApiResponse>}
-     */
-    resetActivity: async () => {
-        const api = getElectronAPI();
-        if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.appSettings.resetActivity();
-    },
-
-    /**
      * Check if cloud sync is enabled
      * @returns {Promise<ApiResponse & {data: {enabled: boolean}}>}
      */
@@ -1740,16 +1729,6 @@ export const appSettingsApi = {
         const api = getElectronAPI();
         if (!api) return { status: 'error', message: 'Not in Electron environment' };
         return api.appSettings.isCloudSyncEnabled();
-    },
-
-    /**
-     * Listen for auto-logout event
-     * @param {Function} callback
-     */
-    onAutoLogout: (callback) => {
-        const api = getElectronAPI();
-        if (!api) return;
-        api.appSettings.onAutoLogout(callback);
     }
 };
 
@@ -2065,6 +2044,101 @@ export const dataChangeApi = {
 };
 
 // ============================================
+// BRANCH CONTEXT API
+// ============================================
+
+/**
+ * @typedef {Object} BranchContext
+ * @property {number} id - Branch ID
+ * @property {string} name - Branch name
+ * @property {string} [address] - Branch address
+ * @property {string} [contact] - Branch contact
+ * @property {number} is_active - Whether branch is active
+ */
+
+/**
+ * Branch Context API - Manage current branch selection
+ * @namespace
+ */
+export const branchContextApi = {
+    /**
+     * Get the currently selected branch
+     * @returns {Promise<ApiResponse & {data: BranchContext | null}>}
+     */
+    getCurrent: async () => {
+        const api = getElectronAPI();
+        if (!api?.branchContext) return { status: 'error', message: 'Not in Electron environment' };
+        return api.branchContext.getCurrent();
+    },
+
+    /**
+     * Set the current branch context
+     * @param {number} branchId - Branch ID to select
+     * @returns {Promise<ApiResponse & {data: BranchContext}>}
+     */
+    setCurrent: async (branchId) => {
+        const api = getElectronAPI();
+        if (!api?.branchContext) return { status: 'error', message: 'Not in Electron environment' };
+        return api.branchContext.setCurrent(branchId);
+    },
+
+    /**
+     * Clear the current branch selection
+     * @returns {Promise<ApiResponse>}
+     */
+    clear: async () => {
+        const api = getElectronAPI();
+        if (!api?.branchContext) return { status: 'error', message: 'Not in Electron environment' };
+        return api.branchContext.clear();
+    },
+
+    /**
+     * Check if branch selection is required
+     * @returns {Promise<ApiResponse & {data: {required: boolean, currentBranch: BranchContext | null}}>}
+     */
+    isRequired: async () => {
+        const api = getElectronAPI();
+        if (!api?.branchContext) return { status: 'error', message: 'Not in Electron environment' };
+        return api.branchContext.isRequired();
+    },
+
+    /**
+     * Get branches available to the current user
+     * @returns {Promise<ApiResponse & {data: BranchContext[]}>}
+     */
+    getAvailableBranches: async () => {
+        const api = getElectronAPI();
+        if (!api?.branchContext) return { status: 'error', message: 'Not in Electron environment' };
+        return api.branchContext.getAvailableBranches();
+    },
+
+    /**
+     * Validate if an operation can proceed (checks branch selection)
+     * @param {string} operation - Operation name (e.g., 'create_sale', 'create_restock')
+     * @returns {Promise<ApiResponse & {valid: boolean, message?: string, requiresBranch?: boolean}>}
+     */
+    validateOperation: async (operation) => {
+        const api = getElectronAPI();
+        if (!api?.branchContext) return { status: 'error', message: 'Not in Electron environment' };
+        return api.branchContext.validateOperation(operation);
+    },
+
+    /**
+     * Subscribe to branch context changes
+     * @param {Function} callback - Called when branch changes with branch data or null
+     * @returns {Function} Unsubscribe function
+     */
+    onBranchChanged: (callback) => {
+        const api = getElectronAPI();
+        if (!api?.branchContext?.onBranchChanged) {
+            console.warn('onBranchChanged not available in this environment');
+            return () => {};
+        }
+        return api.branchContext.onBranchChanged(callback);
+    }
+};
+
+// ============================================
 // DEFAULT EXPORT
 // ============================================
 
@@ -2088,5 +2162,6 @@ export default {
     cloudSync: cloudSyncApi,
     loginHistory: loginHistoryApi,
     dataChange: dataChangeApi,
+    branchContext: branchContextApi,
     isElectron
 };

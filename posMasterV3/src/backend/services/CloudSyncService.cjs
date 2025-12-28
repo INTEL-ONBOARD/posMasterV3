@@ -52,7 +52,9 @@ const TABLES_TO_SYNC = [
     // NOTE: app_settings is intentionally NOT synced - it's device-specific
     'user_settings',
     'login_history',
-    'active_sessions'  // For single-device enforcement across devices
+    'active_sessions',  // For single-device enforcement across devices
+    'payment_methods',  // Payment method configurations
+    'audit_log'         // Audit trail for compliance
 ];
 
 // Tables that shouldn't sync (local only) - each device has its own settings
@@ -1152,6 +1154,9 @@ class CloudSyncService {
                     cloud_id VARCHAR(255),
                     brand VARCHAR(255) NOT NULL,
                     type VARCHAR(255) NOT NULL,
+                    created_by VARCHAR(255),
+                    updated_by VARCHAR(255),
+                    created_at_branch INT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
@@ -1165,6 +1170,9 @@ class CloudSyncService {
                     cloud_id VARCHAR(255),
                     symbol VARCHAR(50) NOT NULL,
                     unit_name VARCHAR(255) NOT NULL,
+                    created_by VARCHAR(255),
+                    updated_by VARCHAR(255),
+                    created_at_branch INT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
@@ -1201,6 +1209,9 @@ class CloudSyncService {
                     account_branch VARCHAR(255),
                     account_name VARCHAR(255),
                     account_nickname VARCHAR(255),
+                    created_by VARCHAR(255),
+                    updated_by VARCHAR(255),
+                    created_at_branch INT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
@@ -1219,12 +1230,16 @@ class CloudSyncService {
                     uom_id INT,
                     branch_id INT,
                     availability TINYINT DEFAULT 1,
+                    created_by VARCHAR(255),
+                    updated_by VARCHAR(255),
+                    created_at_branch INT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
                     UNIQUE INDEX idx_sku (sku),
                     INDEX idx_name (item_name),
-                    INDEX idx_category (category_id)
+                    INDEX idx_category (category_id),
+                    INDEX idx_branch_id (branch_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `,
             stock: `
@@ -1240,12 +1255,14 @@ class CloudSyncService {
                     discount_price DECIMAL(15,2) DEFAULT 0,
                     expiry_date DATETIME,
                     availability TINYINT DEFAULT 1,
+                    branch_id INT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
                     UNIQUE KEY unique_item_batch (item_id, batch_code),
                     INDEX idx_item (item_id),
-                    INDEX idx_batch (batch_code)
+                    INDEX idx_batch (batch_code),
+                    INDEX idx_branch_id (branch_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `,
             restock_transactions: `
@@ -1265,11 +1282,14 @@ class CloudSyncService {
                     change_amount DECIMAL(15,2) DEFAULT 0,
                     execution_level VARCHAR(50) DEFAULT 'medium',
                     status VARCHAR(50) DEFAULT 'completed',
+                    branch_id INT,
+                    created_by VARCHAR(255),
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
                     INDEX idx_invoice (invoice_no),
-                    INDEX idx_supplier (supplier_id)
+                    INDEX idx_supplier (supplier_id),
+                    INDEX idx_branch_id (branch_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `,
             restock_items: `
@@ -1310,11 +1330,13 @@ class CloudSyncService {
                     total_income DECIMAL(15,2) DEFAULT 0,
                     total_credits DECIMAL(15,2) DEFAULT 0,
                     is_active TINYINT DEFAULT 1,
+                    branch_id INT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
                     UNIQUE INDEX idx_member_no (member_no),
-                    INDEX idx_name (full_name)
+                    INDEX idx_name (full_name),
+                    INDEX idx_branch_id (branch_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `,
             sales_transactions: `
@@ -1333,11 +1355,15 @@ class CloudSyncService {
                     change_amount DECIMAL(15,2) DEFAULT 0,
                     status VARCHAR(50) DEFAULT 'completed',
                     is_held TINYINT DEFAULT 0,
+                    branch_id INT,
+                    created_by VARCHAR(255),
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
                     INDEX idx_invoice (invoice_no),
                     INDEX idx_member (member_id),
-                    INDEX idx_cashier (cashier_id)
+                    INDEX idx_cashier (cashier_id),
+                    INDEX idx_branch_id (branch_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `,
             sales_items: `
@@ -1461,6 +1487,55 @@ class CloudSyncService {
                     INDEX idx_device_id (device_id),
                     INDEX idx_is_active (is_active)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `,
+            payment_methods: `
+                CREATE TABLE IF NOT EXISTS payment_methods (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    cloud_id VARCHAR(255),
+                    name VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    type VARCHAR(50) NOT NULL DEFAULT 'cash',
+                    credit_months INT DEFAULT 0,
+                    interest_rate DECIMAL(5,2) DEFAULT 0,
+                    is_active TINYINT DEFAULT 1,
+                    is_member_only TINYINT DEFAULT 0,
+                    display_order INT DEFAULT 0,
+                    icon VARCHAR(255),
+                    color VARCHAR(50),
+                    created_by VARCHAR(255),
+                    updated_by VARCHAR(255),
+                    created_at_branch INT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    sync_status VARCHAR(50) DEFAULT 'pending',
+                    INDEX idx_type (type),
+                    INDEX idx_is_active (is_active),
+                    INDEX idx_sync_status (sync_status)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `,
+            audit_log: `
+                CREATE TABLE IF NOT EXISTS audit_log (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    table_name VARCHAR(255) NOT NULL,
+                    record_id VARCHAR(255) NOT NULL,
+                    action VARCHAR(50) NOT NULL,
+                    user_id VARCHAR(255),
+                    user_name VARCHAR(255),
+                    branch_id INT,
+                    branch_name VARCHAR(255),
+                    old_values LONGTEXT,
+                    new_values LONGTEXT,
+                    changed_fields TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    device_info TEXT,
+                    sync_status VARCHAR(50) DEFAULT 'pending',
+                    INDEX idx_table_name (table_name),
+                    INDEX idx_record_id (record_id),
+                    INDEX idx_user_id (user_id),
+                    INDEX idx_branch_id (branch_id),
+                    INDEX idx_timestamp (timestamp),
+                    INDEX idx_action (action)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `
         };
 
@@ -1510,7 +1585,35 @@ class CloudSyncService {
                 column: 'updated_at',
                 definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
                 after: 'created_at'
-            }
+            },
+            // ========== Multi-branch & Audit columns ==========
+            // Categories audit fields
+            { table: 'categories', column: 'created_by', definition: 'VARCHAR(255) DEFAULT NULL', after: 'type' },
+            { table: 'categories', column: 'updated_by', definition: 'VARCHAR(255) DEFAULT NULL', after: 'created_by' },
+            { table: 'categories', column: 'created_at_branch', definition: 'INT DEFAULT NULL', after: 'updated_by' },
+            // Units of measurement audit fields
+            { table: 'units_of_measurement', column: 'created_by', definition: 'VARCHAR(255) DEFAULT NULL', after: 'unit_name' },
+            { table: 'units_of_measurement', column: 'updated_by', definition: 'VARCHAR(255) DEFAULT NULL', after: 'created_by' },
+            { table: 'units_of_measurement', column: 'created_at_branch', definition: 'INT DEFAULT NULL', after: 'updated_by' },
+            // Suppliers audit fields
+            { table: 'suppliers', column: 'created_by', definition: 'VARCHAR(255) DEFAULT NULL', after: 'account_nickname' },
+            { table: 'suppliers', column: 'updated_by', definition: 'VARCHAR(255) DEFAULT NULL', after: 'created_by' },
+            { table: 'suppliers', column: 'created_at_branch', definition: 'INT DEFAULT NULL', after: 'updated_by' },
+            // Items audit fields
+            { table: 'items', column: 'created_by', definition: 'VARCHAR(255) DEFAULT NULL', after: 'availability' },
+            { table: 'items', column: 'updated_by', definition: 'VARCHAR(255) DEFAULT NULL', after: 'created_by' },
+            { table: 'items', column: 'created_at_branch', definition: 'INT DEFAULT NULL', after: 'updated_by' },
+            // Stock branch_id
+            { table: 'stock', column: 'branch_id', definition: 'INT DEFAULT NULL', after: 'availability' },
+            // Members branch_id
+            { table: 'members', column: 'branch_id', definition: 'INT DEFAULT NULL', after: 'is_active' },
+            // Sales transactions branch & audit
+            { table: 'sales_transactions', column: 'branch_id', definition: 'INT DEFAULT NULL', after: 'is_held' },
+            { table: 'sales_transactions', column: 'created_by', definition: 'VARCHAR(255) DEFAULT NULL', after: 'branch_id' },
+            { table: 'sales_transactions', column: 'updated_at', definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', after: 'created_at' },
+            // Restock transactions branch & audit
+            { table: 'restock_transactions', column: 'branch_id', definition: 'INT DEFAULT NULL', after: 'status' },
+            { table: 'restock_transactions', column: 'created_by', definition: 'VARCHAR(255) DEFAULT NULL', after: 'branch_id' }
         ];
 
         for (const update of columnUpdates) {

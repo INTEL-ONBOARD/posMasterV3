@@ -2,6 +2,7 @@
  * Sales Repository
  *
  * Handles database operations for sales transactions.
+ * Branch-aware: Supports filtering by branch_id.
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
@@ -12,6 +13,35 @@ const { nowISO, getSriLankanDate } = require('../utils/helpers.cjs');
 class SalesRepository extends BaseRepository {
     constructor() {
         super('sales_transactions');
+    }
+
+    /**
+     * Find all sales with optional branch filter
+     * @param {Object} options - Query options including branchId
+     * @returns {Array}
+     */
+    findAll(options = {}) {
+        const {
+            limit = 100,
+            offset = 0,
+            orderBy = 'created_at',
+            order = 'DESC',
+            branchId = null
+        } = options;
+
+        let sql = `SELECT * FROM ${this.tableName}`;
+        const params = [];
+
+        if (branchId) {
+            sql += ` WHERE branch_id = ?`;
+            params.push(branchId);
+        }
+
+        sql += ` ORDER BY ${orderBy} ${order} LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+
+        const stmt = this.db.prepare(sql);
+        return stmt.all(...params);
     }
 
     /**
@@ -42,10 +72,18 @@ class SalesRepository extends BaseRepository {
     }
 
     /**
-     * Find held orders
+     * Find held orders with optional branch filter
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    findHeldOrders() {
+    findHeldOrders(branchId = null) {
+        if (branchId) {
+            const stmt = this.db.prepare(`
+                SELECT * FROM ${this.tableName}
+                WHERE is_held = 1 AND branch_id = ?
+            `);
+            return stmt.all(branchId);
+        }
         return this.findWhere({ is_held: 1 });
     }
 
@@ -127,17 +165,20 @@ class SalesRepository extends BaseRepository {
                 status: data.status || 'completed',
                 is_held: data.is_held ? 1 : 0,
                 created_at: nowISO(),
-                sync_status: 'pending'
+                sync_status: 'pending',
+                // Branch and audit fields
+                branch_id: data.branch_id || null,
+                created_by: data.created_by || null
             };
 
             const saleStmt = this.db.prepare(`
                 INSERT INTO sales_transactions
                 (invoice_no, member_id, cashier_id, payment_method, credit_duration,
                 subtotal, discount, total_amount, cash_received, change_amount,
-                status, is_held, created_at, sync_status)
+                status, is_held, created_at, sync_status, branch_id, created_by)
                 VALUES (@invoice_no, @member_id, @cashier_id, @payment_method, @credit_duration,
                 @subtotal, @discount, @total_amount, @cash_received, @change_amount,
-                @status, @is_held, @created_at, @sync_status)
+                @status, @is_held, @created_at, @sync_status, @branch_id, @created_by)
             `);
 
             const result = saleStmt.run(saleData);
@@ -319,13 +360,14 @@ class SalesRepository extends BaseRepository {
     }
 
     /**
-     * Get sales summary by date
+     * Get sales summary by date (with optional branch filter)
      * @param {string} startDate - Start date
      * @param {string} endDate - End date
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Object}
      */
-    getSummary(startDate, endDate) {
-        const stmt = this.db.prepare(`
+    getSummary(startDate, endDate, branchId = null) {
+        let sql = `
             SELECT
                 COUNT(*) as total_transactions,
                 SUM(total_amount) as total_sales,
@@ -336,17 +378,26 @@ class SalesRepository extends BaseRepository {
             FROM ${this.tableName}
             WHERE created_at >= ? AND created_at <= ?
             AND status = 'completed' AND is_held = 0
-        `);
-        return stmt.get(startDate, endDate);
+        `;
+        const params = [startDate, endDate];
+
+        if (branchId) {
+            sql += ` AND branch_id = ?`;
+            params.push(branchId);
+        }
+
+        const stmt = this.db.prepare(sql);
+        return stmt.get(...params);
     }
 
     /**
-     * Get daily sales totals
+     * Get daily sales totals (with optional branch filter)
      * @param {number} days - Number of days
+     * @param {number|null} branchId - Optional branch ID filter
      * @returns {Array}
      */
-    getDailySales(days = 30) {
-        const stmt = this.db.prepare(`
+    getDailySales(days = 30, branchId = null) {
+        let sql = `
             SELECT
                 DATE(created_at) as date,
                 COUNT(*) as transaction_count,
@@ -354,10 +405,18 @@ class SalesRepository extends BaseRepository {
             FROM ${this.tableName}
             WHERE created_at >= DATE('now', '-' || ? || ' days')
             AND status = 'completed' AND is_held = 0
-            GROUP BY DATE(created_at)
-            ORDER BY date DESC
-        `);
-        return stmt.all(days);
+        `;
+        const params = [days];
+
+        if (branchId) {
+            sql += ` AND branch_id = ?`;
+            params.push(branchId);
+        }
+
+        sql += ` GROUP BY DATE(created_at) ORDER BY date DESC`;
+
+        const stmt = this.db.prepare(sql);
+        return stmt.all(...params);
     }
 
     /**

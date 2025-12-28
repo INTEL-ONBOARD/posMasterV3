@@ -2,23 +2,43 @@
  * Restock Service
  *
  * Business logic for restock transaction operations.
+ * Branch-aware: All restock operations are filtered by the current branch context.
  */
 
 const restockRepository = require('../repositories/RestockRepository.cjs');
 const stockRepository = require('../repositories/StockRepository.cjs');
+const { branchContextService } = require('./BranchContextService.cjs');
 
 class RestockService {
     /**
-     * Get all restock transactions
+     * Get the current branch ID from context
+     * @returns {number|null}
+     */
+    getCurrentBranchId() {
+        return branchContextService.getCurrentBranchId();
+    }
+
+    /**
+     * Get full branch context for audit logging
+     * @returns {Object}
+     */
+    getBranchContext() {
+        return branchContextService.getBranchContext();
+    }
+
+    /**
+     * Get all restock transactions (filtered by current branch)
      * @param {Object} options - Query options
      * @returns {Object}
      */
     getAll(options = {}) {
         try {
+            const branchId = this.getCurrentBranchId();
             const restocks = restockRepository.findAllWithSupplier({
                 limit: options.limit || 100,
                 orderBy: 'created_at',
-                order: 'DESC'
+                order: 'DESC',
+                branchId: branchId
             });
             return {
                 status: 'success',
@@ -152,12 +172,22 @@ class RestockService {
     }
 
     /**
-     * Create a new restock transaction
+     * Create a new restock transaction (branch-aware)
      * @param {Object} data - Restock data including items
      * @returns {Object}
      */
     create(data) {
         try {
+            const branchContext = this.getBranchContext();
+
+            // Require branch selection for creating restocks
+            if (!branchContext.branchId) {
+                return {
+                    status: 'error',
+                    message: 'Please select a branch/outlet before creating a restock transaction'
+                };
+            }
+
             if (!data.invoice_no) {
                 return {
                     status: 'error',
@@ -186,7 +216,10 @@ class RestockService {
                 total_amount: data.total_amount || 0,
                 cash_amount: data.cash_amount || 0,
                 change_amount: data.change_amount || 0,
-                execution_level: data.exe_level || data.execution_level || 'medium'
+                execution_level: data.exe_level || data.execution_level || 'medium',
+                // Branch and audit fields
+                branch_id: branchContext.branchId,
+                created_by: branchContext.userName || branchContext.userId
             };
 
             const addedItems = data.added_items || [];
@@ -197,6 +230,9 @@ class RestockService {
                 addedItems,
                 returnItems
             );
+
+            // Log audit entry
+            branchContextService.logAudit('restock_transactions', restock.id, 'INSERT', null, transactionData);
 
             return {
                 status: 'success',
@@ -213,14 +249,15 @@ class RestockService {
     }
 
     /**
-     * Get restock summary
+     * Get restock summary (filtered by current branch)
      * @param {string} startDate - Start date
      * @param {string} endDate - End date
      * @returns {Object}
      */
     getSummary(startDate, endDate) {
         try {
-            const summary = restockRepository.getSummary(startDate, endDate);
+            const branchId = this.getCurrentBranchId();
+            const summary = restockRepository.getSummary(startDate, endDate, branchId);
             return {
                 status: 'success',
                 data: summary
@@ -235,12 +272,13 @@ class RestockService {
     }
 
     /**
-     * Get all stock with items (for stock items view)
+     * Get all stock with items (filtered by current branch)
      * @returns {Object}
      */
     getStockItems() {
         try {
-            const stockItems = stockRepository.getAllWithItems();
+            const branchId = this.getCurrentBranchId();
+            const stockItems = stockRepository.getAllWithItems(branchId);
             return {
                 status: 'success',
                 data: stockItems
