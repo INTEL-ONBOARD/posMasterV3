@@ -24,6 +24,7 @@ const SettingsController = require('./SettingsController.cjs');
 const CloudSyncController = require('./CloudSyncController.cjs');
 const LoginHistoryController = require('./LoginHistoryController.cjs');
 const AppSettingsController = require('./AppSettingsController.cjs');
+const PaymentMethodController = require('./PaymentMethodController.cjs');
 
 /**
  * Register all IPC handlers
@@ -51,6 +52,7 @@ function registerAllHandlers() {
     // Sales & Members handlers
     MemberController.registerHandlers();
     SalesController.registerHandlers();
+    PaymentMethodController.registerHandlers();
 
     // Settings handlers
     const settingsController = new SettingsController();
@@ -110,5 +112,6 @@ module.exports = {
     SettingsController,
     CloudSyncController,
     LoginHistoryController,
-    AppSettingsController
+    AppSettingsController,
+    PaymentMethodController
 };

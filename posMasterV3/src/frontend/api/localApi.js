@@ -1163,6 +1163,164 @@ export const salesApi = {
 };
 
 // ============================================
+// PAYMENT METHODS API
+// ============================================
+
+/**
+ * @typedef {Object} PaymentMethod
+ * @property {number} id - Payment method ID
+ * @property {string} name - Method name (e.g., "Cash", "Credit 3 Months")
+ * @property {string} [description] - Description
+ * @property {'cash'|'credit'|'special'} type - Payment type
+ * @property {number} credit_months - Credit duration in months (0 for non-credit)
+ * @property {number} interest_rate - Interest rate percentage
+ * @property {boolean} is_active - Whether method is active
+ * @property {boolean} is_member_only - Whether only available for members
+ * @property {number} display_order - Display order for UI
+ * @property {string} [icon] - Icon name (lucide icon)
+ * @property {string} [color] - Color theme
+ * @property {string} created_at - ISO date string
+ * @property {string} updated_at - ISO date string
+ */
+
+/**
+ * @typedef {Object} PaymentMethodCreateData
+ * @property {string} name - Method name (required)
+ * @property {string} [description] - Description
+ * @property {'cash'|'credit'|'special'} type - Payment type (required)
+ * @property {number} [credit_months=0] - Credit duration in months
+ * @property {number} [interest_rate=0] - Interest rate percentage
+ * @property {boolean} [is_active=true] - Whether method is active
+ * @property {boolean} [is_member_only=false] - Whether only available for members
+ * @property {number} [display_order=0] - Display order for UI
+ * @property {string} [icon] - Icon name
+ * @property {string} [color] - Color theme
+ */
+
+/**
+ * Payment Methods API - Manage payment method configurations
+ * @namespace
+ */
+export const paymentMethodApi = {
+    /**
+     * Get all payment methods
+     * @returns {Promise<ApiResponse & {data: PaymentMethod[]}>}
+     */
+    getAll: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.paymentMethods.getAll();
+    },
+
+    /**
+     * Get only active payment methods
+     * @returns {Promise<ApiResponse & {data: PaymentMethod[]}>}
+     */
+    getActive: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.paymentMethods.getActive();
+    },
+
+    /**
+     * Get payment methods available for members (all active methods)
+     * @returns {Promise<ApiResponse & {data: PaymentMethod[]}>}
+     */
+    getForMembers: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.paymentMethods.getForMembers();
+    },
+
+    /**
+     * Get payment methods available for non-members (cash only)
+     * @returns {Promise<ApiResponse & {data: PaymentMethod[]}>}
+     */
+    getForNonMembers: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.paymentMethods.getForNonMembers();
+    },
+
+    /**
+     * Get payment method by ID
+     * @param {number} id - Payment method ID
+     * @returns {Promise<ApiResponse & {data: PaymentMethod}>}
+     */
+    getById: async (id) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.paymentMethods.getById(id);
+    },
+
+    /**
+     * Search payment methods by name or description
+     * @param {string} searchTerm - Search term
+     * @returns {Promise<ApiResponse & {data: PaymentMethod[]}>}
+     */
+    search: async (searchTerm) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.paymentMethods.search(searchTerm);
+    },
+
+    /**
+     * Create a new payment method
+     * @param {PaymentMethodCreateData} data - Payment method data
+     * @returns {Promise<ApiResponse & {data: PaymentMethod}>}
+     * @example
+     * await paymentMethodApi.create({
+     *   name: "Credit 12 Months",
+     *   description: "12 months credit payment",
+     *   type: "credit",
+     *   credit_months: 12,
+     *   is_member_only: true,
+     *   icon: "CreditCard",
+     *   color: "violet"
+     * });
+     */
+    create: async (data) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.paymentMethods.create(data);
+    },
+
+    /**
+     * Update a payment method
+     * @param {number} id - Payment method ID
+     * @param {Partial<PaymentMethodCreateData>} data - Data to update
+     * @returns {Promise<ApiResponse & {data: PaymentMethod}>}
+     */
+    update: async (id, data) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.paymentMethods.update(id, data);
+    },
+
+    /**
+     * Toggle active status of a payment method
+     * @param {number} id - Payment method ID
+     * @returns {Promise<ApiResponse & {data: PaymentMethod}>}
+     */
+    toggleActive: async (id) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.paymentMethods.toggleActive(id);
+    },
+
+    /**
+     * Delete a payment method
+     * @param {number} id - Payment method ID
+     * @returns {Promise<ApiResponse>}
+     */
+    delete: async (id) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.paymentMethods.delete(id);
+    }
+};
+
+// ============================================
 // AUTH API
 // ============================================
 
@@ -1923,6 +2081,7 @@ export default {
     restocks: restockApi,
     members: memberApi,
     sales: salesApi,
+    paymentMethods: paymentMethodApi,
     auth: authApi,
     users: userApi,
     settings: settingsApi,

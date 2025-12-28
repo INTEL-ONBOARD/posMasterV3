@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
-import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Receipt, CreditCard, DollarSign, Clock, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Receipt, CreditCard, DollarSign, Clock, RefreshCw, Eye, User } from "lucide-react";
 import { useReactiveData, TABLES } from "../../store";
+import TransactionDetailModal from "./modals/TransactionDetailModal";
 
 export default function TransactionHistory({ isActive }) {
   // Use reactive data hook - automatically updates when data changes
@@ -11,6 +12,7 @@ export default function TransactionHistory({ isActive }) {
   );
 
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [filterPaymentType, setFilterPaymentType] = useState("All");
   const [sortOrder, setSortOrder] = useState("recent");
@@ -19,6 +21,11 @@ export default function TransactionHistory({ isActive }) {
 
   const handleSearch = (e) => {
     setSearch(e.target.value);
+  };
+
+  const handleViewTransaction = (transaction) => {
+    setSelectedTransaction(transaction);
+    setDetailModalOpen(true);
   };
 
   // Safe access to transactions array
@@ -136,12 +143,13 @@ export default function TransactionHistory({ isActive }) {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Invoice No</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-12">#</th>
+                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Invoice No</th>
+                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment</th>
+                    <th className="px-4 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th className="px-4 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -153,35 +161,54 @@ export default function TransactionHistory({ isActive }) {
                         className={`hover:bg-gray-50 transition-colors cursor-pointer ${
                           selectedTransaction?.id === transaction.id ? "bg-[#1A318C]/5" : ""
                         }`}
-                        onClick={() => setSelectedTransaction(transaction)}
+                        onClick={() => handleViewTransaction(transaction)}
                       >
-                        <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-4 text-sm text-gray-500">{index + 1}</td>
+                        <td className="px-4 py-4">
                           <span className="text-sm font-medium text-gray-800">{transaction.invoice_no || "-"}</span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                              transaction.member_id ? 'bg-emerald-100' : 'bg-gray-100'
+                            }`}>
+                              <User className={`w-4 h-4 ${
+                                transaction.member_id ? 'text-emerald-600' : 'text-gray-400'
+                              }`} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-800">{transaction.member_name || "Guest"}</p>
+                              <p className="text-[10px] text-gray-400">{transaction.member_id ? `ID: ${transaction.member_id}` : 'Walk-in'}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Clock className="w-4 h-4 text-gray-400" />
                             {formatDate(transaction.created_at)}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${paymentBadge.bg} shadow-sm`}>
                             <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
                             <span className="text-[10px] font-semibold text-white uppercase tracking-wide">{paymentBadge.label}</span>
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-4 py-4 text-right">
                           <span className="text-sm font-bold text-gray-800 tabular-nums">
                             {formatCurrency(transaction.total_amount)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <button className="text-[#1A318C] text-xs font-medium hover:underline flex items-center gap-1 mx-auto">
+                        <td className="px-4 py-4 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewTransaction(transaction);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1A318C]/10 text-[#1A318C] rounded-lg text-xs font-semibold hover:bg-[#1A318C]/20 transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
                             View
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
                           </button>
                         </td>
                       </tr>
@@ -304,6 +331,16 @@ export default function TransactionHistory({ isActive }) {
           </div>
         </div>
       </div>
+
+      {/* Transaction Detail Modal */}
+      <TransactionDetailModal
+        isOpen={detailModalOpen}
+        closeModal={() => {
+          setDetailModalOpen(false);
+          setSelectedTransaction(null);
+        }}
+        transaction={selectedTransaction}
+      />
     </div>
   );
 }
