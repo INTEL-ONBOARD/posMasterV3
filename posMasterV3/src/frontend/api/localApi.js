@@ -2172,6 +2172,159 @@ export const branchContextApi = {
 };
 
 // ============================================
+// TEA COOP API (External API Integration)
+// ============================================
+
+/**
+ * @typedef {Object} TeaCoopMember
+ * @property {number} id - Local database ID
+ * @property {string} member_id - External member ID from Tea Coop API
+ * @property {string} member_no - Member number
+ * @property {string} full_name - Member's full name
+ * @property {string} [contact] - Contact number
+ * @property {string} [address] - Address
+ * @property {number} factory_id - Factory ID
+ * @property {number} green_leaf_value - Green leaf value
+ * @property {number} loans - Loans amount
+ * @property {number} net_amount - Net amount
+ * @property {number} is_active - Active status
+ * @property {string} last_fetched_at - Last fetch timestamp
+ */
+
+/**
+ * @typedef {Object} TeaCoopPayment
+ * @property {number} id - Local database ID
+ * @property {string} member_id - Member ID
+ * @property {number} year - Year
+ * @property {number} month - Month
+ * @property {number} green_leaf_value - Green leaf value
+ * @property {number} loans - Loans amount
+ * @property {number} net_amount - Net amount
+ * @property {string} [payment_date] - Payment date
+ */
+
+/**
+ * Tea Coop API - Integration with Tea Coop external API
+ * Fetches member and payment data from external source
+ * @namespace
+ */
+export const teaCoopApi = {
+    /**
+     * Initialize Tea Coop service (starts background sync)
+     * @returns {Promise<ApiResponse>}
+     */
+    initialize: async () => {
+        const api = getElectronAPI();
+        if (!api?.teaCoop) return { status: 'error', message: 'Not in Electron environment' };
+        return api.teaCoop.initialize();
+    },
+
+    /**
+     * Get all Tea Coop members from local database
+     * @returns {Promise<ApiResponse & {data: TeaCoopMember[]}>}
+     */
+    getAllMembers: async () => {
+        const api = getElectronAPI();
+        if (!api?.teaCoop) return { status: 'error', message: 'Not in Electron environment', data: [] };
+        return api.teaCoop.getAllMembers();
+    },
+
+    /**
+     * Get Tea Coop member by ID
+     * @param {string} memberId - Member ID
+     * @returns {Promise<ApiResponse & {data: TeaCoopMember}>}
+     */
+    getMemberById: async (memberId) => {
+        const api = getElectronAPI();
+        if (!api?.teaCoop) return { status: 'error', message: 'Not in Electron environment' };
+        return api.teaCoop.getMemberById(memberId);
+    },
+
+    /**
+     * Search Tea Coop members
+     * @param {string} searchTerm - Search term
+     * @returns {Promise<ApiResponse & {data: TeaCoopMember[]}>}
+     */
+    searchMembers: async (searchTerm) => {
+        const api = getElectronAPI();
+        if (!api?.teaCoop) return { status: 'error', message: 'Not in Electron environment', data: [] };
+        return api.teaCoop.searchMembers(searchTerm);
+    },
+
+    /**
+     * Get payment history for a member (last 6 months)
+     * @param {string} memberId - Member ID
+     * @param {number} [months=6] - Number of months to fetch
+     * @returns {Promise<ApiResponse & {data: TeaCoopPayment[]}>}
+     */
+    getPaymentHistory: async (memberId, months = 6) => {
+        const api = getElectronAPI();
+        if (!api?.teaCoop) return { status: 'error', message: 'Not in Electron environment', data: [] };
+        return api.teaCoop.getPaymentHistory(memberId, months);
+    },
+
+    /**
+     * Sync members from Tea Coop API (manual trigger)
+     * @returns {Promise<ApiResponse & {data: {totalFetched: number, inserted: number, updated: number}}>}
+     */
+    syncMembers: async () => {
+        const api = getElectronAPI();
+        if (!api?.teaCoop) return { status: 'error', message: 'Not in Electron environment' };
+        return api.teaCoop.syncMembers();
+    },
+
+    /**
+     * Sync payments for a specific member from API
+     * @param {string} memberId - Member ID
+     * @param {Object} [options] - Sync options
+     * @param {number} [options.startYear] - Start year
+     * @param {number} [options.startMonth] - Start month
+     * @param {number} [options.monthLimit=6] - Number of months
+     * @returns {Promise<ApiResponse>}
+     */
+    syncPayments: async (memberId, options = {}) => {
+        const api = getElectronAPI();
+        if (!api?.teaCoop) return { status: 'error', message: 'Not in Electron environment' };
+        return api.teaCoop.syncPayments(memberId, options);
+    },
+
+    /**
+     * Refresh member data (force fetch from API)
+     * @param {string} memberId - Member ID
+     * @returns {Promise<ApiResponse & {data: {member: TeaCoopMember, payments: TeaCoopPayment[]}}>}
+     */
+    refreshMember: async (memberId) => {
+        const api = getElectronAPI();
+        if (!api?.teaCoop) return { status: 'error', message: 'Not in Electron environment' };
+        return api.teaCoop.refreshMember(memberId);
+    },
+
+    /**
+     * Get Tea Coop sync status
+     * @returns {Promise<ApiResponse & {data: {isSyncing: boolean, lastSyncTime: string}}>}
+     */
+    getStatus: async () => {
+        const api = getElectronAPI();
+        if (!api?.teaCoop) return { status: 'error', message: 'Not in Electron environment' };
+        return api.teaCoop.getStatus();
+    },
+
+    /**
+     * Subscribe to Tea Coop sync events
+     * @param {Function} callback - Called on sync events with {type: 'started'|'completed'|'error', ...data}
+     * @returns {Function} Unsubscribe function
+     */
+    onSyncEvent: (callback) => {
+        const api = getElectronAPI();
+        if (!api?.teaCoop?.onSyncEvent) {
+            console.warn('teaCoop.onSyncEvent not available in this environment');
+            return () => {};
+        }
+        return api.teaCoop.onSyncEvent(callback);
+    }
+};
+
+// ============================================
 // DEFAULT EXPORT
 // ============================================
 
@@ -2196,5 +2349,6 @@ export default {
     loginHistory: loginHistoryApi,
     dataChange: dataChangeApi,
     branchContext: branchContextApi,
+    teaCoop: teaCoopApi,
     isElectron
 };

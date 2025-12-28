@@ -36,7 +36,8 @@ import {
     salesApi,
     paymentMethodApi,
     userApi,
-    loginHistoryApi
+    loginHistoryApi,
+    teaCoopApi
 } from '../api/localApi';
 
 // Table name constants for type safety
@@ -53,7 +54,8 @@ export const TABLES = {
     SALES_TRANSACTIONS: 'sales_transactions',
     PAYMENT_METHODS: 'payment_methods',
     USERS: 'users',
-    LOGIN_HISTORY: 'login_history'
+    LOGIN_HISTORY: 'login_history',
+    TEA_COOP_MEMBERS: 'tea_coop_members'
 };
 
 // Default fetch functions for each table
@@ -70,7 +72,8 @@ const DEFAULT_FETCHERS = {
     [TABLES.SALES_TRANSACTIONS]: () => salesApi.getAll().then(r => r.data || []),
     [TABLES.PAYMENT_METHODS]: () => paymentMethodApi.getAll().then(r => r.data || []),
     [TABLES.USERS]: () => userApi.getAll().then(r => r.data || []),
-    [TABLES.LOGIN_HISTORY]: () => loginHistoryApi.getAll().then(r => r.data || [])
+    [TABLES.LOGIN_HISTORY]: () => loginHistoryApi.getAll().then(r => r.data || []),
+    [TABLES.TEA_COOP_MEMBERS]: () => teaCoopApi.getAllMembers().then(r => r.data || [])
 };
 
 // Cache TTL in milliseconds (how long before data is considered stale)
@@ -88,6 +91,7 @@ const CACHE_TTL = {
     [TABLES.PAYMENT_METHODS]: 60000,   // 1 minute (rarely changes)
     [TABLES.USERS]: 30000,             // 30 seconds
     [TABLES.LOGIN_HISTORY]: 30000,     // 30 seconds
+    [TABLES.TEA_COOP_MEMBERS]: 60000,  // 1 minute (syncs from external API)
     default: 30000                     // 30 seconds default
 };
 

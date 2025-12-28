@@ -617,5 +617,92 @@ contextBridge.exposeInMainWorld("electronAPI", {
             ipcRenderer.on("branch-context:changed", handler);
             return () => ipcRenderer.removeListener("branch-context:changed", handler);
         }
+    },
+
+    // ============================================
+    // TEA COOP API (External API Integration)
+    // ============================================
+    teaCoop: {
+        /**
+         * Initialize Tea Coop service
+         * @returns {Promise<{status: string, message: string}>}
+         */
+        initialize: () => ipcRenderer.invoke("teacoop:initialize"),
+
+        /**
+         * Get all Tea Coop members from local database
+         * @returns {Promise<{status: string, data: array}>}
+         */
+        getAllMembers: () => ipcRenderer.invoke("teacoop:members:getAll"),
+
+        /**
+         * Get Tea Coop member by ID
+         * @param {string} memberId - Member ID
+         * @returns {Promise<{status: string, data: object}>}
+         */
+        getMemberById: (memberId) => ipcRenderer.invoke("teacoop:members:getById", memberId),
+
+        /**
+         * Search Tea Coop members
+         * @param {string} searchTerm - Search term
+         * @returns {Promise<{status: string, data: array}>}
+         */
+        searchMembers: (searchTerm) => ipcRenderer.invoke("teacoop:members:search", searchTerm),
+
+        /**
+         * Get payment history for a member
+         * @param {string} memberId - Member ID
+         * @param {number} months - Number of months (default: 6)
+         * @returns {Promise<{status: string, data: array}>}
+         */
+        getPaymentHistory: (memberId, months = 6) => ipcRenderer.invoke("teacoop:payments:getHistory", { memberId, months }),
+
+        /**
+         * Sync members from Tea Coop API
+         * @returns {Promise<{status: string, data: object}>}
+         */
+        syncMembers: () => ipcRenderer.invoke("teacoop:sync:members"),
+
+        /**
+         * Sync payments for a specific member
+         * @param {string} memberId - Member ID
+         * @param {object} options - Sync options
+         * @returns {Promise<{status: string, data: object}>}
+         */
+        syncPayments: (memberId, options = {}) => ipcRenderer.invoke("teacoop:sync:payments", { memberId, options }),
+
+        /**
+         * Refresh member data from API
+         * @param {string} memberId - Member ID
+         * @returns {Promise<{status: string, data: object}>}
+         */
+        refreshMember: (memberId) => ipcRenderer.invoke("teacoop:members:refresh", memberId),
+
+        /**
+         * Get Tea Coop sync status
+         * @returns {Promise<{status: string, data: object}>}
+         */
+        getStatus: () => ipcRenderer.invoke("teacoop:status"),
+
+        /**
+         * Listen for Tea Coop sync events
+         * @param {function} callback - Called on sync events
+         * @returns {function} Unsubscribe function
+         */
+        onSyncEvent: (callback) => {
+            const startedHandler = (event, data) => callback({ type: 'started', ...data });
+            const completedHandler = (event, data) => callback({ type: 'completed', ...data });
+            const errorHandler = (event, data) => callback({ type: 'error', ...data });
+
+            ipcRenderer.on("teacoop:sync:started", startedHandler);
+            ipcRenderer.on("teacoop:sync:completed", completedHandler);
+            ipcRenderer.on("teacoop:sync:error", errorHandler);
+
+            return () => {
+                ipcRenderer.removeListener("teacoop:sync:started", startedHandler);
+                ipcRenderer.removeListener("teacoop:sync:completed", completedHandler);
+                ipcRenderer.removeListener("teacoop:sync:error", errorHandler);
+            };
+        }
     }
 });
