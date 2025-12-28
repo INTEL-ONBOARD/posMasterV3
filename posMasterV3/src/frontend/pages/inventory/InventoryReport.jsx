@@ -1,34 +1,113 @@
-import React, { useState, useMemo } from "react";
-import { Search, FileText, Download, Printer, Package, DollarSign, AlertTriangle, Tag, ChevronDown, ChevronUp, Filter, SortAsc, BarChart3, RefreshCw } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Search, FileText, Printer, Package, DollarSign, AlertTriangle, Tag, ChevronDown, ChevronUp, Filter, SortAsc, BarChart3 } from "lucide-react";
 import { itemApi } from "../../api/localApi";
-import { useReactiveData, TABLES } from "../../store";
+//to print inventory report
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
+import InventoryRep from "./layout/InventoryRep";
 
 export default function InventoryReport({ isActive }) {
-  // Use reactive data hook for inventory items
-  const { data: inventoryItems, loading: isLoading, refetch: refetchItems } = useReactiveData(
-    TABLES.ITEMS,
-    null,
-    { enabled: isActive }
-  );
-
   const [reportType, setReportType] = useState("basic");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [openFilters, setOpenFilters] = useState(true);
   const [openSort, setOpenSort] = useState(true);
   const [sortOrder, setSortOrder] = useState("name_asc");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStock, setFilterStock] = useState("all");
 
-  // Calculate summary statistics with null checks
-  const safeItems = inventoryItems || [];
-  const totalItems = safeItems.length;
-  const totalValue = safeItems.reduce((sum, item) => sum + (parseFloat(item.retail_price || 0) * (item.quantity || 0)), 0);
-  const lowStockItems = safeItems.filter(item => {
-    const percentFull = ((item.quantity || 0) / (item.maximum_capacity || 1)) * 100;
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const inventoryReportRef = useRef(null); //used to store inventory report pdf format
+  
+  //open print window dialog to print inventory report
+const generateInventoryReportPdf = async () => {
+  try {
+    if (!inventoryReportRef.current) {
+      console.error("inventoryReportRef is null");
+      return;
+    }
+
+    const element = inventoryReportRef.current;
+
+    // Temporarily disable scrolling so full height is captured
+    const originalOverflow = element.style.overflow;
+    element.style.overflow = "visible";
+
+    const canvas = await html2canvas(element, {
+      scale: window.devicePixelRatio || 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      scrollX: 0,
+      scrollY: -window.scrollY,
+    });
+
+    element.style.overflow = originalOverflow;
+
+    const imgData = canvas.toDataURL("image/png");
+
+    const pdf = new jsPDF({
+      orientation: "p",
+      unit: "pt",
+      format: "a4",
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+
+    const scale = pdfWidth / imgWidth;
+    const scaledHeight = imgHeight * scale;
+
+    let position = 0;
+    let heightLeft = scaledHeight;
+
+    pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
+    heightLeft -= pdfHeight;
+
+    while (heightLeft > 0) {
+      position -= pdfHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, scaledHeight);
+      heightLeft -= pdfHeight;
+    }
+
+    pdf.save(`inventory-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+  } catch (error) {
+    console.error("generateInventoryReportPdf error:", error);
+  }
+};
+
+  
+  // Fetch items from API
+  useEffect(() => {
+    const fetchItems = async () => {
+      if (!isActive) return;
+      setIsLoading(true);
+      try {
+        const response = await itemApi.getAllExtended();
+        if (response.status === "success") {
+          setInventoryItems(response.data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching items:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchItems();
+  }, [isActive]);
+
+  // Calculate summary statistics
+  const totalItems = inventoryItems.length;
+  const totalValue = inventoryItems.reduce((sum, item) => sum + (parseFloat(item.retail_price || 0) * (item.quantity || 0)), 0);
+  const lowStockItems = inventoryItems.filter(item => {
+    const percentFull = (item.quantity / item.maximum_capacity) * 100;
     return percentFull <= (item.threshold_limit || 30);
   }).length;
-  const categories = [...new Set(safeItems.map(item => item.category?.type).filter(Boolean))];
+  const categories = [...new Set(inventoryItems.map(item => item.category?.type).filter(Boolean))];
 
   // Search handler
   const handleSearch = (e) => {
@@ -38,9 +117,8 @@ export default function InventoryReport({ isActive }) {
   };
 
   // Filter and sort items
-  const filteredItems = useMemo(() => {
-    if (!inventoryItems || inventoryItems.length === 0) return [];
-    return inventoryItems.filter(item => {
+  const filteredItems = inventoryItems
+    .filter(item => {
       const matchesSearch = searchTerm === "" ||
         item.item_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -48,7 +126,7 @@ export default function InventoryReport({ isActive }) {
 
       const matchesCategory = filterCategory === "all" || item.category?.type === filterCategory;
 
-      const percentFull = ((item.quantity || 0) / (item.maximum_capacity || 1)) * 100;
+      const percentFull = (item.quantity / item.maximum_capacity) * 100;
       const isLowStock = percentFull <= (item.threshold_limit || 30);
       const matchesStock = filterStock === "all" ||
         (filterStock === "low" && isLowStock) ||
@@ -74,42 +152,10 @@ export default function InventoryReport({ isActive }) {
           return 0;
       }
     });
-  }, [inventoryItems, searchTerm, filterCategory, filterStock, sortOrder]);
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleExport = () => {
-    const headers = ["ID", "Name", "Category", "Price", "Stock", "Unit", "SKU", "Total Value"];
-    const csvContent = [
-      headers.join(","),
-      ...filteredItems.map(item => [
-        item.id,
-        `"${item.item_name}"`,
-        item.category?.type || "N/A",
-        item.retail_price || 0,
-        item.quantity || 0,
-        item.uom?.symbol || "pcs",
-        item.sku,
-        ((parseFloat(item.retail_price || 0) * (item.quantity || 0))).toFixed(2)
-      ].join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('hidden', '');
-    a.setAttribute('href', url);
-    a.setAttribute('download', 'inventory-report.csv');
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
 
   // Get stock status
   const getStockStatus = (item) => {
-    const percentFull = ((item.quantity || 0) / (item.maximum_capacity || 1)) * 100;
+    const percentFull = (item.quantity / item.maximum_capacity) * 100;
     if (percentFull <= (item.threshold_limit || 30)) {
       return { text: "Low Stock", class: "bg-red-100 text-red-700" };
     } else if (percentFull <= (item.threshold_limit || 30) + 20) {
@@ -138,27 +184,13 @@ export default function InventoryReport({ isActive }) {
                   className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                 />
               </div>
+
               <button
-                onClick={handleExport}
-                className="h-12 px-6 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all duration-200 shadow-md shadow-emerald-900/20 flex items-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Export CSV
-              </button>
-              <button
-                onClick={handlePrint}
+                onClick={generateInventoryReportPdf}
                 className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2"
               >
                 <Printer className="w-4 h-4" />
                 Print
-              </button>
-              <button
-                onClick={refetchItems}
-                disabled={isLoading}
-                className="h-12 w-12 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200 transition-all duration-200 flex items-center justify-center disabled:opacity-50"
-                title="Refresh"
-              >
-                <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
               </button>
             </div>
             {/* Results count */}
@@ -228,7 +260,8 @@ export default function InventoryReport({ isActive }) {
         </div>
 
         {/* Report Table */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 p-6">
+
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full">
               <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
@@ -247,61 +280,16 @@ export default function InventoryReport({ isActive }) {
               <h3 className="text-lg font-semibold text-gray-800">No inventory data found</h3>
               <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
             </div>
-          ) : (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gradient-to-r from-[#1A318C] to-[#2a4ab8]">
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">#</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Item Name</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">SKU</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Category</th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Stock</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Unit Price</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-white uppercase tracking-wider">Total Value</th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredItems.map((item, index) => {
-                    const status = getStockStatus(item);
-                    return (
-                      <tr key={item.id || index} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
-                        <td className="px-6 py-4">
-                          <span className="text-sm font-medium text-gray-800">{item.item_name}</span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-sm text-gray-600 font-mono">{item.sku}</span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-sm text-gray-600">{item.category?.type || "N/A"}</span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="text-sm font-semibold text-gray-800 tabular-nums">
-                            {item.quantity || 0} <span className="text-gray-400 font-normal">{item.uom?.symbol || "pcs"}</span>
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <span className="text-sm text-gray-600 tabular-nums">Rs.{item.retail_price || 0}</span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <span className="text-sm font-bold text-gray-800 tabular-nums">
-                            Rs.{((item.retail_price || 0) * (item.quantity || 0)).toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${status.class}`}>
-                            {status.text}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+            ) : (
+
+              <InventoryRep
+                ref={inventoryReportRef}
+                items={filteredItems}
+                getStockStatus={getStockStatus}
+                maxHeight="calc(100vh - 300px)"
+                onRowClick={(item) => console.log("row clicked", item)}
+              />
+            )}
         </div>
       </div>
 
