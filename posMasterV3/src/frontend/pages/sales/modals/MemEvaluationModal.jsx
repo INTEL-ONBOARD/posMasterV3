@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, X, User, CreditCard, Clock, TrendingUp, AlertTriangle, CheckCircle, ArrowRight, UserCheck, Users } from "lucide-react";
-import { salesApi } from "../../../api/localApi";
+import { Search, X, User, CreditCard, Clock, AlertTriangle, CheckCircle, UserCheck, Users, Leaf, Banknote, RefreshCw } from "lucide-react";
+import { teaCoopApi } from "../../../api/localApi";
 import { useReactiveData, TABLES } from "../../../store";
 
 function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember }) {
   const [activeTab, setActiveTab] = useState("search"); // search | details
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMember, setSelectedMember] = useState(null);
-  const [memberTransactions, setMemberTransactions] = useState([]);
-  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
 
-  // Use reactive data hook for members
-  const { data: members, loading: isLoading } = useReactiveData(
-    TABLES.MEMBERS,
+  // Use reactive data hook for Tea Coop members
+  const { data: members, loading: isLoading, refetch } = useReactiveData(
+    TABLES.TEA_COOP_MEMBERS,
     null,
     { enabled: isOpen }
   );
@@ -27,9 +29,39 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
     return safeMembers.filter(m =>
       (m.full_name || "").toLowerCase().includes(term) ||
       (m.member_no || "").toLowerCase().includes(term) ||
+      (m.member_id || "").toLowerCase().includes(term) ||
       (m.contact || "").includes(term)
     );
   }, [searchTerm, members]);
+
+  // Sync members from external API with progress simulation
+  const handleSyncMembers = async () => {
+    setSyncing(true);
+    setSyncProgress(0);
+
+    // Simulate progress while syncing
+    const progressInterval = setInterval(() => {
+      setSyncProgress(prev => {
+        if (prev >= 90) return prev; // Cap at 90% until complete
+        return prev + Math.random() * 15;
+      });
+    }, 200);
+
+    try {
+      await teaCoopApi.syncMembers();
+      setSyncProgress(100);
+      await refetch();
+    } catch (error) {
+      console.error("[MemEvaluationModal] Error syncing members:", error);
+    } finally {
+      clearInterval(progressInterval);
+      // Keep 100% shown briefly before hiding
+      setTimeout(() => {
+        setSyncing(false);
+        setSyncProgress(0);
+      }, 500);
+    }
+  };
 
   // Guest user object
   const guestUser = {
@@ -51,7 +83,7 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
       if (currentMember && !currentMember.is_guest) {
         setSelectedMember(currentMember);
         setActiveTab("details");
-        fetchMemberTransactions(currentMember.id || currentMember._id);
+        fetchPaymentHistory(currentMember.member_id);
       } else {
         setSelectedMember(null);
         setActiveTab("search");
@@ -59,27 +91,20 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
     }
   }, [isOpen, currentMember]);
 
-  const fetchMemberTransactions = async (memberId) => {
-    setTransactionsLoading(true);
+  // Fetch payment history from Tea Coop API
+  const fetchPaymentHistory = async (memberId) => {
+    if (!memberId) return;
+    setHistoryLoading(true);
     try {
-      // Get transactions for the last 6 months
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-      const response = await salesApi.getByMember(memberId);
+      const response = await teaCoopApi.getPaymentHistory(memberId, 6);
       if (response.status === "success") {
-        // Filter to last 6 months
-        const filtered = (response.data || []).filter(t => {
-          const transDate = new Date(t.created_at);
-          return transDate >= sixMonthsAgo;
-        });
-        setMemberTransactions(filtered);
+        setPaymentHistory(response.data || []);
       }
     } catch (error) {
-      console.error("[MemEvaluationModal] Error fetching transactions:", error);
-      setMemberTransactions([]);
+      console.error("[MemEvaluationModal] Error fetching payment history:", error);
+      setPaymentHistory([]);
     } finally {
-      setTransactionsLoading(false);
+      setHistoryLoading(false);
     }
   };
 
@@ -87,36 +112,36 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
     setSelectedMember(member);
     setActiveTab("details");
     if (!member.is_guest) {
-      fetchMemberTransactions(member.id || member._id);
+      fetchPaymentHistory(member.member_id);
     } else {
-      setMemberTransactions([]);
+      setPaymentHistory([]);
     }
   };
 
   const handleConfirmSelection = () => {
-    if (onSelectMember) {
-      onSelectMember(selectedMember);
+    if (onSelectMember && selectedMember) {
+      // Add member_type to distinguish tea_coop members from regular members
+      const memberWithType = selectedMember.is_guest
+        ? selectedMember
+        : { ...selectedMember, member_type: 'tea_coop' };
+      onSelectMember(memberWithType);
     }
     closeModal();
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric"
-    });
   };
 
   const formatCurrency = (amount) => {
     return `Rs. ${(parseFloat(amount) || 0).toFixed(2)}`;
   };
 
-  // Calculate transaction summaries
-  const totalPurchases = memberTransactions.reduce((sum, t) => sum + (parseFloat(t.total_amount) || 0), 0);
-  const cashPurchases = memberTransactions.filter(t => t.payment_method === "cash").reduce((sum, t) => sum + (parseFloat(t.total_amount) || 0), 0);
-  const creditPurchases = memberTransactions.filter(t => t.payment_method === "credit").reduce((sum, t) => sum + (parseFloat(t.total_amount) || 0), 0);
+  const formatMonthYear = (year, month) => {
+    const date = new Date(year, month - 1);
+    return date.toLocaleDateString("en-US", { year: "numeric", month: "short" });
+  };
+
+  // Calculate payment history totals
+  const totalGreenLeaf = paymentHistory.reduce((sum, p) => sum + (parseFloat(p.green_leaf_value) || 0), 0);
+  const totalLoans = paymentHistory.reduce((sum, p) => sum + (parseFloat(p.loans) || 0), 0);
+  const totalNetAmount = paymentHistory.reduce((sum, p) => sum + (parseFloat(p.net_amount) || 0), 0);
 
   if (!isOpen) return null;
 
@@ -155,8 +180,39 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
         <div className="w-[380px] bg-gray-50 border-r border-gray-200 flex flex-col">
           {/* Header */}
           <div className="p-5 border-b border-gray-200 bg-white">
-            <h2 className="text-lg font-bold text-gray-800 mb-1">Select Customer</h2>
-            <p className="text-sm text-gray-500">Choose member or continue as guest</p>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-800">Select Member</h2>
+                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                  {filteredMembers.length}
+                </span>
+              </div>
+              <button
+                onClick={handleSyncMembers}
+                disabled={syncing}
+                className="p-2 text-gray-500 hover:text-[#1A318C] hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                title="Sync from Tea Coop API"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500">Choose Tea Coop member or continue as guest</p>
+
+            {/* Sync Progress Bar */}
+            {syncing && (
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-[#1A318C] font-medium">Syncing members...</span>
+                  <span className="text-xs text-[#1A318C] font-semibold">{Math.round(syncProgress)}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#1A318C] rounded-full transition-all duration-200 ease-out"
+                    style={{ width: `${syncProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Quick Guest Selection */}
@@ -288,17 +344,17 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
                   </div>
                 </div>
 
-                {/* Credit Info for Members */}
+                {/* Tea Coop Info for Members */}
                 {!selectedMember.is_guest && (
                   <div className="grid grid-cols-3 gap-4 mt-5">
                     <div className="bg-emerald-50 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
-                          <TrendingUp className="w-4 h-4 text-white" />
+                          <Leaf className="w-4 h-4 text-white" />
                         </div>
-                        <span className="text-xs text-emerald-600 font-medium uppercase">Credit Limit</span>
+                        <span className="text-xs text-emerald-600 font-medium uppercase">Green Leaf Value</span>
                       </div>
-                      <p className="text-xl font-bold text-emerald-700">{formatCurrency(selectedMember.credit_limit || 0)}</p>
+                      <p className="text-xl font-bold text-emerald-700">{formatCurrency(selectedMember.green_leaf_value || 0)}</p>
                     </div>
 
                     <div className="bg-amber-50 rounded-xl p-4">
@@ -306,99 +362,109 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
                         <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center">
                           <CreditCard className="w-4 h-4 text-white" />
                         </div>
-                        <span className="text-xs text-amber-600 font-medium uppercase">Credit Used</span>
+                        <span className="text-xs text-amber-600 font-medium uppercase">Loans</span>
                       </div>
-                      <p className="text-xl font-bold text-amber-700">{formatCurrency(selectedMember.credit_balance || 0)}</p>
+                      <p className="text-xl font-bold text-amber-700">{formatCurrency(selectedMember.loans || 0)}</p>
                     </div>
 
                     <div className="bg-blue-50 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-8 h-8 rounded-lg bg-[#1A318C] flex items-center justify-center">
-                          <CheckCircle className="w-4 h-4 text-white" />
+                          <Banknote className="w-4 h-4 text-white" />
                         </div>
-                        <span className="text-xs text-[#1A318C] font-medium uppercase">Available</span>
+                        <span className="text-xs text-[#1A318C] font-medium uppercase">Net Amount</span>
                       </div>
                       <p className="text-xl font-bold text-[#1A318C]">
-                        {formatCurrency((selectedMember.credit_limit || 0) - (selectedMember.credit_balance || 0))}
+                        {formatCurrency(selectedMember.net_amount || 0)}
                       </p>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Transaction History */}
+              {/* Payment History */}
               {!selectedMember.is_guest && (
                 <div className="flex-1 flex flex-col overflow-hidden">
                   {/* Section Header */}
-                  <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-gray-500" />
-                        <h4 className="font-semibold text-gray-700">Transaction History (Last 6 Months)</h4>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="text-gray-500">Total: <strong className="text-gray-800">{formatCurrency(totalPurchases)}</strong></span>
-                        <span className="text-emerald-600">Cash: <strong>{formatCurrency(cashPurchases)}</strong></span>
-                        <span className="text-amber-600">Credit: <strong>{formatCurrency(creditPurchases)}</strong></span>
-                      </div>
+                  <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-gray-400" />
+                      <h4 className="font-semibold text-gray-700">Payment History</h4>
+                      <span className="text-sm text-gray-400">• Last 6 months</span>
                     </div>
                   </div>
 
-                  {/* Transactions Table */}
+                  {/* Payment History Table */}
                   <div className="flex-1 overflow-y-auto">
-                    {transactionsLoading ? (
+                    {historyLoading ? (
                       <div className="flex flex-col items-center justify-center h-40">
-                        <div className="w-10 h-10 border-3 border-gray-200 border-t-[#1A318C] rounded-full animate-spin mb-3"></div>
-                        <span className="text-sm text-gray-500">Loading transactions...</span>
+                        <div className="w-8 h-8 border-2 border-gray-200 border-t-[#1A318C] rounded-full animate-spin mb-3"></div>
+                        <span className="text-sm text-gray-500">Loading...</span>
                       </div>
-                    ) : memberTransactions.length === 0 ? (
+                    ) : paymentHistory.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-                        <Clock className="w-12 h-12 mb-3 text-gray-200" />
-                        <span className="text-sm">No transactions in the last 6 months</span>
+                        <Clock className="w-10 h-10 text-gray-200 mb-2" />
+                        <span className="text-sm">No payment history available</span>
                       </div>
                     ) : (
                       <table className="w-full">
-                        <thead className="bg-slate-800 text-white sticky top-0">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Date</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Invoice</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Payment</th>
-                            <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider">Amount</th>
+                        <thead className="bg-gray-50 sticky top-0">
+                          <tr className="text-xs text-gray-500 uppercase tracking-wide">
+                            <th className="text-left py-3 px-6 font-semibold">Month</th>
+                            <th className="text-right py-3 px-4 font-semibold">Green Leaf</th>
+                            <th className="text-right py-3 px-4 font-semibold">Loans</th>
+                            <th className="text-right py-3 px-6 font-semibold">Net Amount</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                          {memberTransactions.map((transaction, index) => (
-                            <tr key={transaction.id || index} className="hover:bg-gray-50 transition-colors">
-                              <td className="px-6 py-4 text-sm text-gray-600">
-                                {formatDate(transaction.created_at)}
-                              </td>
-                              <td className="px-6 py-4">
-                                <span className="text-sm font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded">
-                                  {transaction.invoice_no || "-"}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4">
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase ${
-                                  transaction.payment_method === "cash"
-                                    ? "bg-emerald-500 text-white"
-                                    : transaction.payment_method === "credit"
-                                    ? "bg-amber-500 text-white"
-                                    : "bg-gray-500 text-white"
-                                }`}>
-                                  {transaction.payment_method || "N/A"}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 text-right">
-                                <span className="text-sm font-bold text-gray-800 tabular-nums">
-                                  {formatCurrency(transaction.total_amount)}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
+                          {paymentHistory.map((payment, index) => {
+                            const hasData = (parseFloat(payment.green_leaf_value) || 0) > 0 ||
+                                           (parseFloat(payment.loans) || 0) > 0 ||
+                                           (parseFloat(payment.net_amount) || 0) > 0;
+                            return (
+                              <tr
+                                key={payment.id || index}
+                                className={`hover:bg-gray-50 transition-colors ${!hasData ? "opacity-50" : ""}`}
+                              >
+                                <td className="py-3 px-6">
+                                  <span className="font-medium text-gray-800">
+                                    {formatMonthYear(payment.year, payment.month)}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <span className={`font-medium tabular-nums ${hasData ? "text-emerald-600" : "text-gray-400"}`}>
+                                    {formatCurrency(payment.green_leaf_value)}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <span className={`font-medium tabular-nums ${parseFloat(payment.loans) > 0 ? "text-amber-600" : "text-gray-400"}`}>
+                                    {formatCurrency(payment.loans)}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-6 text-right">
+                                  <span className={`font-semibold tabular-nums ${hasData ? "text-gray-800" : "text-gray-400"}`}>
+                                    {formatCurrency(payment.net_amount)}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     )}
                   </div>
+
+                  {/* Fixed Totals Row at Bottom */}
+                  {paymentHistory.length > 0 && (
+                    <div className="border-t-2 border-gray-200 bg-gray-50">
+                      <div className="grid grid-cols-4 py-3 font-semibold">
+                        <div className="px-6 text-gray-700">Total</div>
+                        <div className="px-4 text-right text-emerald-600 tabular-nums">{formatCurrency(totalGreenLeaf)}</div>
+                        <div className="px-4 text-right text-amber-600 tabular-nums">{formatCurrency(totalLoans)}</div>
+                        <div className="px-6 text-right text-gray-800 tabular-nums">{formatCurrency(totalNetAmount)}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
