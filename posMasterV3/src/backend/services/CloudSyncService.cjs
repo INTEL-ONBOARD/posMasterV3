@@ -69,10 +69,9 @@ const LOCAL_ONLY_COLUMNS = [
     // Binary/blob data stored locally for offline support
     'item_image_blob',
 
-    // Virtual columns from JOINs (added when fetching full sale/restock details)
-    'sku',                  // Comes from items table JOIN
-    'item_name',            // Comes from items table JOIN
-    'item_image_url',       // Can come from items table JOIN in sales_items context
+    // NOTE: 'sku', 'item_name', 'item_image_url' are REAL columns in the 'items' table
+    // They should NOT be in this list! They are only "virtual" when JOINed into sales_items/restock_items
+    // The filtering should be table-aware, not global. These are handled in TABLE_SPECIFIC_EXCLUSIONS below.
 
     // Nested objects that get embedded for convenience (not actual DB columns)
     'member',               // Embedded member object in sales
@@ -96,6 +95,14 @@ const LOCAL_ONLY_COLUMNS = [
     'category_brand',       // From JOINed category data
     'category_type'         // From JOINed category data
 ];
+
+// Table-specific column exclusions (columns that are virtual/JOINed only for specific tables)
+// These columns exist as real columns in some tables but are virtual JOINs in others
+const TABLE_SPECIFIC_EXCLUSIONS = {
+    // For sales_items and restock_items, these columns come from JOINs with items table
+    'sales_items': ['sku', 'item_name', 'item_image_url'],
+    'restock_items': ['sku', 'item_name', 'item_image_url']
+};
 
 // Tables that use "pull-first-then-push" strategy
 // For these tables: Pull cloud updates to local FIRST, then push local changes to cloud
@@ -885,7 +892,11 @@ class CloudSyncService {
      */
     async pushRecordToCloud(tableName, record, columns) {
         // Filter out local-only columns using the module-level constant
-        const syncColumns = columns.filter(col => !LOCAL_ONLY_COLUMNS.includes(col));
+        // Also filter out table-specific exclusions (e.g., sku/item_name are virtual JOINs in sales_items but real in items)
+        const tableExclusions = TABLE_SPECIFIC_EXCLUSIONS[tableName] || [];
+        const syncColumns = columns.filter(col =>
+            !LOCAL_ONLY_COLUMNS.includes(col) && !tableExclusions.includes(col)
+        );
 
         const values = syncColumns.map(col => {
             let val = record[col];
@@ -916,13 +927,49 @@ class CloudSyncService {
         });
 
         const placeholders = syncColumns.map(() => '?').join(', ');
-        const query = `REPLACE INTO ${tableName} (${syncColumns.join(', ')}) VALUES (${placeholders})`;
 
         try {
-            await executeQuery(query, values);
-            console.log(`[CloudSync] Pushed record to cloud: ${tableName} (ID: ${record.id || record[Object.keys(record)[0]]})`);
+            // First, check if record exists by ID
+            const existingRecord = await executeQuery(
+                `SELECT id FROM ${tableName} WHERE id = ?`,
+                [record.id]
+            );
+
+            let result;
+            let action;
+
+            if (existingRecord && existingRecord.length > 0) {
+                // Record exists - UPDATE it
+                const updateClauses = syncColumns
+                    .filter(col => col !== 'id')
+                    .map(col => `${col} = ?`)
+                    .join(', ');
+                const updateValues = syncColumns
+                    .filter(col => col !== 'id')
+                    .map((col, idx) => {
+                        const colIndex = syncColumns.indexOf(col);
+                        return values[colIndex];
+                    });
+                updateValues.push(record.id); // Add id for WHERE clause
+
+                result = await executeQuery(
+                    `UPDATE ${tableName} SET ${updateClauses} WHERE id = ?`,
+                    updateValues
+                );
+                action = 'updated';
+            } else {
+                // Record doesn't exist - INSERT with explicit ID
+                result = await executeQuery(
+                    `INSERT INTO ${tableName} (${syncColumns.join(', ')}) VALUES (${placeholders})`,
+                    values
+                );
+                action = 'inserted';
+            }
+
+            console.log(`[CloudSync] Pushed record to cloud: ${tableName} (ID: ${record.id}, SKU: ${record.sku || 'N/A'}, action: ${action})`);
         } catch (err) {
             console.error(`[CloudSync] Failed to push record to ${tableName}:`, err.message);
+            console.error(`[CloudSync] Record ID: ${record.id}, SKU: ${record.sku || 'N/A'}`);
             throw err;
         }
     }
@@ -990,11 +1037,22 @@ class CloudSyncService {
         const existingRecord = db.prepare(`SELECT 1 FROM ${tableName} WHERE ${primaryKey} = ?`).get(cloudRecord[primaryKey]);
         const operation = existingRecord ? 'UPDATE' : 'INSERT';
 
-        const query = `
-            INSERT INTO ${tableName} (${commonColumns.join(', ')})
-            VALUES (${placeholders})
-            ON CONFLICT(${primaryKey}) DO UPDATE SET ${updateSet}
-        `;
+        // For items table, handle UNIQUE constraint on sku by using OR REPLACE
+        // This ensures cloud records can overwrite local records with same sku but different id
+        let query;
+        if (tableName === 'items') {
+            // Use INSERT OR REPLACE to handle both id and sku conflicts
+            query = `
+                INSERT OR REPLACE INTO ${tableName} (${commonColumns.join(', ')})
+                VALUES (${placeholders})
+            `;
+        } else {
+            query = `
+                INSERT INTO ${tableName} (${commonColumns.join(', ')})
+                VALUES (${placeholders})
+                ON CONFLICT(${primaryKey}) DO UPDATE SET ${updateSet}
+            `;
+        }
 
         db.prepare(query).run(...values);
 
@@ -1191,11 +1249,20 @@ class CloudSyncService {
                         .map(col => `${col} = excluded.${col}`)
                         .join(', ');
 
-                    const query = `
-                        INSERT INTO ${tableName} (${commonColumns.join(', ')})
-                        VALUES (${placeholders})
-                        ON CONFLICT(${primaryKey}) DO UPDATE SET ${updateSet}
-                    `;
+                    // For items table, use INSERT OR REPLACE to handle UNIQUE constraint on sku
+                    let query;
+                    if (tableName === 'items') {
+                        query = `
+                            INSERT OR REPLACE INTO ${tableName} (${commonColumns.join(', ')})
+                            VALUES (${placeholders})
+                        `;
+                    } else {
+                        query = `
+                            INSERT INTO ${tableName} (${commonColumns.join(', ')})
+                            VALUES (${placeholders})
+                            ON CONFLICT(${primaryKey}) DO UPDATE SET ${updateSet}
+                        `;
+                    }
 
                     db.prepare(query).run(...values);
                     result.downloaded++;
@@ -1243,6 +1310,28 @@ class CloudSyncService {
                         } catch (updateError) {
                             // If update also fails, log but continue
                             console.warn(`[CloudSync] Could not resolve UNIQUE constraint for user:`, updateError.message);
+                        }
+                    } else if (error.message && error.message.includes('UNIQUE constraint failed') && tableName === 'items') {
+                        // Handle UNIQUE constraint on sku for items table
+                        // Find existing item by sku and update it with cloud data
+                        try {
+                            const sku = record.sku;
+                            if (sku) {
+                                const existingBySku = db.prepare('SELECT id FROM items WHERE sku = ?').get(sku);
+                                if (existingBySku) {
+                                    // Delete the existing item and insert the cloud record
+                                    db.prepare('DELETE FROM items WHERE id = ?').run(existingBySku.id);
+                                    // Now insert the cloud record
+                                    const insertQuery = `
+                                        INSERT INTO ${tableName} (${commonColumns.join(', ')})
+                                        VALUES (${commonColumns.map(() => '?').join(', ')})
+                                    `;
+                                    db.prepare(insertQuery).run(...values);
+                                    result.downloaded++;
+                                }
+                            }
+                        } catch (updateError) {
+                            console.warn(`[CloudSync] Could not resolve UNIQUE constraint for item:`, updateError.message);
                         }
                     } else {
                         console.error(`[CloudSync] Failed to pull record from ${tableName}:`, error.message);

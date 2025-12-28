@@ -194,7 +194,7 @@ function seedDefaultUoms() {
 
     const stmt = db.prepare(`
         INSERT INTO units_of_measurement (symbol, unit_name, created_at, updated_at, sync_status)
-        VALUES (?, ?, ?, ?, 'local_only')
+        VALUES (?, ?, ?, ?, 'pending')
     `);
 
     const now = nowISO();
@@ -298,7 +298,7 @@ function seedDefaultCategories() {
 
     const stmt = db.prepare(`
         INSERT INTO categories (brand, type, created_at, updated_at, sync_status)
-        VALUES (?, ?, ?, ?, 'local_only')
+        VALUES (?, ?, ?, ?, 'pending')
     `);
 
     const now = nowISO();
@@ -338,7 +338,7 @@ function seedDefaultBranch() {
 
     const stmt = db.prepare(`
         INSERT INTO branches (name, address, contact, is_active, created_at, updated_at, sync_status)
-        VALUES (?, ?, ?, 1, ?, ?, 'local_only')
+        VALUES (?, ?, ?, 1, ?, ?, 'pending')
     `);
 
     const insertMany = db.transaction(() => {
@@ -425,7 +425,7 @@ function seedDefaultSuppliers() {
 
     const stmt = db.prepare(`
         INSERT INTO suppliers (supplier_name, contact, type, supplier_address, status, account_bank, account_branch, account_number, account_name, created_at, updated_at, sync_status)
-        VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, 'local_only')
+        VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, 'pending')
     `);
 
     const insertMany = db.transaction(() => {
@@ -663,12 +663,12 @@ function seedDefaultItems() {
 
     const itemStmt = db.prepare(`
         INSERT INTO items (sku, item_name, category_id, uom_id, branch_id, maximum_capacity, availability, created_at, updated_at, sync_status)
-        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, 'local_only')
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, 'pending')
     `);
 
     const stockStmt = db.prepare(`
         INSERT INTO stock (item_id, batch_code, quantity, threshold_limit, stock_price, retail_price, discount_price, expiry_date, availability, branch_id, created_at, updated_at, sync_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'local_only')
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
     `);
 
     let createdCount = 0;
@@ -777,7 +777,7 @@ function seedDefaultMember() {
 
     const stmt = db.prepare(`
         INSERT INTO members (member_no, full_name, contact, address, member_type, is_active, created_at, updated_at, sync_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'local_only')
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
     `);
 
     const insertMany = db.transaction(() => {
