@@ -114,7 +114,7 @@ function Login() {
       <motion.div className="w-full max-w-md flex flex-col justify-center min-h-[60vh] relative z-10" variants={cardVariants} initial="hidden" animate="visible">
         <div>
           <motion.div
-            className="bg-white rounded-2xl p-8 shadow-xl shadow-slate-200/50 border border-gray-100"
+            className="bg-white rounded-2xl p-8"
             variants={staggerContainer}
             initial="hidden"
             animate="visible"
