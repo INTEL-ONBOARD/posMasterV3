@@ -3,16 +3,13 @@ import React, { useMemo } from "react";
 /**
  * DailyTransactionReportPaginated.jsx
  *
- * - Every customer block prints its own header row (counts toward ROWS_PER_PAGE)
- * - Pagination counts each visible table row (section, customer, customer-header, data row, subtotal)
- * - Totals page uses 4 columns:
- *    1) Payment Type (rowSpan = 3)
- *    2) Customer Type (Member/Staff/Guest rows)
- *    3) Amount per customer type
- *    4) Payment method total (rowSpan = 3)
+ * - Guests exist only under the "Cash" payment type.
+ * - Guest rows do not show a Mem. No value (cell left empty).
+ * - Pagination logic preserved.
+ * - Totals page rowSpan adjusts: non-cash => 2 customer rows (Member, Staff), cash => 3 rows (Member, Staff, Guest).
  */
 
-const ROWS_PER_PAGE = 12;
+const ROWS_PER_PAGE = 16;
 
 function makeRows(count, baseIdx = 1) {
   return Array.from({ length: count }, (_, i) => {
@@ -42,12 +39,12 @@ const CUSTOMER_TYPES = ["Member", "Staff", "Guest"];
 export default function DailyTransactionReportPaginated({ maxHeight = "calc(100vh - 160px)" }) {
   // Dummy counts per section & customer type (modify to test pagination)
   const dummyCounts = {
-    "06 Months": { Member: 6, Staff: 3, Guest: 2 },
-    "03 Months": { Member: 2, Staff: 2, Guest: 1 },
-    "02 Months": { Member: 4, Staff: 4, Guest: 4 },
-    "01 Months": { Member: 1, Staff: 1, Guest: 1 },
-    "B.O.G": { Member: 3, Staff: 3, Guest: 3 },
-    "Cash": { Member: 5, Staff: 2, Guest: 2 },
+    "06 Months": { Member: 6, Staff: 3, Guest: 0 },
+    "03 Months": { Member: 2, Staff: 2, Guest: 0 },
+    "02 Months": { Member: 4, Staff: 4, Guest: 0 },
+    "01 Months": { Member: 1, Staff: 1, Guest: 0 },
+    "B.O.G": { Member: 3, Staff: 3, Guest: 0 },
+    "Cash": { Member: 5, Staff: 2, Guest: 2 }, // only Cash has Guest
   };
 
   // Build flattened rows and include explicit customer-header rows so pagination is accurate.
@@ -58,7 +55,10 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
     MAIN_SECTIONS.forEach((sec) => {
       out.push({ type: "section", title: sec });
 
-      CUSTOMER_TYPES.forEach((cust) => {
+      // choose which customer-types actually apply to this section
+      const customersForSection = sec === "Cash" ? CUSTOMER_TYPES : CUSTOMER_TYPES.filter((c) => c !== "Guest");
+
+      customersForSection.forEach((cust) => {
         out.push({ type: "customer", title: cust, parent: sec });
 
         // explicit header row for this customer's mini-table (counts as a visible row)
@@ -68,6 +68,7 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
         if (count > 0) {
           const rows = makeRows(count, globalDataIdx);
           rows.forEach((r) => {
+            // For Guest rows we keep memNo blank at render-time (we still include property)
             out.push({ ...r, section: sec, customer: cust });
             globalDataIdx++;
           });
@@ -122,25 +123,30 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
     <div style={styles.container(maxHeight)}>
       {/* Render content pages */}
       {pages.map((pageRows, pageIndex) => {
-        const isLastContentPage = pageIndex === pages.length - 1;
         const globalStartIndex = pageIndex * ROWS_PER_PAGE;
 
         return (
-          <div key={pageIndex} 
-          // daily-page is used by query selector for printing these pages via querySelector
-          className="daily-page"
-          style={{ ...styles.page, pageBreakAfter: "always" }}>
+          <div
+            key={pageIndex}
+            // daily-page is used by query selector for printing these pages via querySelector
+            className="daily-page"
+            style={{ ...styles.page, pageBreakAfter: "always" }}
+          >
             {/* Header */}
             <div style={styles.header}>
               <div style={styles.companySinhala}>මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමූපකාර සමිතිය</div>
-              <div style={styles.subCompany}>Kotawala</div>
-              <div style={styles.title}>Daily Transaction Report</div>
+              <div style={styles.subCompany}>AllenValley Trade Center</div> {/* branch */}
+              <div style={styles.title}>Daily Transaction Report</div> {/* report name */}
             </div>
 
             {/* Meta */}
             <div style={styles.meta}>
-              <div><strong>No:</strong> GDG343CFF</div>
-              <div><strong>Date:</strong> 2025-11-25</div>
+              <div>
+                <strong>No:</strong> GDG343CFF
+              </div>
+              <div>
+                <strong>Date:</strong> 2025-11-25
+              </div>
             </div>
 
             <hr style={styles.hr} />
@@ -148,9 +154,9 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
             {/* Single table per page - but every customer block prints its own header row (custHeader) */}
             <table style={styles.table}>
               <tbody>
-                {pageRows.length === 0 ? (
-                  <tr><td style={styles.td} colSpan={5}>No rows</td></tr>
-                ) : null}
+                {pageRows.length === 0 ? <tr>
+                  <td style={styles.td} colSpan={5}>No rows</td>
+                </tr> : null}
 
                 {pageRows.map((row, idxOnPage) => {
                   const globalIndex = globalStartIndex + idxOnPage;
@@ -162,6 +168,7 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
                       <tr key={`sec-${globalIndex}`}>
                         <td style={styles.sectionCell} colSpan={5}>
                           <strong>{row.title}{continued ? " (cont.)" : ""}</strong>
+                          <hr />
                         </td>
                       </tr>
                     );
@@ -180,11 +187,13 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
                   }
 
                   if (row.type === "custHeader") {
+                    // For Guest we still render the Mem. No header cell but leave it blank (no Mem No field)
+                    const isGuest = row.title === "Guest";
                     return (
                       <tr key={`custHeader-${globalIndex}`} style={styles.custHeaderRow}>
                         <th style={styles.thSmall}>#</th>
                         <th style={styles.th}>Inv. No</th>
-                        <th style={styles.th}>Mem. No</th>
+                        <th style={styles.th}>{isGuest ? "" : "Mem. No"}</th>
                         <th style={styles.thLeft}>Name</th>
                         <th style={styles.thRight}>Price(Rs.)</th>
                       </tr>
@@ -192,11 +201,13 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
                   }
 
                   if (row.type === "data") {
+                    const isGuestRow = row.customer === "Guest";
                     return (
                       <tr key={`row-${row.idx}-${globalIndex}`}>
                         <td style={styles.tdSmall}>{row.idx}</td>
                         <td style={styles.td}>{row.invNo}</td>
-                        <td style={styles.td}>{row.memNo}</td>
+                        {/* Guest has no Mem. No -> render empty cell */}
+                        <td style={styles.td}>{isGuestRow ? "" : row.memNo}</td>
                         <td style={styles.tdLeft}>{row.name}</td>
                         <td style={styles.tdRight}>{Number(row.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                       </tr>
@@ -221,23 +232,13 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
               </tbody>
             </table>
 
-            {/* footer summary or spacing */}
-            {isLastContentPage ? (
-              <div style={styles.summaryArea}>
-                <div style={styles.summaryRow}><span>Total Sections</span><span>{MAIN_SECTIONS.length}</span></div>
-                <div style={styles.summaryNote}>Generated: 2025-11-25</div>
-              </div>
-            ) : (
-              <div style={{ height: 120 }} />
-            )}
-
             <div style={styles.footer}>page {pageIndex + 1} of {totalPages}</div>
           </div>
         );
       })}
 
-      {/* Totals Page (four-column layout with three rows per payment type) */}
-      <div className="report-page totals-page" style={{ ...styles.page }}>
+      {/* Totals Page (four-column layout; customer rows count depends on section) */}
+      <div className="daily-page totals-page" style={{ ...styles.page }}>  {/* daily-page is used by query selector for printing these pages via querySelector */}
         <div style={styles.header}>
           <div style={styles.companySinhala}>මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමූපකාර සමිතිය</div>
           <div style={styles.subCompany}>Kotawala</div>
@@ -251,7 +252,7 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
 
         <hr style={styles.hr} />
 
-        <table style={{ ...styles.table, fontSize: 13 }}>
+        <table style={{ ...styles.table }}>
           <thead>
             <tr>
               <th style={styles.th}>Payment Type</th>
@@ -263,15 +264,21 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
           <tbody>
             {MAIN_SECTIONS.map((sec) => {
               const sectionTotal = totalsPerSection[sec] || 0;
+              const customersForSection = sec === "Cash" ? CUSTOMER_TYPES : CUSTOMER_TYPES.filter((c) => c !== "Guest");
+              const rowSpanCount = customersForSection.length;
+
               return (
                 <React.Fragment key={`totblock-${sec}`}>
-                  {CUSTOMER_TYPES.map((cust, i) => {
+                  {customersForSection.map((cust, i) => {
                     const custAmount = computeSubtotal(sec, cust);
                     return (
                       <tr key={`${sec}-${cust}`}>
-                        {/* Payment Type cell only on first of three rows */}
+                        {/* Payment Type cell only on first of rowsForSection. verticalAlign: 'top' */}
                         {i === 0 ? (
-                          <td rowSpan={CUSTOMER_TYPES.length} style={{ ...styles.td, verticalAlign: "middle", fontWeight: 700 }}>
+                          <td
+                            rowSpan={rowSpanCount}
+                            style={{ ...styles.td, verticalAlign: "top", fontWeight: 700, paddingTop: 6 }}
+                          >
                             {sec}
                           </td>
                         ) : null}
@@ -279,29 +286,45 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
                         <td style={styles.td}>{cust}</td>
                         <td style={styles.tdRight}>{fmt(custAmount)}</td>
 
-                        {/* Payment total cell only on first of three rows */}
+                        {/* Payment total cell only on first of rowsForSection. verticalAlign: 'bottom' */}
                         {i === 0 ? (
-                          <td rowSpan={CUSTOMER_TYPES.length} style={{ ...styles.tdRight, verticalAlign: "middle", fontWeight: 700 }}>
+                          <td
+                            rowSpan={rowSpanCount}
+                            style={{ ...styles.tdRight, verticalAlign: "bottom", fontWeight: 700, paddingBottom: 6 }}
+                          >
                             {fmt(sectionTotal)}
                           </td>
                         ) : null}
                       </tr>
                     );
                   })}
+
+                  {/* Separator row AFTER the customer rows for this section:
+                      - leave first 2 columns empty
+                      - draw a top border spanning columns 3 and 4
+                  */}
+                  <tr key={`sep-${sec}`}>
+                    <td colSpan={2} style={styles.sepCell}></td>
+                    <td colSpan={2} style={styles.sepLine}></td>
+                  </tr>
                 </React.Fragment>
               );
             })}
 
             {/* Grand total row */}
             <tr>
-              <td colSpan={2} style={{ ...styles.td, fontWeight: 700, borderTop: "1px solid rgba(0,0,0,0.15)" }}>Grand Total</td>
-              <td style={{ ...styles.tdRight, fontWeight: 700, borderTop: "1px solid rgba(0,0,0,0.15)" }}>{fmt(grandTotal)}</td>
-              <td style={{ ...styles.tdRight, fontWeight: 700, borderTop: "1px solid rgba(0,0,0,0.15)" }}>{fmt(grandTotal)}</td>
+              <td colSpan={2} style={{ ...styles.td, fontWeight: 700, borderTop: "1px solid rgba(0,0,0,0.15)" }}>
+                Grand Total
+              </td>
+              <td style={{ ...styles.tdRight, fontWeight: 700, borderTop: "1px solid rgba(0,0,0,0.15)" }}>
+                {fmt(grandTotal)}
+              </td>
+              <td style={{ ...styles.tdRight, fontWeight: 700, borderTop: "1px solid rgba(0,0,0,0.15)" }}>
+                {fmt(grandTotal)}
+              </td>
             </tr>
           </tbody>
         </table>
-
-        <div style={styles.summaryNote}>This page shows per-customer totals and payment method totals. Grand total appears below.</div>
 
         <div style={styles.footer}>page {totalPages} of {totalPages}</div>
       </div>
@@ -338,7 +361,7 @@ const styles = {
     fontWeight: 600,
   },
   subCompany: {
-    fontSize: 12,
+    fontSize: 16,
     marginTop: 4,
   },
   title: {
@@ -350,7 +373,7 @@ const styles = {
   meta: {
     marginTop: 8,
     marginBottom: 8,
-    fontSize: 12,
+    fontSize: 16,
     display: "flex",
     gap: 24,
   },
@@ -364,7 +387,7 @@ const styles = {
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    fontSize: 12,
+    fontSize: 16,
     marginBottom: 10,
   },
 
@@ -396,21 +419,21 @@ const styles = {
   },
 
   tdSmall: {
-    padding: "8px 8px",
+    padding: "2px 8px",
     color: "#555",
     width: 28,
   },
   td: {
-    padding: "8px 8px",
+    padding: "2px 8px",
     color: "#555",
   },
   tdLeft: {
-    padding: "8px 8px",
+    padding: "2px 8px",
     textAlign: "left",
     color: "#555",
   },
   tdRight: {
-    padding: "8px 8px",
+    padding: "2px 8px",
     textAlign: "right",
     color: "#555",
     width: 140,
@@ -425,7 +448,7 @@ const styles = {
   customerCell: {
     padding: "8px 6px",
     background: "#fff",
-    fontStyle: "italic",
+    // fontStyle: "italic",
     color: "#333",
   },
 
@@ -454,24 +477,32 @@ const styles = {
     marginTop: 12,
     background: "#f3f3f3",
     padding: 8,
-    fontSize: 12,
+    fontSize: 16,
   },
   summaryRow: {
     display: "flex",
     justifyContent: "space-between",
     padding: "6px 0",
   },
-  summaryNote: {
-    marginTop: 6,
-    fontSize: 11,
-    color: "#555",
-  },
+
 
   footer: {
     position: "absolute",
     right: 28,
     bottom: 12,
-    fontSize: 12,
+    fontSize: 16,
     color: "#444",
+  },
+
+  // add near the other style entries
+  sepCell: {
+    padding: 0,
+    border: "none",
+    height: 6,
+  },
+  sepLine: {
+    padding: 0,
+    borderTop: "1px solid rgba(0,0,0,0.15)",
+    height: 0,
   },
 };
