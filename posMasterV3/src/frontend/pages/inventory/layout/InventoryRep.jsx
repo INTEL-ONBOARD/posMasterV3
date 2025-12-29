@@ -126,7 +126,8 @@ const styles = {
 /* =======================
    COMPONENT
 ======================= */
-const InventoryRep = React.forwardRef(function InventoryRep(
+const InventoryRep = React.forwardRef(
+  function InventoryRep(
   {
     items,
     getStockStatus,
@@ -145,6 +146,7 @@ const InventoryRep = React.forwardRef(function InventoryRep(
       <div ref={ref}>
         {pages.map((pageItems, pageIndex) => (
           <div
+            // report-page is used by query selector for printing these pages via querySelector
             className="report-page"
             key={pageIndex}
             style={{

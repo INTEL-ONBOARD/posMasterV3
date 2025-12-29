@@ -9,13 +9,12 @@ import RestockRep from "./layout/RestockRep";
 
 export default function InventoryReport({ isActive }) {
   //switches between reports for printing
-  const [reportType, setReportType] = useState("basic"); // basic || restock
+  const [reportType, setReportType] = useState("basic"); // basic || restock || dailyTrans
   const [searchTermBasic, setSearchTermBasic] = useState("");
   const [searchLoadingBasic, setSearchLoadingBasic] = useState(false);
   const [isLoadingBasic, setIsLoadingBasic] = useState(true);
   const [isLoadingRestock, setIsLoadingRestock] = useState(false);
-  const [openFilters, setOpenFilters] = useState(true);
-  const [openSort, setOpenSort] = useState(true);
+
   const [sortOrder, setSortOrder] = useState("name_asc");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStock, setFilterStock] = useState("all");
@@ -25,12 +24,12 @@ export default function InventoryReport({ isActive }) {
     const restockReportRef = useRef(null); // single ref pointing to restock printable container
   const [pdfGenerating, setPdfGenerating] = useState(false);
 
-const generateInventoryReportPdf = async () => {
+  // print basic report
+  const generateInventoryReportPdf = async () => {
   if (pdfGenerating) return;
 
   try {
     setPdfGenerating(true);
-
     const pages = document.querySelectorAll(".report-page");
     if (!pages.length) return;
 
@@ -65,7 +64,46 @@ const generateInventoryReportPdf = async () => {
   }
 };
 
+  // print restock report
+    // print basic report
+  const generateRestockReportPdf = async () => {
+  if (pdfGenerating) return;
 
+  try {
+    setPdfGenerating(true);
+    const pages = document.querySelectorAll(".restock-page");
+    if (!pages.length) return;
+
+    const pdf = new jsPDF("p", "pt", "a4");
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+
+    for (let i = 0; i < pages.length; i++) {
+      const pageEl = pages[i];
+
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+
+      const scale = pdfWidth / imgWidth;
+      const pdfHeight = imgHeight * scale;
+
+      if (i > 0) pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    }
+
+    pdf.save(`restock-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setPdfGenerating(false);
+  }
+};
 
   // Fetch items from API
   useEffect(() => {
@@ -172,10 +210,17 @@ const generateInventoryReportPdf = async () => {
               </div>
 
               <button
-                onClick={generateInventoryReportPdf}
+                onClick={() => {
+                  if (reportType === "basic") {
+                    generateInventoryReportPdf();  // ← add ()
+                  } else if (reportType === "restock") {
+                    generateRestockReportPdf();    // ← add ()
+                  }
+                }}
                 disabled={pdfGenerating}
                 className="h-12 px-6 bg-[#1A318C] disabled:opacity-60 text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2"
               >
+                Generate PDF
                 <Printer className="w-4 h-4" />
                 {pdfGenerating ? "Generating..." : "Print"}
               </button>
@@ -188,64 +233,6 @@ const generateInventoryReportPdf = async () => {
             </div>
           </div>
         </nav>
-
-        {/* Summary Cards */}
-        <div className="px-6 pt-6">
-          <div className="grid grid-cols-4 gap-4">
-            {/* Total Items Card */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-[#1A318C]/10 flex items-center justify-center">
-                  <Package className="w-6 h-6 text-[#1A318C]" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Total Items</p>
-                  <p className="text-2xl font-bold text-gray-800">{totalItems}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Total Value Card */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-                  <DollarSign className="w-6 h-6 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Total Value</p>
-                  <p className="text-2xl font-bold text-gray-800">Rs.{totalValue.toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Low Stock Card */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Low Stock Items</p>
-                  <p className="text-2xl font-bold text-gray-800">{lowStockItems}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Categories Card */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
-                  <Tag className="w-6 h-6 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Categories</p>
-                  <p className="text-2xl font-bold text-gray-800">{categories.length}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
 
 
       {/* Conditionally render only one report section */}
@@ -343,111 +330,19 @@ const generateInventoryReportPdf = async () => {
               >
                 Restock Report
               </button>
+              <button
+                onClick={() => setReportType("dailyTrans")}
+                className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${
+                  reportType === "dailyTrans"
+                    ? "bg-[#1A318C] text-white"
+                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                Daily Transaction Report
+              </button>
             </div>
           </div>
 
-          {/* Filters Block */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <button
-              onClick={() => setOpenFilters(!openFilters)}
-              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                  <Filter className="w-4 h-4 text-amber-600" />
-                </div>
-                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Filters</span>
-              </div>
-              {openFilters ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
-            </button>
-            {openFilters && (
-              <div className="px-4 pb-4 border-t border-gray-100">
-                <div className="space-y-4 pt-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
-                      Category
-                    </label>
-                    <select
-                      value={filterCategory}
-                      onChange={(e) => setFilterCategory(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="all">All Categories</option>
-                      {categories.map((cat) => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
-                      Stock Status
-                    </label>
-                    <select
-                      value={filterStock}
-                      onChange={(e) => setFilterStock(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="all">All Status</option>
-                      <option value="in_stock">In Stock</option>
-                      <option value="low">Low Stock</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sort By Block */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <button
-              onClick={() => setOpenSort(!openSort)}
-              className="w-full flex justify-between items-center px-4 py-3 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                  <SortAsc className="w-4 h-4 text-emerald-600" />
-                </div>
-                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Sort By</span>
-              </div>
-              {openSort ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
-            </button>
-            {openSort && (
-              <div className="px-4 pb-4 border-t border-gray-100">
-                <div className="pt-4">
-                  <select
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
-                  >
-                    <option value="name_asc">Name (A-Z)</option>
-                    <option value="name_desc">Name (Z-A)</option>
-                    <option value="stock_high">Stock (High to Low)</option>
-                    <option value="stock_low">Stock (Low to High)</option>
-                    <option value="price_high">Price (High to Low)</option>
-                    <option value="price_low">Price (Low to High)</option>
-                  </select>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Stats Summary Card */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mt-auto">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">Report Summary</p>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Filtered Items</span>
-                <span className="text-sm font-bold text-gray-800">{filteredItemsBasic.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Filtered Value</span>
-                <span className="text-sm font-bold text-[#1A318C]">
-                  Rs.{filteredItemsBasic.reduce((sum, item) => sum + ((item.retail_price || 0) * (item.quantity || 0)), 0).toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </div>
 
           {/* Spacer */}
           <div className="flex-1 bg-white rounded-xl border border-gray-100 shadow-sm"></div>
