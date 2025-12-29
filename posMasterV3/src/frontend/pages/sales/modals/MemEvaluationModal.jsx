@@ -275,36 +275,46 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
               </div>
             ) : (
               <div className="space-y-2">
-                {filteredMembers.map((member) => (
-                  <button
-                    key={member.id || member._id}
-                    onClick={() => handleSelectMember(member)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
-                      selectedMember?.id === member.id || selectedMember?._id === member._id
-                        ? "border-[#1A318C] bg-blue-50"
-                        : "border-transparent bg-white hover:border-gray-200 hover:shadow-sm"
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm ${
-                      selectedMember?.id === member.id || selectedMember?._id === member._id
-                        ? "bg-[#1A318C]"
-                        : "bg-gray-400"
-                    }`}>
-                      {(member.full_name || "M")[0].toUpperCase()}
-                    </div>
-                    <div className="flex-1 text-left min-w-0">
-                      <p className="font-medium text-gray-800 truncate">{member.full_name}</p>
-                      <p className="text-xs text-gray-500">{member.member_no} • {member.contact || "-"}</p>
-                    </div>
-                    {(member.credit_balance || 0) > 0 && (
-                      <div className="px-2 py-1 bg-amber-100 rounded-lg">
-                        <span className="text-xs font-semibold text-amber-700">
-                          {formatCurrency(member.credit_balance)}
-                        </span>
+                {filteredMembers.map((member) => {
+                  // Use member_no as the unique identifier since id/_id may be undefined
+                  const memberId = member.member_no || member.id || member._id;
+                  const selectedId = selectedMember?.member_no || selectedMember?.id || selectedMember?._id;
+                  const isSelected = selectedMember && memberId && selectedId && memberId === selectedId;
+                  return (
+                    <button
+                      key={memberId}
+                      onClick={() => handleSelectMember(member)}
+                      className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 ${
+                        isSelected
+                          ? "border-emerald-500 bg-emerald-50 shadow-md shadow-emerald-100"
+                          : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 hover:shadow-sm"
+                      }`}
+                    >
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm transition-colors ${
+                        isSelected
+                          ? "bg-emerald-500"
+                          : "bg-[#1A318C]"
+                      }`}>
+                        {(member.full_name || "M")[0].toUpperCase()}
                       </div>
-                    )}
-                  </button>
-                ))}
+                      <div className="flex-1 text-left min-w-0">
+                        <p className={`font-semibold truncate transition-colors ${
+                          isSelected ? "text-emerald-700" : "text-gray-800"
+                        }`}>{member.full_name}</p>
+                        <p className="text-xs text-gray-500">{member.member_no} • {member.contact || "-"}</p>
+                      </div>
+                      {isSelected ? (
+                        <CheckCircle className="w-6 h-6 text-emerald-500 shrink-0" />
+                      ) : (member.credit_balance || 0) > 0 ? (
+                        <div className="px-2 py-1 bg-amber-100 rounded-lg shrink-0">
+                          <span className="text-xs font-semibold text-amber-700">
+                            {formatCurrency(member.credit_balance)}
+                          </span>
+                        </div>
+                      ) : null}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
