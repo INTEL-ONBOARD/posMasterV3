@@ -468,13 +468,13 @@ function InventoryRestock({ isActive }) {
 
         sku: formDataRegItem.sku,
         threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
-        stock_price: parseFloat(formDataStock.stock_price) || 0,
-        retail_price: parseFloat(formDataStock.retail_price) || 0,
+        stock_price: parseFloat(formDataReturnItem.stock_price) || parseFloat(formDataStock.stock_price) || 0,
+        retail_price: parseFloat(formDataReturnItem.retail_price) || parseFloat(formDataStock.retail_price) || 0,
         expired_datetime: formDataStock.expired_datetime,
         availability: formDataStock.availability,
 
-        //the batch code for table row is considered is this
-        batch_code: formDataStock.batch_code,
+        //the batch code for table row - use return form's batch_code which is validated
+        batch_code: formDataReturnItem.batch_code || formDataStock.batch_code,
         quantity: parseFloat(formDataReturnItem.quantity),
         uom_symbol: formDataStock.uom?.uom_symbol,
 
@@ -674,6 +674,16 @@ function InventoryRestock({ isActive }) {
 
       discount: item.discount_price
     });
+
+    // Also populate return form batch_code if in return mode
+    if (returnItemSelected || rightActiveSection === "return") {
+      setFormDataReturnItem(prev => ({
+        ...prev,
+        batch_code: item.batch_code,
+        stock_price: item.stock_price,
+        retail_price: item.retail_price
+      }));
+    }
   }
   const setReturnBatchCodeFromEntry = (stock) => {
     // console.log(stock);
