@@ -397,6 +397,10 @@ function PriceChange() {
             {openFormBlock === "stock" && (
               <div className="px-4 pb-4 border-t border-gray-100 overflow-auto max-h-[calc(100vh-28rem)]">
                 <div className="space-y-4 pt-4">
+                  {/* Info banner - stock fields are read-only for price change */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                    <p className="text-xs text-blue-600 font-medium">Stock details are read-only. Use the Price Change section below to update prices.</p>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Batch Code</label>
@@ -404,11 +408,10 @@ function PriceChange() {
                         type="text"
                         name="batch_code"
                         value={formDataStock.batch_code}
-                        onChange={handleStockInputChange}
-                        disabled={!selectedItemForDetails}
-                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${formErrors.batch_code ? "border-red-300" : "border-gray-200"} ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm opacity-70 cursor-not-allowed"
                       />
-                      {formErrors.batch_code && <p className="text-red-500 text-xs mt-1">{formErrors.batch_code}</p>}
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Quantity</label>
@@ -416,9 +419,9 @@ function PriceChange() {
                         type="number"
                         name="quantity"
                         value={formDataStock.quantity}
-                        onChange={handleStockInputChange}
-                        disabled={!selectedItemForDetails}
-                        className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm opacity-70 cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -430,11 +433,10 @@ function PriceChange() {
                         type="number"
                         name="stock_price"
                         value={formDataStock.stock_price}
-                        onChange={handleStockInputChange}
-                        disabled={!selectedItemForDetails}
-                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${formErrors.stock_price ? "border-red-300" : "border-gray-200"} ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm opacity-70 cursor-not-allowed"
                       />
-                      {formErrors.stock_price && <p className="text-red-500 text-xs mt-1">{formErrors.stock_price}</p>}
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Retail Price (Rs.)</label>
@@ -442,11 +444,10 @@ function PriceChange() {
                         type="number"
                         name="retail_price"
                         value={formDataStock.retail_price}
-                        onChange={handleStockInputChange}
-                        disabled={!selectedItemForDetails}
-                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${formErrors.retail_price ? "border-red-300" : "border-gray-200"} ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm opacity-70 cursor-not-allowed"
                       />
-                      {formErrors.retail_price && <p className="text-red-500 text-xs mt-1">{formErrors.retail_price}</p>}
                     </div>
                   </div>
 
@@ -457,24 +458,21 @@ function PriceChange() {
                         type="number"
                         name="threshold_limit"
                         value={formDataStock.threshold_limit}
-                        onChange={handleStockInputChange}
-                        disabled={!selectedItemForDetails}
-                        className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm opacity-70 cursor-not-allowed"
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Availability</label>
-                      <select
+                      <input
+                        type="text"
                         name="availability"
-                        value={formDataStock.availability}
-                        onChange={handleStockInputChange}
-                        disabled={!selectedItemForDetails}
-                        className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
-                      >
-                        <option value="">Select</option>
-                        <option value="true">Available</option>
-                        <option value="false">Unavailable</option>
-                      </select>
+                        value={formDataStock.availability === "true" || formDataStock.availability === true ? "Available" : formDataStock.availability === "false" || formDataStock.availability === false ? "Unavailable" : "N/A"}
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm opacity-70 cursor-not-allowed"
+                      />
                     </div>
                   </div>
 
@@ -482,12 +480,12 @@ function PriceChange() {
                     <div>
                       <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Expiry Date</label>
                       <input
-                        type="date"
+                        type="text"
                         name="expired_datetime"
-                        value={formDataStock.expired_datetime ? formDataStock.expired_datetime.split("T")[0] : ""}
-                        onChange={handleStockInputChange}
-                        disabled={!selectedItemForDetails}
-                        className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
+                        value={formDataStock.expired_datetime ? formDataStock.expired_datetime.split("T")[0] : "N/A"}
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm opacity-70 cursor-not-allowed"
                       />
                     </div>
                     <div>
@@ -496,9 +494,9 @@ function PriceChange() {
                         type="number"
                         name="discount"
                         value={formDataStock.discount}
-                        onChange={handleStockInputChange}
-                        disabled={!selectedItemForDetails}
-                        className={`w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all ${!selectedItemForDetails ? "opacity-50 cursor-not-allowed" : ""}`}
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm opacity-70 cursor-not-allowed"
                       />
                     </div>
                   </div>
