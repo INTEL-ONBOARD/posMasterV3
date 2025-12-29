@@ -6,6 +6,7 @@ import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import InventoryRep from "./layout/InventoryRep";
 import RestockRep from "./layout/RestockRep";
+import DailyTransactionRep from "./layout/DailyTransactionRep";
 
 export default function InventoryReport({ isActive }) {
   //switches between reports for printing
@@ -65,13 +66,52 @@ export default function InventoryReport({ isActive }) {
 };
 
   // print restock report
-    // print basic report
   const generateRestockReportPdf = async () => {
   if (pdfGenerating) return;
 
   try {
     setPdfGenerating(true);
     const pages = document.querySelectorAll(".restock-page");
+    if (!pages.length) return;
+
+    const pdf = new jsPDF("p", "pt", "a4");
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+
+    for (let i = 0; i < pages.length; i++) {
+      const pageEl = pages[i];
+
+      const canvas = await html2canvas(pageEl, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+
+      const scale = pdfWidth / imgWidth;
+      const pdfHeight = imgHeight * scale;
+
+      if (i > 0) pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    }
+
+    pdf.save(`restock-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setPdfGenerating(false);
+  }
+};
+
+  // print restock report
+  const generateDailyReportPdf = async () => {
+  if (pdfGenerating) return;
+
+  try {
+    setPdfGenerating(true);
+    const pages = document.querySelectorAll(".daily-page");
     if (!pages.length) return;
 
     const pdf = new jsPDF("p", "pt", "a4");
@@ -215,7 +255,10 @@ export default function InventoryReport({ isActive }) {
                     generateInventoryReportPdf();  // ← add ()
                   } else if (reportType === "restock") {
                     generateRestockReportPdf();    // ← add ()
+                  } else if (reportType === "dailyTrans") {
+                    generateDailyReportPdf();    // ← add ()
                   }
+                  
                 }}
                 disabled={pdfGenerating}
                 className="h-12 px-6 bg-[#1A318C] disabled:opacity-60 text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2"
@@ -266,7 +309,7 @@ export default function InventoryReport({ isActive }) {
             />
           )}
         </div>
-      ) : (
+      ) : reportType === "restock" ? (
         <div className="flex-1 p-6">
           {isLoadingRestock ? (
             <div className="flex flex-col items-center justify-center h-full">
@@ -292,7 +335,34 @@ export default function InventoryReport({ isActive }) {
             <RestockRep ... />
           ) */}
         </div>
-      )}
+      )
+
+      : reportType === "dailyTrans" ? (
+        <div className="flex-1 p-6">
+          {isLoadingRestock ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
+              <p className="text-gray-500">Loading inventory data...</p>
+            </div>
+          ) : (
+            <DailyTransactionRep/>
+          )}
+          {/* You can uncomment and add the empty state when ready */}
+          {/* : filteredItemsRestock.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                <BarChart3 className="w-10 h-10 text-gray-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">No inventory data found</h3>
+              <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
+            </div>
+          ) : (
+            <RestockRep ... />
+          ) */}
+        </div>
+      )
+    :(<div></div>)
+    }
 
       </div>
 
