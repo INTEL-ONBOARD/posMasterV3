@@ -35,15 +35,34 @@ class RestockRepository extends BaseRepository {
         const params = [];
 
         if (branchId) {
-            sql += ` WHERE rt.branch_id = ?`;
+            // Include restocks for this branch OR restocks without a branch (backwards compatibility)
+            sql += ` WHERE (rt.branch_id = ? OR rt.branch_id IS NULL)`;
             params.push(branchId);
         }
 
         sql += ` ORDER BY rt.${orderBy} ${order} LIMIT ? OFFSET ?`;
         params.push(limit, offset);
 
+        console.log('[RestockRepository] findAllWithSupplier SQL:', sql);
+        console.log('[RestockRepository] findAllWithSupplier params:', params);
+
+        // Also count total records in table for debugging
+        const countStmt = this.db.prepare(`SELECT COUNT(*) as total FROM ${this.tableName}`);
+        const countResult = countStmt.get();
+        console.log('[RestockRepository] Total records in restock_transactions table:', countResult?.total || 0);
+
+        // Debug: Show unique branch_ids in the table
+        try {
+            const branchIdsStmt = this.db.prepare(`SELECT DISTINCT branch_id FROM ${this.tableName}`);
+            const branchIds = branchIdsStmt.all();
+            console.log('[RestockRepository] Unique branch_ids in restock_transactions:', branchIds.map(r => r.branch_id));
+        } catch (e) {
+            console.log('[RestockRepository] Could not get branch_ids:', e.message);
+        }
+
         const stmt = this.db.prepare(sql);
         const rows = stmt.all(...params);
+        console.log('[RestockRepository] Query returned', rows?.length || 0, 'rows');
 
         return rows.map(row => {
             const { supplier_basic_info, ...restockData } = row;

@@ -50,6 +50,7 @@ function InventoryView({ isActive }) {
           item_id: stock.item_id,
           stock_id: stock.id,
           sku: stock.sku,
+          item_code: stock.item_code || null, // Product code (manufacturer/supplier code)
           item_name: stock.item_name,
           item_image_url: stock.item_image_url,
           maximum_capacity: stock.maximum_capacity,
@@ -137,6 +138,31 @@ function InventoryView({ isActive }) {
   //right filter section controls
   const [openFilter, setOpenFilter] = useState(true);
   const [openOrderBy, setOpenOrderBy] = useState(true);
+  const [sortBy, setSortBy] = useState(""); // Sort by state
+
+  // Sort the filtered items based on selected sort option
+  const sortedItems = useMemo(() => {
+    if (!sortBy) return filteredItems;
+
+    return [...filteredItems].sort((a, b) => {
+      switch (sortBy) {
+        case "name_asc":
+          return (a.item_name || "").localeCompare(b.item_name || "");
+        case "name_desc":
+          return (b.item_name || "").localeCompare(a.item_name || "");
+        case "price_asc":
+          return (a.retail_price || 0) - (b.retail_price || 0);
+        case "price_desc":
+          return (b.retail_price || 0) - (a.retail_price || 0);
+        case "stock_asc":
+          return (a.quantity || 0) - (b.quantity || 0);
+        case "stock_desc":
+          return (b.quantity || 0) - (a.quantity || 0);
+        default:
+          return 0;
+      }
+    });
+  }, [filteredItems, sortBy]);
 
   return (
     <div className="flex flex-row bg-gray-50 w-full h-[calc(100vh-2rem)] relative">
@@ -170,7 +196,7 @@ function InventoryView({ isActive }) {
             {/* Results count */}
             <div className="mt-3 flex items-center justify-between">
               <p className="text-sm text-gray-500">
-                Showing <span className="font-semibold text-gray-800">{filteredItems.length}</span> items
+                Showing <span className="font-semibold text-gray-800">{sortedItems.length}</span> items
               </p>
             </div>
           </div>
@@ -183,7 +209,7 @@ function InventoryView({ isActive }) {
               <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-12 w-12 mb-4"></div>
               <p className="text-gray-500">Searching items...</p>
             </div>
-          ) : filteredItems.length === 0 ? (
+          ) : sortedItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full">
               <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
                 <Package className="w-10 h-10 text-gray-300" />
@@ -193,13 +219,13 @@ function InventoryView({ isActive }) {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredItems.map((item) => (
+              {sortedItems.map((item) => (
                 <ItemCard
-                  key={item.id}
+                  key={item.id || item.sku}
                   item={item}
                   onOpen={() => {
-                    setModal(true)
-                    setSelectedItem(item)
+                    setModal(true);
+                    setSelectedItem(item);
                   }}
                 />
               ))}
@@ -281,6 +307,8 @@ function InventoryView({ isActive }) {
               <div className="px-4 pb-4 border-t border-gray-100">
                 <div className="pt-4">
                   <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                   >
                     <option value="">Default</option>
