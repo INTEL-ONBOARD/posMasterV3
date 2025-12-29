@@ -57,6 +57,27 @@ class RestockController {
             return restockService.getSummary(startDate, endDate);
         });
 
+        // Debug: Get all restocks bypassing branch filter
+        ipcMain.handle('restocks:debug-get-all', async () => {
+            try {
+                const db = require('../database.cjs').getDb();
+                const count = db.prepare('SELECT COUNT(*) as total FROM restock_transactions').get();
+                const allRestocks = db.prepare('SELECT id, invoice_no, branch_id, created_at FROM restock_transactions ORDER BY created_at DESC LIMIT 20').all();
+                console.log('[RestockController DEBUG] Total restocks:', count.total);
+                console.log('[RestockController DEBUG] Sample restocks:', allRestocks);
+                return {
+                    status: 'success',
+                    data: {
+                        total: count.total,
+                        sample: allRestocks
+                    }
+                };
+            } catch (error) {
+                console.error('[RestockController DEBUG] Error:', error);
+                return { status: 'error', message: error.message };
+            }
+        });
+
         console.log('[RestockController] IPC handlers registered');
     }
 }

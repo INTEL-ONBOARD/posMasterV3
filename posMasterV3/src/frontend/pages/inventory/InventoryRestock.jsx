@@ -662,17 +662,16 @@ function InventoryRestock({ isActive }) {
     console.log(item);
     //const newDate = extractDateOnly(item.exp_date)
     //populate existing stock form block according to selected batch code
+    // Ensure all values have defaults to prevent controlled/uncontrolled input warnings
     setFormDataStock({
-      batch_code: item.batch_code,
-      quantity: item.quantity,
-      threshold_limit: item.threshold_limit,
-      stock_price: item.stock_price,
-      retail_price: item.retail_price,
-      expired_datetime: item.exp_date,
-      //expired_datetime: "2025-10-31T00:00:00.000Z",
-      availability: item.availability,
-
-      discount: item.discount_price
+      batch_code: item.batch_code || "",
+      quantity: item.quantity ?? 0,
+      threshold_limit: item.threshold_limit ?? 0,
+      stock_price: item.stock_price ?? 0,
+      retail_price: item.retail_price ?? 0,
+      expired_datetime: item.exp_date || null,
+      availability: item.availability ?? true,
+      discount: item.discount_price ?? 0
     });
 
     // Also populate return form batch_code if in return mode

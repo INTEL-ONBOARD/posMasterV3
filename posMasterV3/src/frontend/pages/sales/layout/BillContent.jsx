@@ -142,34 +142,14 @@ const BillContent = React.forwardRef(({ billData = {} }, ref) => {
 
       <hr className="border-t border-gray-300 my-4" />
 
+      {/* Table: item name | retail price | quantity | total price */}
       <table className="w-full table-fixed border-collapse border-black mb-4">
         <thead>
-          <tr>
-            <th className="border border-transparent p-2 text-sm text-left">ද්‍රව්‍ය </th> {/* item name*/}
-            <th className="border border-transparent p-2 text-sm w-40 text-right">ඒකක මිල</th> {/* retail price*/}
-            <th className="border border-transparent p-2 text-sm w-20 text-right">ප්‍රමාණය</th> {/* quantity*/}
-            <th className="border border-transparent p-2 text-sm w-24 text-right">මුළු මිල</th> {/* total price: (retail price * quantity)*/}
-          </tr>
+          <tr><th className="border border-transparent p-2 text-sm text-left">ද්‍රව්‍ය</th><th className="border border-transparent p-2 text-sm w-40 text-right">ඒකක මිල</th><th className="border border-transparent p-2 text-sm w-20 text-right">ප්‍රමාණය</th><th className="border border-transparent p-2 text-sm w-24 text-right">මුළු මිල</th></tr>
         </thead>
-
         <tbody>
           {items.map((item, index) => (
-            <tr key={item.id || item.stock_id || `${item.item_id}-${item.batch_code}-${index}`}>
-              <td className="border border-transparent p-2 text-left pr-4">
-                <div>{item.item_name ?? ""}</div>
-              </td>
-              <td className="border border-transparent p-2 w-20 text-right">
-                {fmt(item.retail_price)}
-              </td>
-
-              <td className="border border-transparent p-2 w-20 text-right">
-                {item.customer_quantity ?? ""}
-              </td>
-
-              <td className="border border-transparent p-2 w-24 text-right">
-                {fmt(item.total_price)}
-              </td>
-            </tr>
+            <tr key={item.id || item.stock_id || `${item.item_id}-${item.batch_code}-${index}`}><td className="border border-transparent p-2 text-left pr-4"><div>{item.item_name ?? ""}</div></td><td className="border border-transparent p-2 w-20 text-right">{fmt(item.retail_price)}</td><td className="border border-transparent p-2 w-20 text-right">{item.customer_quantity ?? ""}</td><td className="border border-transparent p-2 w-24 text-right">{fmt(item.total_price)}</td></tr>
           ))}
         </tbody>
       </table>

@@ -192,6 +192,12 @@ function ViewItemModal({ isOpen, closeModal, item }) {
                 </div>
               </div>
 
+              {/* Product Code Card */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                <p className="text-xs text-amber-600 uppercase tracking-wide font-medium mb-1">Product Code</p>
+                <p className="text-lg font-bold text-amber-800 font-mono">{item.item_code || "N/A"}</p>
+              </div>
+
               {/* Recent Batches */}
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-3">All Batches ({stockEntries.length})</p>

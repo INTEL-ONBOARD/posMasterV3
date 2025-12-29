@@ -169,6 +169,7 @@ class StockRepository extends BaseRepository {
             SELECT
                 s.*,
                 i.sku,
+                i.item_code,
                 i.item_name,
                 i.item_image_url,
                 i.maximum_capacity,

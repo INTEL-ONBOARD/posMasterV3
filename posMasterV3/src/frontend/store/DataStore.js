@@ -67,7 +67,10 @@ const DEFAULT_FETCHERS = {
     [TABLES.ITEMS]: () => itemApi.getAllExtended().then(r => r.data || []),
     [TABLES.STOCK]: () => stockApi.getAllWithItems().then(r => r.data || []),
     [TABLES.STOCK_ITEMS]: () => restockApi.getStockItems().then(r => r.data || []),
-    [TABLES.RESTOCK_TRANSACTIONS]: () => restockApi.getAll().then(r => r.data || []),
+    [TABLES.RESTOCK_TRANSACTIONS]: () => restockApi.getAll().then(r => {
+        console.log('[DataStore] restockApi.getAll response:', r);
+        return r.data || [];
+    }),
     [TABLES.MEMBERS]: () => memberApi.getAll().then(r => r.data || []),
     [TABLES.SALES_TRANSACTIONS]: () => salesApi.getAll().then(r => r.data || []),
     [TABLES.PAYMENT_METHODS]: () => paymentMethodApi.getAll().then(r => r.data || []),
@@ -612,7 +615,9 @@ class DataStore {
         // Create fetch promise
         const fetchPromise = (async () => {
             try {
+                console.log(`[DataStore] Fetching ${table}...`);
                 const data = await fetcher();
+                console.log(`[DataStore] Fetched ${table}: ${Array.isArray(data) ? data.length : 'non-array'} records`);
 
                 // Update cache
                 this.cache.set(table, data);

@@ -34,12 +34,17 @@ class RestockService {
     getAll(options = {}) {
         try {
             const branchId = this.getCurrentBranchId();
+            console.log('[RestockService] getAll called with branchId:', branchId);
+
             const restocks = restockRepository.findAllWithSupplier({
                 limit: options.limit || 100,
                 orderBy: 'created_at',
                 order: 'DESC',
                 branchId: branchId
             });
+
+            console.log('[RestockService] getAll found', restocks?.length || 0, 'restocks');
+
             return {
                 status: 'success',
                 data: restocks
