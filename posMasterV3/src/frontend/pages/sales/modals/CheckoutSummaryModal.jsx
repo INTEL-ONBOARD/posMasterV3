@@ -12,8 +12,17 @@ function SuccessAnimation({ saleData, onClose, formatCurrency }) {
       setTimeout(() => setStep(2), 800),
       setTimeout(() => setStep(3), 1300),
     ];
-    return () => timers.forEach(clearTimeout);
-  }, []);
+
+    // Auto-close after 10 seconds as a safety measure
+    const autoCloseTimer = setTimeout(() => {
+      onClose();
+    }, 10000);
+
+    return () => {
+      timers.forEach(clearTimeout);
+      clearTimeout(autoCloseTimer);
+    };
+  }, [onClose]);
 
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-2xl overflow-hidden">
@@ -197,9 +206,11 @@ function CheckoutSummaryModal({
       // Call the parent's confirm handler which processes the sale
       const result = await onConfirmSale(checkoutData);
 
-      // Show success animation
+      // Show success animation - keep isProcessing true during animation
+      // to prevent user interaction, but it will be reset when modal closes
       setSaleResult(checkoutData);
       setShowSuccess(true);
+      // Don't set isProcessing to false here - the success animation handles the flow
     } catch (error) {
       console.error('Sale failed:', error);
       setIsProcessing(false);
@@ -207,7 +218,10 @@ function CheckoutSummaryModal({
   };
 
   const handleSuccessClose = () => {
+    // Reset all states before closing
     setShowSuccess(false);
+    setIsProcessing(false);
+    setSaleResult(null);
     closeModal();
   };
 
