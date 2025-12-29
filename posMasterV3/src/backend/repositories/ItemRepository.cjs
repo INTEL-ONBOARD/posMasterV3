@@ -172,6 +172,7 @@ class ItemRepository extends BaseRepository {
             id: item.id,
             _id: item.cloud_id || item.id.toString(),
             sku: item.sku,
+            item_code: item.item_code || null,
             item_name: item.item_name,
             item_image_url: item.item_image_url,
             item_image_blob: item.item_image_blob,
