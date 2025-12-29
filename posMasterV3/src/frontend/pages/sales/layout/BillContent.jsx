@@ -119,17 +119,18 @@ const BillContent = React.forwardRef(({ billData = {} }, ref) => {
     >
       {/* header section */}
       <div className="flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold mb-4">ඇලන්වැලි සමූපකාර වෙලදසැල</h1>
-        <h1 className="text-2xl font-bold mb-4">ඇලන්වැලි සමූපකාර වෙලදසැල</h1>
-        <h2 className="mb-2">No.91, කොටපල, මාතර</h2>
-        <p>034/4940670</p>
+        {/* header */}
+        <h1 className="text-md font-bold mb-4">මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමූපකාර සමිතිය</h1>
+        <h1 className="text-sm font-bold mb-4">ටී කෝප් ඇලන් වැලි ට්‍රේඩ් සෙන්ටර්</h1>
+        <h2 className="mb-2">වෙළදාම්පත</h2>
+        {/* <p>034/4940670</p> */}
       </div>
 
       <hr className="border-t border-gray-300 my-4" />
 
       <div className="flex flex-row justify-between">
         <div className="flex flex-col">
-          <span>වෙළදාම්පත: {billData.invoiceNo ?? ""}</span>
+          <span>ඉන්වොයිස් අංකය: {billData.invoiceNo ?? ""}</span>
           <span>අයකැමි: {billData.cashier_name ?? ""}</span>
           <span>ගෙවීම් ක්‍රමය: {billData.payment_method ?? ""}</span>
         </div>
@@ -141,16 +142,13 @@ const BillContent = React.forwardRef(({ billData = {} }, ref) => {
 
       <hr className="border-t border-gray-300 my-4" />
 
-      <table className="w-full table-fixed border-collapse mb-4">
+      <table className="w-full table-fixed border-collapse border-black mb-4">
         <thead>
           <tr>
-            <th className="border border-transparent p-2 text-left">Item</th>
-            <th className="border border-transparent p-2 w-20 text-right">
-              Quantity
-            </th>
-            <th className="border border-transparent p-2 w-24 text-right">
-              Price
-            </th>
+            <th className="border border-transparent p-2 text-sm text-left">ද්‍රව්‍ය </th> {/* item name*/}
+            <th className="border border-transparent p-2 text-sm w-40 text-right">ඒකක මිල</th> {/* retail price*/}
+            <th className="border border-transparent p-2 text-sm w-20 text-right">ප්‍රමාණය</th> {/* quantity*/}
+            <th className="border border-transparent p-2 text-sm w-24 text-right">මුළු මිල</th> {/* total price: (retail price * quantity)*/}
           </tr>
         </thead>
 
@@ -159,7 +157,9 @@ const BillContent = React.forwardRef(({ billData = {} }, ref) => {
             <tr key={item.id || item.stock_id || `${item.item_id}-${item.batch_code}-${index}`}>
               <td className="border border-transparent p-2 text-left pr-4">
                 <div>{item.item_name ?? ""}</div>
-                <div className="ml-10">{fmt(item.retail_price)}</div>
+              </td>
+              <td className="border border-transparent p-2 w-20 text-right">
+                {fmt(item.retail_price)}
               </td>
 
               <td className="border border-transparent p-2 w-20 text-right">
@@ -178,17 +178,17 @@ const BillContent = React.forwardRef(({ billData = {} }, ref) => {
 
       <div className="flex flex-col p-4">
         <div className="flex flex-row justify-between">
-          <p>මුළු වටිනකම:</p>
+          <p>එකතුව::</p>
           <p>{fmt(billData.totalAmount)}</p>
         </div>
 
         <div className="flex flex-row justify-between">
-          <p>මිල අඩු කිරීම්:</p>
+          <p>වට්ටම්:</p>
           <p>{fmt(billData.discountAmount)}</p>
         </div>
 
         <div className="flex flex-row justify-between">
-          <p>එකතුව: </p>
+          <p>මුළු වටිනකම:: </p>
           <p>{fmt(billData.finalAmount)}</p>
         </div>
 
@@ -206,6 +206,15 @@ const BillContent = React.forwardRef(({ billData = {} }, ref) => {
       </div>
 
       <hr className="border-t border-gray-300 my-4" />
+
+      {/* footer with centered content*/}
+      <div className="flex flex-col items-center justify-center text-xs">
+        <div>----------------------------------</div>
+        <div>ඉහත සදහන් ද්‍රව්‍ය නිවැරදි බව සහතික කරමි</div>
+        <div>----------THANK YOU COME AGAIN----------</div>
+        <div>POSMaster</div>
+
+      </div>
     </div>
   );
 });
