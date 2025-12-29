@@ -25,6 +25,7 @@ const styles = {
   }),
 
   reportWrapper: {
+    padding: "100px",
     backgroundColor: "#ffffff",
     border: "1px solid #e5e7eb",
     borderRadius: "12px",
