@@ -570,19 +570,7 @@ ipcMain.handle("app:logoutAndRestart", async () => {
 app.whenReady().then(async () => {
   const iconPath = path.join(__dirname, "src", "frontend", "assets", "icon.ico");
 
-  // Try to read maximize_window setting from database
-  let shouldMaximize = true; // Default to true
-  try {
-    // Import after backend is ready
-    const { getAppSettingsService } = require("./src/backend/services/AppSettingsService.cjs");
-    const appSettingsService = getAppSettingsService();
-    shouldMaximize = appSettingsService.getMaximizeOnStart();
-    console.log(`[Electron] maximize_window setting: ${shouldMaximize}`);
-  } catch (e) {
-    console.log("[Electron] Could not read maximize setting, using default:", e.message);
-  }
-
-  // Create window and show immediately with splash screen
+  // Create window and show immediately with splash screen (maximize setting read after backend init)
   console.log("[Electron] Creating window with splash...");
   mainWindow = new BrowserWindow({
     width: 1024,
@@ -598,11 +586,6 @@ app.whenReady().then(async () => {
       contextIsolation: true,
     },
   });
-
-  // Only maximize if setting is enabled
-  if (shouldMaximize) {
-    mainWindow.maximize();
-  }
 
   // Load splash screen HTML immediately (matches Intro.jsx styling)
   const splashHtml = `
@@ -709,6 +692,22 @@ app.whenReady().then(async () => {
     console.log("[Electron] Backend initialized:", backendResult.dbPath);
   } else {
     console.error("[Electron] Backend initialization failed:", backendResult.message);
+  }
+
+  // Read maximize setting AFTER backend is initialized
+  let shouldMaximize = true; // Default to true
+  try {
+    const { getAppSettingsService } = require("./src/backend/services/AppSettingsService.cjs");
+    const appSettingsService = getAppSettingsService();
+    shouldMaximize = appSettingsService.getMaximizeOnStart();
+    console.log(`[Electron] maximize_window setting: ${shouldMaximize}`);
+  } catch (e) {
+    console.log("[Electron] Could not read maximize setting, using default:", e.message);
+  }
+
+  // Apply maximize setting
+  if (shouldMaximize) {
+    mainWindow.maximize();
   }
 
   // Now load the React app (backend is ready, Intro will navigate to login quickly)

@@ -27,6 +27,8 @@
       "preload.cjs",
       "electron.cjs",
       "src/main/**",
+      "src/backend/**",
+      "src/frontend/templates/**",
       "node_modules/**",
       "!node_modules/fsevents",
       "package.json"
