@@ -196,9 +196,7 @@ class BranchContextService {
      * Get the current branch ID
      */
     getCurrentBranchId() {
-        const branchId = this.currentBranch?.id || null;
-        console.log('[BranchContextService] getCurrentBranchId called, returning:', branchId);
-        return branchId;
+        return this.currentBranch?.id || null;
     }
 
     /**

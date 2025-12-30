@@ -112,10 +112,9 @@ export function useDataMutation(options) {
         } catch (err) {
             console.error('[useDataMutation] Mutation failed:', err);
 
-            // Rollback optimistic update
+            // Rollback optimistic update using public method
             if (optimistic && previousDataRef.current && table) {
-                dataStore.cache.set(table, previousDataRef.current);
-                dataStore._notifySubscribers(table);
+                dataStore.rollbackCache(table, previousDataRef.current);
             }
 
             setError(err);
