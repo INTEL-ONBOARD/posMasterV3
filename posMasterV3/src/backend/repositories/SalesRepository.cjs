@@ -324,8 +324,15 @@ class SalesRepository extends BaseRepository {
                 broadcastBatchChange('stock', items.length, 'SALE');
             }
 
-            // Broadcast member update if member was involved
+            // Notify CloudSync and broadcast member update if member was involved
             if (data.member_id && !data.is_held) {
+                // Get updated member data for CloudSync
+                const updatedMember = this.db.prepare('SELECT * FROM members WHERE id = ?').get(data.member_id);
+                if (updatedMember) {
+                    // Notify CloudSync to sync member credit changes to cloud
+                    notifyDataChange('members', 'UPDATE', updatedMember, data.member_id);
+                }
+                // Broadcast to UI for immediate update
                 broadcastDataChange('members', 'UPDATE', data.member_id, null);
             }
 
@@ -373,6 +380,38 @@ class SalesRepository extends BaseRepository {
 
             const completedSale = this.getFullDetails(id);
 
+            // Update member income and credits when completing held order
+            if (completedSale.member_id) {
+                const updateMemberStmt = this.db.prepare(`
+                    UPDATE members SET
+                        total_income = total_income + ?,
+                        updated_at = ?
+                    WHERE id = ?
+                `);
+                updateMemberStmt.run(completedSale.total_amount, nowISO(), completedSale.member_id);
+
+                // Handle credit payments
+                if (completedSale.payment_method === 'credit') {
+                    const updateCreditsStmt = this.db.prepare(`
+                        UPDATE members SET
+                            total_credits = total_credits + ?,
+                            updated_at = ?
+                        WHERE id = ?
+                    `);
+                    updateCreditsStmt.run(completedSale.total_amount, nowISO(), completedSale.member_id);
+                }
+
+                // Get updated member data for CloudSync
+                const updatedMember = this.db.prepare('SELECT * FROM members WHERE id = ?').get(completedSale.member_id);
+                if (updatedMember) {
+                    notifyDataChange('members', 'UPDATE', updatedMember, completedSale.member_id);
+                }
+                broadcastDataChange('members', 'UPDATE', completedSale.member_id, null);
+            }
+
+            // Notify CloudSync of sale update
+            notifyDataChange('sales_transactions', 'UPDATE', completedSale, id);
+
             // Broadcast the sale update
             broadcastDataChange('sales_transactions', 'UPDATE', id, completedSale);
 
@@ -409,6 +448,35 @@ class SalesRepository extends BaseRepository {
                     nowISO(),
                     item.stock_id
                 );
+            }
+
+            // Reverse member income and credits if applicable (only for non-held completed sales)
+            if (sale.member_id && !sale.is_held) {
+                const reverseMemberStmt = this.db.prepare(`
+                    UPDATE members SET
+                        total_income = total_income - ?,
+                        updated_at = ?
+                    WHERE id = ?
+                `);
+                reverseMemberStmt.run(sale.total_amount, nowISO(), sale.member_id);
+
+                // Reverse credit if it was a credit payment
+                if (sale.payment_method === 'credit') {
+                    const reverseCreditsStmt = this.db.prepare(`
+                        UPDATE members SET
+                            total_credits = total_credits - ?,
+                            updated_at = ?
+                        WHERE id = ?
+                    `);
+                    reverseCreditsStmt.run(sale.total_amount, nowISO(), sale.member_id);
+                }
+
+                // Notify CloudSync and broadcast member update
+                const updatedMember = this.db.prepare('SELECT * FROM members WHERE id = ?').get(sale.member_id);
+                if (updatedMember) {
+                    notifyDataChange('members', 'UPDATE', updatedMember, sale.member_id);
+                }
+                broadcastDataChange('members', 'UPDATE', sale.member_id, null);
             }
 
             // Update sale status (this.update already broadcasts via BaseRepository)
