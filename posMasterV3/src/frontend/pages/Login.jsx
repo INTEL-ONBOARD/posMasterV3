@@ -1,10 +1,11 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, Cloud, CloudOff, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import ToastContext from "./toasts/ToastService";
 import { localAuth } from "../api/services/localAuth";
 import { useStatusLog } from "../services/StatusLogService.jsx";
+import { appSettingsApi, cloudSyncApi } from "../api/localApi";
 
 
 const containerVariants = {
@@ -47,6 +48,84 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Cloud sync state
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null); // 'syncing', 'synced', 'offline', 'error'
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Check cloud sync status on mount
+  useEffect(() => {
+    const checkCloudSync = async () => {
+      try {
+        // Check if cloud sync is enabled
+        const enabledResult = await appSettingsApi.isCloudSyncEnabled();
+        const isEnabled = enabledResult?.status === 'success' && enabledResult?.data?.enabled;
+        setCloudSyncEnabled(isEnabled);
+
+        if (isEnabled) {
+          // Check sync status
+          const statusResult = await cloudSyncApi.getStatus();
+          if (statusResult?.status === 'success') {
+            const data = statusResult.data;
+            if (data.isOnline && data.mysqlInitialized) {
+              // Check if this might be first run (no previous sync)
+              if (!data.lastSyncTime) {
+                setSyncStatus('syncing');
+                // Trigger initial sync
+                handleSyncNow(true);
+              } else {
+                setSyncStatus('synced');
+              }
+            } else if (!data.isOnline) {
+              setSyncStatus('offline');
+            } else {
+              setSyncStatus('error');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check cloud sync status:', error);
+      }
+    };
+
+    checkCloudSync();
+  }, []);
+
+  // Handle manual sync
+  const handleSyncNow = async (silent = false) => {
+    setIsSyncing(true);
+    setSyncStatus('syncing');
+    if (!silent) {
+      statusLog.loading("Syncing with cloud...");
+    }
+
+    try {
+      // Pull users from cloud first
+      const pullResult = await cloudSyncApi.pullUsers();
+
+      if (pullResult?.status === 'success') {
+        setSyncStatus('synced');
+        if (!silent) {
+          statusLog.success("Cloud sync complete");
+          toast.open("User data synced from cloud.", 5000, "Sync Complete", "success");
+        }
+      } else {
+        setSyncStatus('error');
+        if (!silent) {
+          statusLog.error("Sync failed");
+        }
+      }
+    } catch (error) {
+      console.error('Sync failed:', error);
+      setSyncStatus('error');
+      if (!silent) {
+        statusLog.error("Sync failed");
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -138,11 +217,57 @@ function Login() {
             </motion.div>
 
             {/* Subtitle */}
-            <motion.div className="text-center mb-8" variants={fadeUp}>
+            <motion.div className="text-center mb-4" variants={fadeUp}>
               <p className="text-sm leading-relaxed text-gray-400">
                 Welcome back! Enter your credentials to continue.
               </p>
             </motion.div>
+
+            {/* Cloud Sync Status Banner */}
+            {cloudSyncEnabled && (
+              <motion.div className="mb-6" variants={fadeUp}>
+                {/* Sync Status Indicator */}
+                <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
+                  syncStatus === 'synced' ? 'bg-emerald-50 border-emerald-200' :
+                  syncStatus === 'syncing' ? 'bg-blue-50 border-blue-200' :
+                  syncStatus === 'offline' ? 'bg-amber-50 border-amber-200' :
+                  'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    {syncStatus === 'syncing' ? (
+                      <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
+                    ) : syncStatus === 'synced' ? (
+                      <Cloud className="w-4 h-4 text-emerald-500" />
+                    ) : syncStatus === 'offline' ? (
+                      <CloudOff className="w-4 h-4 text-amber-500" />
+                    ) : (
+                      <Cloud className="w-4 h-4 text-gray-400" />
+                    )}
+                    <span className={`text-xs font-medium ${
+                      syncStatus === 'synced' ? 'text-emerald-700' :
+                      syncStatus === 'syncing' ? 'text-blue-700' :
+                      syncStatus === 'offline' ? 'text-amber-700' :
+                      'text-gray-500'
+                    }`}>
+                      {syncStatus === 'syncing' ? 'Syncing with cloud...' :
+                       syncStatus === 'synced' ? 'Cloud connected' :
+                       syncStatus === 'offline' ? 'Offline mode' :
+                       'Cloud sync enabled'}
+                    </span>
+                  </div>
+                  {!isSyncing && syncStatus !== 'syncing' && (
+                    <button
+                      type="button"
+                      onClick={() => handleSyncNow(false)}
+                      className="p-1.5 rounded-lg hover:bg-white/50 transition-colors"
+                      title="Sync now"
+                    >
+                      <RefreshCw className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
 
             {/* Login Form */}
             <motion.form onSubmit={handleSubmit} className="space-y-5 w-full" variants={staggerContainer}>
