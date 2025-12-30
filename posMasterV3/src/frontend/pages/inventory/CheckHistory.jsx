@@ -22,17 +22,7 @@ function CheckHistory({ isActive }) {
   // Force refetch when component becomes active to ensure fresh data
   useEffect(() => {
     if (isActive) {
-      console.log('[CheckHistory] Component active, refetching transactions...');
       refetchTransactions();
-
-      // Debug: Call debug endpoint to see what's actually in the database
-      if (window.electronAPI?.invoke) {
-        window.electronAPI.invoke('restocks:debug-get-all').then(result => {
-          console.log('[CheckHistory DEBUG] Raw database check:', result);
-        }).catch(err => {
-          console.error('[CheckHistory DEBUG] Error:', err);
-        });
-      }
     }
   }, [isActive, refetchTransactions]);
 

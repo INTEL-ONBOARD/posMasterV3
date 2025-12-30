@@ -67,10 +67,7 @@ const DEFAULT_FETCHERS = {
     [TABLES.ITEMS]: () => itemApi.getAllExtended().then(r => r.data || []),
     [TABLES.STOCK]: () => stockApi.getAllWithItems().then(r => r.data || []),
     [TABLES.STOCK_ITEMS]: () => restockApi.getStockItems().then(r => r.data || []),
-    [TABLES.RESTOCK_TRANSACTIONS]: () => restockApi.getAll().then(r => {
-        console.log('[DataStore] restockApi.getAll response:', r);
-        return r.data || [];
-    }),
+    [TABLES.RESTOCK_TRANSACTIONS]: () => restockApi.getAll().then(r => r.data || []),
     [TABLES.MEMBERS]: () => memberApi.getAll().then(r => r.data || []),
     [TABLES.SALES_TRANSACTIONS]: () => salesApi.getAll().then(r => r.data || []),
     [TABLES.PAYMENT_METHODS]: () => paymentMethodApi.getAll().then(r => r.data || []),
@@ -117,6 +114,9 @@ class DataStore {
 
         // Pending fetches to avoid duplicate requests
         this.pendingFetches = new Map();
+
+        // Last refresh timestamps for debouncing batch events
+        this._lastRefreshTime = new Map();
 
         // Store cleanup functions for event listeners
         this._eventCleanupFunctions = [];
@@ -469,12 +469,38 @@ class DataStore {
      * Normalize table name to match our constants
      */
     _normalizeTableName(table) {
-        // Handle common variations
+        // Handle common variations and backend table names
         const mapping = {
+            // Sales
             'sales': TABLES.SALES_TRANSACTIONS,
+            'sales_transactions': TABLES.SALES_TRANSACTIONS,
+            // Restocks
             'restocks': TABLES.RESTOCK_TRANSACTIONS,
+            'restock_transactions': TABLES.RESTOCK_TRANSACTIONS,
+            // Units of measurement
             'uom': TABLES.UOM,
-            'stock_with_items': TABLES.STOCK_ITEMS
+            'units_of_measurement': TABLES.UOM,
+            // Stock
+            'stock': TABLES.STOCK,
+            'stock_with_items': TABLES.STOCK_ITEMS,
+            'stock_items': TABLES.STOCK_ITEMS,
+            // Items
+            'items': TABLES.ITEMS,
+            // Members
+            'members': TABLES.MEMBERS,
+            // Suppliers
+            'suppliers': TABLES.SUPPLIERS,
+            // Categories
+            'categories': TABLES.CATEGORIES,
+            // Branches
+            'branches': TABLES.BRANCHES,
+            // Users
+            'users': TABLES.USERS,
+            // Tea Coop
+            'tea_coop_members': TABLES.TEA_COOP_MEMBERS,
+            // Other
+            'login_history': TABLES.LOGIN_HISTORY,
+            'payment_methods': TABLES.PAYMENT_METHODS
         };
         return mapping[table] || table;
     }
@@ -615,9 +641,7 @@ class DataStore {
         // Create fetch promise
         const fetchPromise = (async () => {
             try {
-                console.log(`[DataStore] Fetching ${table}...`);
                 const data = await fetcher();
-                console.log(`[DataStore] Fetched ${table}: ${Array.isArray(data) ? data.length : 'non-array'} records`);
 
                 // Update cache
                 this.cache.set(table, data);
@@ -705,6 +729,18 @@ class DataStore {
      */
     getCached(table) {
         return this.cache.get(table) || null;
+    }
+
+    /**
+     * Rollback cache to a previous state (used for optimistic update rollback)
+     * @param {string} table - Table name
+     * @param {Array} previousData - Previous data to restore
+     */
+    rollbackCache(table, previousData) {
+        if (previousData !== null && previousData !== undefined) {
+            this.cache.set(table, previousData);
+            this._notifySubscribers(table);
+        }
     }
 
     /**

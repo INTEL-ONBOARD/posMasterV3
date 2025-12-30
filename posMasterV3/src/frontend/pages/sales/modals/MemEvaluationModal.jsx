@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, X, User, CreditCard, Clock, AlertTriangle, CheckCircle, UserCheck, Users, Leaf, Banknote, RefreshCw } from "lucide-react";
+import { Search, X, User, CreditCard, Clock, AlertTriangle, CheckCircle, UserCheck, Users, Leaf, Banknote, RefreshCw, Plus, Minus } from "lucide-react";
 import { teaCoopApi } from "../../../api/localApi";
 import { useReactiveData, TABLES } from "../../../store";
 
@@ -140,6 +140,8 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
 
   // Calculate payment history totals
   const totalGreenLeaf = paymentHistory.reduce((sum, p) => sum + (parseFloat(p.green_leaf_value) || 0), 0);
+  const totalAdditions = paymentHistory.reduce((sum, p) => sum + (parseFloat(p.additions) || 0), 0);
+  const totalDeductions = paymentHistory.reduce((sum, p) => sum + (parseFloat(p.deductions) || 0), 0);
   const totalLoans = paymentHistory.reduce((sum, p) => sum + (parseFloat(p.loans) || 0), 0);
   const totalNetAmount = paymentHistory.reduce((sum, p) => sum + (parseFloat(p.net_amount) || 0), 0);
 
@@ -356,37 +358,60 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
 
                 {/* Tea Coop Info for Members */}
                 {!selectedMember.is_guest && (
-                  <div className="grid grid-cols-3 gap-4 mt-5">
-                    <div className="bg-emerald-50 rounded-xl p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
-                          <Leaf className="w-4 h-4 text-white" />
+                  <div className="grid grid-cols-5 gap-3 mt-5">
+                    {/* Green Leaf Value */}
+                    <div className="bg-emerald-50 rounded-xl p-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center">
+                          <Leaf className="w-3.5 h-3.5 text-white" />
                         </div>
-                        <span className="text-xs text-emerald-600 font-medium uppercase">Green Leaf Value</span>
+                        <span className="text-[10px] text-emerald-600 font-medium uppercase leading-tight">Green Leaf</span>
                       </div>
-                      <p className="text-xl font-bold text-emerald-700">{formatCurrency(selectedMember.green_leaf_value || 0)}</p>
+                      <p className="text-lg font-bold text-emerald-700">{formatCurrency(selectedMember.green_leaf_value || 0)}</p>
                     </div>
 
-                    <div className="bg-amber-50 rounded-xl p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center">
-                          <CreditCard className="w-4 h-4 text-white" />
+                    {/* Additions */}
+                    <div className="bg-teal-50 rounded-xl p-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="w-7 h-7 rounded-lg bg-teal-500 flex items-center justify-center">
+                          <Plus className="w-3.5 h-3.5 text-white" />
                         </div>
-                        <span className="text-xs text-amber-600 font-medium uppercase">Loans</span>
+                        <span className="text-[10px] text-teal-600 font-medium uppercase leading-tight">Additions</span>
                       </div>
-                      <p className="text-xl font-bold text-amber-700">{formatCurrency(selectedMember.loans || 0)}</p>
+                      <p className="text-lg font-bold text-teal-700">{formatCurrency(selectedMember.additions || 0)}</p>
                     </div>
 
-                    <div className="bg-blue-50 rounded-xl p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-[#1A318C] flex items-center justify-center">
-                          <Banknote className="w-4 h-4 text-white" />
+                    {/* Deductions */}
+                    <div className="bg-rose-50 rounded-xl p-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="w-7 h-7 rounded-lg bg-rose-500 flex items-center justify-center">
+                          <Minus className="w-3.5 h-3.5 text-white" />
                         </div>
-                        <span className="text-xs text-[#1A318C] font-medium uppercase">Net Amount</span>
+                        <span className="text-[10px] text-rose-600 font-medium uppercase leading-tight">Deductions</span>
                       </div>
-                      <p className="text-xl font-bold text-[#1A318C]">
-                        {formatCurrency(selectedMember.net_amount || 0)}
-                      </p>
+                      <p className="text-lg font-bold text-rose-700">{formatCurrency(selectedMember.deductions || 0)}</p>
+                    </div>
+
+                    {/* Loans */}
+                    <div className="bg-amber-50 rounded-xl p-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center">
+                          <CreditCard className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <span className="text-[10px] text-amber-600 font-medium uppercase leading-tight">Loans</span>
+                      </div>
+                      <p className="text-lg font-bold text-amber-700">{formatCurrency(selectedMember.loans || 0)}</p>
+                    </div>
+
+                    {/* Net Amount */}
+                    <div className="bg-blue-50 rounded-xl p-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="w-7 h-7 rounded-lg bg-[#1A318C] flex items-center justify-center">
+                          <Banknote className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <span className="text-[10px] text-[#1A318C] font-medium uppercase leading-tight">Net Amount</span>
+                      </div>
+                      <p className="text-lg font-bold text-[#1A318C]">{formatCurrency(selectedMember.net_amount || 0)}</p>
                     </div>
                   </div>
                 )}
@@ -420,15 +445,19 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
                       <table className="w-full">
                         <thead className="bg-gray-50 sticky top-0">
                           <tr className="text-xs text-gray-500 uppercase tracking-wide">
-                            <th className="text-left py-3 px-6 font-semibold">Month</th>
-                            <th className="text-right py-3 px-4 font-semibold">Green Leaf</th>
-                            <th className="text-right py-3 px-4 font-semibold">Loans</th>
-                            <th className="text-right py-3 px-6 font-semibold">Net Amount</th>
+                            <th className="text-left py-3 px-4 font-semibold">Month</th>
+                            <th className="text-right py-3 px-3 font-semibold">Green Leaf</th>
+                            <th className="text-right py-3 px-3 font-semibold">Additions</th>
+                            <th className="text-right py-3 px-3 font-semibold">Deductions</th>
+                            <th className="text-right py-3 px-3 font-semibold">Loans</th>
+                            <th className="text-right py-3 px-4 font-semibold">Net Amount</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                           {paymentHistory.map((payment, index) => {
                             const hasData = (parseFloat(payment.green_leaf_value) || 0) > 0 ||
+                                           (parseFloat(payment.additions) || 0) > 0 ||
+                                           (parseFloat(payment.deductions) || 0) > 0 ||
                                            (parseFloat(payment.loans) || 0) > 0 ||
                                            (parseFloat(payment.net_amount) || 0) > 0;
                             return (
@@ -436,23 +465,33 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
                                 key={payment.id || index}
                                 className={`hover:bg-gray-50 transition-colors ${!hasData ? "opacity-50" : ""}`}
                               >
-                                <td className="py-3 px-6">
-                                  <span className="font-medium text-gray-800">
+                                <td className="py-2.5 px-4">
+                                  <span className="font-medium text-gray-800 text-sm">
                                     {formatMonthYear(payment.year, payment.month)}
                                   </span>
                                 </td>
-                                <td className="py-3 px-4 text-right">
-                                  <span className={`font-medium tabular-nums ${hasData ? "text-emerald-600" : "text-gray-400"}`}>
+                                <td className="py-2.5 px-3 text-right">
+                                  <span className={`font-medium tabular-nums text-sm ${(parseFloat(payment.green_leaf_value) || 0) > 0 ? "text-emerald-600" : "text-gray-400"}`}>
                                     {formatCurrency(payment.green_leaf_value)}
                                   </span>
                                 </td>
-                                <td className="py-3 px-4 text-right">
-                                  <span className={`font-medium tabular-nums ${parseFloat(payment.loans) > 0 ? "text-amber-600" : "text-gray-400"}`}>
+                                <td className="py-2.5 px-3 text-right">
+                                  <span className={`font-medium tabular-nums text-sm ${(parseFloat(payment.additions) || 0) > 0 ? "text-teal-600" : "text-gray-400"}`}>
+                                    {formatCurrency(payment.additions)}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 text-right">
+                                  <span className={`font-medium tabular-nums text-sm ${(parseFloat(payment.deductions) || 0) > 0 ? "text-rose-600" : "text-gray-400"}`}>
+                                    {formatCurrency(payment.deductions)}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 text-right">
+                                  <span className={`font-medium tabular-nums text-sm ${(parseFloat(payment.loans) || 0) > 0 ? "text-amber-600" : "text-gray-400"}`}>
                                     {formatCurrency(payment.loans)}
                                   </span>
                                 </td>
-                                <td className="py-3 px-6 text-right">
-                                  <span className={`font-semibold tabular-nums ${hasData ? "text-gray-800" : "text-gray-400"}`}>
+                                <td className="py-2.5 px-4 text-right">
+                                  <span className={`font-semibold tabular-nums text-sm ${hasData ? "text-gray-800" : "text-gray-400"}`}>
                                     {formatCurrency(payment.net_amount)}
                                   </span>
                                 </td>
@@ -467,11 +506,13 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
                   {/* Fixed Totals Row at Bottom */}
                   {paymentHistory.length > 0 && (
                     <div className="border-t-2 border-gray-200 bg-gray-50">
-                      <div className="grid grid-cols-4 py-3 font-semibold">
-                        <div className="px-6 text-gray-700">Total</div>
-                        <div className="px-4 text-right text-emerald-600 tabular-nums">{formatCurrency(totalGreenLeaf)}</div>
-                        <div className="px-4 text-right text-amber-600 tabular-nums">{formatCurrency(totalLoans)}</div>
-                        <div className="px-6 text-right text-gray-800 tabular-nums">{formatCurrency(totalNetAmount)}</div>
+                      <div className="grid grid-cols-6 py-3 font-semibold text-sm">
+                        <div className="px-4 text-gray-700">Total</div>
+                        <div className="px-3 text-right text-emerald-600 tabular-nums">{formatCurrency(totalGreenLeaf)}</div>
+                        <div className="px-3 text-right text-teal-600 tabular-nums">{formatCurrency(totalAdditions)}</div>
+                        <div className="px-3 text-right text-rose-600 tabular-nums">{formatCurrency(totalDeductions)}</div>
+                        <div className="px-3 text-right text-amber-600 tabular-nums">{formatCurrency(totalLoans)}</div>
+                        <div className="px-4 text-right text-gray-800 tabular-nums">{formatCurrency(totalNetAmount)}</div>
                       </div>
                     </div>
                   )}

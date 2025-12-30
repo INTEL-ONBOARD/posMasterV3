@@ -78,6 +78,7 @@ const LOCAL_ONLY_COLUMNS = [
     // Nested objects that get embedded for convenience (not actual DB columns)
     'member',               // Embedded member object in sales
     'cashier',              // Embedded cashier object in sales
+    'cashier_name',         // Computed from cashier.full_name or cashier.username in sales
     'items',                // Embedded items array in transactions
     'category',             // Embedded category object
     'uom',                  // Embedded unit of measurement object
@@ -95,15 +96,22 @@ const LOCAL_ONLY_COLUMNS = [
     'uom_symbol',           // From JOINed uom data
     'uom_unit_name',        // From JOINed uom data
     'category_brand',       // From JOINed category data
-    'category_type'         // From JOINed category data
+    'category_type',        // From JOINed category data
+
+    // Virtual member fields (computed from JOINs, not actual columns)
+    'member_name',          // Computed from member.full_name in sales
+    'member_type'           // Computed from member.member_type in sales
 ];
 
 // Table-specific column exclusions (columns that are virtual/JOINed only for specific tables)
 // These columns exist as real columns in some tables but are virtual JOINs in others
 const TABLE_SPECIFIC_EXCLUSIONS = {
-    // For sales_items and restock_items, these columns come from JOINs with items table
+    // For sales_items, exclude JOINed item columns (from items table JOIN)
     'sales_items': ['sku', 'item_name', 'item_image_url'],
-    'restock_items': ['sku', 'item_name', 'item_image_url']
+    // For restock_items, exclude JOINed item columns
+    'restock_items': ['sku', 'item_name', 'item_image_url'],
+    // For return_items, exclude JOINed item columns
+    'return_items': ['sku', 'item_name', 'item_image_url']
 };
 
 // Tables that use "pull-first-then-push" strategy
@@ -921,9 +929,10 @@ class CloudSyncService {
             'updated_at', 'created_at', 'synced_at', 'last_fetched_at',
             'sync_status', 'is_synced', 'last_sync_at',
             // Embedded objects that aren't actual DB columns
-            'member', 'cashier', 'items', 'category', 'uom', 'inventory', 'supplier',
+            'member', 'cashier', 'cashier_name', 'items', 'category', 'uom', 'inventory', 'supplier',
             'added_items', 'return_items', 'prepared_by_name', 'authorized_by_name',
-            'supplier_basic_info', 'uom_symbol', 'uom_unit_name', 'category_brand', 'category_type'
+            'supplier_basic_info', 'uom_symbol', 'uom_unit_name', 'category_brand', 'category_type',
+            'member_name', 'member_type'
         ];
 
         // Get all keys from both records

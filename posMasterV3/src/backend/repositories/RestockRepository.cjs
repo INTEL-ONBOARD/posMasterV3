@@ -28,7 +28,7 @@ class RestockRepository extends BaseRepository {
         const branchId = options.branchId || null;
 
         let sql = `
-            SELECT rt.*, s.basic_info as supplier_basic_info
+            SELECT rt.*, s.supplier_name, s.contact as supplier_contact, s.supplier_address
             FROM ${this.tableName} rt
             LEFT JOIN suppliers s ON rt.supplier_id = s.id
         `;
@@ -43,36 +43,20 @@ class RestockRepository extends BaseRepository {
         sql += ` ORDER BY rt.${orderBy} ${order} LIMIT ? OFFSET ?`;
         params.push(limit, offset);
 
-        console.log('[RestockRepository] findAllWithSupplier SQL:', sql);
-        console.log('[RestockRepository] findAllWithSupplier params:', params);
-
-        // Also count total records in table for debugging
-        const countStmt = this.db.prepare(`SELECT COUNT(*) as total FROM ${this.tableName}`);
-        const countResult = countStmt.get();
-        console.log('[RestockRepository] Total records in restock_transactions table:', countResult?.total || 0);
-
-        // Debug: Show unique branch_ids in the table
-        try {
-            const branchIdsStmt = this.db.prepare(`SELECT DISTINCT branch_id FROM ${this.tableName}`);
-            const branchIds = branchIdsStmt.all();
-            console.log('[RestockRepository] Unique branch_ids in restock_transactions:', branchIds.map(r => r.branch_id));
-        } catch (e) {
-            console.log('[RestockRepository] Could not get branch_ids:', e.message);
-        }
-
         const stmt = this.db.prepare(sql);
         const rows = stmt.all(...params);
-        console.log('[RestockRepository] Query returned', rows?.length || 0, 'rows');
 
         return rows.map(row => {
-            const { supplier_basic_info, ...restockData } = row;
+            const { supplier_name, supplier_contact, supplier_address, ...restockData } = row;
             let supplier = null;
 
-            if (supplier_basic_info) {
+            if (supplier_name) {
                 supplier = {
-                    basic_info: typeof supplier_basic_info === 'string'
-                        ? JSON.parse(supplier_basic_info)
-                        : supplier_basic_info
+                    basic_info: {
+                        supplier_name: supplier_name,
+                        contact: supplier_contact,
+                        supplier_address: supplier_address
+                    }
                 };
             }
 
@@ -204,18 +188,28 @@ class RestockRepository extends BaseRepository {
             `).get(restock.supplier_id);
 
             if (supplierRow) {
-                // Parse JSON fields if stored as strings
+                // Map actual supplier columns to expected structure
                 supplier = {
                     id: supplierRow.id,
-                    basic_info: typeof supplierRow.basic_info === 'string'
-                        ? JSON.parse(supplierRow.basic_info)
-                        : supplierRow.basic_info,
-                    contact_info: typeof supplierRow.contact_info === 'string'
-                        ? JSON.parse(supplierRow.contact_info)
-                        : supplierRow.contact_info,
-                    financial_info: typeof supplierRow.financial_info === 'string'
-                        ? JSON.parse(supplierRow.financial_info)
-                        : supplierRow.financial_info
+                    basic_info: {
+                        supplier_name: supplierRow.supplier_name,
+                        contact: supplierRow.contact,
+                        supplier_address: supplierRow.supplier_address,
+                        type: supplierRow.type,
+                        status: supplierRow.status
+                    },
+                    contact_info: {
+                        contact: supplierRow.contact
+                    },
+                    financial_info: {
+                        current_amount: supplierRow.current_amount,
+                        previous_amount: supplierRow.previous_amount,
+                        account_number: supplierRow.account_number,
+                        account_bank: supplierRow.account_bank,
+                        account_branch: supplierRow.account_branch,
+                        account_name: supplierRow.account_name,
+                        account_nickname: supplierRow.account_nickname
+                    }
                 };
             }
         }
