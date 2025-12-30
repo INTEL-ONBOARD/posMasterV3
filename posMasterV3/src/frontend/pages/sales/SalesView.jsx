@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useContext, useMemo } from "react";
+import React, { useState, useEffect, useRef, useContext, useMemo, useCallback } from "react";
 import SalesItemCard from "../../components/SalesItemCard";
 import { salesApi } from "../../api/localApi";
-import { ChevronDown, User, Package, ShoppingCart, X, DollarSign, RefreshCw, Pause, Trash2 } from "lucide-react";
+import { ChevronDown, User, Package, ShoppingCart, X, DollarSign, RefreshCw, Pause, Trash2, ScanLine } from "lucide-react";
 import ToastContext from "../toasts/ToastService.jsx";
 import { localAuth } from "../../api/services/localAuth";
 import { useReactiveData, TABLES } from "../../store";
@@ -26,6 +26,79 @@ const GUEST_USER = {
   credit_limit: 0,
   is_guest: true
 };
+
+/**
+ * Custom hook for barcode scanner input
+ * Barcode scanners typically send characters rapidly followed by Enter key
+ * This hook captures that input pattern and returns the scanned barcode
+ */
+function useBarcodeScanner(onScan, enabled = true) {
+  const barcodeBuffer = useRef("");
+  const lastKeyTime = useRef(Date.now());
+  const timeoutRef = useRef(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const handleKeyDown = (e) => {
+      const now = Date.now();
+      const timeSinceLastKey = now - lastKeyTime.current;
+      lastKeyTime.current = now;
+
+      // If Enter key is pressed and we have buffered input
+      if (e.key === "Enter" && barcodeBuffer.current.length > 0) {
+        e.preventDefault();
+        const scannedCode = barcodeBuffer.current.trim();
+        barcodeBuffer.current = "";
+
+        // Only process if it looks like a valid barcode (at least 3 characters)
+        if (scannedCode.length >= 3) {
+          onScan(scannedCode);
+        }
+        return;
+      }
+
+      // If time gap is too long (>100ms), likely manual typing - reset buffer
+      // Barcode scanners typically send characters within 50ms of each other
+      if (timeSinceLastKey > 100) {
+        barcodeBuffer.current = "";
+      }
+
+      // Only capture alphanumeric characters and common barcode characters
+      if (e.key.length === 1 && /^[a-zA-Z0-9\-_]$/.test(e.key)) {
+        // Don't capture if user is focused on an input field
+        const activeElement = document.activeElement;
+        const isInputFocused = activeElement && (
+          activeElement.tagName === "INPUT" ||
+          activeElement.tagName === "TEXTAREA" ||
+          activeElement.tagName === "SELECT" ||
+          activeElement.isContentEditable
+        );
+
+        if (!isInputFocused) {
+          barcodeBuffer.current += e.key;
+
+          // Clear buffer after 500ms of no input (scanner finished but no Enter)
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+          }
+          timeoutRef.current = setTimeout(() => {
+            barcodeBuffer.current = "";
+          }, 500);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [enabled, onScan]);
+}
 
 export default function SalesView({ isActive }) {
   const billRef = useRef(null);
@@ -146,6 +219,27 @@ export default function SalesView({ isActive }) {
 
   const [rightActiveSection, setRightActiveSection] = useState("buttons");
   const [selectedItems, setSelectedItems] = useState([]);
+  const [lastScannedCode, setLastScannedCode] = useState("");
+
+  // Barcode scanner handler - finds item by SKU and adds to cart
+  const handleBarcodeScan = useCallback((scannedCode) => {
+    // Find item by SKU (case-insensitive)
+    const item = inventoryItems.find(
+      (i) => i.sku?.toLowerCase() === scannedCode.toLowerCase()
+    );
+
+    if (item) {
+      loadItemtoList(item);
+      setLastScannedCode(scannedCode);
+      // Clear the visual indicator after 2 seconds
+      setTimeout(() => setLastScannedCode(""), 2000);
+    } else {
+      setLastScannedCode("");
+    }
+  }, [inventoryItems]);
+
+  // Enable barcode scanner when this view is active
+  useBarcodeScanner(handleBarcodeScan, isActive);
 
   const removeItemFromList = (id) => {
     setSelectedItems(prev => prev.filter(item => item.id !== id));
@@ -255,7 +349,15 @@ export default function SalesView({ isActive }) {
     const matchesAvailability = searchAvailability === "All" ||
       (searchAvailability === "Available" && isAvailable) ||
       (searchAvailability === "Unavailable" && !isAvailable);
-    const matchesSearch = (item?.item_name || "").toLowerCase().includes((search || "").toLowerCase());
+
+    // Search by item name, SKU (product code), or item_code
+    const searchLower = (search || "").toLowerCase();
+    const matchesSearch = searchLower === "" ||
+      (item?.item_name || "").toLowerCase().includes(searchLower) ||
+      (item?.sku || "").toLowerCase().includes(searchLower) ||
+      (item?.item_code || "").toLowerCase().includes(searchLower) ||
+      (item?.batch_code || "").toLowerCase().includes(searchLower);
+
     return matchesCategory && matchesAvailability && matchesSearch;
   });
 
@@ -477,6 +579,17 @@ export default function SalesView({ isActive }) {
               <p className="text-slate-800 font-bold text-lg tracking-wider">{invoiceNo}</p>
             </div>
 
+            {/* Barcode Scanner Indicator */}
+            {lastScannedCode && (
+              <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl px-4 py-2 flex items-center gap-2 animate-pulse shrink-0">
+                <ScanLine className="w-5 h-5 text-white" />
+                <div>
+                  <p className="text-white/80 text-[10px] font-semibold uppercase tracking-wider">Scanned</p>
+                  <p className="text-white font-bold text-sm">{lastScannedCode}</p>
+                </div>
+              </div>
+            )}
+
             {/* Spacer */}
             <div className="flex-1 min-w-0"></div>
 
@@ -672,7 +785,7 @@ export default function SalesView({ isActive }) {
                       type="text"
                       value={search}
                       onChange={handleSearch}
-                      placeholder="Search items..."
+                      placeholder="Search by name, SKU, or code..."
                       className="w-full pl-4 pr-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition-all"
                     />
                   </div>
