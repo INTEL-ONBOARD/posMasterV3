@@ -618,6 +618,8 @@ class TeaCoopService {
                 const latestPayment = payments[0];
                 this.memberRepo.update(member.id, {
                     green_leaf_value: latestPayment.green_leaf_value,
+                    additions: latestPayment.additions,
+                    deductions: latestPayment.deductions,
                     loans: latestPayment.loans,
                     net_amount: latestPayment.net_amount
                 });

@@ -32,38 +32,42 @@ function PriceChange() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedAvailability, setSelectedAvailability] = useState("All");
 
-  // Use reactive data hooks for categories and items
+  // Use reactive data hooks for categories and stock items (items with stock quantities)
   const { data: categories, loading: categoriesLoading } = useReactiveData(TABLES.CATEGORIES);
-  const { data: rawItems, loading: itemsLoading } = useReactiveData(TABLES.ITEMS);
+  const { data: rawItems, loading: itemsLoading } = useReactiveData(TABLES.STOCK);
 
   // Derive loading state
   const loadingData = categoriesLoading || itemsLoading;
 
-  // Transform items to expected format
+  // Transform stock items to expected format (stock data includes item info + quantities)
   const items = useMemo(() => {
     if (!rawItems || rawItems.length === 0) return [];
     return rawItems.map((item, index) => ({
-      id: item.id || item._id || index + 1,
+      id: item.id || item.item_id || item._id || index + 1,
       _id: item._id || `item_${index + 1}`,
+      item_id: item.item_id || item.id,
       stock_trace: item.stock_trace || [item.id || index + 1],
       item_name: item.item_name || item.name || "Unknown Item",
       item_image_url: item.item_image_url || item.image_url || "",
       item_image_blob: item.item_image_blob || null,
       sku: item.sku || `SKU_${index + 1}`,
-      maximum_capacity: item.maximum_capacity || 0,
+      maximum_capacity: item.maximum_capacity || 100,
+      threshold_limit: item.threshold_limit || 20,
       uom_id: item.uom_id || 1,
       category_id: item.category_id || 1,
       inventory_id: item.inventory_id || 1,
-      uom: item.uom || { symbol: "pcs", unit_name: "Pieces" },
-      category: item.category || { brand: "Unknown", type: "General" },
+      uom: item.uom || { symbol: item.uom_symbol || "pcs", unit_name: item.uom_unit_name || "Pieces" },
+      category: item.category || { brand: item.category_brand || "Unknown", type: item.category_type || "General" },
       inventory: item.inventory || null,
       availability: item.availability !== undefined ? item.availability : true,
-      current_qty: item.current_qty || item.quantity || 0,
+      // Use quantity from stock data (this is the actual stock quantity)
+      quantity: item.quantity || 0,
+      current_qty: item.quantity || 0,
       stock_price: item.stock_price || item.price || 0,
       retail_price: item.retail_price || item.selling_price || item.stock_price || 0,
       batch_code: item.batch_code || `BATCH_${item.sku || index + 1}`,
-      expire_date: item.expire_date || item.expiry_date || "2025-12-31",
-      status: item.status || (item.availability ? "In Stock" : "Out of Stock"),
+      expire_date: item.expiry_date || item.expire_date || "2025-12-31",
+      status: item.availability ? "In Stock" : "Out of Stock",
     }));
   }, [rawItems]);
 

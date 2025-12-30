@@ -75,6 +75,8 @@ class TeaCoopMemberRepository extends BaseRepository {
             address: apiData.address || null,
             factory_id: apiData.factoryId || apiData.factory_id || apiData.factory || 1,
             green_leaf_value: parseFloat(apiData.greenLeafValue) || 0,
+            additions: parseFloat(apiData.additions) || 0,
+            deductions: parseFloat(apiData.deductions) || 0,
             loans: parseFloat(apiData.loans) || 0,
             net_amount: parseFloat(apiData.netAmount) || 0,
             is_active: 1,
@@ -90,6 +92,8 @@ class TeaCoopMemberRepository extends BaseRepository {
                 existing.address !== memberData.address ||
                 existing.factory_id !== memberData.factory_id ||
                 parseFloat(existing.green_leaf_value) !== memberData.green_leaf_value ||
+                parseFloat(existing.additions) !== memberData.additions ||
+                parseFloat(existing.deductions) !== memberData.deductions ||
                 parseFloat(existing.loans) !== memberData.loans ||
                 parseFloat(existing.net_amount) !== memberData.net_amount;
 
@@ -181,13 +185,15 @@ class TeaCoopMemberRepository extends BaseRepository {
             SELECT
                 m.*,
                 p.green_leaf_value as latest_green_leaf,
+                p.additions as latest_additions,
+                p.deductions as latest_deductions,
                 p.loans as latest_loans,
                 p.net_amount as latest_net,
                 p.year as latest_year,
                 p.month as latest_month
             FROM ${this.tableName} m
             LEFT JOIN (
-                SELECT member_id, green_leaf_value, loans, net_amount, year, month
+                SELECT member_id, green_leaf_value, additions, deductions, loans, net_amount, year, month
                 FROM tea_coop_payments
                 WHERE (member_id, year, month) IN (
                     SELECT member_id, MAX(year * 100 + month) / 100, MAX(year * 100 + month) % 100
@@ -251,6 +257,8 @@ class TeaCoopPaymentRepository extends BaseRepository {
             year,
             month,
             green_leaf_value: parseFloat(apiData.greenLeafValue) || 0,
+            additions: parseFloat(apiData.additions) || 0,
+            deductions: parseFloat(apiData.deductions) || 0,
             loans: parseFloat(apiData.loans) || 0,
             net_amount: parseFloat(apiData.netAmount) || 0,
             payment_date: apiData.paymentDate || apiData.payment_date || null,
@@ -262,6 +270,8 @@ class TeaCoopPaymentRepository extends BaseRepository {
             // Check if data actually changed
             const dataChanged =
                 parseFloat(existing.green_leaf_value) !== paymentData.green_leaf_value ||
+                parseFloat(existing.additions) !== paymentData.additions ||
+                parseFloat(existing.deductions) !== paymentData.deductions ||
                 parseFloat(existing.loans) !== paymentData.loans ||
                 parseFloat(existing.net_amount) !== paymentData.net_amount ||
                 existing.payment_date !== paymentData.payment_date ||
