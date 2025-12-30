@@ -88,14 +88,12 @@ function UsersSidebar({
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-white rounded-r-full" />
                 )}
                 <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-1 transition-transform duration-300 ${
-                  isActive ? "bg-white/20" : "bg-white shadow-sm"
+                  isActive ? "bg-white/90 shadow-sm" : "bg-white shadow-sm"
                 } ${!isActive && "group-hover:scale-105"}`}>
                   <img
                     src={item.icon}
                     alt={item.label}
-                    className={`w-8 h-8 object-contain pointer-events-none transition-all duration-300 ${
-                      isActive ? "brightness-0 invert" : ""
-                    }`}
+                    className="w-8 h-8 object-contain pointer-events-none transition-all duration-300"
                   />
                 </div>
               </button>
