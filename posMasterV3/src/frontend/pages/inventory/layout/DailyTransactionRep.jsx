@@ -342,14 +342,15 @@ const styles = {
   }),
   page: {
     width: 794,
-    minHeight: 1123,
+    height: 1123,            // fixed page height
     margin: "0 auto 20px",
-    padding: 82,
+    padding: 82,             // keep your padding if you want
     background: "#fff",
-    boxSizing: "border-box",
+    boxSizing: "border-box", // IMPORTANT: include padding inside height
     fontFamily: '"Times New Roman", Georgia, serif',
     color: "#222",
-    position: "relative",
+    position: "relative",    // contains the absolute footer
+    overflow: "hidden"       // prevent any accidental overflow to a new page
   },
 
   header: {
