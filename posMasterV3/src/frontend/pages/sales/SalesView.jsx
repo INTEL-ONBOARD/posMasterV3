@@ -439,7 +439,8 @@ export default function SalesView({ isActive }) {
   // Store checkout data for bill generation
   const checkoutDataRef = useRef(null);
 
-// replace your generateBillPdf with this
+
+// newly added fix for printing receipt
 const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
   try {
     if (!billRef.current) return;
@@ -560,6 +561,49 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
   }
 };
 
+
+// old method for printing receipt (prints in middle of the A4)
+  const generateBillPdfOld = async (checkoutData) => {
+    try {
+      if (!billRef.current) return;
+      // Store checkout data for bill rendering
+      checkoutDataRef.current = checkoutData;
+
+      const canvas = await html2canvas(billRef.current, { scale: 2, useCORS: true });
+      const widthPt = 311.81;
+      const heightPt = 311.81;
+      const doc = new jsPDF({ unit: "pt", format: [widthPt, heightPt] });
+      const margin = 40;
+      const pdfWidth = doc.internal.pageSize.getWidth() - 2 * margin;
+      const pdfPageHeight = doc.internal.pageSize.getHeight() - 2 * margin;
+      const scaleRatio = pdfWidth / canvas.width;
+
+      let positionY = 0;
+      let pageNumber = 1;
+
+      while (positionY < canvas.height) {
+        const remainingHeightPx = canvas.height - positionY;
+        const sliceHeightPx = Math.min(remainingHeightPx, pdfPageHeight / scaleRatio);
+        const sliceCanvas = document.createElement("canvas");
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceHeightPx;
+        const ctx = sliceCanvas.getContext("2d");
+        if (!ctx) throw new Error("Failed to get 2D context");
+        ctx.drawImage(canvas, 0, positionY, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+        const sliceData = sliceCanvas.toDataURL("image/png");
+        const slicePdfHeight = sliceHeightPx * scaleRatio;
+        if (pageNumber > 1) doc.addPage();
+        doc.addImage(sliceData, "PNG", margin, margin, pdfWidth, slicePdfHeight);
+        positionY += sliceHeightPx;
+        pageNumber++;
+      }
+
+      const arrayBuffer = doc.output("arraybuffer");
+      window.electronAPI.sendPrintSilent(arrayBuffer);
+    } catch (error) {
+      console.error("generatePdf error:", error);
+    }
+  };
 
 
   const stock_items = selectedItems.map((item) => ({
