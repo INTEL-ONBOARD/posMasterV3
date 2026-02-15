@@ -439,47 +439,128 @@ export default function SalesView({ isActive }) {
   // Store checkout data for bill generation
   const checkoutDataRef = useRef(null);
 
-  const generateBillPdf = async (checkoutData) => {
-    try {
-      if (!billRef.current) return;
-      // Store checkout data for bill rendering
-      checkoutDataRef.current = checkoutData;
+// replace your generateBillPdf with this
+const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
+  try {
+    if (!billRef.current) return;
+    checkoutDataRef.current = checkoutData;
 
-      const canvas = await html2canvas(billRef.current, { scale: 2, useCORS: true });
-      const widthPt = 311.81;
-      const heightPt = 311.81;
-      const doc = new jsPDF({ unit: "pt", format: [widthPt, heightPt] });
-      const margin = 40;
-      const pdfWidth = doc.internal.pageSize.getWidth() - 2 * margin;
-      const pdfPageHeight = doc.internal.pageSize.getHeight() - 2 * margin;
-      const scaleRatio = pdfWidth / canvas.width;
+    // Choose html2canvas scale for good image quality (2 is fine)
+    const html2canvasScale = 2;
 
-      let positionY = 0;
-      let pageNumber = 1;
+    const canvas = await html2canvas(billRef.current, {
+      scale: html2canvasScale,
+      useCORS: true,
+      backgroundColor: "#ffffff"
+    });
 
-      while (positionY < canvas.height) {
-        const remainingHeightPx = canvas.height - positionY;
-        const sliceHeightPx = Math.min(remainingHeightPx, pdfPageHeight / scaleRatio);
-        const sliceCanvas = document.createElement("canvas");
-        sliceCanvas.width = canvas.width;
-        sliceCanvas.height = sliceHeightPx;
-        const ctx = sliceCanvas.getContext("2d");
-        if (!ctx) throw new Error("Failed to get 2D context");
-        ctx.drawImage(canvas, 0, positionY, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
-        const sliceData = sliceCanvas.toDataURL("image/png");
-        const slicePdfHeight = sliceHeightPx * scaleRatio;
-        if (pageNumber > 1) doc.addPage();
-        doc.addImage(sliceData, "PNG", margin, margin, pdfWidth, slicePdfHeight);
-        positionY += sliceHeightPx;
-        pageNumber++;
-      }
+    // Create A4 PDF in points
+    const doc = new jsPDF({
+      orientation: "p",
+      unit: "pt",
+      format: "a4"
+    });
 
-      const arrayBuffer = doc.output("arraybuffer");
-      window.electronAPI.sendPrintSilent(arrayBuffer);
-    } catch (error) {
-      console.error("generatePdf error:", error);
+    const marginLeft = 0;
+    const marginTop = 0;
+    const marginRight = 0;
+    
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    // const printableWidth = pageWidth - marginLeft - marginRight;
+    const printableWidth = pageWidth - marginLeft - marginRight;
+    // We want the content to occupy ONLY the LEFT HALF of the A4 printable area
+    const targetWidthPt = printableWidth / 2;
+
+    const printableHeight = pageHeight - marginTop * 2;
+
+    // Convert canvas pixels -> PDF points.
+    // 1 CSS px ~= 0.75 pt. But canvas.width = cssWidth * html2canvasScale,
+    // so factor = 0.75 / html2canvasScale
+    const pxToPt = 0.75 / html2canvasScale;
+
+    // Full image size in PDF points (preserves visual size)
+    const imgWidthPt = canvas.width * pxToPt;
+    const imgHeightPt = canvas.height * pxToPt;
+
+    // scale so it fits ONLY the left half
+    const scaleToHalf = targetWidthPt / imgWidthPt;
+
+    const finalImgWidthPt = imgWidthPt * scaleToHalf;
+    const finalImgHeightPt = imgHeightPt * scaleToHalf;
+
+    let finalScaleForPdfImage = 1; // used only if fitToPage true
+    if (fitToPage && imgWidthPt > printableWidth) {
+      finalScaleForPdfImage = printableWidth / imgWidthPt;
+      finalImgWidthPt = imgWidthPt * finalScaleForPdfImage;
+      finalImgHeightPt = imgHeightPt * finalScaleForPdfImage;
     }
-  };
+
+    // When slicing, slice heights are in canvas pixels.
+    // A slice of H_px corresponds to H_px * pxToPt points in the PDF,
+    // or H_px * pxToPt * finalScaleForPdfImage if scaling to fit.
+    let positionYpx = 0;
+    let pageNumber = 0;
+
+    while (positionYpx < canvas.height) {
+      const maxSliceHeightPx = Math.floor(
+        printableHeight / pxToPt / scaleToHalf
+      );
+
+
+      const sliceHeightPx = Math.min(canvas.height - positionYpx, maxSliceHeightPx);
+
+      // create slice canvas
+      const sliceCanvas = document.createElement("canvas");
+      sliceCanvas.width = canvas.width;
+      sliceCanvas.height = sliceHeightPx;
+
+      const ctx = sliceCanvas.getContext("2d");
+      if (!ctx) throw new Error("Failed to create 2D context for slice canvas");
+
+      // draw the slice from big canvas to sliceCanvas
+      // drawImage(source, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+      ctx.drawImage(
+        canvas,
+        0,
+        positionYpx,
+        canvas.width,
+        sliceHeightPx,
+        0,
+        0,
+        canvas.width,
+        sliceHeightPx
+      );
+
+      const sliceData = sliceCanvas.toDataURL("image/png");
+
+      const sliceHeightPt = sliceHeightPx * pxToPt * scaleToHalf;
+
+
+      if (pageNumber > 0) doc.addPage();
+      // x = left margin (left aligned). y = marginTop
+      doc.addImage(
+        sliceData,
+        "PNG",
+        marginLeft,
+        marginTop,
+        finalImgWidthPt,
+        sliceHeightPt
+      );
+
+      positionYpx += sliceHeightPx;
+      pageNumber++;
+    }
+
+    // send to your electron printing API (unchanged)
+    const arrayBuffer = doc.output("arraybuffer");
+    window.electronAPI.sendPrintSilent(arrayBuffer);
+  } catch (error) {
+    console.error("generatePdf error:", error);
+  }
+};
+
+
 
   const stock_items = selectedItems.map((item) => ({
     ...item,
