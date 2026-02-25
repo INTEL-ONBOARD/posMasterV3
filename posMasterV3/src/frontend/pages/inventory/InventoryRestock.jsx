@@ -411,6 +411,7 @@ function InventoryRestock({ isActive }) {
     if (!returnItemSelected) {
     //prevent adding items without selecting table rows
     if(!formItemId || formItemId === 0){
+      setFormErrors(prev => ({ ...prev, item_id: "Select an item from the list first." }));
       return;
     }
 
@@ -451,7 +452,7 @@ function InventoryRestock({ isActive }) {
         expired_datetime: formDataStock.expired_datetime,
         availability: formDataStock.availability,
 
-        item_discount_amt: parseFloat(formDataStock.discount),
+        item_discount_amt: parseFloat(formDataStock.discount) || 0,
 
         uom_symbol: formDataStock.uom?.uom_symbol
       };
@@ -834,6 +835,14 @@ function InventoryRestock({ isActive }) {
     const itemId = item.id ?? item._id;
 
     if (rightActiveSection != "return") {
+      // clear item selection error if it existed
+      setFormErrors(prev => {
+        if (!prev?.item_id) return prev;
+        const next = { ...prev };
+        delete next.item_id;
+        return next;
+      });
+
       console.log("Loading stock item to form:", item.item_name);
 
       // Populate form data for regular item
@@ -1560,6 +1569,9 @@ function InventoryRestock({ isActive }) {
             Add Item
           </button>
         </div>
+        {formErrors.item_id && (
+          <p className="text-xs text-red-500 mt-1">{formErrors.item_id}</p>
+        )}
       </div>
 
       {/* main transaction section (mid) with loading state and content*/}
