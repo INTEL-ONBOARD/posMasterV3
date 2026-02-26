@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { restockApi } from "../../api/localApi";
 import { ChevronDown, ChevronUp, Package, Layers, Building2, RotateCcw, Search, ArrowLeft, Plus, Trash2, Sparkles } from "lucide-react";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
@@ -57,14 +57,55 @@ function InventoryRestock({ isActive }) {
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
   const [searchAvailability, setSearchAvailability] = useState("All");
+  // Track last scanned value to suppress duplicate barcode injections
+  const searchScanRef = useRef({ value: "", time: 0 });
+  const searchLoadingTimer = useRef(null);
 
 
   // Search handler
   const handleSearch = (e) => {
+    const nextValue = e.target.value;
+    const now = Date.now();
+
+    // Some barcode scanners emit the same code twice very quickly
+    const prevValue = searchScanRef.current.value;
+    const looksLikeDoubleScan =
+      prevValue &&
+      nextValue.length === prevValue.length * 2 &&
+      nextValue.startsWith(prevValue) &&
+      nextValue.endsWith(prevValue) &&
+      (now - searchScanRef.current.time) < 800;
+
+    const isImmediateDuplicate =
+      nextValue === prevValue && (now - searchScanRef.current.time) < 400;
+
+    if (looksLikeDoubleScan || isImmediateDuplicate) {
+      // Keep only one copy of the scanned barcode
+      setSearch(prevValue);
+      setSearchLoading(false);
+      e.target.value = prevValue;
+      return;
+    }
+
+    searchScanRef.current = { value: nextValue, time: now };
+
     setSearchLoading(true);
-    setSearch(e.target.value);
-    setTimeout(() => setSearchLoading(false), 600);
+    setSearch(nextValue);
+
+    if (searchLoadingTimer.current) {
+      clearTimeout(searchLoadingTimer.current);
+    }
+    searchLoadingTimer.current = setTimeout(() => setSearchLoading(false), 600);
   };
+
+  // Clear pending timers on unmount to avoid state updates after unmount
+  useEffect(() => {
+    return () => {
+      if (searchLoadingTimer.current) {
+        clearTimeout(searchLoadingTimer.current);
+      }
+    };
+  }, []);
 
   //helper method for item availability filtering
   const interpretAvailability = (item) => {
@@ -370,6 +411,7 @@ function InventoryRestock({ isActive }) {
     if (!returnItemSelected) {
     //prevent adding items without selecting table rows
     if(!formItemId || formItemId === 0){
+      setFormErrors(prev => ({ ...prev, item_id: "Select an item from the list first." }));
       return;
     }
 
@@ -410,7 +452,7 @@ function InventoryRestock({ isActive }) {
         expired_datetime: formDataStock.expired_datetime,
         availability: formDataStock.availability,
 
-        item_discount_amt: parseFloat(formDataStock.discount),
+        item_discount_amt: parseFloat(formDataStock.discount) || 0,
 
         uom_symbol: formDataStock.uom?.uom_symbol
       };
@@ -793,6 +835,14 @@ function InventoryRestock({ isActive }) {
     const itemId = item.id ?? item._id;
 
     if (rightActiveSection != "return") {
+      // clear item selection error if it existed
+      setFormErrors(prev => {
+        if (!prev?.item_id) return prev;
+        const next = { ...prev };
+        delete next.item_id;
+        return next;
+      });
+
       console.log("Loading stock item to form:", item.item_name);
 
       // Populate form data for regular item
@@ -1519,6 +1569,9 @@ function InventoryRestock({ isActive }) {
             Add Item
           </button>
         </div>
+        {formErrors.item_id && (
+          <p className="text-xs text-red-500 mt-1">{formErrors.item_id}</p>
+        )}
       </div>
 
       {/* main transaction section (mid) with loading state and content*/}
