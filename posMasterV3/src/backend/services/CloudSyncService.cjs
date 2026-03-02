@@ -61,7 +61,7 @@ const TABLES_TO_SYNC = [
 ];
 
 // Tables that shouldn't sync (local only) - each device has its own settings
-const LOCAL_ONLY_TABLES = ['sessions', 'sync_queue', 'migrations', 'price_change_history', 'app_settings'];
+const LOCAL_ONLY_TABLES = ['sessions', 'sync_queue', 'migrations', 'price_change_history', 'app_settings', 'sync_metadata'];
 
 // Columns that exist ONLY in local SQLite and should NOT be synced to cloud MySQL
 // These columns are either:
@@ -307,6 +307,42 @@ class CloudSyncService {
     _resetRetryCount(tableName, recordId) {
         const key = `${tableName}:${recordId}`;
         this._retryCountMap.delete(key);
+    }
+
+    /**
+     * Get the last pull timestamp for a table from sync_metadata
+     * @param {string} tableName - The table name
+     * @returns {string|null} ISO timestamp string or null if never pulled
+     */
+    _getLastPullAt(tableName) {
+        try {
+            const db = getDatabase();
+            const row = db.prepare('SELECT last_pull_at FROM sync_metadata WHERE table_name = ?').get(tableName);
+            return row?.last_pull_at ?? null;
+        } catch (err) {
+            console.warn('[CloudSync] Failed to get last pull time for', tableName, ':', err.message);
+            return null;
+        }
+    }
+
+    /**
+     * Persist the last pull timestamp for a table into sync_metadata
+     * @param {string} tableName - The table name
+     * @param {string} isoTs - ISO 8601 timestamp string
+     */
+    _setLastPullAt(tableName, isoTs) {
+        try {
+            const db = getDatabase();
+            db.prepare(`
+                INSERT INTO sync_metadata (table_name, last_pull_at, updated_at)
+                VALUES (?, ?, datetime('now'))
+                ON CONFLICT(table_name) DO UPDATE
+                    SET last_pull_at = excluded.last_pull_at,
+                        updated_at   = excluded.updated_at
+            `).run(tableName, isoTs);
+        } catch (err) {
+            console.warn('[CloudSync] Failed to set last pull time for', tableName, ':', err.message);
+        }
     }
 
     /**
@@ -745,7 +781,7 @@ class CloudSyncService {
      * - If cloud is newer → pull to local
      * - New records on either side get synced to the other
      */
-    async performFullSync() {
+    async performFullSync(options = {}) {
         // Use lock to prevent concurrent syncs
         const lockAcquired = await this._acquireSyncLock(10000);
         if (!lockAcquired) {
@@ -778,6 +814,16 @@ class CloudSyncService {
         console.log('[CloudSync] Step 1: Syncing pull-first tables (pull from cloud first, then push local)...');
         for (const tableName of PULL_FIRST_TABLES) {
             try {
+                // If force option is set, clear sync_metadata so we do a full pull for this table
+                if (options?.force) {
+                    try {
+                        const db = getDatabase();
+                        db.prepare('DELETE FROM sync_metadata WHERE table_name = ?').run(tableName);
+                    } catch (err) {
+                        // ignore
+                    }
+                }
+
                 // First, pull from cloud to get latest changes
                 console.log(`[CloudSync] ${tableName}: Pulling from cloud first...`);
                 const pullResult = await this.pullFromCloud(tableName);
@@ -802,6 +848,16 @@ class CloudSyncService {
             if (PULL_FIRST_TABLES.includes(tableName)) continue;
 
             try {
+                // If force option is set, clear sync_metadata so we do a full pull for this table
+                if (options?.force) {
+                    try {
+                        const db = getDatabase();
+                        db.prepare('DELETE FROM sync_metadata WHERE table_name = ?').run(tableName);
+                    } catch (err) {
+                        // ignore
+                    }
+                }
+
                 const syncResult = await this.bidirectionalSyncTable(tableName, false); // version-based
                 results.uploaded += syncResult.pushed || 0;
                 results.downloaded += syncResult.pulled || 0;
@@ -1346,10 +1402,27 @@ class CloudSyncService {
             // when syncing child records before parent records exist
             db.pragma('foreign_keys = OFF');
 
-            // Get all records from cloud
-            const cloudRecords = await executeQuery(`SELECT * FROM ${tableName}`);
+            // Incremental pull: only fetch rows changed since the last pull
+            const lastPull = this._getLastPullAt(tableName);
+            const SKEW_MS = 5 * 60 * 1000; // 5-minute buffer for clock skew
+            const pullStart = new Date().toISOString();
+            const sinceTs = lastPull
+                ? new Date(new Date(lastPull).getTime() - SKEW_MS).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '')
+                : null;
+
+            // Build the query conditionally
+            let query, queryParams;
+            if (sinceTs) {
+                query = `SELECT * FROM ${tableName} WHERE updated_at > ?`;
+                queryParams = [sinceTs];
+            } else {
+                query = `SELECT * FROM ${tableName}`;
+                queryParams = [];
+            }
+            const cloudRecords = await executeQuery(query, queryParams);
             if (!cloudRecords || cloudRecords.length === 0) {
-                console.log(`[CloudSync] No records in cloud ${tableName}`);
+                console.log(`[CloudSync] No records in cloud ${tableName}${sinceTs ? ` since ${sinceTs}` : ''}`);
+                this._setLastPullAt(tableName, pullStart);
                 return result;
             }
 
@@ -1586,6 +1659,9 @@ class CloudSyncService {
             if (result.actuallyChanged > 0 && !noRefreshTables.includes(tableName)) {
                 broadcastBatchChange(tableName, result.actuallyChanged, 'SYNC_PULL');
             }
+
+            // Record the timestamp of this successful pull for incremental sync on next run
+            this._setLastPullAt(tableName, pullStart);
 
             return result;
         } catch (error) {
