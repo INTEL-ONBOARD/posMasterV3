@@ -57,7 +57,7 @@ export function StatusLogProvider({ children }) {
     checkNetwork();
 
     // Listen for IPC sync status change events instead of polling
-    const handler = window.electronAPI?.onSyncStatusChange;
+    const handler = window.electronAPI?.sync?.onStatusChange;
     if (handler) {
       const unsubscribe = handler((status) => {
         if (typeof status?.isOnline === 'boolean') {
