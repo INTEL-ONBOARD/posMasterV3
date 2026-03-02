@@ -820,7 +820,7 @@ class CloudSyncService {
                         const db = getDatabase();
                         db.prepare('DELETE FROM sync_metadata WHERE table_name = ?').run(tableName);
                     } catch (err) {
-                        // ignore
+                        console.warn('[CloudSync] Could not clear sync_metadata for', tableName, ':', err.message);
                     }
                 }
 
@@ -851,10 +851,13 @@ class CloudSyncService {
                 // If force option is set, clear sync_metadata so we do a full pull for this table
                 if (options?.force) {
                     try {
+                        // Prepare for future incremental extension to bidirectionalSyncTable.
+                        // Currently bidirectionalSyncTable always fetches all rows, so this delete
+                        // has no functional effect yet, but ensures a clean slate when that is wired up.
                         const db = getDatabase();
                         db.prepare('DELETE FROM sync_metadata WHERE table_name = ?').run(tableName);
                     } catch (err) {
-                        // ignore
+                        console.warn('[CloudSync] Could not clear sync_metadata for', tableName, ':', err.message);
                     }
                 }
 
@@ -1405,7 +1408,7 @@ class CloudSyncService {
             // Incremental pull: only fetch rows changed since the last pull
             const lastPull = this._getLastPullAt(tableName);
             const SKEW_MS = 5 * 60 * 1000; // 5-minute buffer for clock skew
-            const pullStart = new Date().toISOString();
+            const pullStart = new Date().toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
             const sinceTs = lastPull
                 ? new Date(new Date(lastPull).getTime() - SKEW_MS).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '')
                 : null;
