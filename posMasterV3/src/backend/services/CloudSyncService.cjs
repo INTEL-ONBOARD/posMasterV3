@@ -21,6 +21,7 @@ const {
 } = require('../database/mysql-connection.cjs');
 const dns = require('dns');
 const { nowISO } = require('../utils/helpers.cjs');
+const SyncQueueRepository = require('../repositories/SyncQueueRepository.cjs');
 const {
     broadcastDataChange,
     broadcastSyncStatus,
@@ -145,6 +146,9 @@ class CloudSyncService {
         // Sync lock to prevent concurrent syncs
         this._syncLock = false;
         this._syncLockQueue = [];
+
+        // Persistent queue repository for crash-safe offline storage
+        this.syncQueueRepo = new SyncQueueRepository();
     }
 
     /**
@@ -154,6 +158,38 @@ class CloudSyncService {
         this.pendingChanges = [];
         this._pendingChangeKeys.clear();
         console.log('[CloudSyncService] Pending changes cleared on logout');
+        try {
+            this.syncQueueRepo.cleanupCompleted(0);
+        } catch (err) {
+            console.warn('[CloudSync] Failed to clean up completed DB queue records:', err.message);
+        }
+    }
+
+    /**
+     * Recover pending changes from the DB queue on startup (crash recovery)
+     * Reloads any unprocessed queue records into memory so they are not lost.
+     */
+    recoverPendingFromDB() {
+        try {
+            const pending = this.syncQueueRepo.getNextPending(10000);
+            if (pending.length > 0) {
+                this.pendingChanges = pending.map(r => ({
+                    tableName: r.entity_type,
+                    operation: r.operation,
+                    record: r.payload,
+                    recordId: r.entity_id,
+                    timestamp: r.created_at,
+                    queueId: r.id
+                }));
+                // Rebuild deduplication key set from recovered changes
+                for (const change of this.pendingChanges) {
+                    this._addPendingKey(change.tableName, change.operation, change.recordId);
+                }
+                console.log(`[CloudSync] Recovered ${pending.length} pending changes from DB queue`);
+            }
+        } catch (err) {
+            console.warn('[CloudSync] Failed to recover pending changes:', err.message);
+        }
     }
 
     /**
@@ -284,6 +320,9 @@ class CloudSyncService {
                 console.error('[CloudSync] Initial full sync failed:', err.message)
             );
         }
+
+        // Recover any pending changes that survived a crash/restart
+        this.recoverPendingFromDB();
 
         return this;
     }
@@ -462,13 +501,35 @@ class CloudSyncService {
             } catch (error) {
                 console.error(`[CloudSync] Real-time sync failed, queuing:`, error.message);
                 // Key stays in _pendingChangeKeys; push change to queue for retry
-                this.pendingChanges.push(change);
+                try {
+                    const queuedItem = this.syncQueueRepo.enqueue({
+                        entity_type: tableName,
+                        entity_id: String(recordId),
+                        operation: operation,
+                        payload: record
+                    });
+                    this.pendingChanges.push({ ...change, queueId: queuedItem ? queuedItem.id : undefined });
+                } catch (queueErr) {
+                    console.warn('[CloudSync] Failed to persist failed change to DB queue:', queueErr.message);
+                    this.pendingChanges.push(change);
+                }
                 this.updateLocalSyncStatus(tableName, recordId, 'pending');
             }
         } else {
             // Offline - queue the change (with deduplication tracking)
             this._addPendingKey(tableName, operation, recordId);
-            this.pendingChanges.push(change);
+            try {
+                const queuedItem = this.syncQueueRepo.enqueue({
+                    entity_type: tableName,
+                    entity_id: String(recordId),
+                    operation: operation,
+                    payload: record
+                });
+                this.pendingChanges.push({ ...change, queueId: queuedItem ? queuedItem.id : undefined });
+            } catch (queueErr) {
+                console.warn('[CloudSync] Failed to persist offline change to DB queue:', queueErr.message);
+                this.pendingChanges.push(change);
+            }
             this.updateLocalSyncStatus(tableName, recordId, 'pending');
             console.log(`[CloudSync] Queued change: ${operation} on ${tableName} (ID: ${recordId}). Queue size: ${this.pendingChanges.length}`);
         }
@@ -609,6 +670,9 @@ class CloudSyncService {
                     console.warn(`[CloudSync] Dropping change after ${MAX_RETRY_ATTEMPTS} failed attempts: ${operation} on ${tableName} (ID: ${recordId})`);
                     this._resetRetryCount(tableName, recordId);
                     this.updateLocalSyncStatus(tableName, recordId, 'failed');
+                    if (change.queueId) {
+                        try { this.syncQueueRepo.markFailed(change.queueId, 'Max retries exceeded'); } catch (e) { /* ignore */ }
+                    }
                     dropped++;
                     continue;
                 }
@@ -616,11 +680,17 @@ class CloudSyncService {
                 try {
                     await this.syncSingleChange(change);
                     this._resetRetryCount(tableName, recordId);
+                    if (change.queueId) {
+                        try { this.syncQueueRepo.markCompleted(change.queueId); } catch (e) { /* ignore */ }
+                    }
                     synced++;
                 } catch (error) {
                     console.error(`[CloudSync] Failed to sync change (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS}):`, error.message);
                     this._incrementRetryCount(tableName, recordId);
                     this._addPendingKey(tableName, operation, recordId);
+                    if (change.queueId) {
+                        try { this.syncQueueRepo.markFailed(change.queueId, error.message); } catch (e) { /* ignore */ }
+                    }
                     failedChanges.push(change);
                     failed++;
                 }
@@ -2324,7 +2394,13 @@ class CloudSyncService {
             syncStatus: this.syncStatus,
             syncError: this.syncError,
             autoSyncEnabled: this.autoSyncEnabled,
-            pendingChangesCount: this.pendingChanges.length,
+            pendingChangesCount: (() => {
+                try {
+                    return this.syncQueueRepo.getStats().pending;
+                } catch (e) {
+                    return this.pendingChanges.length;
+                }
+            })(),
             mysqlInitialized: this.mysqlInitialized
         };
     }
