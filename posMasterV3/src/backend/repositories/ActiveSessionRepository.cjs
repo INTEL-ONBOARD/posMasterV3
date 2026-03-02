@@ -29,7 +29,7 @@ class ActiveSessionRepository extends BaseRepository {
 
         // Hash the session token for security (we don't need the actual token)
         const session_token_hash = session_token
-            ? crypto.createHash('sha256').update(session_token).digest('hex').substring(0, 32)
+            ? crypto.createHash('sha256').update(session_token).digest('hex')
             : null;
 
         const now = nowISO();
@@ -104,8 +104,7 @@ class ActiveSessionRepository extends BaseRepository {
         const session_token_hash = crypto
             .createHash('sha256')
             .update(sessionToken)
-            .digest('hex')
-            .substring(0, 32);
+            .digest('hex');
 
         const stmt = this.db.prepare(`
             SELECT 1 FROM ${this.tableName}

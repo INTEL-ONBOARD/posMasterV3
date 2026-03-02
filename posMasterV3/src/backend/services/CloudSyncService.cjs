@@ -148,6 +148,15 @@ class CloudSyncService {
     }
 
     /**
+     * Clear all pending changes (call on user logout to prevent data leaks)
+     */
+    clearPendingChanges() {
+        this.pendingChanges = [];
+        this._pendingChangeKeys.clear();
+        console.log('[CloudSyncService] Pending changes cleared on logout');
+    }
+
+    /**
      * Acquire sync lock with optional timeout
      * @param {number} timeout - Max time to wait in ms (default: 30000)
      * @returns {Promise<boolean>} Whether lock was acquired

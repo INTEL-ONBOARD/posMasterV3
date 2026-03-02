@@ -39,7 +39,18 @@ function validateSessionFast(token) {
     // Check cache first
     const cached = sessionCache.get(token);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        return cached.result;
+        // If it was cached as valid, also verify the session hasn't expired since caching
+        if (cached.result?.valid && cached.result?.session?.expires_at) {
+            const expiresAt = new Date(cached.result.session.expires_at).getTime();
+            if (Date.now() > expiresAt) {
+                sessionCache.delete(token); // Expired — force re-validation
+                // fall through to DB lookup below
+            } else {
+                return cached.result;
+            }
+        } else {
+            return cached.result; // Invalid cached result — return as-is (no expiry concern)
+        }
     }
 
     try {
@@ -70,8 +81,7 @@ function validateSessionFast(token) {
         const sessionTokenHash = crypto
             .createHash('sha256')
             .update(token)
-            .digest('hex')
-            .substring(0, 32);
+            .digest('hex');
 
         const activeSession = db.prepare(`
             SELECT * FROM active_sessions

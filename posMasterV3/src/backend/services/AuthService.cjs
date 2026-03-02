@@ -346,6 +346,15 @@ class AuthService {
                 // SessionValidator not available — harmless, cache will expire normally
             }
 
+            // Clear pending cloud sync changes to prevent data leaks to next user
+            try {
+                const { getCloudSyncService } = require('./CloudSyncService.cjs');
+                const cloudSync = getCloudSyncService();
+                cloudSync.clearPendingChanges();
+            } catch (e) {
+                // CloudSyncService not available — harmless
+            }
+
             return {
                 success: true,
                 status: 'success',
