@@ -264,6 +264,11 @@ class SalesRepository extends BaseRepository {
             `);
 
             for (const item of items) {
+                // Validate quantity before any DB operation
+                if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
+                    throw new Error(`Invalid quantity ${item.quantity} for item_id=${item.item_id}`);
+                }
+
                 addItemStmt.run(
                     saleId,
                     item.item_id,
@@ -308,6 +313,9 @@ class SalesRepository extends BaseRepository {
             }
 
             const fullSale = this.getFullDetails(saleId);
+            if (!fullSale) {
+                throw new Error(`Failed to retrieve sale details after creation (id=${saleId})`);
+            }
 
             // Notify CloudSync of the new sale
             notifyDataChange('sales_transactions', 'INSERT', fullSale, saleId);
@@ -381,6 +389,9 @@ class SalesRepository extends BaseRepository {
             }
 
             const completedSale = this.getFullDetails(id);
+            if (!completedSale) {
+                throw new Error(`Failed to retrieve sale details after completion (id=${id})`);
+            }
 
             // Update member income and credits when completing held order
             if (completedSale.member_id) {
