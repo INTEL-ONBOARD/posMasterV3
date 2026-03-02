@@ -137,12 +137,11 @@ class BaseRepository {
      */
     findAll(options = {}) {
         const {
+            limit = 100,
             offset = 0,
             orderBy = 'created_at',
             order = 'DESC'
         } = options;
-
-        const safeLimit = Math.min(options.limit ?? 100, 500);
 
         // Sanitize ORDER BY to prevent SQL injection
         const safeOrderBy = this.sanitizeOrderColumn(orderBy);
@@ -154,7 +153,7 @@ class BaseRepository {
             LIMIT ? OFFSET ?
         `);
 
-        return stmt.all(safeLimit, offset);
+        return stmt.all(limit, offset);
     }
 
     /**

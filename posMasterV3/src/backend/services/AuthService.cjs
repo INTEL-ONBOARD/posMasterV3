@@ -497,7 +497,7 @@ class AuthService {
                 operation: 'password_change',
                 payload: {
                     user_id: user.cloud_id || userId,
-                    new_password: newPassword
+                    new_password_hash: password_hash   // Send hash, never plaintext
                 },
                 priority: 10
             });
