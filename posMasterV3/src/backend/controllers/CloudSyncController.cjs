@@ -141,7 +141,7 @@ class CloudSyncController {
             try {
                 const service = getCloudSyncService();
                 console.log('[CloudSyncController] Force full sync requested');
-                const result = await service.performFullSync();
+                const result = await service.performFullSync({ force: true });
                 return {
                     status: 'success',
                     data: result

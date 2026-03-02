@@ -5,6 +5,7 @@
  */
 
 const { getSyncService } = require('../services/index.cjs');
+const { getCloudSyncService } = require('../services/CloudSyncService.cjs');
 const { wrapIpcHandler } = require('../utils/helpers.cjs');
 const { broadcastSyncStatus } = require('../utils/eventBroadcaster.cjs');
 
@@ -71,15 +72,25 @@ function registerSyncHandlers() {
 
         try {
             const { token } = payload;
+
+            // Broadcast sync started so UI spinner activates
+            broadcastSyncStatus({
+                isOnline: true,
+                isSyncing: true,
+                pendingCount: 0,
+                lastSyncTime: null
+            });
+
             const result = await syncService.processSyncQueue(token);
 
             // Emit status update to all renderer windows after sync completes
-            const status = syncService.getSyncStatus();
+            const cloudSync = getCloudSyncService();
+            const cloudStatus = cloudSync.getStatus();
             broadcastSyncStatus({
-                isOnline: status.isOnline,
-                isSyncing: status.isSyncing,
-                pendingCount: status.queue?.pending ?? 0,
-                lastSyncTime: new Date().toISOString()
+                isOnline: cloudStatus.isOnline,
+                isSyncing: false,
+                pendingCount: cloudStatus.pendingChangesCount,
+                lastSyncTime: cloudStatus.lastSyncTime ?? new Date().toISOString()
             });
 
             return result;
@@ -104,15 +115,25 @@ function registerSyncHandlers() {
 
         try {
             const { entityType, token } = payload;
+
+            // Broadcast sync started so UI spinner activates
+            broadcastSyncStatus({
+                isOnline: true,
+                isSyncing: true,
+                pendingCount: 0,
+                lastSyncTime: null
+            });
+
             const result = await syncService.pullFromCloud(entityType, token);
 
             // Emit status update to all renderer windows after pull completes
-            const status = syncService.getSyncStatus();
+            const cloudSync = getCloudSyncService();
+            const cloudStatus = cloudSync.getStatus();
             broadcastSyncStatus({
-                isOnline: status.isOnline,
-                isSyncing: status.isSyncing,
-                pendingCount: status.queue?.pending ?? 0,
-                lastSyncTime: new Date().toISOString()
+                isOnline: cloudStatus.isOnline,
+                isSyncing: false,
+                pendingCount: cloudStatus.pendingChangesCount,
+                lastSyncTime: cloudStatus.lastSyncTime ?? new Date().toISOString()
             });
 
             return result;
@@ -134,15 +155,24 @@ function registerSyncHandlers() {
      */
     ipcMain.handle('sync:retry-failed', wrapIpcHandler(async (event) => {
         try {
+            // Broadcast sync started so UI spinner activates
+            broadcastSyncStatus({
+                isOnline: true,
+                isSyncing: true,
+                pendingCount: 0,
+                lastSyncTime: null
+            });
+
             const result = syncService.retryFailed();
 
             // Emit status update to all renderer windows after retry completes
-            const status = syncService.getSyncStatus();
+            const cloudSync = getCloudSyncService();
+            const cloudStatus = cloudSync.getStatus();
             broadcastSyncStatus({
-                isOnline: status.isOnline,
-                isSyncing: status.isSyncing,
-                pendingCount: status.queue?.pending ?? 0,
-                lastSyncTime: new Date().toISOString()
+                isOnline: cloudStatus.isOnline,
+                isSyncing: false,
+                pendingCount: cloudStatus.pendingChangesCount,
+                lastSyncTime: cloudStatus.lastSyncTime ?? new Date().toISOString()
             });
 
             return result;

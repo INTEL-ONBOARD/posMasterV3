@@ -122,6 +122,9 @@ const PULL_FIRST_TABLES = ['users', 'user_settings', 'active_sessions'];
 // Maximum retry attempts for failed sync operations
 const MAX_RETRY_ATTEMPTS = 3;
 
+const SL_UTC_OFFSET = '+05:30'; // Sri Lanka Standard Time (UTC+5:30)
+const INCREMENTAL_SYNC_SKEW_MS = 5 * 60 * 1000; // 5-minute clock-skew buffer for incremental pull
+
 class CloudSyncService {
     constructor() {
         this.networkCheckInterval = null;
@@ -618,12 +621,14 @@ class CloudSyncService {
                 console.error(`[CloudSync] Real-time sync failed, queuing:`, error.message);
                 // Key stays in _pendingChangeKeys; push change to queue for retry
                 try {
-                    const queuedItem = this.syncQueueRepo.enqueue({
-                        entity_type: tableName,
-                        entity_id: String(recordId),
-                        operation: operation,
-                        payload: record
-                    });
+                    const queuedItem = this.syncQueueRepo
+                        ? this.syncQueueRepo.enqueue({
+                            entity_type: tableName,
+                            entity_id: String(recordId),
+                            operation: operation,
+                            payload: record
+                        })
+                        : null;
                     this.pendingChanges.push({ ...change, queueId: queuedItem ? queuedItem.id : undefined });
                 } catch (queueErr) {
                     console.warn('[CloudSync] Failed to persist failed change to DB queue:', queueErr.message);
@@ -635,12 +640,14 @@ class CloudSyncService {
             // Offline - queue the change (with deduplication tracking)
             this._addPendingKey(tableName, operation, recordId);
             try {
-                const queuedItem = this.syncQueueRepo.enqueue({
-                    entity_type: tableName,
-                    entity_id: String(recordId),
-                    operation: operation,
-                    payload: record
-                });
+                const queuedItem = this.syncQueueRepo
+                    ? this.syncQueueRepo.enqueue({
+                        entity_type: tableName,
+                        entity_id: String(recordId),
+                        operation: operation,
+                        payload: record
+                    })
+                    : null;
                 this.pendingChanges.push({ ...change, queueId: queuedItem ? queuedItem.id : undefined });
             } catch (queueErr) {
                 console.warn('[CloudSync] Failed to persist offline change to DB queue:', queueErr.message);
@@ -1481,13 +1488,12 @@ class CloudSyncService {
             // do a full SELECT * for them (and skip writing to sync_metadata since
             // there is no timestamp to filter on next time).
             const lastPull = hasUpdatedAt ? this._getLastPullAt(tableName) : null;
-            const SKEW_MS = 5 * 60 * 1000; // 5-minute buffer for clock skew
             const pullStart = nowISO().replace('T', ' ').replace(/\.\d+Z$/, '');
             // lastPull is stored as SL local time (YYYY-MM-DD HH:mm:ss) with no TZ suffix.
-            // Appending '+05:30' makes new Date() parse it unambiguously as SL local time,
-            // so the SKEW_MS subtraction produces the correct SL-local sinceTs string.
+            // Appending SL_UTC_OFFSET makes new Date() parse it unambiguously as SL local time,
+            // so the INCREMENTAL_SYNC_SKEW_MS subtraction produces the correct SL-local sinceTs string.
             const sinceTs = (hasUpdatedAt && lastPull)
-                ? new Date(new Date(lastPull + '+05:30').getTime() - SKEW_MS)
+                ? new Date(new Date(lastPull + SL_UTC_OFFSET).getTime() - INCREMENTAL_SYNC_SKEW_MS)
                     .toLocaleString('sv-SE', { timeZone: 'Asia/Colombo' })
                     .replace('T', ' ')
                 : null;
