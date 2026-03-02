@@ -1421,8 +1421,13 @@ class CloudSyncService {
             const lastPull = hasUpdatedAt ? this._getLastPullAt(tableName) : null;
             const SKEW_MS = 5 * 60 * 1000; // 5-minute buffer for clock skew
             const pullStart = nowISO().replace('T', ' ').replace(/\.\d+Z$/, '');
+            // lastPull is stored as SL local time (YYYY-MM-DD HH:mm:ss) with no TZ suffix.
+            // Appending '+05:30' makes new Date() parse it unambiguously as SL local time,
+            // so the SKEW_MS subtraction produces the correct SL-local sinceTs string.
             const sinceTs = (hasUpdatedAt && lastPull)
-                ? new Date(new Date(lastPull).getTime() - SKEW_MS).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '')
+                ? new Date(new Date(lastPull + '+05:30').getTime() - SKEW_MS)
+                    .toLocaleString('sv-SE', { timeZone: 'Asia/Colombo' })
+                    .replace('T', ' ')
                 : null;
 
             // Build the query conditionally
