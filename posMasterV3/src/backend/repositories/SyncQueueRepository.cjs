@@ -207,6 +207,16 @@ class SyncQueueRepository extends BaseRepository {
     }
 
     /**
+     * Delete all completed items immediately (used on logout)
+     * @returns {number} Number of items deleted
+     */
+    clearCompleted() {
+        const stmt = this.db.prepare("DELETE FROM sync_queue WHERE status = 'completed'");
+        const result = stmt.run();
+        return result.changes;
+    }
+
+    /**
      * Parse queue item (deserialize payload)
      * @param {Object} item - Raw item from DB
      * @returns {Object}

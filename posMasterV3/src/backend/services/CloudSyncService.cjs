@@ -147,8 +147,8 @@ class CloudSyncService {
         this._syncLock = false;
         this._syncLockQueue = [];
 
-        // Persistent queue repository for crash-safe offline storage
-        this.syncQueueRepo = new SyncQueueRepository();
+        // Persistent queue repository - initialized in initialize() after DB is ready
+        this.syncQueueRepo = null;
     }
 
     /**
@@ -160,7 +160,7 @@ class CloudSyncService {
         console.log('[CloudSyncService] Pending changes cleared on logout');
         try {
             // Delete all completed records immediately (on logout, we want a clean slate)
-            this.syncQueueRepo.db.prepare("DELETE FROM sync_queue WHERE status = 'completed'").run();
+            this.syncQueueRepo.clearCompleted();
         } catch (err) {
             console.warn('[CloudSync] Failed to clean up completed DB queue records:', err.message);
         }
@@ -188,6 +188,11 @@ class CloudSyncService {
                         });
                         // Also update the deduplication key set
                         this._addPendingKey(r.entity_type, r.operation, r.entity_id);
+                        // Seed the retry count map so existing retries are not forgotten
+                        if (r.retry_count > 0) {
+                            const key = `${r.entity_type}:${r.entity_id}`;
+                            this._retryCountMap.set(key, r.retry_count);
+                        }
                         recovered++;
                     }
                 }
@@ -322,15 +327,18 @@ class CloudSyncService {
         // Start pending sync interval
         this.startPendingSyncInterval();
 
-        // Do initial full sync if online
+        // Initialize the persistent queue repository now that DB is ready
+        this.syncQueueRepo = new SyncQueueRepository();
+
+        // Recover any pending changes that survived a crash/restart FIRST
+        this.recoverPendingFromDB();
+
+        // Then start full sync (fire-and-forget)
         if (this.isOnline && this.mysqlInitialized) {
             this.performFullSync().catch(err =>
                 console.error('[CloudSync] Initial full sync failed:', err.message)
             );
         }
-
-        // Recover any pending changes that survived a crash/restart
-        this.recoverPendingFromDB();
 
         return this;
     }
@@ -679,7 +687,7 @@ class CloudSyncService {
                     this._resetRetryCount(tableName, recordId);
                     this.updateLocalSyncStatus(tableName, recordId, 'failed');
                     if (change.queueId) {
-                        try { this.syncQueueRepo.markFailed(change.queueId, 'Max retries exceeded'); } catch (e) { /* ignore */ }
+                        try { this.syncQueueRepo.markFailed(change.queueId, 'Max retries exceeded'); } catch (e) { console.warn('[CloudSync] Failed to update sync queue record:', e.message); }
                     }
                     dropped++;
                     continue;
@@ -689,7 +697,7 @@ class CloudSyncService {
                     await this.syncSingleChange(change);
                     this._resetRetryCount(tableName, recordId);
                     if (change.queueId) {
-                        try { this.syncQueueRepo.markCompleted(change.queueId); } catch (e) { /* ignore */ }
+                        try { this.syncQueueRepo.markCompleted(change.queueId); } catch (e) { console.warn('[CloudSync] Failed to update sync queue record:', e.message); }
                     }
                     synced++;
                 } catch (error) {
@@ -697,7 +705,7 @@ class CloudSyncService {
                     this._incrementRetryCount(tableName, recordId);
                     this._addPendingKey(tableName, operation, recordId);
                     if (change.queueId) {
-                        try { this.syncQueueRepo.markFailed(change.queueId, error.message); } catch (e) { /* ignore */ }
+                        try { this.syncQueueRepo.markFailed(change.queueId, error.message); } catch (e) { console.warn('[CloudSync] Failed to update sync queue record:', e.message); }
                     }
                     failedChanges.push(change);
                     failed++;
@@ -2316,14 +2324,8 @@ class CloudSyncService {
      */
     async pushUser(user, pullBefore = true) {
         if (!this.isOnline || !this.mysqlInitialized) {
-            // Queue for later
-            this.pendingChanges.push({
-                tableName: 'users',
-                operation: 'INSERT',
-                record: user,
-                recordId: user.id,
-                timestamp: nowISO()
-            });
+            // Queue for later via queueChange so it is persisted to the DB queue
+            await this.queueChange('users', 'INSERT', user, user.id);
             return { status: 'queued' };
         }
 
@@ -2357,14 +2359,8 @@ class CloudSyncService {
      */
     async pushUserSettings(settings, pullBefore = true) {
         if (!this.isOnline || !this.mysqlInitialized) {
-            // Queue for later
-            this.pendingChanges.push({
-                tableName: 'user_settings',
-                operation: 'INSERT',
-                record: settings,
-                recordId: settings.id,
-                timestamp: nowISO()
-            });
+            // Queue for later via queueChange so it is persisted to the DB queue
+            await this.queueChange('user_settings', 'INSERT', settings, settings.id);
             return { status: 'queued' };
         }
 
@@ -2402,13 +2398,7 @@ class CloudSyncService {
             syncStatus: this.syncStatus,
             syncError: this.syncError,
             autoSyncEnabled: this.autoSyncEnabled,
-            pendingChangesCount: (() => {
-                try {
-                    return this.syncQueueRepo.getStats().pending;
-                } catch (e) {
-                    return this.pendingChanges.length;
-                }
-            })(),
+            pendingChangesCount: this.pendingChanges.length,
             mysqlInitialized: this.mysqlInitialized
         };
     }
