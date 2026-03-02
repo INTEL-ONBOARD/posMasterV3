@@ -130,6 +130,15 @@ function Dashboard() {
     localStorage.removeItem('user');
     localStorage.removeItem('sessionId');
 
+    // Clean up DataStore to prevent data leak to next user
+    if (window.dataStore?.cleanup) {
+        try {
+            window.dataStore.cleanup();
+        } catch (e) {
+            console.warn('[Dashboard] DataStore cleanup error:', e);
+        }
+    }
+
     // Navigate to login
     navigate('/login', { replace: true, state: { message } });
   };

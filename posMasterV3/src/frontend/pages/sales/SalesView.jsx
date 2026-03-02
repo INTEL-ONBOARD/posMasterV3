@@ -400,8 +400,13 @@ export default function SalesView({ isActive }) {
       const response = await salesApi.create(saleData);
 
       if (response.status === "success") {
-        // Generate and print bill (don't wait for it)
-        generateBillPdf(checkoutData);
+        // Generate and print bill
+        try {
+            await generateBillPdf(checkoutData);
+        } catch (printError) {
+            console.error('[SalesView] Bill generation failed:', printError);
+            toast.error('Sale saved but bill printing failed');
+        }
         // Mark sale as completed - clearForm will be called when modal closes
         setSaleCompleted(true);
         // Return success for the modal to show animation
