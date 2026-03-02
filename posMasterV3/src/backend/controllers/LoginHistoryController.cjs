@@ -7,6 +7,7 @@
 
 const { ipcMain } = require('electron');
 const { getLoginHistoryRepository } = require('../repositories/index.cjs');
+const { wrapIpcHandler } = require('../utils/helpers.cjs');
 
 class LoginHistoryController {
     constructor() {
@@ -28,7 +29,7 @@ class LoginHistoryController {
      */
     registerHandlers() {
         // Get all login history with pagination
-        ipcMain.handle('loginHistory:getAll', async (event, options = {}) => {
+        ipcMain.handle('loginHistory:getAll', wrapIpcHandler(async (event, options = {}) => {
             try {
                 const data = this.getRepo().getAll(options);
                 return { status: 'success', data };
@@ -36,10 +37,10 @@ class LoginHistoryController {
                 console.error('[LoginHistoryController] Get all error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Get login history for a specific user
-        ipcMain.handle('loginHistory:getByUser', async (event, userId, options = {}) => {
+        ipcMain.handle('loginHistory:getByUser', wrapIpcHandler(async (event, userId, options = {}) => {
             try {
                 const data = this.getRepo().getByUserId(userId, options);
                 return { status: 'success', data };
@@ -47,10 +48,10 @@ class LoginHistoryController {
                 console.error('[LoginHistoryController] Get by user error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Get login history by date range
-        ipcMain.handle('loginHistory:getByDateRange', async (event, startDate, endDate) => {
+        ipcMain.handle('loginHistory:getByDateRange', wrapIpcHandler(async (event, startDate, endDate) => {
             try {
                 const data = this.getRepo().getByDateRange(startDate, endDate);
                 return { status: 'success', data };
@@ -58,10 +59,10 @@ class LoginHistoryController {
                 console.error('[LoginHistoryController] Get by date range error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Get user statistics
-        ipcMain.handle('loginHistory:getUserStats', async (event, userId) => {
+        ipcMain.handle('loginHistory:getUserStats', wrapIpcHandler(async (event, userId) => {
             try {
                 const data = this.getRepo().getUserStats(userId);
                 return { status: 'success', data };
@@ -69,10 +70,10 @@ class LoginHistoryController {
                 console.error('[LoginHistoryController] Get user stats error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Get daily statistics
-        ipcMain.handle('loginHistory:getDailyStats', async (event, days = 30) => {
+        ipcMain.handle('loginHistory:getDailyStats', wrapIpcHandler(async (event, days = 30) => {
             try {
                 const data = this.getRepo().getDailyStats(days);
                 return { status: 'success', data };
@@ -80,10 +81,10 @@ class LoginHistoryController {
                 console.error('[LoginHistoryController] Get daily stats error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Get user activity summary
-        ipcMain.handle('loginHistory:getUserActivitySummary', async (event, days = 30) => {
+        ipcMain.handle('loginHistory:getUserActivitySummary', wrapIpcHandler(async (event, days = 30) => {
             try {
                 const data = this.getRepo().getUserActivitySummary(days);
                 return { status: 'success', data };
@@ -91,10 +92,10 @@ class LoginHistoryController {
                 console.error('[LoginHistoryController] Get user activity summary error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Get currently active sessions
-        ipcMain.handle('loginHistory:getActiveSessions', async () => {
+        ipcMain.handle('loginHistory:getActiveSessions', wrapIpcHandler(async () => {
             try {
                 const data = this.getRepo().getActiveSessions();
                 return { status: 'success', data };
@@ -102,10 +103,10 @@ class LoginHistoryController {
                 console.error('[LoginHistoryController] Get active sessions error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Count active sessions
-        ipcMain.handle('loginHistory:countActiveSessions', async () => {
+        ipcMain.handle('loginHistory:countActiveSessions', wrapIpcHandler(async () => {
             try {
                 const count = this.getRepo().countActiveSessions();
                 return { status: 'success', data: { count } };
@@ -113,10 +114,10 @@ class LoginHistoryController {
                 console.error('[LoginHistoryController] Count active sessions error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Mark stale sessions (cleanup)
-        ipcMain.handle('loginHistory:markStaleSessions', async (event, hoursThreshold = 24) => {
+        ipcMain.handle('loginHistory:markStaleSessions', wrapIpcHandler(async (event, hoursThreshold = 24) => {
             try {
                 const count = this.getRepo().markStaleSessions(hoursThreshold);
                 return { status: 'success', data: { markedCount: count } };
@@ -124,7 +125,7 @@ class LoginHistoryController {
                 console.error('[LoginHistoryController] Mark stale sessions error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         console.log('[LoginHistoryController] IPC handlers registered');
     }

@@ -6,6 +6,7 @@
 
 const { ipcMain } = require('electron');
 const { getTeaCoopService } = require('../services/TeaCoopService.cjs');
+const { wrapIpcHandler } = require('../utils/helpers.cjs');
 
 class TeaCoopController {
     constructor() {
@@ -27,7 +28,7 @@ class TeaCoopController {
      */
     registerHandlers() {
         // Initialize service
-        ipcMain.handle('teacoop:initialize', async () => {
+        ipcMain.handle('teacoop:initialize', wrapIpcHandler(async () => {
             try {
                 const service = this.getService();
                 await service.initialize();
@@ -36,10 +37,10 @@ class TeaCoopController {
                 console.error('[TeaCoopController] Initialize error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Get all members
-        ipcMain.handle('teacoop:members:getAll', async () => {
+        ipcMain.handle('teacoop:members:getAll', wrapIpcHandler(async () => {
             try {
                 const service = this.getService();
                 return service.getAllMembers();
@@ -47,10 +48,10 @@ class TeaCoopController {
                 console.error('[TeaCoopController] Get all members error:', error);
                 return { status: 'error', message: error.message, data: [] };
             }
-        });
+        }));
 
         // Get member by ID
-        ipcMain.handle('teacoop:members:getById', async (event, memberId) => {
+        ipcMain.handle('teacoop:members:getById', wrapIpcHandler(async (event, memberId) => {
             try {
                 const service = this.getService();
                 return service.getMemberById(memberId);
@@ -58,10 +59,10 @@ class TeaCoopController {
                 console.error('[TeaCoopController] Get member error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Search members
-        ipcMain.handle('teacoop:members:search', async (event, searchTerm) => {
+        ipcMain.handle('teacoop:members:search', wrapIpcHandler(async (event, searchTerm) => {
             try {
                 const service = this.getService();
                 return service.searchMembers(searchTerm);
@@ -69,10 +70,10 @@ class TeaCoopController {
                 console.error('[TeaCoopController] Search error:', error);
                 return { status: 'error', message: error.message, data: [] };
             }
-        });
+        }));
 
         // Get payment history (fetches from API first, then returns from local DB)
-        ipcMain.handle('teacoop:payments:getHistory', async (event, { memberId, months = 6 }) => {
+        ipcMain.handle('teacoop:payments:getHistory', wrapIpcHandler(async (event, { memberId, months = 6 }) => {
             try {
                 const service = this.getService();
                 return await service.getPaymentHistory(memberId, months);
@@ -80,10 +81,10 @@ class TeaCoopController {
                 console.error('[TeaCoopController] Get payment history error:', error);
                 return { status: 'error', message: error.message, data: [] };
             }
-        });
+        }));
 
         // Sync members from API
-        ipcMain.handle('teacoop:sync:members', async () => {
+        ipcMain.handle('teacoop:sync:members', wrapIpcHandler(async () => {
             try {
                 const service = this.getService();
                 const result = await service.syncMembersFromApi();
@@ -95,10 +96,10 @@ class TeaCoopController {
                 console.error('[TeaCoopController] Sync members error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Sync payments for a member
-        ipcMain.handle('teacoop:sync:payments', async (event, { memberId, options = {} }) => {
+        ipcMain.handle('teacoop:sync:payments', wrapIpcHandler(async (event, { memberId, options = {} }) => {
             try {
                 const service = this.getService();
                 const result = await service.syncMemberPayments(memberId, options);
@@ -110,10 +111,10 @@ class TeaCoopController {
                 console.error('[TeaCoopController] Sync payments error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Refresh member data (force fetch from API)
-        ipcMain.handle('teacoop:members:refresh', async (event, memberId) => {
+        ipcMain.handle('teacoop:members:refresh', wrapIpcHandler(async (event, memberId) => {
             try {
                 const service = this.getService();
                 return await service.refreshMemberData(memberId);
@@ -121,10 +122,10 @@ class TeaCoopController {
                 console.error('[TeaCoopController] Refresh member error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Get sync status
-        ipcMain.handle('teacoop:status', async () => {
+        ipcMain.handle('teacoop:status', wrapIpcHandler(async () => {
             try {
                 const service = this.getService();
                 return {
@@ -135,7 +136,7 @@ class TeaCoopController {
                 console.error('[TeaCoopController] Get status error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         console.log('[TeaCoopController] IPC handlers registered');
     }

@@ -6,6 +6,7 @@
 
 const { ipcMain } = require('electron');
 const memberService = require('../services/MemberService.cjs');
+const { wrapIpcHandler } = require('../utils/helpers.cjs');
 
 class MemberController {
     /**
@@ -13,59 +14,59 @@ class MemberController {
      */
     static registerHandlers() {
         // Get all members
-        ipcMain.handle('members:get-all', async () => {
+        ipcMain.handle('members:get-all', wrapIpcHandler(async () => {
             return memberService.getAll();
-        });
+        }));
 
         // Get active members only
-        ipcMain.handle('members:get-active', async () => {
+        ipcMain.handle('members:get-active', wrapIpcHandler(async () => {
             return memberService.getActive();
-        });
+        }));
 
         // Get member by ID
-        ipcMain.handle('members:get-by-id', async (event, id) => {
+        ipcMain.handle('members:get-by-id', wrapIpcHandler(async (event, id) => {
             return memberService.getById(id);
-        });
+        }));
 
         // Get member by member number
-        ipcMain.handle('members:get-by-member-no', async (event, memberNo) => {
+        ipcMain.handle('members:get-by-member-no', wrapIpcHandler(async (event, memberNo) => {
             return memberService.getByMemberNo(memberNo);
-        });
+        }));
 
         // Get member with transaction history
-        ipcMain.handle('members:get-with-transactions', async (event, id) => {
+        ipcMain.handle('members:get-with-transactions', wrapIpcHandler(async (event, id) => {
             return memberService.getWithTransactions(id);
-        });
+        }));
 
         // Search members
-        ipcMain.handle('members:search', async (event, searchTerm) => {
+        ipcMain.handle('members:search', wrapIpcHandler(async (event, searchTerm) => {
             return memberService.search(searchTerm);
-        });
+        }));
 
         // Create member
-        ipcMain.handle('members:create', async (event, data) => {
+        ipcMain.handle('members:create', wrapIpcHandler(async (event, data) => {
             return memberService.create(data);
-        });
+        }));
 
         // Update member
-        ipcMain.handle('members:update', async (event, id, data) => {
+        ipcMain.handle('members:update', wrapIpcHandler(async (event, id, data) => {
             return memberService.update(id, data);
-        });
+        }));
 
         // Delete member
-        ipcMain.handle('members:delete', async (event, id) => {
+        ipcMain.handle('members:delete', wrapIpcHandler(async (event, id) => {
             return memberService.delete(id);
-        });
+        }));
 
         // Get top members by income
-        ipcMain.handle('members:get-top', async (event, limit) => {
+        ipcMain.handle('members:get-top', wrapIpcHandler(async (event, limit) => {
             return memberService.getTopMembers(limit || 10);
-        });
+        }));
 
         // Get members with credits (debtors)
-        ipcMain.handle('members:get-debtors', async () => {
+        ipcMain.handle('members:get-debtors', wrapIpcHandler(async () => {
             return memberService.getDebtors();
-        });
+        }));
 
         console.log('[MemberController] IPC handlers registered');
     }

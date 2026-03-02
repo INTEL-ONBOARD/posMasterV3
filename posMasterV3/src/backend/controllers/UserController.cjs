@@ -5,6 +5,7 @@
  */
 
 const { getUserService } = require('../services/index.cjs');
+const { wrapIpcHandler } = require('../utils/helpers.cjs');
 
 // Lazy load ipcMain to ensure electron is ready
 let _ipcMain = null;
@@ -28,7 +29,7 @@ function registerUserHandlers() {
      * Payload: { limit?: number, offset?: number, orderBy?: string, order?: string }
      * Response: { success: boolean, data: User[], total: number }
      */
-    ipcMain.handle('users:get-all', async (event, payload = {}) => {
+    ipcMain.handle('users:get-all', wrapIpcHandler(async (event, payload = {}) => {
         console.log('[UserController] Get all users request received');
 
         try {
@@ -42,7 +43,7 @@ function registerUserHandlers() {
                 message: 'Failed to fetch users: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Get user by ID
@@ -50,7 +51,7 @@ function registerUserHandlers() {
      * Payload: { userId: string }
      * Response: { success: boolean, data: User }
      */
-    ipcMain.handle('users:get-by-id', async (event, payload) => {
+    ipcMain.handle('users:get-by-id', wrapIpcHandler(async (event, payload) => {
         try {
             const { userId } = payload;
             return userService.getUserById(userId);
@@ -63,7 +64,7 @@ function registerUserHandlers() {
                 message: 'Failed to fetch user: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Update user
@@ -71,7 +72,7 @@ function registerUserHandlers() {
      * Payload: { userId: string, data: Object }
      * Response: { success: boolean, data: User }
      */
-    ipcMain.handle('users:update', async (event, payload) => {
+    ipcMain.handle('users:update', wrapIpcHandler(async (event, payload) => {
         console.log('[UserController] Update user request received');
 
         try {
@@ -86,7 +87,7 @@ function registerUserHandlers() {
                 message: 'Failed to update user: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Delete user
@@ -94,7 +95,7 @@ function registerUserHandlers() {
      * Payload: { userId: string, hardDelete?: boolean }
      * Response: { success: boolean, message: string }
      */
-    ipcMain.handle('users:delete', async (event, payload) => {
+    ipcMain.handle('users:delete', wrapIpcHandler(async (event, payload) => {
         console.log('[UserController] Delete user request received, payload:', payload);
 
         try {
@@ -122,7 +123,7 @@ function registerUserHandlers() {
                 message: 'Failed to delete user: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Search users
@@ -130,7 +131,7 @@ function registerUserHandlers() {
      * Payload: { query: string }
      * Response: { success: boolean, data: User[], count: number }
      */
-    ipcMain.handle('users:search', async (event, payload) => {
+    ipcMain.handle('users:search', wrapIpcHandler(async (event, payload) => {
         try {
             const { query } = payload;
             return userService.searchUsers(query);
@@ -143,7 +144,7 @@ function registerUserHandlers() {
                 message: 'Search failed: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Get users by role
@@ -151,7 +152,7 @@ function registerUserHandlers() {
      * Payload: { role: string }
      * Response: { success: boolean, data: User[], count: number }
      */
-    ipcMain.handle('users:get-by-role', async (event, payload) => {
+    ipcMain.handle('users:get-by-role', wrapIpcHandler(async (event, payload) => {
         try {
             const { role } = payload;
             return userService.getUsersByRole(role);
@@ -164,7 +165,7 @@ function registerUserHandlers() {
                 message: 'Failed to fetch users: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Update user roles
@@ -172,7 +173,7 @@ function registerUserHandlers() {
      * Payload: { userId: string, roles: string[] }
      * Response: { success: boolean, data: User }
      */
-    ipcMain.handle('users:update-roles', async (event, payload) => {
+    ipcMain.handle('users:update-roles', wrapIpcHandler(async (event, payload) => {
         console.log('[UserController] Update roles request received');
 
         try {
@@ -187,7 +188,7 @@ function registerUserHandlers() {
                 message: 'Failed to update roles: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Get user statistics
@@ -195,7 +196,7 @@ function registerUserHandlers() {
      * Payload: none
      * Response: { success: boolean, data: { total, active, inactive, pendingSync } }
      */
-    ipcMain.handle('users:statistics', async (event) => {
+    ipcMain.handle('users:statistics', wrapIpcHandler(async (event) => {
         try {
             return userService.getStatistics();
 
@@ -207,7 +208,7 @@ function registerUserHandlers() {
                 message: 'Failed to get statistics: ' + error.message
             };
         }
-    });
+    }));
 
     console.log('[UserController] User handlers registered');
 }

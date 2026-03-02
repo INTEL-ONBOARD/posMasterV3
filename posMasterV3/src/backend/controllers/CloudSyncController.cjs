@@ -6,6 +6,7 @@
 
 const { ipcMain } = require('electron');
 const { getCloudSyncService } = require('../services/CloudSyncService.cjs');
+const { wrapIpcHandler } = require('../utils/helpers.cjs');
 
 class CloudSyncController {
     constructor() {
@@ -17,7 +18,7 @@ class CloudSyncController {
      */
     registerHandlers() {
         // Get sync status
-        ipcMain.handle('cloudSync:getStatus', async () => {
+        ipcMain.handle('cloudSync:getStatus', wrapIpcHandler(async () => {
             try {
                 const service = getCloudSyncService();
                 return {
@@ -28,10 +29,10 @@ class CloudSyncController {
                 console.error('[CloudSyncController] Get status error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Trigger manual sync
-        ipcMain.handle('cloudSync:syncNow', async () => {
+        ipcMain.handle('cloudSync:syncNow', wrapIpcHandler(async () => {
             try {
                 const service = getCloudSyncService();
                 const result = await service.syncNow();
@@ -43,10 +44,10 @@ class CloudSyncController {
                 console.error('[CloudSyncController] Sync now error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Enable/disable auto-sync
-        ipcMain.handle('cloudSync:setAutoSync', async (event, enabled) => {
+        ipcMain.handle('cloudSync:setAutoSync', wrapIpcHandler(async (event, enabled) => {
             try {
                 const service = getCloudSyncService();
                 service.setAutoSync(enabled);
@@ -58,10 +59,10 @@ class CloudSyncController {
                 console.error('[CloudSyncController] Set auto sync error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Check network status
-        ipcMain.handle('cloudSync:checkNetwork', async () => {
+        ipcMain.handle('cloudSync:checkNetwork', wrapIpcHandler(async () => {
             try {
                 const service = getCloudSyncService();
                 const isOnline = await service.checkNetworkStatus();
@@ -73,10 +74,10 @@ class CloudSyncController {
                 console.error('[CloudSyncController] Check network error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Pull users from cloud (cloud is the primary source for users)
-        ipcMain.handle('cloudSync:pullUsers', async () => {
+        ipcMain.handle('cloudSync:pullUsers', wrapIpcHandler(async () => {
             try {
                 const service = getCloudSyncService();
                 const result = await service.pullUsers();
@@ -88,10 +89,10 @@ class CloudSyncController {
                 console.error('[CloudSyncController] Pull users error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Push a user to cloud
-        ipcMain.handle('cloudSync:pushUser', async (event, user) => {
+        ipcMain.handle('cloudSync:pushUser', wrapIpcHandler(async (event, user) => {
             try {
                 const service = getCloudSyncService();
                 const result = await service.pushUser(user);
@@ -103,10 +104,10 @@ class CloudSyncController {
                 console.error('[CloudSyncController] Push user error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Force ensure MySQL schema (creates tables if they don't exist)
-        ipcMain.handle('cloudSync:ensureSchema', async () => {
+        ipcMain.handle('cloudSync:ensureSchema', wrapIpcHandler(async () => {
             try {
                 const service = getCloudSyncService();
                 const result = await service.ensureMySQLSchema();
@@ -118,10 +119,10 @@ class CloudSyncController {
                 console.error('[CloudSyncController] Ensure schema error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Initialize MySQL manually (useful for reconnection)
-        ipcMain.handle('cloudSync:initializeMySQL', async () => {
+        ipcMain.handle('cloudSync:initializeMySQL', wrapIpcHandler(async () => {
             try {
                 const service = getCloudSyncService();
                 const initialized = await service.initializeMySQL();
@@ -133,10 +134,10 @@ class CloudSyncController {
                 console.error('[CloudSyncController] Initialize MySQL error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Force full sync immediately (for real-time requirements)
-        ipcMain.handle('cloudSync:forceFullSync', async () => {
+        ipcMain.handle('cloudSync:forceFullSync', wrapIpcHandler(async () => {
             try {
                 const service = getCloudSyncService();
                 console.log('[CloudSyncController] Force full sync requested');
@@ -149,10 +150,10 @@ class CloudSyncController {
                 console.error('[CloudSyncController] Force full sync error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Force sync active_sessions immediately (for single-device enforcement)
-        ipcMain.handle('cloudSync:syncActiveSessions', async () => {
+        ipcMain.handle('cloudSync:syncActiveSessions', wrapIpcHandler(async () => {
             try {
                 const service = getCloudSyncService();
                 console.log('[CloudSyncController] Syncing active_sessions immediately');
@@ -178,10 +179,10 @@ class CloudSyncController {
                 console.error('[CloudSyncController] Sync active sessions error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Get real-time sync status
-        ipcMain.handle('cloudSync:getRealTimeStatus', async () => {
+        ipcMain.handle('cloudSync:getRealTimeStatus', wrapIpcHandler(async () => {
             try {
                 const { getRealTimeSyncService } = require('../services/RealTimeSyncService.cjs');
                 const realTimeSync = getRealTimeSyncService();
@@ -193,7 +194,7 @@ class CloudSyncController {
                 console.error('[CloudSyncController] Get real-time status error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         console.log('[CloudSyncController] IPC handlers registered');
     }

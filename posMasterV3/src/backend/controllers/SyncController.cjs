@@ -5,6 +5,7 @@
  */
 
 const { getSyncService } = require('../services/index.cjs');
+const { wrapIpcHandler } = require('../utils/helpers.cjs');
 
 // Lazy load ipcMain to ensure electron is ready
 let _ipcMain = null;
@@ -28,7 +29,7 @@ function registerSyncHandlers() {
      * Payload: none
      * Response: { isOnline: boolean, isSyncing: boolean, queue: Object }
      */
-    ipcMain.handle('sync:status', async (event) => {
+    ipcMain.handle('sync:status', wrapIpcHandler(async (event) => {
         try {
             return syncService.getSyncStatus();
 
@@ -39,7 +40,7 @@ function registerSyncHandlers() {
                 message: 'Failed to get sync status: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Check connectivity to cloud
@@ -47,7 +48,7 @@ function registerSyncHandlers() {
      * Payload: none
      * Response: { online: boolean }
      */
-    ipcMain.handle('sync:check-connectivity', async (event) => {
+    ipcMain.handle('sync:check-connectivity', wrapIpcHandler(async (event) => {
         try {
             const online = await syncService.checkConnectivity();
             return { online };
@@ -56,7 +57,7 @@ function registerSyncHandlers() {
             console.error('[SyncController] Check connectivity error:', error.message);
             return { online: false };
         }
-    });
+    }));
 
     /**
      * Process sync queue (pull from cloud first, then push to cloud)
@@ -64,7 +65,7 @@ function registerSyncHandlers() {
      * Payload: { token?: string }
      * Response: { success: boolean, pulled: number, processed: number, succeeded: number, failed: number }
      */
-    ipcMain.handle('sync:process-queue', async (event, payload = {}) => {
+    ipcMain.handle('sync:process-queue', wrapIpcHandler(async (event, payload = {}) => {
         console.log('[SyncController] Process queue request received');
 
         try {
@@ -78,7 +79,7 @@ function registerSyncHandlers() {
                 message: 'Sync failed: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Pull data from cloud
@@ -86,7 +87,7 @@ function registerSyncHandlers() {
      * Payload: { entityType: string, token?: string }
      * Response: { success: boolean, updated: number, imported: number }
      */
-    ipcMain.handle('sync:pull', async (event, payload) => {
+    ipcMain.handle('sync:pull', wrapIpcHandler(async (event, payload) => {
         console.log('[SyncController] Pull request received');
 
         try {
@@ -100,7 +101,7 @@ function registerSyncHandlers() {
                 message: 'Pull failed: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Retry failed sync items
@@ -108,7 +109,7 @@ function registerSyncHandlers() {
      * Payload: none
      * Response: { success: boolean, message: string }
      */
-    ipcMain.handle('sync:retry-failed', async (event) => {
+    ipcMain.handle('sync:retry-failed', wrapIpcHandler(async (event) => {
         try {
             return syncService.retryFailed();
 
@@ -119,7 +120,7 @@ function registerSyncHandlers() {
                 message: 'Retry failed: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Clean up old sync items
@@ -127,7 +128,7 @@ function registerSyncHandlers() {
      * Payload: { daysOld?: number }
      * Response: { success: boolean, message: string }
      */
-    ipcMain.handle('sync:cleanup', async (event, payload = {}) => {
+    ipcMain.handle('sync:cleanup', wrapIpcHandler(async (event, payload = {}) => {
         try {
             const { daysOld = 7 } = payload;
             return syncService.cleanup(daysOld);
@@ -139,7 +140,7 @@ function registerSyncHandlers() {
                 message: 'Cleanup failed: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Set cloud URL
@@ -147,7 +148,7 @@ function registerSyncHandlers() {
      * Payload: { url: string }
      * Response: { success: boolean }
      */
-    ipcMain.handle('sync:set-cloud-url', async (event, payload) => {
+    ipcMain.handle('sync:set-cloud-url', wrapIpcHandler(async (event, payload) => {
         try {
             const { url } = payload;
             syncService.setCloudUrl(url);
@@ -160,7 +161,7 @@ function registerSyncHandlers() {
                 message: 'Failed to set cloud URL: ' + error.message
             };
         }
-    });
+    }));
 
     console.log('[SyncController] Sync handlers registered');
 }

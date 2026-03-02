@@ -6,6 +6,7 @@
 
 const { ipcMain } = require('electron');
 const SettingsService = require('../services/SettingsService.cjs');
+const { wrapIpcHandler } = require('../utils/helpers.cjs');
 
 class SettingsController {
     constructor() {
@@ -21,82 +22,82 @@ class SettingsController {
         // ============================================
 
         // Get user settings
-        ipcMain.handle('settings:get-user-settings', async (event, userId) => {
+        ipcMain.handle('settings:get-user-settings', wrapIpcHandler(async (event, userId) => {
             try {
                 return this.service.getUserSettings(userId);
             } catch (error) {
                 console.error('[SettingsController] Get user settings error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Get current user with settings
-        ipcMain.handle('settings:get-current-user-with-settings', async (event, userId) => {
+        ipcMain.handle('settings:get-current-user-with-settings', wrapIpcHandler(async (event, userId) => {
             try {
                 return this.service.getCurrentUserWithSettings(userId);
             } catch (error) {
                 console.error('[SettingsController] Get current user error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Update user profile
-        ipcMain.handle('settings:update-user-profile', async (event, { userId, profileData }) => {
+        ipcMain.handle('settings:update-user-profile', wrapIpcHandler(async (event, { userId, profileData }) => {
             try {
                 return this.service.updateUserProfile(userId, profileData);
             } catch (error) {
                 console.error('[SettingsController] Update profile error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Update user permissions
-        ipcMain.handle('settings:update-user-permissions', async (event, { userId, permissions }) => {
+        ipcMain.handle('settings:update-user-permissions', wrapIpcHandler(async (event, { userId, permissions }) => {
             try {
                 return this.service.updateUserPermissions(userId, permissions);
             } catch (error) {
                 console.error('[SettingsController] Update permissions error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Update profile image
-        ipcMain.handle('settings:update-profile-image', async (event, { userId, profileImage }) => {
+        ipcMain.handle('settings:update-profile-image', wrapIpcHandler(async (event, { userId, profileImage }) => {
             try {
                 return this.service.updateProfileImage(userId, profileImage);
             } catch (error) {
                 console.error('[SettingsController] Update profile image error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // ============================================
         // APP SETTINGS HANDLERS
         // ============================================
 
         // Get all app settings
-        ipcMain.handle('settings:get-app-settings', async () => {
+        ipcMain.handle('settings:get-app-settings', wrapIpcHandler(async () => {
             try {
                 return this.service.getAppSettings();
             } catch (error) {
                 console.error('[SettingsController] Get app settings error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Get a single app setting
-        ipcMain.handle('settings:get-app-setting', async (event, key) => {
+        ipcMain.handle('settings:get-app-setting', wrapIpcHandler(async (event, key) => {
             try {
                 return this.service.getAppSetting(key);
             } catch (error) {
                 console.error('[SettingsController] Get app setting error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Update app settings (multiple)
         // Returns requiresRestart: true so frontend can trigger app restart + logout
-        ipcMain.handle('settings:update-app-settings', async (event, settings) => {
+        ipcMain.handle('settings:update-app-settings', wrapIpcHandler(async (event, settings) => {
             try {
                 const result = this.service.updateAppSettings(settings);
                 // App settings changes require restart and logout
@@ -105,11 +106,11 @@ class SettingsController {
                 console.error('[SettingsController] Update app settings error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Update a single app setting
         // Returns requiresRestart: true so frontend can trigger app restart + logout
-        ipcMain.handle('settings:update-app-setting', async (event, { key, value }) => {
+        ipcMain.handle('settings:update-app-setting', wrapIpcHandler(async (event, { key, value }) => {
             try {
                 const result = this.service.updateAppSetting(key, value);
                 // App settings changes require restart and logout
@@ -118,11 +119,11 @@ class SettingsController {
                 console.error('[SettingsController] Update app setting error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Reset app settings to defaults
         // Returns requiresRestart: true so frontend can trigger app restart + logout
-        ipcMain.handle('settings:reset-app-settings', async () => {
+        ipcMain.handle('settings:reset-app-settings', wrapIpcHandler(async () => {
             try {
                 const result = this.service.resetAppSettings();
                 // App settings changes require restart and logout
@@ -131,7 +132,7 @@ class SettingsController {
                 console.error('[SettingsController] Reset app settings error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         console.log('[SettingsController] IPC handlers registered');
     }

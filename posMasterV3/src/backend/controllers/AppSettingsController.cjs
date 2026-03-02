@@ -7,6 +7,7 @@
 
 const { ipcMain, BrowserWindow } = require('electron');
 const { getAppSettingsService } = require('../services/AppSettingsService.cjs');
+const { wrapIpcHandler } = require('../utils/helpers.cjs');
 
 class AppSettingsController {
     constructor() {
@@ -20,7 +21,7 @@ class AppSettingsController {
         this.service = getAppSettingsService();
 
         // Get all app settings with their applied status
-        ipcMain.handle('appSettings:getAll', async () => {
+        ipcMain.handle('appSettings:getAll', wrapIpcHandler(async () => {
             try {
                 const settings = this.service.getAllSettings();
                 const isRunOnStartup = await this.service.isRunOnStartupEnabled();
@@ -38,10 +39,10 @@ class AppSettingsController {
                 console.error('[AppSettingsController] Get all error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Set logout on close configuration
-        ipcMain.handle('appSettings:setLogoutOnClose', async (event, enabled) => {
+        ipcMain.handle('appSettings:setLogoutOnClose', wrapIpcHandler(async (event, enabled) => {
             try {
                 this.service.setLogoutOnClose(enabled);
                 return {
@@ -52,10 +53,10 @@ class AppSettingsController {
                 console.error('[AppSettingsController] Set logout on close error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Set run on startup
-        ipcMain.handle('appSettings:setRunOnStartup', async (event, enabled) => {
+        ipcMain.handle('appSettings:setRunOnStartup', wrapIpcHandler(async (event, enabled) => {
             try {
                 const result = await this.service.setRunOnStartup(enabled);
                 return {
@@ -66,10 +67,10 @@ class AppSettingsController {
                 console.error('[AppSettingsController] Set run on startup error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Set maximize on start
-        ipcMain.handle('appSettings:setMaximizeOnStart', async (event, enabled) => {
+        ipcMain.handle('appSettings:setMaximizeOnStart', wrapIpcHandler(async (event, enabled) => {
             try {
                 this.service.setMaximizeOnStart(enabled);
                 return {
@@ -80,10 +81,10 @@ class AppSettingsController {
                 console.error('[AppSettingsController] Set maximize error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Set notifications enabled
-        ipcMain.handle('appSettings:setNotifications', async (event, enabled) => {
+        ipcMain.handle('appSettings:setNotifications', wrapIpcHandler(async (event, enabled) => {
             try {
                 this.service.setNotificationsEnabled(enabled);
                 return {
@@ -94,10 +95,10 @@ class AppSettingsController {
                 console.error('[AppSettingsController] Set notifications error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Set cloud sync enabled
-        ipcMain.handle('appSettings:setCloudSync', async (event, enabled) => {
+        ipcMain.handle('appSettings:setCloudSync', wrapIpcHandler(async (event, enabled) => {
             try {
                 this.service.setCloudSyncEnabled(enabled);
 
@@ -125,10 +126,10 @@ class AppSettingsController {
                 console.error('[AppSettingsController] Set cloud sync error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Send test notification
-        ipcMain.handle('appSettings:testNotification', async () => {
+        ipcMain.handle('appSettings:testNotification', wrapIpcHandler(async () => {
             try {
                 this.service.sendNotification(
                     'POS Master',
@@ -140,10 +141,10 @@ class AppSettingsController {
                 console.error('[AppSettingsController] Test notification error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Apply all settings (called after login)
-        ipcMain.handle('appSettings:applyAll', async () => {
+        ipcMain.handle('appSettings:applyAll', wrapIpcHandler(async () => {
             try {
                 const mainWindow = BrowserWindow.getAllWindows()[0];
                 const settings = await this.service.applyAllSettings({
@@ -159,17 +160,17 @@ class AppSettingsController {
                 console.error('[AppSettingsController] Apply all error:', error);
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         // Check if cloud sync should be enabled
-        ipcMain.handle('appSettings:isCloudSyncEnabled', async () => {
+        ipcMain.handle('appSettings:isCloudSyncEnabled', wrapIpcHandler(async () => {
             try {
                 const enabled = this.service.isCloudSyncEnabled();
                 return { status: 'success', data: { enabled } };
             } catch (error) {
                 return { status: 'error', message: error.message };
             }
-        });
+        }));
 
         console.log('[AppSettingsController] IPC handlers registered');
     }

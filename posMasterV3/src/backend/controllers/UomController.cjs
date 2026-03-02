@@ -6,6 +6,7 @@
 
 const { ipcMain } = require('electron');
 const uomService = require('../services/UomService.cjs');
+const { wrapIpcHandler } = require('../utils/helpers.cjs');
 
 class UomController {
     /**
@@ -13,34 +14,34 @@ class UomController {
      */
     static registerHandlers() {
         // Get all UOMs
-        ipcMain.handle('uom:get-all', async () => {
+        ipcMain.handle('uom:get-all', wrapIpcHandler(async () => {
             return uomService.getAll();
-        });
+        }));
 
         // Get UOM by ID
-        ipcMain.handle('uom:get-by-id', async (event, id) => {
+        ipcMain.handle('uom:get-by-id', wrapIpcHandler(async (event, id) => {
             return uomService.getById(id);
-        });
+        }));
 
         // Search UOMs
-        ipcMain.handle('uom:search', async (event, searchTerm) => {
+        ipcMain.handle('uom:search', wrapIpcHandler(async (event, searchTerm) => {
             return uomService.search(searchTerm);
-        });
+        }));
 
         // Create UOM
-        ipcMain.handle('uom:create', async (event, data) => {
+        ipcMain.handle('uom:create', wrapIpcHandler(async (event, data) => {
             return uomService.create(data);
-        });
+        }));
 
         // Update UOM
-        ipcMain.handle('uom:update', async (event, id, data) => {
+        ipcMain.handle('uom:update', wrapIpcHandler(async (event, id, data) => {
             return uomService.update(id, data);
-        });
+        }));
 
         // Delete UOM
-        ipcMain.handle('uom:delete', async (event, id) => {
+        ipcMain.handle('uom:delete', wrapIpcHandler(async (event, id) => {
             return uomService.delete(id);
-        });
+        }));
 
         console.log('[UomController] IPC handlers registered');
     }

@@ -381,6 +381,9 @@ class SalesRepository extends BaseRepository {
             `);
 
             for (const item of items) {
+                if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
+                    throw new Error(`Invalid quantity ${item.quantity} for stock_id=${item.stock_id} in held order ${id}`);
+                }
                 decreaseStockStmt.run(
                     item.quantity,
                     nowISO(),

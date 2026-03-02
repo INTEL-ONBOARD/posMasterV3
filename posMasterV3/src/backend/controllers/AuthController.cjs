@@ -7,6 +7,7 @@
 
 const { getAuthService } = require('../services/index.cjs');
 const { branchContextService } = require('../services/BranchContextService.cjs');
+const { wrapIpcHandler } = require('../utils/helpers.cjs');
 
 // Lazy load ipcMain to ensure electron is ready
 let _ipcMain = null;
@@ -38,7 +39,7 @@ function registerAuthHandlers() {
      * Payload: { email: string, password: string, deviceInfo?: string }
      * Response: { success: boolean, status: string, message: string, data?: User, token?: string, branch?: Object }
      */
-    ipcMain.handle('auth:login', async (event, payload) => {
+    ipcMain.handle('auth:login', wrapIpcHandler(async (event, payload) => {
         console.log('[AuthController] Login request received');
 
         try {
@@ -84,7 +85,7 @@ function registerAuthHandlers() {
                 message: 'Login failed: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Handle user registration
@@ -92,7 +93,7 @@ function registerAuthHandlers() {
      * Payload: { username: string, email: string, password: string, full_name?: string, roles?: string[] }
      * Response: { success: boolean, status: string, message: string, data?: User }
      */
-    ipcMain.handle('auth:register', async (event, payload) => {
+    ipcMain.handle('auth:register', wrapIpcHandler(async (event, payload) => {
         console.log('[AuthController] Registration request received');
 
         try {
@@ -107,7 +108,7 @@ function registerAuthHandlers() {
                 message: 'Registration failed: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Handle user logout
@@ -115,7 +116,7 @@ function registerAuthHandlers() {
      * Payload: { token: string }
      * Response: { success: boolean, status: string, message: string }
      */
-    ipcMain.handle('auth:logout', async (event, payload) => {
+    ipcMain.handle('auth:logout', wrapIpcHandler(async (event, payload) => {
         console.log('[AuthController] Logout request received');
 
         try {
@@ -131,7 +132,7 @@ function registerAuthHandlers() {
                 message: 'Logout failed: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Validate session token
@@ -139,7 +140,7 @@ function registerAuthHandlers() {
      * Payload: { token: string }
      * Response: { valid: boolean, user?: User, message?: string }
      */
-    ipcMain.handle('auth:validate-session', async (event, payload) => {
+    ipcMain.handle('auth:validate-session', wrapIpcHandler(async (event, payload) => {
         try {
             const { token } = payload;
             const result = authService.validateSession(token);
@@ -152,7 +153,7 @@ function registerAuthHandlers() {
                 message: 'Session validation failed: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Get current user from session
@@ -160,7 +161,7 @@ function registerAuthHandlers() {
      * Payload: { token: string }
      * Response: User | null
      */
-    ipcMain.handle('auth:get-current-user', async (event, payload) => {
+    ipcMain.handle('auth:get-current-user', wrapIpcHandler(async (event, payload) => {
         try {
             const { token } = payload;
             return authService.getCurrentUser(token);
@@ -169,7 +170,7 @@ function registerAuthHandlers() {
             console.error('[AuthController] Get current user error:', error.message);
             return null;
         }
-    });
+    }));
 
     /**
      * Change password
@@ -177,7 +178,7 @@ function registerAuthHandlers() {
      * Payload: { userId: string, currentPassword: string, newPassword: string }
      * Response: { success: boolean, status: string, message: string }
      */
-    ipcMain.handle('auth:change-password', async (event, payload) => {
+    ipcMain.handle('auth:change-password', wrapIpcHandler(async (event, payload) => {
         console.log('[AuthController] Change password request received');
 
         try {
@@ -193,7 +194,7 @@ function registerAuthHandlers() {
                 message: 'Password change failed: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Import user from cloud (for sync)
@@ -201,7 +202,7 @@ function registerAuthHandlers() {
      * Payload: { cloudUser: Object, password: string }
      * Response: { success: boolean, status: string, message: string, data?: User }
      */
-    ipcMain.handle('auth:import-from-cloud', async (event, payload) => {
+    ipcMain.handle('auth:import-from-cloud', wrapIpcHandler(async (event, payload) => {
         console.log('[AuthController] Import from cloud request received');
 
         try {
@@ -217,7 +218,7 @@ function registerAuthHandlers() {
                 message: 'Import failed: ' + error.message
             };
         }
-    });
+    }));
 
     /**
      * Check session with cloud sync (for single-device enforcement)
@@ -227,7 +228,7 @@ function registerAuthHandlers() {
      * Response: { valid: boolean, forcedLogout?: boolean, message?: string, otherDevice?: string }
      */
     try {
-        ipcMain.handle('auth:check-session-with-sync', async (event, payload) => {
+        ipcMain.handle('auth:check-session-with-sync', wrapIpcHandler(async (event, payload) => {
             try {
                 const { token } = payload;
 
@@ -261,7 +262,7 @@ function registerAuthHandlers() {
                     message: 'Session check failed: ' + error.message
                 };
             }
-        });
+        }));
         console.log('[AuthController] Registered: auth:check-session-with-sync');
     } catch (regError) {
         console.error('[AuthController] Failed to register auth:check-session-with-sync:', regError.message);
@@ -275,7 +276,7 @@ function registerAuthHandlers() {
      * Response: { valid: boolean, forcedLogout?: boolean, message?: string }
      */
     try {
-        ipcMain.handle('auth:validate-session-fast', async (event, payload) => {
+        ipcMain.handle('auth:validate-session-fast', wrapIpcHandler(async (event, payload) => {
             try {
                 const { token } = payload;
                 const { validateSessionWithSync } = require('../services/SessionValidator.cjs');
@@ -284,7 +285,7 @@ function registerAuthHandlers() {
                 console.error('[AuthController] Fast validation error:', error.message);
                 return { valid: false, message: 'Validation failed' };
             }
-        });
+        }));
         console.log('[AuthController] Registered: auth:validate-session-fast');
     } catch (regError) {
         console.error('[AuthController] Failed to register auth:validate-session-fast:', regError.message);
