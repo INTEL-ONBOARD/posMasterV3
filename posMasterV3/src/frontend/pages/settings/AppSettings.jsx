@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { ChevronDown, ChevronUp, FolderOpen, RefreshCw, Database, Cloud, Wifi, WifiOff, Bell } from 'lucide-react';
-import { settingsApi, cloudSyncApi, appSettingsApi } from '../../api/localApi';
+import { ChevronDown, ChevronUp, RefreshCw, Database, Cloud, Wifi, WifiOff, Download, CheckCircle, XCircle } from 'lucide-react';
+import { settingsApi, cloudSyncApi, appSettingsApi, updatesApi } from '../../api/localApi';
 import ToastContext from '../toasts/ToastService';
 import { useReactiveData, TABLES } from '../../store';
 import { useBranchContext } from '../../context/BranchContext';
@@ -11,7 +11,6 @@ function AppSettings() {
 
   // Section collapse states
   const [openGeneral, setOpenGeneral] = useState(true);
-  const [openPaths, setOpenPaths] = useState(false);
   const [openBranch, setOpenBranch] = useState(false);
   const [openCloudSync, setOpenCloudSync] = useState(false);
 
@@ -26,6 +25,14 @@ function AppSettings() {
   const [syncingNow, setSyncingNow] = useState(false);
   const [ensuringSchema, setEnsuringSchema] = useState(false);
 
+  // Software Updates state machine
+  // States: idle | checking | up-to-date | update-available | downloading | ready-to-install | error
+  const [openUpdates, setOpenUpdates] = useState(false);
+  const [updateState, setUpdateState] = useState('idle');
+  const [updateInfo, setUpdateInfo] = useState(null); // { latestVersion, currentVersion, releaseNotes }
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [updateError, setUpdateError] = useState(null);
+
   const [settings, setSettings] = useState({
     logout_on_close: true,
     notifications: true,
@@ -36,8 +43,6 @@ function AppSettings() {
   });
 
   const [paths, setPaths] = useState({
-    temp_path: 'C:\\POS Master\\temp',
-    db_config_path: 'C:\\POS Master\\config',
     default_outlet: ''
   });
 
@@ -62,8 +67,6 @@ function AppSettings() {
           });
 
           setPaths({
-            temp_path: data.temp_path || 'C:\\POS Master\\temp',
-            db_config_path: data.db_config_path || 'C:\\POS Master\\config',
             default_outlet: data.default_outlet || ''
           });
         }
@@ -95,6 +98,34 @@ function AppSettings() {
     }, 10000);
 
     return () => clearInterval(interval);
+  }, []);
+
+  // Register electron-updater push event listeners
+  useEffect(() => {
+    const unsubAvailable = updatesApi.onUpdateAvailable((data) => {
+      setUpdateInfo(data);
+      setUpdateState('update-available');
+    });
+    const unsubNotAvailable = updatesApi.onUpdateNotAvailable(() => {
+      setUpdateState('up-to-date');
+    });
+    const unsubProgress = updatesApi.onDownloadProgress((data) => {
+      setDownloadProgress(data.percent);
+    });
+    const unsubDownloaded = updatesApi.onUpdateDownloaded(() => {
+      setUpdateState('ready-to-install');
+    });
+    const unsubError = updatesApi.onUpdateError((data) => {
+      setUpdateError(data.message);
+      setUpdateState('error');
+    });
+    return () => {
+      unsubAvailable();
+      unsubNotAvailable();
+      unsubProgress();
+      unsubDownloaded();
+      unsubError();
+    };
   }, []);
 
   // Initialize default_outlet from current branch on first load only
@@ -187,8 +218,6 @@ function AppSettings() {
         });
 
         setPaths({
-          temp_path: data.temp_path || 'C:\\POS Master\\temp',
-          db_config_path: data.db_config_path || 'C:\\POS Master\\config',
           default_outlet: data.default_outlet || ''
         });
 
@@ -242,21 +271,6 @@ function AppSettings() {
       toast.open('Failed to save settings', 3000, 'Error', 'error');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleSelectFolder = async (pathKey) => {
-    if (window.electronAPI && window.electronAPI.selectFolder) {
-      try {
-        const result = await window.electronAPI.selectFolder();
-        if (result && !result.canceled && result.filePaths && result.filePaths[0]) {
-          handlePathChange(pathKey, result.filePaths[0]);
-        }
-      } catch (err) {
-        console.error('[AppSettings] Folder selection error:', err);
-      }
-    } else {
-      toast.open('Folder picker not available', 3000, 'Info', 'info');
     }
   };
 
@@ -318,6 +332,50 @@ function AppSettings() {
     }
   };
 
+  // Software Updates handlers
+  const handleCheckForUpdates = async () => {
+    setUpdateState('checking');
+    setUpdateError(null);
+    try {
+      const result = await updatesApi.checkForUpdates();
+      if (result.status === 'error') {
+        setUpdateError(result.message);
+        setUpdateState('error');
+        return;
+      }
+      if (result.data?.available) {
+        setUpdateInfo(result.data);
+        setUpdateState('update-available');
+      } else {
+        setUpdateState('up-to-date');
+      }
+    } catch (err) {
+      setUpdateError(err.message);
+      setUpdateState('error');
+    }
+  };
+
+  const handleDownloadUpdate = async () => {
+    setUpdateState('downloading');
+    setDownloadProgress(0);
+    try {
+      const result = await updatesApi.downloadUpdate();
+      if (result.status === 'error') {
+        setUpdateError(result.message);
+        setUpdateState('error');
+      }
+      // On success, the "update-downloaded" push event sets ready-to-install state
+    } catch (err) {
+      setUpdateError(err.message);
+      setUpdateState('error');
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    toast.open('Installing update and restarting...', 3000, 'Info', 'info');
+    await updatesApi.installUpdate();
+  };
+
   // Toggle items configuration
   const toggleItems = [
     { label: 'Logout on Close', description: 'Log out user when app is closed', key: 'logout_on_close', icon: 'logout' },
@@ -353,7 +411,6 @@ function AppSettings() {
               onClick={() => {
                 setOpenGeneral(!openGeneral);
                 if (!openGeneral) {
-                  setOpenPaths(false);
                   setOpenBranch(false);
                 }
               }}
@@ -404,82 +461,6 @@ function AppSettings() {
             )}
           </div>
 
-          {/* File Paths Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <button
-              onClick={() => {
-                setOpenPaths(!openPaths);
-                if (!openPaths) {
-                  setOpenGeneral(false);
-                  setOpenBranch(false);
-                }
-              }}
-              className="w-full flex justify-between items-center px-5 py-4 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                  </svg>
-                </div>
-                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">File Paths</span>
-              </div>
-              {openPaths ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
-            </button>
-            {openPaths && (
-              <div className="px-5 pb-5 border-t border-gray-100">
-                <p className="text-xs text-gray-400 italic py-3 flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Configure storage locations for application data
-                </p>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Temporary Files Path</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={paths.temp_path}
-                        onChange={(e) => handlePathChange('temp_path', e.target.value)}
-                        placeholder="Select temp folder..."
-                        className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
-                      />
-                      <button
-                        onClick={() => handleSelectFolder('temp_path')}
-                        className="px-4 py-2.5 bg-[#1A318C] text-white rounded-lg text-sm font-medium hover:bg-[#152870] transition-colors flex items-center gap-2"
-                      >
-                        <FolderOpen className="w-4 h-4" />
-                        Browse
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Database Config Path</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={paths.db_config_path}
-                        onChange={(e) => handlePathChange('db_config_path', e.target.value)}
-                        placeholder="Select config folder..."
-                        className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
-                      />
-                      <button
-                        onClick={() => handleSelectFolder('db_config_path')}
-                        className="px-4 py-2.5 bg-[#1A318C] text-white rounded-lg text-sm font-medium hover:bg-[#152870] transition-colors flex items-center gap-2"
-                      >
-                        <FolderOpen className="w-4 h-4" />
-                        Browse
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Branch Settings Section */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <button
@@ -487,7 +468,6 @@ function AppSettings() {
                 setOpenBranch(!openBranch);
                 if (!openBranch) {
                   setOpenGeneral(false);
-                  setOpenPaths(false);
                 }
               }}
               className="w-full flex justify-between items-center px-5 py-4 hover:bg-gray-50 transition-colors"
@@ -563,7 +543,6 @@ function AppSettings() {
                 setOpenCloudSync(!openCloudSync);
                 if (!openCloudSync) {
                   setOpenGeneral(false);
-                  setOpenPaths(false);
                   setOpenBranch(false);
                 }
               }}
@@ -649,6 +628,139 @@ function AppSettings() {
                   <p className="text-xs text-blue-700 mt-1">
                     <strong>Create Cloud Tables:</strong> Use this if sync fails with "table doesn't exist" errors.
                   </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Software Updates Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <button
+              onClick={() => {
+                setOpenUpdates(!openUpdates);
+                if (!openUpdates) {
+                  setOpenGeneral(false);
+                  setOpenBranch(false);
+                  setOpenCloudSync(false);
+                }
+              }}
+              className="w-full flex justify-between items-center px-5 py-4 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
+                  <Download className="w-5 h-5 text-violet-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Software Updates</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {updateState === 'ready-to-install' && (
+                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                )}
+                {openUpdates ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+              </div>
+            </button>
+
+            {openUpdates && (
+              <div className="px-5 pb-5 border-t border-gray-100">
+                <p className="text-xs text-gray-400 italic py-3 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Keep your app up to date with the latest features and fixes
+                </p>
+
+                {/* Version and status display */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">Current Version</span>
+                    <span className="text-sm font-mono font-semibold text-gray-800">
+                      v{updateInfo?.currentVersion || '—'}
+                    </span>
+                  </div>
+
+                  <div className="mt-3">
+                    {updateState === 'up-to-date' && (
+                      <div className="flex items-center gap-2 text-emerald-600">
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="text-sm font-medium">You're up to date</span>
+                      </div>
+                    )}
+                    {updateState === 'update-available' && updateInfo && (
+                      <div className="flex items-center gap-2 text-blue-600">
+                        <Download className="w-4 h-4" />
+                        <span className="text-sm font-medium">v{updateInfo.latestVersion} available</span>
+                      </div>
+                    )}
+                    {updateState === 'downloading' && (
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-gray-600">Downloading...</span>
+                          <span className="text-sm font-semibold text-gray-700">{downloadProgress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-[#1A318C] h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${downloadProgress}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+                    {updateState === 'ready-to-install' && (
+                      <div className="flex items-center gap-2 text-emerald-600">
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="text-sm font-medium">Update ready to install</span>
+                      </div>
+                    )}
+                    {updateState === 'error' && updateError && (
+                      <div className="flex items-start gap-2 text-red-500">
+                        <XCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs">{updateError}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  {(updateState === 'idle' || updateState === 'up-to-date' || updateState === 'error') && (
+                    <button
+                      onClick={handleCheckForUpdates}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#1A318C] text-white rounded-lg text-sm font-medium hover:bg-[#152870] transition-colors"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Check for Updates
+                    </button>
+                  )}
+
+                  {updateState === 'checking' && (
+                    <button
+                      disabled
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#1A318C] text-white rounded-lg text-sm font-medium opacity-50 cursor-not-allowed"
+                    >
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Checking...
+                    </button>
+                  )}
+
+                  {updateState === 'update-available' && (
+                    <button
+                      onClick={handleDownloadUpdate}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download Update
+                    </button>
+                  )}
+
+                  {updateState === 'ready-to-install' && (
+                    <button
+                      onClick={handleInstallUpdate}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Install & Restart
+                    </button>
+                  )}
                 </div>
               </div>
             )}
