@@ -214,7 +214,7 @@ export function startSessionMonitor(interval = 10000) {
     checkInterval = setInterval(check, interval);
 
     // Initial check
-    setTimeout(check, 1000);
+    setTimeout(check, 100);
 
     // Return stop function
     return () => {

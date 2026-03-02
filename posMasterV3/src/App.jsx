@@ -3,6 +3,8 @@ import {
   HashRouter,
   Routes,
   Route,
+  Navigate,
+  Outlet,
 } from "react-router-dom";
 
 import './App.css';
@@ -28,6 +30,11 @@ import Users from './frontend/pages/users/users.jsx';
 import { DataStoreProvider } from './frontend/store';
 
 
+
+function PrivateRoute() {
+  const token = localStorage.getItem('token');
+  return token ? <Outlet /> : <Navigate to="/login" replace />;
+}
 
 function App() {
   const [currentView, setCurrentView] = useState('desktop1');
@@ -96,14 +103,16 @@ function App() {
               <Route path="startup" element={<Startup />} />
               <Route path="login" element={<Login />} />
 
-              <Route path="dashboard" element={<Dashboard />}>
-                <Route index element={<Notification />} />
-                <Route path="inventory/*" element={<Inventory />} />
-                <Route path="inventory-config" element={<InventoryConfig />} />
-                <Route path="settings/*" element={<Settings />} />
-                <Route path="notifications" element={<Notification />} />
-                <Route path="sales" element={<Sales />} />
-                <Route path="users" element={<Users />} />
+              <Route path="dashboard" element={<PrivateRoute />}>
+                <Route element={<Dashboard />}>
+                  <Route index element={<Notification />} />
+                  <Route path="inventory/*" element={<Inventory />} />
+                  <Route path="inventory-config" element={<InventoryConfig />} />
+                  <Route path="settings/*" element={<Settings />} />
+                  <Route path="notifications" element={<Notification />} />
+                  <Route path="sales" element={<Sales />} />
+                  <Route path="users" element={<Users />} />
+                </Route>
               </Route>
 
               <Route path="*" element={<NotFound />} />

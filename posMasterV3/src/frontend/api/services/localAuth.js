@@ -32,7 +32,7 @@ export const localAuth = {
      * @param {string} password - Password
      * @returns {Promise<Object>} Login result
      */
-    async login(email, password) {
+    async login(email, password, deviceInfo = null) {
         if (!isElectron()) {
             return {
                 success: false,
@@ -42,7 +42,7 @@ export const localAuth = {
         }
 
         try {
-            const result = await window.electronAPI.auth.login(email, password);
+            const result = await window.electronAPI.auth.login(email, password, deviceInfo);
 
             if (result.success) {
                 // Store in localStorage for compatibility

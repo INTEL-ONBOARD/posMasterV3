@@ -309,6 +309,20 @@ class AuthService {
                 // Deactivate the cloud-synced active session
                 try {
                     this.activeSessionRepo.deactivateForUser(session.user_id);
+
+                    // Immediately sync deactivation to cloud so other devices detect logout ASAP
+                    setImmediate(async () => {
+                        try {
+                            const { getCloudSyncService } = require('./CloudSyncService.cjs');
+                            const cloudSync = getCloudSyncService();
+                            if (cloudSync.isOnline && cloudSync.mysqlInitialized) {
+                                await cloudSync.syncTable('active_sessions');
+                                console.log('[AuthService] Synced active_sessions to cloud after logout');
+                            }
+                        } catch (syncError) {
+                            console.log('[AuthService] Could not sync active_sessions on logout:', syncError.message);
+                        }
+                    });
                 } catch (activeSessionError) {
                     console.error('[AuthService] Failed to deactivate active session:', activeSessionError.message);
                 }
@@ -443,6 +457,13 @@ class AuthService {
 
             // Invalidate all sessions (force re-login)
             this.sessionRepo.invalidateAllForUser(userId);
+
+            // Deactivate cloud-synced active session so other devices detect the change
+            try {
+                this.activeSessionRepo.deactivateForUser(userId);
+            } catch (activeSessionError) {
+                console.error('[AuthService] Failed to deactivate active session on password change:', activeSessionError.message);
+            }
 
             // Queue password change for cloud sync
             this.syncQueueRepo.enqueue({

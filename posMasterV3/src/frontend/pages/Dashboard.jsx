@@ -6,6 +6,7 @@ import { useStatusLog, StatusType } from "../services/StatusLogService.jsx";
 import { appSettingsApi, authApi } from "../api/localApi";
 import { onSessionEvent, startSessionMonitor } from "../services/SessionGuard";
 import { BranchProvider } from "../context/BranchContext.jsx";
+import { useActivityTracker } from "../hooks/useActivityTracker";
 
 // Get icon and color based on status type
 const getStatusStyle = (type, isLoading) => {
@@ -105,6 +106,9 @@ function Dashboard() {
   const { currentStatus, isOnline } = useStatusLog();
   const [showKickedModal, setShowKickedModal] = useState(false);
 
+  // Track user activity for idle auto-logout
+  useActivityTracker({ enabled: true });
+
   // Force logout handler - clears session and navigates to login
   const handleForcedLogout = async (message = 'You have been logged out') => {
     console.log('[Dashboard] Forced logout:', message);
@@ -178,6 +182,15 @@ function Dashboard() {
       stopMonitor();
     };
   }, [toast]);
+
+  // Auto-enforce kicked modal: force logout after 8 seconds if user doesn't click OK
+  useEffect(() => {
+    if (!showKickedModal) return;
+    const timer = setTimeout(() => {
+      handleForcedLogout('Logged out - another device signed in');
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [showKickedModal]);
 
   const style = getStatusStyle(currentStatus.type, currentStatus.isLoading);
 

@@ -139,7 +139,8 @@ function Login() {
 
     try {
       // Use local SQLite login only (no cloud fallback)
-      const result = await localAuth.login(formData.email, formData.password);
+      // deviceInfo is resolved on the backend via SettingsService
+      const result = await localAuth.login(formData.email, formData.password, null);
 
       if (result.success) {
         const userData = result.data;
