@@ -37,7 +37,9 @@ class StockRepository extends BaseRepository {
             params.push(branchId);
         }
 
-        sql += ` ORDER BY ${orderBy} ${order} LIMIT ? OFFSET ?`;
+        const safeOrderBy = this.sanitizeOrderColumn(orderBy);
+        const safeOrder = this.sanitizeOrderDirection(order);
+        sql += ` ORDER BY ${safeOrderBy} ${safeOrder} LIMIT ? OFFSET ?`;
         params.push(limit, offset);
 
         const stmt = this.db.prepare(sql);

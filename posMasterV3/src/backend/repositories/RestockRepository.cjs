@@ -40,7 +40,9 @@ class RestockRepository extends BaseRepository {
             params.push(branchId);
         }
 
-        sql += ` ORDER BY rt.${orderBy} ${order} LIMIT ? OFFSET ?`;
+        const safeOrderBy = this.sanitizeOrderColumn(orderBy);
+        const safeOrder = this.sanitizeOrderDirection(order);
+        sql += ` ORDER BY rt.${safeOrderBy} ${safeOrder} LIMIT ? OFFSET ?`;
         params.push(limit, offset);
 
         const stmt = this.db.prepare(sql);
