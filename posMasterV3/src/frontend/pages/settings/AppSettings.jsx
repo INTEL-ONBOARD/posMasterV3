@@ -350,7 +350,8 @@ function AppSettings() {
         setUpdateState('up-to-date');
       }
     } catch (err) {
-      setUpdateError(err.message);
+      console.error('[AppSettings] Update check error:', err);
+      setUpdateError('Failed to check for updates. Please try again.');
       setUpdateState('error');
     }
   };
@@ -358,16 +359,24 @@ function AppSettings() {
   const handleDownloadUpdate = async () => {
     setUpdateState('downloading');
     setDownloadProgress(0);
+    let errorHandledByEvent = false;
+    const unsubTempError = updatesApi.onUpdateError(() => {
+      errorHandledByEvent = true;
+    });
     try {
       const result = await updatesApi.downloadUpdate();
-      if (result.status === 'error') {
-        setUpdateError(result.message);
+      if (result.status === 'error' && !errorHandledByEvent) {
+        setUpdateError('Failed to download update. Please try again.');
         setUpdateState('error');
       }
-      // On success, the "update-downloaded" push event sets ready-to-install state
     } catch (err) {
-      setUpdateError(err.message);
-      setUpdateState('error');
+      if (!errorHandledByEvent) {
+        console.error('[AppSettings] Update download error:', err);
+        setUpdateError('Failed to download update. Please try again.');
+        setUpdateState('error');
+      }
+    } finally {
+      unsubTempError();
     }
   };
 
@@ -739,6 +748,16 @@ function AppSettings() {
                     >
                       <RefreshCw className="w-4 h-4 animate-spin" />
                       Checking...
+                    </button>
+                  )}
+
+                  {updateState === 'downloading' && (
+                    <button
+                      disabled
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 text-white rounded-lg text-sm font-medium opacity-50 cursor-not-allowed"
+                    >
+                      <Download className="w-4 h-4 animate-bounce" />
+                      Downloading...
                     </button>
                   )}
 
