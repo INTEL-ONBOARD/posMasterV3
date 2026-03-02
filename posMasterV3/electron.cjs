@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
-const os = require("os");
 const { pathToFileURL } = require("url");
 const axios = require("axios");
 const fs = require("fs").promises;
@@ -23,13 +22,14 @@ const appVersion = require(path.join(__dirname, "package.json")).version;
 // Auto-updater configuration - user must trigger download manually
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = false;
+autoUpdater.logger = console;
 
 let mainWindow;
 let storedUser = null;
 let isQuitting = false;
 
-// Default folder path - platform-aware
-const defaultFolderPath = path.join(os.homedir(), "POS Master");
+// Default folder path
+const defaultFolderPath = "C:\\POS Master";
 
 // Paths to your DTOs (as you specified)
 const dtoPaths = {
@@ -613,6 +613,14 @@ autoUpdater.on("error", (err) => {
   }
 });
 
+autoUpdater.on("update-not-available", (info) => {
+  if (mainWindow) {
+    mainWindow.webContents.send("updates:not-available", {
+      currentVersion: info.version,
+    });
+  }
+});
+
 // ============================================================
 // AUTO-UPDATER IPC HANDLERS
 // ============================================================
@@ -657,7 +665,12 @@ ipcMain.handle("updates:download-update", async () => {
 });
 
 ipcMain.handle("updates:install-update", () => {
-  autoUpdater.quitAndInstall(false, true);
+  try {
+    autoUpdater.quitAndInstall(false, true);
+    return { status: "success" };
+  } catch (err) {
+    return { status: "error", message: err.message };
+  }
 });
 
 app.whenReady().then(async () => {
