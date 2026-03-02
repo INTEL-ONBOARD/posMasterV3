@@ -382,7 +382,7 @@ class CloudSyncService {
             `).run(
                 tableName,
                 String(recordId),
-                JSON.stringify({ source: winnerSource === 'local' ? 'cloud' : 'local', data: loser }),
+                JSON.stringify({ source: winnerSource === 'cloud' ? 'local' : 'cloud', data: loser }),
                 JSON.stringify({ source: winnerSource, data: winner }),
                 'sync_conflict',
                 resolvedAt
