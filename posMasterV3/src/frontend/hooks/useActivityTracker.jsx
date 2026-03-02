@@ -1,79 +1,70 @@
 /**
  * Activity Tracker Hook
  *
- * Tracks user activity and resets the auto-logout timer.
- * Also listens for auto-logout events from the backend.
+ * Tracks user activity and triggers auto-logout after a configurable idle period.
+ * Idle tracking is handled entirely in the frontend — no IPC round-trip needed
+ * for every mouse move / keypress.
  */
 
 import { useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { appSettingsApi, authApi } from '../api/localApi';
+import { authApi } from '../api/localApi';
+
+// Default idle timeout: 30 minutes
+const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
 /**
- * Hook to track user activity and handle auto-logout
+ * Hook to track user activity and handle auto-logout on idle
  * @param {Object} options - Configuration options
  * @param {boolean} options.enabled - Whether tracking is enabled
- * @param {number} options.debounceMs - Debounce time for activity events (default 1000ms)
+ * @param {number} options.idleTimeoutMs - Idle timeout in ms (default: 30 minutes)
  */
-export function useActivityTracker({ enabled = true, debounceMs = 1000 } = {}) {
+export function useActivityTracker({ enabled = true, idleTimeoutMs = DEFAULT_IDLE_TIMEOUT_MS } = {}) {
     const navigate = useNavigate();
     const lastActivityRef = useRef(Date.now());
-    const debounceTimerRef = useRef(null);
+    const idleTimerRef = useRef(null);
 
-    // Reset activity timer (debounced)
-    const resetActivity = useCallback(() => {
-        if (!enabled) return;
-
-        // Debounce to avoid too many IPC calls
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-        }
-
-        debounceTimerRef.current = setTimeout(async () => {
-            try {
-                await appSettingsApi.resetActivity();
-                lastActivityRef.current = Date.now();
-            } catch (err) {
-                console.error('[ActivityTracker] Failed to reset activity:', err);
-            }
-        }, debounceMs);
-    }, [enabled, debounceMs]);
-
-    // Handle auto-logout
+    // Handle auto-logout when idle timeout fires
     const handleAutoLogout = useCallback(async () => {
-        console.log('[ActivityTracker] Auto-logout triggered');
+        console.log('[ActivityTracker] Auto-logout triggered due to inactivity');
 
         try {
-            // Get current token and logout
-            const token = sessionStorage.getItem('token');
+            const token = localStorage.getItem('token');
             if (token) {
                 await authApi.logout(token);
             }
 
-            // Clear local storage
-            sessionStorage.removeItem('token');
+            // Clear all auth state
+            localStorage.removeItem('token');
             localStorage.removeItem('username');
             localStorage.removeItem('email');
             localStorage.removeItem('_id');
             localStorage.removeItem('user');
             localStorage.removeItem('sessionId');
 
-            // Navigate to login
             navigate('/login', {
                 replace: true,
                 state: { message: 'Session expired due to inactivity' }
             });
         } catch (err) {
             console.error('[ActivityTracker] Logout error:', err);
-            // Still navigate even on error
             navigate('/login', { replace: true });
         }
     }, [navigate]);
 
+    // Reset the idle countdown on any user activity
+    const resetIdle = useCallback(() => {
+        if (!enabled) return;
+        lastActivityRef.current = Date.now();
+        if (idleTimerRef.current) {
+            clearTimeout(idleTimerRef.current);
+        }
+        idleTimerRef.current = setTimeout(handleAutoLogout, idleTimeoutMs);
+    }, [enabled, idleTimeoutMs, handleAutoLogout]);
+
     useEffect(() => {
         if (!enabled) return;
 
-        // Activity events to track
         const activityEvents = [
             'mousedown',
             'mousemove',
@@ -83,33 +74,30 @@ export function useActivityTracker({ enabled = true, debounceMs = 1000 } = {}) {
             'click'
         ];
 
-        // Add event listeners
         activityEvents.forEach(event => {
-            document.addEventListener(event, resetActivity, { passive: true });
+            document.addEventListener(event, resetIdle, { passive: true });
         });
 
-        // Listen for auto-logout event from backend
+        // Listen for auto-logout event from backend (if implemented in future)
         if (window.electronAPI?.appSettings?.onAutoLogout) {
             window.electronAPI.appSettings.onAutoLogout(handleAutoLogout);
         }
 
-        // Initial activity reset
-        resetActivity();
+        // Start the idle timer immediately on mount
+        idleTimerRef.current = setTimeout(handleAutoLogout, idleTimeoutMs);
 
-        // Cleanup
         return () => {
             activityEvents.forEach(event => {
-                document.removeEventListener(event, resetActivity);
+                document.removeEventListener(event, resetIdle);
             });
-
-            if (debounceTimerRef.current) {
-                clearTimeout(debounceTimerRef.current);
+            if (idleTimerRef.current) {
+                clearTimeout(idleTimerRef.current);
             }
         };
-    }, [enabled, resetActivity, handleAutoLogout]);
+    }, [enabled, resetIdle, handleAutoLogout, idleTimeoutMs]);
 
     return {
-        resetActivity,
+        resetIdle,
         lastActivity: lastActivityRef.current
     };
 }

@@ -1762,7 +1762,11 @@ export const appSettingsApi = {
         const api = getElectronAPI();
         if (!api) return { status: 'error', message: 'Not in Electron environment' };
         return api.appSettings.isCloudSyncEnabled();
-    }
+    },
+
+    // Idle tracking is handled entirely in the frontend (useActivityTracker hook).
+    // This stub exists so the API surface is complete and callers don't throw.
+    resetActivity: () => Promise.resolve({ status: 'success' })
 };
 
 // ============================================

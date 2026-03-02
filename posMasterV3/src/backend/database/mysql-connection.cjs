@@ -70,19 +70,23 @@ async function testConnection() {
 }
 
 /**
- * Execute a MySQL query
+ * Execute a MySQL query with an optional timeout
  * @param {string} sql - The SQL query
  * @param {Array} params - Query parameters
+ * @param {number} timeoutMs - Query timeout in ms (default: 30000)
  * @returns {Promise<Array>} Query results
  */
-async function executeQuery(sql, params = []) {
+async function executeQuery(sql, params = [], timeoutMs = 30000) {
     if (!pool) {
         await initializeMySQLPool();
     }
 
     try {
-        const [results] = await pool.execute(sql, params);
-        return results;
+        const queryPromise = pool.execute(sql, params).then(([results]) => results);
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`MySQL query timeout after ${timeoutMs}ms`)), timeoutMs)
+        );
+        return await Promise.race([queryPromise, timeoutPromise]);
     } catch (error) {
         console.error('[MySQL] Query execution failed:', error.message);
         throw error;

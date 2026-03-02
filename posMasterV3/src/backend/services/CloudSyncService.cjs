@@ -169,18 +169,20 @@ class CloudSyncService {
 
         // Wait for lock to be released
         return new Promise((resolve) => {
-            const timeoutId = setTimeout(() => {
-                // Remove from queue and return false
-                const idx = this._syncLockQueue.indexOf(resolver);
-                if (idx >= 0) this._syncLockQueue.splice(idx, 1);
-                resolve(false);
-            }, timeout);
-
+            // resolver must be declared BEFORE setTimeout so it's in scope for indexOf()
+            let timeoutId;
             const resolver = () => {
                 clearTimeout(timeoutId);
                 this._syncLock = true;
                 resolve(true);
             };
+
+            timeoutId = setTimeout(() => {
+                // Remove from queue and return false
+                const idx = this._syncLockQueue.indexOf(resolver);
+                if (idx >= 0) this._syncLockQueue.splice(idx, 1);
+                resolve(false);
+            }, timeout);
 
             this._syncLockQueue.push(resolver);
         });
@@ -339,15 +341,19 @@ class CloudSyncService {
     }
 
     /**
-     * Check network connectivity
+     * Check network connectivity by pinging the MySQL server directly.
+     * This is more reliable than DNS lookups (which test internet, not MySQL reachability).
+     * Falls back to false on any error or if the check takes longer than 5 seconds.
      * @returns {Promise<boolean>}
      */
     async checkNetworkStatus() {
-        return new Promise((resolve) => {
-            dns.lookup('google.com', (err) => {
-                resolve(!err);
-            });
-        });
+        try {
+            const pingPromise = testConnection();
+            const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(false), 5000));
+            return await Promise.race([pingPromise, timeoutPromise]);
+        } catch {
+            return false;
+        }
     }
 
     /**
@@ -437,6 +443,9 @@ class CloudSyncService {
 
         // If online, sync immediately using pull-first-then-push strategy
         if (this.isOnline && this.mysqlInitialized) {
+            // Mark as pending BEFORE the async call so concurrent identical changes
+            // are deduplicated while the sync is in-flight
+            this._addPendingKey(tableName, operation, recordId);
             try {
                 // For PULL_FIRST_TABLES, pull the latest record from cloud first
                 // This ensures we have the most recent version before pushing our changes
@@ -448,10 +457,11 @@ class CloudSyncService {
                 // Now push our local change to cloud
                 await this.syncSingleChange(change);
                 this._resetRetryCount(tableName, recordId); // Reset retry count on success
+                this._removePendingKey(tableName, operation, recordId); // Clear pending key on success
                 console.log(`[CloudSync] Real-time sync: ${operation} on ${tableName} (ID: ${recordId})`);
             } catch (error) {
                 console.error(`[CloudSync] Real-time sync failed, queuing:`, error.message);
-                this._addPendingKey(tableName, operation, recordId);
+                // Key stays in _pendingChangeKeys; push change to queue for retry
                 this.pendingChanges.push(change);
                 this.updateLocalSyncStatus(tableName, recordId, 'pending');
             }
@@ -582,9 +592,12 @@ class CloudSyncService {
                 return { status: 'failed', reason: 'connection_failed' };
             }
 
-            // Process each pending change
-            while (this.pendingChanges.length > 0) {
-                const change = this.pendingChanges.shift();
+            // Process each pending change using a snapshot copy to avoid data loss
+            // if the app crashes mid-loop (shift() is destructive; this approach is safer)
+            const workingChanges = [...this.pendingChanges];
+            this.pendingChanges = []; // Clear original; failedChanges will be re-added at end
+
+            for (const change of workingChanges) {
                 const { tableName, operation, recordId } = change;
 
                 // Remove from pending keys set
@@ -614,6 +627,7 @@ class CloudSyncService {
             }
 
             // Re-queue failed changes (they will be retried next interval)
+            // Any new changes added to pendingChanges during the loop are preserved
             this.pendingChanges = [...failedChanges, ...this.pendingChanges];
 
             this.lastSyncTime = nowISO();
@@ -1021,7 +1035,8 @@ class CloudSyncService {
             if (tableName === 'users' && col === 'roles') {
                 if (!val || val === '' || val === 'null' || val === '[]') {
                     // If no roles, set default based on username
-                    val = record.username === 'admin' ? '["admin"]' : '["user"]';
+                    // Use '["cashier"]' to match the pull-from-cloud default (prevents role drift)
+                    val = record.username === 'admin' ? '["admin"]' : '["cashier"]';
                     console.log(`[CloudSync] pushRecordToCloud: Setting default roles for ${record.username}: ${val}`);
                 } else if (typeof val === 'object' && Array.isArray(val)) {
                     // If it's an array, stringify it
@@ -1031,7 +1046,7 @@ class CloudSyncService {
                 try {
                     JSON.parse(val);
                 } catch (e) {
-                    val = record.username === 'admin' ? '["admin"]' : '["user"]';
+                    val = record.username === 'admin' ? '["admin"]' : '["cashier"]';
                 }
                 return val;
             }
@@ -1273,8 +1288,9 @@ class CloudSyncService {
 
                         if (existingSession && !sessionChanged) {
                             // Compare key fields to detect actual changes
+                            // Use session_token_hash (the actual column name), not session_id which doesn't exist
                             if (existingSession.device_id !== record.device_id ||
-                                existingSession.session_id !== record.session_id ||
+                                existingSession.session_token_hash !== record.session_token_hash ||
                                 existingSession.is_active !== (record.is_active ? 1 : 0)) {
                                 sessionChanged = true;
                             }
