@@ -233,6 +233,7 @@ class SalesRepository extends BaseRepository {
                 status: data.status || 'completed',
                 is_held: data.is_held ? 1 : 0,
                 created_at: nowISO(),
+                updated_at: nowISO(),
                 sync_status: 'pending',
                 // Branch and audit fields
                 branch_id: data.branch_id || null,
@@ -243,10 +244,10 @@ class SalesRepository extends BaseRepository {
                 INSERT INTO sales_transactions
                 (invoice_no, member_id, cashier_id, payment_method, credit_duration,
                 subtotal, discount, total_amount, cash_received, change_amount,
-                status, is_held, created_at, sync_status, branch_id, created_by)
+                status, is_held, created_at, updated_at, sync_status, branch_id, created_by)
                 VALUES (@invoice_no, @member_id, @cashier_id, @payment_method, @credit_duration,
                 @subtotal, @discount, @total_amount, @cash_received, @change_amount,
-                @status, @is_held, @created_at, @sync_status, @branch_id, @created_by)
+                @status, @is_held, @created_at, @updated_at, @sync_status, @branch_id, @created_by)
             `);
 
             const result = saleStmt.run(saleData);
@@ -507,6 +508,74 @@ class SalesRepository extends BaseRepository {
         });
 
         return transaction();
+    }
+
+    /**
+     * Return specific items from a completed sale
+     * Restores stock and records return entries atomically.
+     * @param {number} saleId - Sale ID
+     * @param {Array} itemsToReturn - [{ sale_item_id, stock_id, item_id, batch_code, quantity, unit_price }]
+     * @param {string|null} reason - Return reason
+     * @param {string|null} returnedBy - Username
+     * @returns {Array} - Inserted return records
+     */
+    returnSaleItems(saleId, itemsToReturn, reason, returnedBy) {
+        const ReturnRepository = require('./ReturnRepository.cjs');
+        const returnRepo = new ReturnRepository();
+
+        const returnedAt = nowISO();
+        const insertedReturns = [];
+
+        const transaction = this.db.transaction(() => {
+            const restoreStockStmt = this.db.prepare(`
+                UPDATE stock SET quantity = quantity + ?, updated_at = ?, sync_status = 'pending'
+                WHERE id = ?
+            `);
+
+            for (const item of itemsToReturn) {
+                // Restore stock
+                restoreStockStmt.run(item.quantity, returnedAt, item.stock_id);
+
+                // Insert return record
+                const result = this.db.prepare(`
+                    INSERT INTO returned_items
+                        (sale_id, item_id, stock_id, batch_code, quantity, unit_price, reason, returned_by, returned_at, sync_status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                `).run(
+                    saleId,
+                    item.item_id,
+                    item.stock_id,
+                    item.batch_code,
+                    item.quantity,
+                    item.unit_price || 0,
+                    reason || null,
+                    returnedBy || null,
+                    returnedAt
+                );
+
+                insertedReturns.push(returnRepo.findById(result.lastInsertRowid));
+            }
+
+            // Determine new sale status
+            const sale = this.getFullDetails(saleId);
+            if (sale) {
+                const totalOriginalQty = sale.items.reduce((sum, i) => sum + i.quantity, 0);
+                const totalReturnedQty = itemsToReturn.reduce((sum, i) => sum + i.quantity, 0);
+                // Check existing returns
+                const existingReturns = returnRepo.findBySaleId(saleId);
+                const previouslyReturned = existingReturns
+                    .filter(r => !insertedReturns.some(ir => ir.id === r.id))
+                    .reduce((sum, r) => sum + r.quantity, 0);
+                const allReturned = previouslyReturned + totalReturnedQty >= totalOriginalQty;
+                this.update(saleId, { status: allReturned ? 'returned' : 'partial_return' });
+            }
+
+            // Broadcast stock update
+            broadcastBatchChange('stock', itemsToReturn.length, 'SALE_RETURN');
+        });
+
+        transaction();
+        return insertedReturns;
     }
 
     /**

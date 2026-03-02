@@ -348,13 +348,36 @@ class StockRepository extends BaseRepository {
     }
 
     /**
-     * Update stock prices
+     * Update stock prices and log the change to price_change_history
      * @param {number} id - Stock ID
      * @param {number} stockPrice - New stock price
      * @param {number} retailPrice - New retail price
+     * @param {string} [changedBy] - Username or user ID making the change
+     * @param {string} [reason] - Reason for the price change
      * @returns {Object}
      */
-    updatePrices(id, stockPrice, retailPrice) {
+    updatePrices(id, stockPrice, retailPrice, changedBy, reason) {
+        const existing = this.findById(id);
+
+        if (existing) {
+            try {
+                const PriceChangeHistoryRepository = require('./PriceChangeHistoryRepository.cjs');
+                const histRepo = new PriceChangeHistoryRepository();
+                histRepo.create({
+                    stock_id: id,
+                    old_stock_price: existing.stock_price,
+                    new_stock_price: stockPrice,
+                    old_retail_price: existing.retail_price,
+                    new_retail_price: retailPrice,
+                    changed_by: changedBy || null,
+                    reason: reason || null,
+                    changed_at: nowISO()
+                });
+            } catch (e) {
+                console.warn('[StockRepository] Could not log price change history:', e.message);
+            }
+        }
+
         return this.update(id, {
             stock_price: stockPrice,
             retail_price: retailPrice

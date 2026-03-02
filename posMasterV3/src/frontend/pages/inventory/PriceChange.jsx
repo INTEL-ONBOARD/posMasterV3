@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { ChevronDown, ChevronUp, Search, Package, DollarSign, Tag, Percent, Calendar, X, CheckCircle, Filter, AlertCircle } from "lucide-react";
 import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
-import { restockApi } from "../../api/localApi";
+import { restockApi, stockApi } from "../../api/localApi";
 import { useReactiveData, TABLES } from "../../store";
 
 // Initial form state
@@ -280,38 +280,42 @@ function PriceChange() {
   };
 
   // Form submission
-  const handleStockSubmit = useCallback(() => {
+  const handleStockSubmit = useCallback(async () => {
     if (validateStockForm()) {
       setSubmitLoading(true);
       setSaveSuccess(false);
 
-      setTimeout(() => {
+      try {
         if (selectedItemForDetails) {
-          const updatedItem = {
-            ...selectedItemForDetails,
-            batch_code: formDataStock.batch_code,
-            current_qty: parseInt(formDataStock.quantity) || selectedItemForDetails.current_qty,
-            stock_price: parseFloat(formDataStock.stock_price) || selectedItemForDetails.stock_price,
-            retail_price: parseFloat(formDataStock.retail_price) || selectedItemForDetails.retail_price,
-            availability: formDataStock.availability === "true",
-            expire_date: formDataStock.expired_datetime || selectedItemForDetails.expire_date,
-            discount: parseFloat(formDataStock.discount) || 0,
-            status: formDataStock.availability === "true" ? "In Stock" : "Out of Stock",
-          };
+          const newStockPrice = parseFloat(formDataStock.stock_price) || selectedItemForDetails.stock_price;
+          const newRetailPrice = parseFloat(formDataStock.retail_price) || selectedItemForDetails.retail_price;
+          const reason = formDataPriceChange.price_change_description || null;
 
-          setSelectedItemsForTable((prev) =>
-            prev.map((item) => item.id === selectedItemForDetails.id ? updatedItem : item)
+          // Get current user for audit trail
+          const changedBy = sessionStorage.getItem('username') || localStorage.getItem('username') || null;
+
+          const response = await stockApi.updatePrices(
+            selectedItemForDetails.id,
+            newStockPrice,
+            newRetailPrice,
+            changedBy,
+            reason
           );
-          setSelectedItemForDetails(updatedItem);
-          // Note: Items come from reactive hook, they'll update automatically when data changes
 
-          setSaveSuccess(true);
-          setTimeout(() => setSaveSuccess(false), 3000);
+          if (response?.status === 'success') {
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 3000);
+          } else {
+            console.error('[PriceChange] updatePrices failed:', response?.message);
+          }
         }
+      } catch (error) {
+        console.error('[PriceChange] Submit error:', error);
+      } finally {
         setSubmitLoading(false);
-      }, 1500);
+      }
     }
-  }, [formDataStock, selectedItemForDetails]);
+  }, [formDataStock, formDataPriceChange, selectedItemForDetails]);
 
   // Reset forms
   const resetForms = useCallback(() => {

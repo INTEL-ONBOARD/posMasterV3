@@ -126,8 +126,12 @@ function Dashboard() {
       console.error('[Dashboard] Logout error:', err);
     }
 
-    // Clear localStorage
+    // Clear all auth state from both storages
     sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('username');
+    sessionStorage.removeItem('email');
+    sessionStorage.removeItem('_id');
     localStorage.removeItem('username');
     localStorage.removeItem('email');
     localStorage.removeItem('_id');

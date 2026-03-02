@@ -9,6 +9,7 @@ import InventoryRestock from "./InventoryRestock.jsx";
 import SupplierReg from "./SupplierReg.jsx";
 import CheckHistory from "./CheckHistory.jsx";
 import PriceChange from "./PriceChange.jsx";
+import DisposedItemsView from "./DisposedItemsView.jsx";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
 
 // Section labels for status bar
@@ -21,6 +22,7 @@ const sectionLabels = {
   "check-history": "Check History",
   "inventory-config": "Inventory Configuration",
   "inventory-report": "Inventory Report",
+  "disposed-items": "Disposed Items",
 };
 
 function Inventory() {
@@ -56,6 +58,7 @@ function Inventory() {
         onCheckHistoryClick={() => handleSectionChange("check-history")}
         onConfigClick={() => handleSectionChange("inventory-config")}
         onCReportClick={() => handleSectionChange("inventory-report")}
+        onDisposedItemsClick={() => handleSectionChange("disposed-items")}
       />
 
       <main className="flex-1 bg-[#F3F3F3] h-[calc(100vh-2rem)] relative">
@@ -91,6 +94,10 @@ function Inventory() {
         {/* Inventory Report */}
         <div className={isVisible("inventory-report")}>
           <InventoryReport isActive={activeSection === "inventory-report"} />
+        </div>
+        {/* Disposed Items */}
+        <div className={isVisible("disposed-items")}>
+          <DisposedItemsView isActive={activeSection === "disposed-items"} />
         </div>
       </main>
     </div>

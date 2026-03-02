@@ -7,6 +7,7 @@ import ViewInventoryImg from "../../assets/View_inventory.png";
 import SupplierRegImg from "../../assets/Inventory_supplier_reg.png";
 import checkHistoryImg from "../../assets/Inventory_history_check.png";
 import priceChangeImg from "../../assets/price_change.png";
+import disposeItemsImg from "../../assets/dispose_items.png";
 import { localAuth } from "../../api/services/localAuth";
 import { settingsApi } from "../../api/localApi";
 
@@ -20,6 +21,7 @@ function InventorySidebar({
   onConfigClick,
   onCReportClick,
   onPriceChangeClick,
+  onDisposedItemsClick,
 }) {
   const [permissions, setPermissions] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -119,6 +121,13 @@ function InventorySidebar({
       icon: reportImg,
       onClick: onCReportClick,
       permissionKey: "inventory_reports",
+    },
+    {
+      id: "disposed-items",
+      label: "Disposed Items",
+      icon: disposeItemsImg,
+      onClick: onDisposedItemsClick,
+      permissionKey: "inventory_view",
     },
   ].filter(item => hasPermission(item.permissionKey));
 

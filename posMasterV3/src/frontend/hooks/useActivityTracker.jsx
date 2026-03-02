@@ -10,8 +10,8 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../api/localApi';
 
-// Default idle timeout: 30 minutes
-const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+// Default idle timeout: 10 minutes (suitable for an unattended POS terminal)
+const DEFAULT_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
 /**
  * Hook to track user activity and handle auto-logout on idle
@@ -29,12 +29,17 @@ export function useActivityTracker({ enabled = true, idleTimeoutMs = DEFAULT_IDL
         console.log('[ActivityTracker] Auto-logout triggered due to inactivity');
 
         try {
-            const token = localStorage.getItem('token');
+            const token = sessionStorage.getItem('token');
             if (token) {
                 await authApi.logout(token);
             }
 
-            // Clear all auth state
+            // Clear all auth state from both storages
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
+            sessionStorage.removeItem('username');
+            sessionStorage.removeItem('email');
+            sessionStorage.removeItem('_id');
             localStorage.removeItem('token');
             localStorage.removeItem('username');
             localStorage.removeItem('email');

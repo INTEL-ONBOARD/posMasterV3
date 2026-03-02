@@ -26,6 +26,8 @@ const LoginHistoryController = require('./LoginHistoryController.cjs');
 const AppSettingsController = require('./AppSettingsController.cjs');
 const PaymentMethodController = require('./PaymentMethodController.cjs');
 const TeaCoopController = require('./TeaCoopController.cjs');
+const OffersDiscountsController = require('./OffersDiscountsController.cjs');
+const DisposedItemsController = require('./DisposedItemsController.cjs');
 const { branchContextService } = require('../services/BranchContextService.cjs');
 
 /**
@@ -75,6 +77,12 @@ function registerAllHandlers() {
     // Tea Coop handlers (external API integration)
     const teaCoopController = new TeaCoopController();
     teaCoopController.registerHandlers();
+
+    // Offers & Discounts handlers
+    OffersDiscountsController.registerHandlers();
+
+    // Disposed Items handlers
+    DisposedItemsController.registerHandlers();
 
     // Note: BranchContextService IPC handlers are registered in its initialize() method
     // which is called from main.js after database is ready
@@ -134,5 +142,7 @@ module.exports = {
     LoginHistoryController,
     AppSettingsController,
     PaymentMethodController,
-    TeaCoopController
+    TeaCoopController,
+    OffersDiscountsController,
+    DisposedItemsController
 };

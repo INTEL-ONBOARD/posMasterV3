@@ -35,7 +35,30 @@ class CloudSyncController {
         ipcMain.handle('cloudSync:syncNow', wrapIpcHandler(async () => {
             try {
                 const service = getCloudSyncService();
+
+                // Auto-initialize if not yet online (e.g., cloud sync disabled on startup)
+                if (!service.isOnline || !service.mysqlInitialized) {
+                    console.log('[CloudSyncController] Service not initialized, initializing before sync...');
+                    await service.initialize();
+                }
+
                 const result = await service.syncNow();
+
+                // Surface "skipped" as a meaningful error instead of false success
+                if (result?.status === 'skipped') {
+                    const reason = result.reason || 'unknown';
+                    const messages = {
+                        'offline': 'Cannot sync: not connected to cloud database. Check your network or enable cloud sync in settings.',
+                        'already_syncing': 'Sync already in progress, please wait.',
+                        'lock_timeout': 'Sync could not start (lock timeout). Please try again.',
+                        'connection_failed': 'Cannot sync: cloud database connection failed.'
+                    };
+                    return {
+                        status: 'error',
+                        message: messages[reason] || `Sync skipped: ${reason}`
+                    };
+                }
+
                 return {
                     status: 'success',
                     data: result

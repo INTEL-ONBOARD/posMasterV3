@@ -17,6 +17,37 @@ const { nowISO } = require('../utils/helpers.cjs');
 
 const SALT_ROUNDS = 10;
 
+// In-memory brute-force tracker (keyed by userId or email for pre-lookup attempts).
+// Resets on successful login; survives only for the process lifetime (intentional —
+// a full app restart is a reasonable reset for a desktop POS).
+const failedAttempts = new Map(); // key → { count, lockedUntil }
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MS = 30 * 1000; // 30 seconds
+
+function _recordFailedAttempt(key) {
+    const entry = failedAttempts.get(key) || { count: 0, lockedUntil: 0 };
+    entry.count += 1;
+    if (entry.count >= MAX_FAILED_ATTEMPTS) {
+        entry.lockedUntil = Date.now() + LOCKOUT_MS;
+    }
+    failedAttempts.set(key, entry);
+}
+
+function _isLockedOut(key) {
+    const entry = failedAttempts.get(key);
+    if (!entry) return false;
+    if (entry.lockedUntil > Date.now()) return true;
+    if (entry.lockedUntil > 0 && entry.lockedUntil <= Date.now()) {
+        // Lockout expired — reset
+        failedAttempts.delete(key);
+    }
+    return false;
+}
+
+function _clearFailedAttempts(key) {
+    failedAttempts.delete(key);
+}
+
 class AuthService {
     constructor() {
         this.userRepo = getUserRepository();
@@ -53,14 +84,24 @@ class AuthService {
             let user = this.userRepo.findByEmailOrUsername(email);
 
             if (user) {
+                // Brute-force check (keyed by user id so lockout is per-account)
+                if (_isLockedOut(user.id)) {
+                    return {
+                        success: false,
+                        status: 'error',
+                        message: 'Too many failed attempts. Please wait 30 seconds and try again.'
+                    };
+                }
+
                 // Verify password locally
                 const passwordValid = await bcrypt.compare(password, user.password_hash);
 
                 if (!passwordValid) {
+                    _recordFailedAttempt(user.id);
                     return {
                         success: false,
                         status: 'error',
-                        message: 'Invalid credentials'
+                        message: 'Invalid email or password'
                     };
                 }
 
@@ -71,6 +112,9 @@ class AuthService {
                         message: 'Account is deactivated'
                     };
                 }
+
+                // Successful auth — clear any failed attempt counter
+                _clearFailedAttempts(user.id);
 
                 // SINGLE-DEVICE ENFORCEMENT:
                 // Invalidate all existing sessions for this user before creating a new one
@@ -180,11 +224,11 @@ class AuthService {
                 };
             }
 
-            // User not found locally
+            // User not found locally — use generic message to avoid username enumeration
             return {
                 success: false,
                 status: 'error',
-                message: 'User not found. Please sync with cloud or register.',
+                message: 'Invalid email or password',
                 requiresCloudSync: true
             };
 
@@ -215,11 +259,11 @@ class AuthService {
             };
         }
 
-        if (password.length < 6) {
+        if (password.length < 8) {
             return {
                 success: false,
                 status: 'error',
-                message: 'Password must be at least 6 characters'
+                message: 'Password must be at least 8 characters'
             };
         }
 
@@ -466,11 +510,11 @@ class AuthService {
                 };
             }
 
-            if (newPassword.length < 6) {
+            if (newPassword.length < 8) {
                 return {
                     success: false,
                     status: 'error',
-                    message: 'New password must be at least 6 characters'
+                    message: 'New password must be at least 8 characters'
                 };
             }
 

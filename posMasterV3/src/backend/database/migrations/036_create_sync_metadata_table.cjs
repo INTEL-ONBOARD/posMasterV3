@@ -1,5 +1,6 @@
 module.exports = {
     version: 36,
+    name: 'create_sync_metadata_table',
     description: 'Create sync_metadata table for incremental sync tracking',
     up(db) {
         db.exec(`

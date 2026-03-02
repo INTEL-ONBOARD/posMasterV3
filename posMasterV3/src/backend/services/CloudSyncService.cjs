@@ -116,8 +116,11 @@ const TABLE_SPECIFIC_EXCLUSIONS = {
 
 // Tables that use "pull-first-then-push" strategy
 // For these tables: Pull cloud updates to local FIRST, then push local changes to cloud
-// This ensures we have the latest cloud data before pushing local changes
-const PULL_FIRST_TABLES = ['users', 'user_settings', 'active_sessions'];
+// This ensures we have the latest cloud data before pushing local changes.
+// NOTE: active_sessions is intentionally excluded here — RealTimeSyncService owns its
+// polling exclusively (every 3 s) to avoid two services pulling the same table
+// concurrently and producing unpredictable merge results.
+const PULL_FIRST_TABLES = ['users', 'user_settings'];
 
 // Maximum retry attempts for failed sync operations
 const MAX_RETRY_ATTEMPTS = 3;
@@ -943,7 +946,7 @@ class CloudSyncService {
         const totalRecordsUpdated = results.uploaded + results.downloaded;
         broadcastSyncComplete({
             success: results.errors.length === 0,
-            tablesAffected: TABLES_TO_SYNC.length,
+            tablesAffected: TABLES_TO_SYNC,
             recordsUpdated: totalRecordsUpdated,
             uploaded: results.uploaded,
             downloaded: results.downloaded,
@@ -951,6 +954,20 @@ class CloudSyncService {
             duration,
             errors: results.errors
         });
+
+        // Notify user if sync encountered errors
+        if (results.errors.length > 0) {
+            try {
+                const { getAppSettingsService } = require('./AppSettingsService.cjs');
+                getAppSettingsService().sendNotification(
+                    'Sync Warning',
+                    `${results.errors.length} table(s) failed to sync. Changes saved locally.`,
+                    { silent: false }
+                );
+            } catch (e) {
+                // Notification failure is non-critical
+            }
+        }
 
         // If any records were downloaded, broadcast multi-table change to refresh UI
         // Exclude tables that are polled frequently to avoid constant UI refreshes
@@ -1088,7 +1105,10 @@ class CloudSyncService {
                             this.updateLocalSyncStatus(tableName, id, 'synced');
                             result.pushed++;
                         } else if (syncDecision === 'skip') {
-                            // Same version, skip
+                            // Same version, skip — but mark local as synced if still pending
+                            if (localRecord.sync_status === 'pending') {
+                                this.updateLocalSyncStatus(tableName, id, 'synced');
+                            }
                             result.skipped++;
                         }
                     }
@@ -1320,6 +1340,17 @@ class CloudSyncService {
             if (!tableName.startsWith('tea_coop_') || action === 'inserted') {
                 console.log(`[CloudSync] Pushed record to cloud: ${tableName} (ID: ${record.id}, SKU: ${record.sku || 'N/A'}, action: ${action})`);
             }
+
+            // Mark cloud record as synced (if table has sync_status column)
+            try {
+                await executeQuery(
+                    `UPDATE ${tableName} SET sync_status = 'synced' WHERE id = ?`,
+                    [record.id]
+                );
+            } catch (statusErr) {
+                // Non-fatal — table may not have sync_status column (e.g. sales_items before migration)
+                console.warn(`[CloudSync] Could not update cloud sync_status for ${tableName} ${record.id}:`, statusErr.message);
+            }
         } catch (err) {
             console.error(`[CloudSync] Failed to push record to ${tableName}:`, err.message);
             console.error(`[CloudSync] Record ID: ${record.id}, SKU: ${record.sku || 'N/A'}`);
@@ -1535,6 +1566,21 @@ class CloudSyncService {
                         let sessionChanged = !existingSession; // New record = changed
 
                         if (existingSession && !sessionChanged) {
+                            // If local record is newer than cloud record, local wins — don't overwrite.
+                            // This prevents the race condition where a fresh login record gets overwritten
+                            // by a stale cloud record before the login's own push to cloud completes.
+                            // A 5-second grace window is used instead of strict > to tolerate minor
+                            // clock skew between POS machines (common without NTP enforcement).
+                            if (existingSession.updated_at && record.updated_at) {
+                                const localTime = new Date(existingSession.updated_at).getTime();
+                                const cloudTime = new Date(record.updated_at).getTime();
+                                const CLOCK_SKEW_GRACE_MS = 5000;
+                                if (localTime > cloudTime - CLOCK_SKEW_GRACE_MS) {
+                                    result.downloaded++;
+                                    continue;
+                                }
+                            }
+
                             // Compare key fields to detect actual changes
                             // Use session_token_hash (the actual column name), not session_id which doesn't exist
                             if (existingSession.device_id !== record.device_id ||
@@ -2027,6 +2073,7 @@ class CloudSyncService {
             restock_items: `
                 CREATE TABLE IF NOT EXISTS restock_items (
                     id INT AUTO_INCREMENT PRIMARY KEY,
+                    cloud_id VARCHAR(255) DEFAULT NULL,
                     restock_id INT NOT NULL,
                     item_id INT NOT NULL,
                     batch_code VARCHAR(255) NOT NULL,
@@ -2034,8 +2081,11 @@ class CloudSyncService {
                     stock_price DECIMAL(15,2) NOT NULL,
                     retail_price DECIMAL(15,2) NOT NULL,
                     expiry_date DATETIME,
+                    sync_status VARCHAR(50) DEFAULT 'pending',
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_restock (restock_id),
-                    INDEX idx_item (item_id)
+                    INDEX idx_item (item_id),
+                    INDEX idx_sync_status (sync_status)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `,
             return_items: `
@@ -2101,6 +2151,7 @@ class CloudSyncService {
             sales_items: `
                 CREATE TABLE IF NOT EXISTS sales_items (
                     id INT AUTO_INCREMENT PRIMARY KEY,
+                    cloud_id VARCHAR(255) DEFAULT NULL,
                     sale_id INT NOT NULL,
                     item_id INT NOT NULL,
                     stock_id INT NOT NULL,
@@ -2109,9 +2160,12 @@ class CloudSyncService {
                     unit_price DECIMAL(15,2) NOT NULL,
                     discount DECIMAL(15,2) DEFAULT 0,
                     total_price DECIMAL(15,2) NOT NULL,
+                    sync_status VARCHAR(50) DEFAULT 'pending',
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_sale (sale_id),
                     INDEX idx_item (item_id),
-                    INDEX idx_stock (stock_id)
+                    INDEX idx_stock (stock_id),
+                    INDEX idx_sync_status (sync_status)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `,
             disposed_items: `
@@ -2282,6 +2336,8 @@ class CloudSyncService {
                     green_leaf_value DECIMAL(15,2) DEFAULT 0,
                     loans DECIMAL(15,2) DEFAULT 0,
                     net_amount DECIMAL(15,2) DEFAULT 0,
+                    additions DECIMAL(15,2) DEFAULT 0,
+                    deductions DECIMAL(15,2) DEFAULT 0,
                     is_active TINYINT DEFAULT 1,
                     last_fetched_at DATETIME,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -2390,7 +2446,20 @@ class CloudSyncService {
             { table: 'sales_transactions', column: 'updated_at', definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', after: 'created_at' },
             // Restock transactions branch & audit
             { table: 'restock_transactions', column: 'branch_id', definition: 'INT DEFAULT NULL', after: 'status' },
-            { table: 'restock_transactions', column: 'created_by', definition: 'VARCHAR(255) DEFAULT NULL', after: 'branch_id' }
+            { table: 'restock_transactions', column: 'created_by', definition: 'VARCHAR(255) DEFAULT NULL', after: 'branch_id' },
+            // Tea Coop additions/deductions (migration 035)
+            { table: 'tea_coop_members', column: 'additions', definition: 'DECIMAL(15,2) DEFAULT 0', after: 'net_amount' },
+            { table: 'tea_coop_members', column: 'deductions', definition: 'DECIMAL(15,2) DEFAULT 0', after: 'additions' },
+            { table: 'tea_coop_payments', column: 'additions', definition: 'DECIMAL(15,2) DEFAULT 0', after: 'net_amount' },
+            { table: 'tea_coop_payments', column: 'deductions', definition: 'DECIMAL(15,2) DEFAULT 0', after: 'additions' },
+            // sales_items sync columns (needed for proper sync tracking)
+            { table: 'sales_items', column: 'cloud_id',    definition: 'VARCHAR(255) DEFAULT NULL',                                       after: 'id' },
+            { table: 'sales_items', column: 'sync_status', definition: "VARCHAR(50) DEFAULT 'pending'",                                   after: 'total_price' },
+            { table: 'sales_items', column: 'updated_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',  after: 'sync_status' },
+            // restock_items sync columns (needed for proper sync tracking)
+            { table: 'restock_items', column: 'cloud_id',    definition: 'VARCHAR(255) DEFAULT NULL',                                      after: 'id' },
+            { table: 'restock_items', column: 'sync_status', definition: "VARCHAR(50) DEFAULT 'pending'",                                  after: 'expiry_date' },
+            { table: 'restock_items', column: 'updated_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', after: 'sync_status' }
         ];
 
         for (const update of columnUpdates) {

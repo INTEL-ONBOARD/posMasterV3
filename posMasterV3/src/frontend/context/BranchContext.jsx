@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { branchContextApi } from '../api/localApi';
 import BranchSelectionModal from '../components/BranchSelectionModal';
+import { dataStore } from '../store/DataStore';
 
 /**
  * BranchContext
@@ -99,6 +100,9 @@ export function BranchProvider({ children }) {
             if (response.status === 'success') {
                 setCurrentBranch(response.data);
                 setShowSelectionModal(false);
+                // Invalidate DataStore so all components refetch with the new branch context
+                dataStore.invalidateAll();
+                dataStore._refreshStaleCaches();
                 return { success: true, branch: response.data };
             }
             return { success: false, error: response.message };
@@ -146,6 +150,9 @@ export function BranchProvider({ children }) {
     const handleBranchSelected = useCallback((branch) => {
         setCurrentBranch(branch);
         setShowSelectionModal(false);
+        // Invalidate DataStore so all components refetch with the new branch context
+        dataStore.invalidateAll();
+        dataStore._refreshStaleCaches();
     }, []);
 
     // Context value

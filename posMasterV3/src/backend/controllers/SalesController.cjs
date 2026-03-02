@@ -78,6 +78,11 @@ class SalesController {
             return salesService.generateInvoiceNo();
         }));
 
+        // Return items from a completed sale
+        ipcMain.handle('sales:return', wrapIpcHandler(async (event, saleId, data) => {
+            return salesService.returnItems(saleId, data.items, data.reason);
+        }));
+
         console.log('[SalesController] IPC handlers registered');
     }
 }

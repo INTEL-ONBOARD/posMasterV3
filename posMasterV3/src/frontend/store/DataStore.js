@@ -37,7 +37,9 @@ import {
     paymentMethodApi,
     userApi,
     loginHistoryApi,
-    teaCoopApi
+    teaCoopApi,
+    offersApi,
+    disposedApi
 } from '../api/localApi';
 
 // Table name constants for type safety
@@ -55,7 +57,9 @@ export const TABLES = {
     PAYMENT_METHODS: 'payment_methods',
     USERS: 'users',
     LOGIN_HISTORY: 'login_history',
-    TEA_COOP_MEMBERS: 'tea_coop_members'
+    TEA_COOP_MEMBERS: 'tea_coop_members',
+    OFFERS_DISCOUNTS: 'offers_discounts',
+    DISPOSED_ITEMS: 'disposed_items'
 };
 
 // Default fetch functions for each table
@@ -73,7 +77,9 @@ const DEFAULT_FETCHERS = {
     [TABLES.PAYMENT_METHODS]: () => paymentMethodApi.getAll().then(r => r.data || []),
     [TABLES.USERS]: () => userApi.getAll().then(r => r.data || []),
     [TABLES.LOGIN_HISTORY]: () => loginHistoryApi.getAll().then(r => r.data || []),
-    [TABLES.TEA_COOP_MEMBERS]: () => teaCoopApi.getAllMembers().then(r => r.data || [])
+    [TABLES.TEA_COOP_MEMBERS]: () => teaCoopApi.getAllMembers().then(r => r.data || []),
+    [TABLES.OFFERS_DISCOUNTS]: () => offersApi.getAll().then(r => r.data || []),
+    [TABLES.DISPOSED_ITEMS]: () => disposedApi.getAll().then(r => r.data || [])
 };
 
 // Cache TTL in milliseconds (how long before data is considered stale)
@@ -208,6 +214,31 @@ class DataStore {
             const cleanup = window.electronAPI.onMultiTableChanged((data) => {
                 console.log('[DataStore] Multi-table changed:', data.tables?.length, 'tables');
                 this._handleMultiTableChange(data);
+            });
+            if (typeof cleanup === 'function') {
+                this._eventCleanupFunctions.push(cleanup);
+            }
+        }
+
+        // Listen for branch context changes - invalidate all caches so components
+        // refetch with the correct branch filter applied
+        if (window.electronAPI.branchContext?.onBranchChanged) {
+            const cleanup = window.electronAPI.branchContext.onBranchChanged((branch) => {
+                console.log('[DataStore] Branch changed to:', branch?.name || 'none', '- invalidating all caches');
+                this.invalidateAll();
+                this._refreshStaleCaches();
+            });
+            if (typeof cleanup === 'function') {
+                this._eventCleanupFunctions.push(cleanup);
+            }
+        }
+
+        // Clear stale cache when a session kick is detected so the next user
+        // doesn't briefly see data from the previous user's session.
+        if (window.electronAPI?.onSessionKicked) {
+            const cleanup = window.electronAPI.onSessionKicked(() => {
+                console.log('[DataStore] Session kicked — clearing all caches');
+                this.cleanup();
             });
             if (typeof cleanup === 'function') {
                 this._eventCleanupFunctions.push(cleanup);

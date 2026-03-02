@@ -125,6 +125,21 @@ class StockService {
         try {
             const branchId = this.getCurrentBranchId();
             const lowStock = stockRepository.getLowStock(branchId);
+
+            // Send desktop notification when low stock items are found
+            if (lowStock && lowStock.length > 0) {
+                try {
+                    const { getAppSettingsService } = require('./AppSettingsService.cjs');
+                    getAppSettingsService().sendNotification(
+                        'Low Stock Alert',
+                        `${lowStock.length} item(s) are running low on stock`,
+                        { silent: true }
+                    );
+                } catch (e) {
+                    // Notification failure is non-critical
+                }
+            }
+
             return {
                 status: 'success',
                 data: lowStock
@@ -294,9 +309,11 @@ class StockService {
      * @param {number} id - Stock ID
      * @param {number} stockPrice - New stock price
      * @param {number} retailPrice - New retail price
+     * @param {string} [changedBy] - Username making the change
+     * @param {string} [reason] - Reason for price change
      * @returns {Object}
      */
-    updatePrices(id, stockPrice, retailPrice) {
+    updatePrices(id, stockPrice, retailPrice, changedBy, reason) {
         try {
             const existing = stockRepository.findById(id);
             if (!existing) {
@@ -306,7 +323,7 @@ class StockService {
                 };
             }
 
-            const stock = stockRepository.updatePrices(id, stockPrice, retailPrice);
+            const stock = stockRepository.updatePrices(id, stockPrice, retailPrice, changedBy, reason);
             return {
                 status: 'success',
                 data: stock,

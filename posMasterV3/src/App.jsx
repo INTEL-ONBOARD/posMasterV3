@@ -32,7 +32,7 @@ import { DataStoreProvider } from './frontend/store';
 
 
 function PrivateRoute() {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   return token ? <Outlet /> : <Navigate to="/login" replace />;
 }
 

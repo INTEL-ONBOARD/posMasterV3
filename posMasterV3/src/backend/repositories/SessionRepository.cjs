@@ -197,13 +197,13 @@ class SessionRepository extends BaseRepository {
     }
 
     /**
-     * Get default session expiry (24 hours from now in Sri Lankan time)
+     * Get default session expiry (8 hours from now in Sri Lankan time)
      * @returns {string}
      * @private
      */
     _getDefaultExpiry() {
         const expiry = getSriLankanDate();
-        expiry.setHours(expiry.getHours() + 24);
+        expiry.setHours(expiry.getHours() + 8);
 
         const year = expiry.getFullYear();
         const month = String(expiry.getMonth() + 1).padStart(2, '0');

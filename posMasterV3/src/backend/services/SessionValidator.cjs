@@ -15,6 +15,19 @@ const { broadcastSessionKicked } = require('../utils/eventBroadcaster.cjs');
 const sessionCache = new Map();
 const CACHE_TTL = 2000; // 2 seconds cache (reduced for faster kick detection)
 
+// Periodic cleanup: evict entries that have been in the cache longer than CACHE_TTL
+// to prevent unbounded Map growth on long-running app instances.
+setInterval(() => {
+    const cutoff = Date.now() - CACHE_TTL;
+    for (const [key, entry] of sessionCache) {
+        if (entry.timestamp < cutoff) sessionCache.delete(key);
+    }
+}, 60 * 1000); // run every 60 seconds
+
+// Track tokens for which a kick broadcast has already been emitted, to prevent
+// multiple modals firing when validateSessionFast is called repeatedly.
+const kickBroadcastSent = new Set();
+
 // Track last cloud sync time
 let lastCloudSyncTime = 0;
 const CLOUD_SYNC_INTERVAL = 3000; // Sync from cloud every 3 seconds max (faster for real-time)
@@ -110,12 +123,16 @@ function validateSessionFast(token) {
                 // Emit session kicked event (internal)
                 sessionEvents.emit('session-kicked', { userId: user.id, deviceName: activeSession.device_name });
 
-                // Broadcast session kicked to UI immediately
-                broadcastSessionKicked({
-                    userId: user.id,
-                    deviceName: activeSession.device_name,
-                    message: 'Session ended - logged in from another device'
-                });
+                // Broadcast session kicked to UI — but only once per token to prevent
+                // multiple modals if validateSessionFast is called repeatedly after kick.
+                if (!kickBroadcastSent.has(token)) {
+                    kickBroadcastSent.add(token);
+                    broadcastSessionKicked({
+                        userId: user.id,
+                        deviceName: activeSession.device_name,
+                        message: 'Session ended - logged in from another device'
+                    });
+                }
 
                 return result;
             }
@@ -238,6 +255,7 @@ function invalidateCache(token) {
  */
 function clearCache() {
     sessionCache.clear();
+    kickBroadcastSent.clear();
 }
 
 /**

@@ -34,35 +34,30 @@ class ActiveSessionRepository extends BaseRepository {
 
         const now = nowISO();
 
-        // Check if record exists for this user
-        const existing = this.findOneWhere({ user_id });
+        // Use INSERT OR REPLACE for an atomic upsert — avoids a check-then-act race
+        // condition where two concurrent logins both see no existing record and both
+        // try to INSERT, causing a UNIQUE(user_id) constraint violation.
+        const stmt = this.db.prepare(`
+            INSERT INTO active_sessions
+                (user_id, device_id, device_name, session_token_hash,
+                 login_at, last_activity_at, is_active,
+                 created_at, updated_at, sync_status)
+            VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, 'pending')
+            ON CONFLICT(user_id) DO UPDATE SET
+                device_id          = excluded.device_id,
+                device_name        = excluded.device_name,
+                session_token_hash = excluded.session_token_hash,
+                login_at           = excluded.login_at,
+                last_activity_at   = excluded.last_activity_at,
+                is_active          = 1,
+                updated_at         = excluded.updated_at,
+                sync_status        = 'pending'
+        `);
 
-        if (existing) {
-            // Update existing record
-            return this.update(existing.id, {
-                device_id,
-                device_name,
-                session_token_hash,
-                login_at: now,
-                last_activity_at: now,
-                is_active: 1,
-                sync_status: 'pending'
-            });
-        }
+        stmt.run(user_id, device_id, device_name, session_token_hash,
+                 now, now, now, now);
 
-        // Create new record
-        return super.create({
-            user_id,
-            device_id,
-            device_name,
-            session_token_hash,
-            login_at: now,
-            last_activity_at: now,
-            is_active: 1,
-            created_at: now,
-            updated_at: now,
-            sync_status: 'pending'
-        });
+        return this.findOneWhere({ user_id });
     }
 
     /**

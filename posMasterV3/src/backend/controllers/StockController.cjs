@@ -59,8 +59,8 @@ class StockController {
         }));
 
         // Update stock prices
-        ipcMain.handle('stock:update-prices', wrapIpcHandler(async (event, id, stockPrice, retailPrice) => {
-            return stockService.updatePrices(id, stockPrice, retailPrice);
+        ipcMain.handle('stock:update-prices', wrapIpcHandler(async (event, id, stockPrice, retailPrice, changedBy, reason) => {
+            return stockService.updatePrices(id, stockPrice, retailPrice, changedBy, reason);
         }));
 
         // Delete stock

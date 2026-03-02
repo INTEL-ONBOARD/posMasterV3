@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Tag, Package, DollarSign, Percent, CheckCircle, AlertTriangle, Plus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Tag, Package, DollarSign, Percent, CheckCircle, AlertTriangle, Plus, Trash2, ToggleLeft, ToggleRight, X } from "lucide-react";
+import { offersApi } from "../../api/localApi";
 
 export default function OffersDiscountView({ isActive }) {
   const [search, setSearch] = useState("");
@@ -8,26 +9,84 @@ export default function OffersDiscountView({ isActive }) {
   const [sortOrder, setSortOrder] = useState("default");
   const [openFilter, setOpenFilter] = useState(true);
   const [openOrderBy, setOpenOrderBy] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", description: "", discount_type: "percentage", discount_value: "", min_purchase: "0", applies_to: "all" });
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
-  const [discounts] = useState([
-    { id: 1, code: "XLR9590565", name: "Christmas bonus", type: "Package", amount: 30, unit: "%", status: "Available" },
-    { id: 2, code: "SUM2024OFF", name: "Summer Sale", type: "Item", amount: 15, unit: "%", status: "Available" },
-    { id: 3, code: "BULK5000", name: "Bulk Buyer Discount", type: "Price Range", amount: 200, unit: "Rs off", status: "Available" },
-    { id: 4, code: "BISC10OFF", name: "Biscuit Discount", type: "Item", amount: 1, unit: "Rs off", status: "Disabled" },
-    { id: 5, code: "SNR1590565", name: "Senior Discount", type: "Price Range", amount: 200, unit: "%", status: "Disabled" },
-    { id: 6, code: "STU3500OFF", name: "Student bonus", type: "Price Range", amount: 3.5, unit: "Rs off", status: "Available" },
-  ]);
+  const [discounts, setDiscounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { loadDiscounts(); }, []);
+
+  const loadDiscounts = async () => {
+    setLoading(true);
+    try {
+      const res = await offersApi.getAll();
+      if (res?.status === 'success') setDiscounts(res.data || []);
+    } catch (e) {
+      console.error('[OffersDiscountView] load error:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (id) => {
+    try {
+      const res = await offersApi.toggleActive(id);
+      if (res?.status === 'success') setDiscounts(prev => prev.map(d => d.id === id ? res.data : d));
+    } catch (e) { console.error('[OffersDiscountView] toggle error:', e); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this discount?')) return;
+    try {
+      const res = await offersApi.delete(id);
+      if (res?.status === 'success') setDiscounts(prev => prev.filter(d => d.id !== id));
+    } catch (e) { console.error('[OffersDiscountView] delete error:', e); }
+  };
+
+  const handleCreate = async () => {
+    if (!createForm.name.trim()) { setCreateError("Name is required"); return; }
+    if (!createForm.discount_value || Number(createForm.discount_value) <= 0) { setCreateError("Discount value must be > 0"); return; }
+    setCreating(true);
+    setCreateError("");
+    try {
+      const res = await offersApi.create({ ...createForm, discount_value: parseFloat(createForm.discount_value), min_purchase: parseFloat(createForm.min_purchase) || 0 });
+      if (res?.status === 'success') {
+        setDiscounts(prev => [res.data, ...prev]);
+        setShowCreateModal(false);
+        setCreateForm({ name: "", description: "", discount_type: "percentage", discount_value: "", min_purchase: "0", applies_to: "all" });
+      } else {
+        setCreateError(res?.message || "Failed to create discount");
+      }
+    } catch (e) {
+      setCreateError(e.message || "Failed to create discount");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // Map DB record to display format
+  const mapDiscount = (d) => ({
+    id: d.id,
+    name: d.name,
+    type: d.applies_to === 'Item' ? 'Item' : d.applies_to === 'Package' ? 'Package' : 'Price Range',
+    amount: d.discount_value,
+    unit: d.discount_type === 'percentage' ? '%' : 'Rs off',
+    status: d.is_active ? 'Available' : 'Disabled'
+  });
 
   const handleSearch = (e) => {
     setSearch(e.target.value);
   };
 
-  const filteredDiscounts = discounts
+  const mappedDiscounts = discounts.map(mapDiscount);
+
+  const filteredDiscounts = mappedDiscounts
     .filter((d) => {
       const searchTerm = search.toLowerCase();
-      const matchesSearch =
-        d.code.toLowerCase().includes(searchTerm) ||
-        d.name.toLowerCase().includes(searchTerm);
+      const matchesSearch = d.name.toLowerCase().includes(searchTerm);
       const matchesType = filterType === "All" || d.type === filterType;
       const matchesStatus = filterStatus === "All" || d.status === filterStatus;
       return matchesSearch && matchesType && matchesStatus;
@@ -60,8 +119,8 @@ export default function OffersDiscountView({ isActive }) {
     }
   };
 
-  const activeCount = discounts.filter(d => d.status === "Available").length;
-  const disabledCount = discounts.filter(d => d.status === "Disabled").length;
+  const activeCount = discounts.filter(d => d.is_active === 1 || d.is_active === true).length;
+  const disabledCount = discounts.filter(d => !d.is_active).length;
 
   return (
     <div className="flex flex-row bg-gray-50 w-full h-[calc(100vh-2rem)] relative">
@@ -92,7 +151,10 @@ export default function OffersDiscountView({ isActive }) {
               <p className="text-sm text-gray-500">
                 Showing <span className="font-semibold text-gray-800">{filteredDiscounts.length}</span> discounts
               </p>
-              <button className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium shadow-sm shadow-emerald-200">
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium shadow-sm shadow-emerald-200"
+              >
                 <Plus className="w-4 h-4" />
                 New Discount
               </button>
@@ -116,11 +178,11 @@ export default function OffersDiscountView({ isActive }) {
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Code</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -128,13 +190,8 @@ export default function OffersDiscountView({ isActive }) {
                     const typeBadge = getTypeBadge(discount.type);
                     const TypeIcon = typeBadge.icon;
                     return (
-                      <tr key={discount.id} className="hover:bg-gray-50 transition-colors cursor-pointer">
+                      <tr key={discount.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
-                        <td className="px-6 py-4">
-                          <span className="text-sm font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                            {discount.code}
-                          </span>
-                        </td>
                         <td className="px-6 py-4 text-sm font-medium text-gray-800">{discount.name}</td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${typeBadge.bg} shadow-sm`}>
@@ -161,6 +218,26 @@ export default function OffersDiscountView({ isActive }) {
                             </span>
                           )}
                         </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleToggleActive(discount.id)}
+                              title={discount.status === "Available" ? "Disable" : "Enable"}
+                              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                            >
+                              {discount.status === "Available"
+                                ? <ToggleRight className="w-5 h-5 text-emerald-500" />
+                                : <ToggleLeft className="w-5 h-5 text-gray-400" />}
+                            </button>
+                            <button
+                              onClick={() => handleDelete(discount.id)}
+                              title="Delete"
+                              className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-400" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
@@ -170,6 +247,107 @@ export default function OffersDiscountView({ isActive }) {
           )}
         </div>
       </div>
+
+      {/* Create Discount Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-gray-800">New Discount</h2>
+              <button onClick={() => setShowCreateModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Name *</label>
+                <input
+                  type="text"
+                  value={createForm.name}
+                  onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                  placeholder="e.g. Summer Sale"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Description</label>
+                <input
+                  type="text"
+                  value={createForm.description}
+                  onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                  placeholder="Optional"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Discount Type</label>
+                  <select
+                    value={createForm.discount_type}
+                    onChange={e => setCreateForm(f => ({ ...f, discount_type: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] appearance-none"
+                  >
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="fixed">Fixed Amount (Rs)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Value *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={createForm.discount_value}
+                    onChange={e => setCreateForm(f => ({ ...f, discount_value: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Applies To</label>
+                  <select
+                    value={createForm.applies_to}
+                    onChange={e => setCreateForm(f => ({ ...f, applies_to: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] appearance-none"
+                  >
+                    <option value="all">All</option>
+                    <option value="Item">Item</option>
+                    <option value="Package">Package</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Min. Purchase (Rs)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={createForm.min_purchase}
+                    onChange={e => setCreateForm(f => ({ ...f, min_purchase: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              {createError && <p className="text-sm text-red-500">{createError}</p>}
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreate}
+                disabled={creating}
+                className="flex-1 px-4 py-2.5 bg-[#1A318C] text-white rounded-lg text-sm font-medium hover:bg-[#152870] transition-colors disabled:opacity-60"
+              >
+                {creating ? "Creating..." : "Create Discount"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter Sidebar */}
       <div className="bg-gray-100 w-[18rem] h-[calc(100vh-2rem)] p-3">

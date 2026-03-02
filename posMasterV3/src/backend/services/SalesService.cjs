@@ -305,6 +305,59 @@ class SalesService {
     }
 
     /**
+     * Return items from a completed sale
+     * @param {number} saleId - Sale ID
+     * @param {Array} items - Items to return: [{ sale_item_id, stock_id, item_id, batch_code, quantity, unit_price }]
+     * @param {string|null} reason - Return reason
+     * @returns {Object}
+     */
+    returnItems(saleId, items, reason) {
+        try {
+            const sale = salesRepository.getFullDetails(saleId);
+            if (!sale) {
+                return { status: 'error', message: 'Sale not found' };
+            }
+            if (!['completed', 'partial_return'].includes(sale.status)) {
+                return { status: 'error', message: `Cannot return items from a sale with status: ${sale.status}` };
+            }
+            if (!items || items.length === 0) {
+                return { status: 'error', message: 'No items specified for return' };
+            }
+
+            // Validate quantities don't exceed what was originally sold
+            for (const returnItem of items) {
+                const originalItem = sale.items.find(
+                    si => si.stock_id === returnItem.stock_id && si.item_id === returnItem.item_id
+                );
+                if (!originalItem) {
+                    return { status: 'error', message: `Item not found in original sale` };
+                }
+                if (returnItem.quantity <= 0) {
+                    return { status: 'error', message: 'Return quantity must be greater than 0' };
+                }
+                if (returnItem.quantity > originalItem.quantity) {
+                    return {
+                        status: 'error',
+                        message: `Cannot return ${returnItem.quantity} units — only ${originalItem.quantity} were sold`
+                    };
+                }
+            }
+
+            const returnedBy = null; // Caller can pass via items payload if needed
+            const returnedRecords = salesRepository.returnSaleItems(saleId, items, reason, returnedBy);
+
+            return {
+                status: 'success',
+                data: returnedRecords,
+                message: 'Return processed successfully'
+            };
+        } catch (error) {
+            console.error('[SalesService] returnItems error:', error);
+            return { status: 'error', message: error.message };
+        }
+    }
+
+    /**
      * Get sales summary (filtered by current branch)
      * @param {string} startDate - Start date
      * @param {string} endDate - End date

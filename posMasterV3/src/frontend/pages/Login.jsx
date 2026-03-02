@@ -148,8 +148,12 @@ function Login() {
 
         statusLog.success(`Welcome back, ${userData.full_name || userData.username}`);
 
-        // Persist user fields explicitly so other parts of the app can read them
-        localStorage.setItem("user", JSON.stringify(userData));
+        // Persist user fields in sessionStorage (cleared on app close) and localStorage
+        // (legacy readers). Both are cleared on logout; sessionStorage ensures fields
+        // don't persist across Electron restarts even if logout is skipped.
+        const userJson = JSON.stringify(userData);
+        sessionStorage.setItem("user", userJson);
+        localStorage.setItem("user", userJson);
 
         if (token !== undefined && token !== null) {
           sessionStorage.setItem("token", token);
@@ -158,9 +162,15 @@ function Login() {
         }
 
         // common keys used across app
-        localStorage.setItem('username', userData.username ?? userData.email ?? '');
-        localStorage.setItem('email', userData.email ?? '');
-        localStorage.setItem('_id', userData._id ?? userData.id ?? '');
+        const usernameVal = userData.username ?? userData.email ?? '';
+        const emailVal = userData.email ?? '';
+        const idVal = userData._id ?? userData.id ?? '';
+        sessionStorage.setItem('username', usernameVal);
+        sessionStorage.setItem('email', emailVal);
+        sessionStorage.setItem('_id', idVal);
+        localStorage.setItem('username', usernameVal);
+        localStorage.setItem('email', emailVal);
+        localStorage.setItem('_id', idVal);
 
         // Send user data to main process for logout handling
         if (window.electronAPI && window.electronAPI.sendUserData) {
