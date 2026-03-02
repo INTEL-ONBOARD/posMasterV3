@@ -487,8 +487,8 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
     // scale so it fits ONLY the left half
     const scaleToHalf = targetWidthPt / imgWidthPt;
 
-    const finalImgWidthPt = imgWidthPt * scaleToHalf;
-    const finalImgHeightPt = imgHeightPt * scaleToHalf;
+    let finalImgWidthPt = imgWidthPt * scaleToHalf;
+    let finalImgHeightPt = imgHeightPt * scaleToHalf;
 
     let finalScaleForPdfImage = 1; // used only if fitToPage true
     if (fitToPage && imgWidthPt > printableWidth) {
