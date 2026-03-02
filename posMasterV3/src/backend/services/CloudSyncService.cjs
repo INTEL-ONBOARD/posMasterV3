@@ -55,13 +55,12 @@ const TABLES_TO_SYNC = [
     'login_history',
     'active_sessions',  // For single-device enforcement across devices
     'payment_methods',  // Payment method configurations
-    'audit_log',        // Audit trail for compliance
     'tea_coop_members', // Tea Coop member data from external API
     'tea_coop_payments' // Tea Coop payment history from external API
 ];
 
 // Tables that shouldn't sync (local only) - each device has its own settings
-const LOCAL_ONLY_TABLES = ['sessions', 'sync_queue', 'migrations', 'price_change_history', 'app_settings', 'sync_metadata'];
+const LOCAL_ONLY_TABLES = ['sessions', 'sync_queue', 'migrations', 'price_change_history', 'app_settings', 'sync_metadata', 'audit_log'];
 
 // Columns that exist ONLY in local SQLite and should NOT be synced to cloud MySQL
 // These columns are either:
@@ -360,33 +359,45 @@ class CloudSyncService {
     }
 
     /**
-     * Log a sync conflict to the audit_log table for traceability.
-     * Called before any conflict overwrite so the losing record is preserved.
-     * Errors are swallowed — conflict logging must never break sync.
+     * Log a sync overwrite to the audit_log table for traceability.
+     * Called before any sync overwrite (not just contested conflicts) so the losing
+     * record is preserved. Errors are swallowed — conflict logging must never break sync.
      *
      * @param {Object} params
-     * @param {string} params.tableName    - The table where the conflict occurred
+     * @param {string} params.tableName    - The table where the overwrite occurred
      * @param {*}      params.recordId     - The primary key value of the conflicting record
      * @param {Object} params.winner       - The record that won (will be kept)
      * @param {Object} params.loser        - The record that lost (will be overwritten)
      * @param {string} params.winnerSource - Either 'cloud' or 'local'
-     * @param {string} params.resolvedAt   - Timestamp string for the audit entry
      */
-    _logConflict({ tableName, recordId, winner, loser, winnerSource, resolvedAt }) {
+    _logConflict({ tableName, recordId, winner, loser, winnerSource }) {
         try {
             const db = getDatabase();
+            // Filter out local-only columns (blobs, sensitive data, virtual JOIN fields)
+            // before storing records in the audit log
+            const filterRecord = (record) => {
+                if (!record) return record;
+                const filtered = { ...record };
+                for (const col of LOCAL_ONLY_COLUMNS) {
+                    delete filtered[col];
+                }
+                return filtered;
+            };
+            const filteredWinner = filterRecord(winner);
+            const filteredLoser = filterRecord(loser);
+            const loserSource = winnerSource === 'cloud' ? 'local' : 'cloud';
             db.prepare(`
                 INSERT INTO audit_log
-                    (table_name, record_id, action, old_values, new_values, changed_fields, timestamp)
-                VALUES (?, ?, 'UPDATE', ?, ?, ?, ?)
+                    (table_name, record_id, action, old_values, new_values, changed_fields)
+                VALUES (?, ?, 'UPDATE', ?, ?, ?)
             `).run(
                 tableName,
                 String(recordId),
-                JSON.stringify({ source: winnerSource === 'cloud' ? 'local' : 'cloud', data: loser }),
-                JSON.stringify({ source: winnerSource, data: winner }),
-                'sync_conflict',
-                resolvedAt
+                JSON.stringify({ source: loserSource, data: filteredLoser }),
+                JSON.stringify({ source: winnerSource, data: filteredWinner }),
+                'sync_overwrite'
             );
+            console.log(`[CloudSync] Logged sync overwrite for ${tableName} record ${recordId} (${winnerSource} wins)`);
         } catch (err) {
             console.warn('[CloudSync] Failed to log sync conflict:', err.message);
         }
@@ -1026,8 +1037,7 @@ class CloudSyncService {
                                 recordId: cloudRecord[primaryKey],
                                 winner: cloudRecord,
                                 loser: localRecord,
-                                winnerSource: 'cloud',
-                                resolvedAt: nowISO().replace('T', ' ').replace(/\.\d+Z$/, '')
+                                winnerSource: 'cloud'
                             });
                             await this.pullRecordToLocal(tableName, cloudRecord, localColumns, primaryKey, true);
                             result.pulled++;
@@ -1061,8 +1071,7 @@ class CloudSyncService {
                                 recordId: localRecord[primaryKey],
                                 winner: localRecord,
                                 loser: cloudRecord,
-                                winnerSource: 'local',
-                                resolvedAt: nowISO().replace('T', ' ').replace(/\.\d+Z$/, '')
+                                winnerSource: 'local'
                             });
                             await this.pushRecordToCloud(tableName, localRecord, localColumns);
                             this.updateLocalSyncStatus(tableName, id, 'synced');
