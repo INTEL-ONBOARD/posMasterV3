@@ -375,10 +375,14 @@ class CloudSyncService {
             const db = getDatabase();
             // Filter out local-only columns (blobs, sensitive data, virtual JOIN fields)
             // before storing records in the audit log
+            const tableExclusions = TABLE_SPECIFIC_EXCLUSIONS[tableName] || [];
             const filterRecord = (record) => {
                 if (!record) return record;
                 const filtered = { ...record };
                 for (const col of LOCAL_ONLY_COLUMNS) {
+                    delete filtered[col];
+                }
+                for (const col of tableExclusions) {
                     delete filtered[col];
                 }
                 return filtered;
