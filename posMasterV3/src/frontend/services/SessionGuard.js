@@ -54,7 +54,7 @@ export function isSessionValid() {
  * @returns {Promise<{valid: boolean, forcedLogout?: boolean, message?: string}>}
  */
 export async function validateSession() {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (!token) {
         return { valid: false, message: 'No token' };
     }
@@ -174,7 +174,7 @@ export function startSessionMonitor(interval = 10000) {
     const check = async () => {
         if (!isMonitoring) return;
 
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('token');
         if (!token) return;
 
         try {

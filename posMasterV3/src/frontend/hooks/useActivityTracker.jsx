@@ -45,13 +45,13 @@ export function useActivityTracker({ enabled = true, debounceMs = 1000 } = {}) {
 
         try {
             // Get current token and logout
-            const token = localStorage.getItem('token');
+            const token = sessionStorage.getItem('token');
             if (token) {
                 await authApi.logout(token);
             }
 
             // Clear local storage
-            localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
             localStorage.removeItem('username');
             localStorage.removeItem('email');
             localStorage.removeItem('_id');

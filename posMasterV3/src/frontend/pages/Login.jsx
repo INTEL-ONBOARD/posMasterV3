@@ -152,9 +152,9 @@ function Login() {
         localStorage.setItem("user", JSON.stringify(userData));
 
         if (token !== undefined && token !== null) {
-          localStorage.setItem("token", token);
+          sessionStorage.setItem("token", token);
         } else {
-          localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
         }
 
         // common keys used across app
