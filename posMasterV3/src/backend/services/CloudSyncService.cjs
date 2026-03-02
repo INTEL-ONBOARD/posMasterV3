@@ -158,11 +158,13 @@ class CloudSyncService {
         this.pendingChanges = [];
         this._pendingChangeKeys.clear();
         console.log('[CloudSyncService] Pending changes cleared on logout');
-        try {
-            // Delete all completed records immediately (on logout, we want a clean slate)
-            this.syncQueueRepo.clearCompleted();
-        } catch (err) {
-            console.warn('[CloudSync] Failed to clean up completed DB queue records:', err.message);
+        if (this.syncQueueRepo) {
+            try {
+                // Delete all completed records immediately (on logout, we want a clean slate)
+                this.syncQueueRepo.clearCompleted();
+            } catch (err) {
+                console.warn('[CloudSync] Failed to clean up completed DB queue records:', err.message);
+            }
         }
     }
 
