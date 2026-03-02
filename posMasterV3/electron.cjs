@@ -582,6 +582,7 @@ autoUpdater.on("update-available", (info) => {
   if (mainWindow) {
     mainWindow.webContents.send("updates:available", {
       latestVersion: info.version,
+      currentVersion: app.getVersion(),
       releaseNotes: info.releaseNotes,
     });
   }
