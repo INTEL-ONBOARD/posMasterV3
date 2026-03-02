@@ -24,6 +24,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 // Global state for sync status
 let globalSyncStatus = {
     isOnline: true,
+    isSyncing: false,
     connectionQuality: 'unknown',
     pendingCount: 0,
     lastSyncTime: null
@@ -82,6 +83,7 @@ export function useRealTimeSync(options = {}) {
         const unsubscribeStatus = window.electronAPI.onSyncStatusChange?.((status) => {
             globalSyncStatus = {
                 isOnline: status.isOnline ?? globalSyncStatus.isOnline,
+                isSyncing: status.isSyncing ?? false,
                 connectionQuality: status.connectionQuality ?? globalSyncStatus.connectionQuality,
                 pendingCount: status.pendingCount ?? globalSyncStatus.pendingCount,
                 lastSyncTime: status.lastSyncTime ?? globalSyncStatus.lastSyncTime
@@ -97,11 +99,10 @@ export function useRealTimeSync(options = {}) {
             });
         });
 
-        // Cleanup on app unload (won't run on component unmount)
-        window.addEventListener('beforeunload', () => {
+        return () => {
             unsubscribeData?.();
             unsubscribeStatus?.();
-        });
+        };
 
     }, []);
 
@@ -157,6 +158,7 @@ export function useRealTimeSync(options = {}) {
 
     return {
         isOnline: syncStatus.isOnline,
+        isSyncing: syncStatus.isSyncing,
         connectionQuality: syncStatus.connectionQuality,
         pendingCount: syncStatus.pendingCount,
         lastSyncTime: syncStatus.lastSyncTime,
@@ -206,19 +208,6 @@ export function useAutoRefetch(tableName, fetchFn, deps = []) {
 
         return unsubscribe;
     }, [tableName, subscribe, ...deps]);
-}
-
-/**
- * Connection quality indicator component helper
- */
-export function getConnectionQualityColor(quality) {
-    switch (quality) {
-        case 'excellent': return 'green';
-        case 'good': return 'lime';
-        case 'poor': return 'yellow';
-        case 'offline': return 'red';
-        default: return 'gray';
-    }
 }
 
 export default useRealTimeSync;

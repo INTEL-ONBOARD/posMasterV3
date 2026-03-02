@@ -134,7 +134,18 @@ function registerSyncHandlers() {
      */
     ipcMain.handle('sync:retry-failed', wrapIpcHandler(async (event) => {
         try {
-            return syncService.retryFailed();
+            const result = syncService.retryFailed();
+
+            // Emit status update to all renderer windows after retry completes
+            const status = syncService.getSyncStatus();
+            broadcastSyncStatus({
+                isOnline: status.isOnline,
+                isSyncing: status.isSyncing,
+                pendingCount: status.queue?.pending ?? 0,
+                lastSyncTime: new Date().toISOString()
+            });
+
+            return result;
 
         } catch (error) {
             console.error('[SyncController] Retry failed error:', error.message);

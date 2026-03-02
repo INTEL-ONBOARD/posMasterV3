@@ -106,6 +106,8 @@ function Dashboard() {
   const navigate = useNavigate();
   const { currentStatus, isOnline: statusIsOnline } = useStatusLog();
   const { pendingCount, lastSyncTime, isSyncing, isOnline } = useRealTimeSync();
+  // Use the fetched initial value first; real-time updates from useRealTimeSync take over once received
+  const displayOnline = isOnline ?? statusIsOnline;
   const [showKickedModal, setShowKickedModal] = useState(false);
 
   // Track user activity for idle auto-logout
@@ -292,8 +294,8 @@ function Dashboard() {
             {/* Sync status UI */}
             <div className="flex items-center gap-2 text-xs text-white/80">
               {/* Online/Offline dot */}
-              <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400' : 'bg-red-400'}`} />
-              <span>{isOnline ? 'Online' : 'Offline'}</span>
+              <span className={`w-2 h-2 rounded-full ${displayOnline ? 'bg-green-400' : 'bg-red-400'}`} />
+              <span>{displayOnline ? 'Online' : 'Offline'}</span>
 
               {/* Pending changes badge — only show when there are pending changes */}
               {pendingCount > 0 && (
@@ -312,7 +314,7 @@ function Dashboard() {
 
               {/* Last sync time — only show if we have a timestamp */}
               {lastSyncTime && (
-                <span className="text-white/50">Last sync: {new Date(lastSyncTime).toLocaleTimeString()}</span>
+                <span className="text-white/50">Last sync: {formatTime(new Date(lastSyncTime))}</span>
               )}
             </div>
           </div>
