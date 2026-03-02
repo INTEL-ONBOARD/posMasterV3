@@ -360,6 +360,39 @@ class CloudSyncService {
     }
 
     /**
+     * Log a sync conflict to the audit_log table for traceability.
+     * Called before any conflict overwrite so the losing record is preserved.
+     * Errors are swallowed — conflict logging must never break sync.
+     *
+     * @param {Object} params
+     * @param {string} params.tableName    - The table where the conflict occurred
+     * @param {*}      params.recordId     - The primary key value of the conflicting record
+     * @param {Object} params.winner       - The record that won (will be kept)
+     * @param {Object} params.loser        - The record that lost (will be overwritten)
+     * @param {string} params.winnerSource - Either 'cloud' or 'local'
+     * @param {string} params.resolvedAt   - Timestamp string for the audit entry
+     */
+    _logConflict({ tableName, recordId, winner, loser, winnerSource, resolvedAt }) {
+        try {
+            const db = getDatabase();
+            db.prepare(`
+                INSERT INTO audit_log
+                    (table_name, record_id, action, old_values, new_values, changed_fields, timestamp)
+                VALUES (?, ?, 'UPDATE', ?, ?, ?, ?)
+            `).run(
+                tableName,
+                String(recordId),
+                JSON.stringify({ source: winnerSource === 'local' ? 'cloud' : 'local', data: loser }),
+                JSON.stringify({ source: winnerSource, data: winner }),
+                'sync_conflict',
+                resolvedAt
+            );
+        } catch (err) {
+            console.warn('[CloudSync] Failed to log sync conflict:', err.message);
+        }
+    }
+
+    /**
      * Initialize the cloud sync service
      */
     async initialize() {
@@ -988,6 +1021,14 @@ class CloudSyncService {
 
                         if (syncDecision === 'pull') {
                             // Cloud is newer → Pull to local FIRST (skip individual broadcast, batch later)
+                            this._logConflict({
+                                tableName,
+                                recordId: cloudRecord[primaryKey],
+                                winner: cloudRecord,
+                                loser: localRecord,
+                                winnerSource: 'cloud',
+                                resolvedAt: nowISO().replace('T', ' ').replace(/\.\d+Z$/, '')
+                            });
                             await this.pullRecordToLocal(tableName, cloudRecord, localColumns, primaryKey, true);
                             result.pulled++;
                         }
@@ -1015,6 +1056,14 @@ class CloudSyncService {
 
                         if (syncDecision === 'push') {
                             // Local is newer → Push to cloud
+                            this._logConflict({
+                                tableName,
+                                recordId: localRecord[primaryKey],
+                                winner: localRecord,
+                                loser: cloudRecord,
+                                winnerSource: 'local',
+                                resolvedAt: nowISO().replace('T', ' ').replace(/\.\d+Z$/, '')
+                            });
                             await this.pushRecordToCloud(tableName, localRecord, localColumns);
                             this.updateLocalSyncStatus(tableName, id, 'synced');
                             result.pushed++;
