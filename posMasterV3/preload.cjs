@@ -388,28 +388,33 @@ contextBridge.exposeInMainWorld("electronAPI", {
             ipcRenderer.invoke("updates:install-update"),
         // Register listener: called when an update is found
         onUpdateAvailable: (callback) => {
-            ipcRenderer.on("updates:available", (_, data) => callback(data));
-            return () => ipcRenderer.removeAllListeners("updates:available");
+            const handler = (_, data) => callback(data);
+            ipcRenderer.on("updates:available", handler);
+            return () => ipcRenderer.removeListener("updates:available", handler);
         },
         // Register listener: called when no update is available
         onUpdateNotAvailable: (callback) => {
-            ipcRenderer.on("updates:not-available", (_, data) => callback(data));
-            return () => ipcRenderer.removeAllListeners("updates:not-available");
+            const handler = (_, data) => callback(data);
+            ipcRenderer.on("updates:not-available", handler);
+            return () => ipcRenderer.removeListener("updates:not-available", handler);
         },
         // Register listener: called with download progress { percent, transferred, total }
         onDownloadProgress: (callback) => {
-            ipcRenderer.on("updates:download-progress", (_, data) => callback(data));
-            return () => ipcRenderer.removeAllListeners("updates:download-progress");
+            const handler = (_, data) => callback(data);
+            ipcRenderer.on("updates:download-progress", handler);
+            return () => ipcRenderer.removeListener("updates:download-progress", handler);
         },
         // Register listener: called when download is complete
         onUpdateDownloaded: (callback) => {
-            ipcRenderer.on("updates:downloaded", (_, data) => callback(data));
-            return () => ipcRenderer.removeAllListeners("updates:downloaded");
+            const handler = (_, data) => callback(data);
+            ipcRenderer.on("updates:downloaded", handler);
+            return () => ipcRenderer.removeListener("updates:downloaded", handler);
         },
         // Register listener: called on error
         onUpdateError: (callback) => {
-            ipcRenderer.on("updates:error", (_, data) => callback(data));
-            return () => ipcRenderer.removeAllListeners("updates:error");
+            const handler = (_, data) => callback(data);
+            ipcRenderer.on("updates:error", handler);
+            return () => ipcRenderer.removeListener("updates:error", handler);
         },
     },
 
