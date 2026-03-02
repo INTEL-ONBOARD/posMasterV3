@@ -6,6 +6,7 @@
 
 const { getSyncService } = require('../services/index.cjs');
 const { wrapIpcHandler } = require('../utils/helpers.cjs');
+const { broadcastSyncStatus } = require('../utils/eventBroadcaster.cjs');
 
 // Lazy load ipcMain to ensure electron is ready
 let _ipcMain = null;
@@ -70,7 +71,18 @@ function registerSyncHandlers() {
 
         try {
             const { token } = payload;
-            return await syncService.processSyncQueue(token);
+            const result = await syncService.processSyncQueue(token);
+
+            // Emit status update to all renderer windows after sync completes
+            const status = syncService.getSyncStatus();
+            broadcastSyncStatus({
+                isOnline: status.isOnline,
+                isSyncing: status.isSyncing,
+                pendingCount: status.queue?.pending ?? 0,
+                lastSyncTime: new Date().toISOString()
+            });
+
+            return result;
 
         } catch (error) {
             console.error('[SyncController] Process queue error:', error.message);
@@ -92,7 +104,18 @@ function registerSyncHandlers() {
 
         try {
             const { entityType, token } = payload;
-            return await syncService.pullFromCloud(entityType, token);
+            const result = await syncService.pullFromCloud(entityType, token);
+
+            // Emit status update to all renderer windows after pull completes
+            const status = syncService.getSyncStatus();
+            broadcastSyncStatus({
+                isOnline: status.isOnline,
+                isSyncing: status.isSyncing,
+                pendingCount: status.queue?.pending ?? 0,
+                lastSyncTime: new Date().toISOString()
+            });
+
+            return result;
 
         } catch (error) {
             console.error('[SyncController] Pull error:', error.message);

@@ -291,7 +291,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
         cleanup: (daysOld = 7) =>
             ipcRenderer.invoke("sync:cleanup", { daysOld }),
         setCloudUrl: (url) =>
-            ipcRenderer.invoke("sync:set-cloud-url", { url })
+            ipcRenderer.invoke("sync:set-cloud-url", { url }),
+        onStatusChange: (callback) => {
+            const handler = (_event, status) => callback(status);
+            ipcRenderer.on('sync:status-changed', handler);
+            // Return unsubscribe function
+            return () => ipcRenderer.removeListener('sync:status-changed', handler);
+        }
     },
 
     // ============================================

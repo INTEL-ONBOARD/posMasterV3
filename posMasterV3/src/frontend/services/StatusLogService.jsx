@@ -46,14 +46,28 @@ export function StatusLogProvider({ children }) {
       try {
         if (window.electronAPI?.cloudSync?.getStatus) {
           const status = await window.electronAPI.cloudSync.getStatus();
-          setIsOnline(status?.isOnline ?? true);
+          setIsOnline(status?.data?.isOnline ?? status?.isOnline ?? true);
         }
       } catch {
         // Ignore errors
       }
     };
 
+    // Initial fetch on mount
     checkNetwork();
+
+    // Listen for IPC sync status change events instead of polling
+    const handler = window.electronAPI?.onSyncStatusChange;
+    if (handler) {
+      const unsubscribe = handler((status) => {
+        if (typeof status?.isOnline === 'boolean') {
+          setIsOnline(status.isOnline);
+        }
+      });
+      return () => unsubscribe?.();
+    }
+
+    // Fallback: poll every 30s if IPC event listener not available
     const interval = setInterval(checkNetwork, 30000);
     return () => clearInterval(interval);
   }, []);

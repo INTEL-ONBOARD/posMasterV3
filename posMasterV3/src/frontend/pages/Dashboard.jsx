@@ -3,6 +3,7 @@ import ToastContext from "./toasts/ToastService.jsx";
 import { Outlet, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar.jsx";
 import { useStatusLog, StatusType } from "../services/StatusLogService.jsx";
+import { useRealTimeSync } from "../hooks/useRealTimeSync";
 import { appSettingsApi, authApi } from "../api/localApi";
 import { onSessionEvent, startSessionMonitor } from "../services/SessionGuard";
 import { BranchProvider } from "../context/BranchContext.jsx";
@@ -103,7 +104,8 @@ function Dashboard() {
   const [activeSection, setActiveSection] = useState(null);
   const toast = useContext(ToastContext);
   const navigate = useNavigate();
-  const { currentStatus, isOnline } = useStatusLog();
+  const { currentStatus, isOnline: statusIsOnline } = useStatusLog();
+  const { pendingCount, lastSyncTime, isSyncing, isOnline } = useRealTimeSync();
   const [showKickedModal, setShowKickedModal] = useState(false);
 
   // Track user activity for idle auto-logout
@@ -287,16 +289,31 @@ function Dashboard() {
 
           {/* Right side indicators */}
           <div className="flex items-center gap-4">
-            {/* Network status */}
-            <div className="flex items-center gap-1">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  isOnline ? "bg-green-400" : "bg-red-400"
-                }`}
-              />
-              <span className="text-xs text-white/80">
-                {isOnline ? "Online" : "Offline"}
-              </span>
+            {/* Sync status UI */}
+            <div className="flex items-center gap-2 text-xs text-white/80">
+              {/* Online/Offline dot */}
+              <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400' : 'bg-red-400'}`} />
+              <span>{isOnline ? 'Online' : 'Offline'}</span>
+
+              {/* Pending changes badge — only show when there are pending changes */}
+              {pendingCount > 0 && (
+                <span className="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded text-xs font-medium">
+                  {pendingCount} pending
+                </span>
+              )}
+
+              {/* Sync spinner — only show when actively syncing */}
+              {isSyncing && (
+                <svg className="animate-spin h-3 w-3 text-blue-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+              )}
+
+              {/* Last sync time — only show if we have a timestamp */}
+              {lastSyncTime && (
+                <span className="text-white/50">Last sync: {new Date(lastSyncTime).toLocaleTimeString()}</span>
+              )}
             </div>
           </div>
         </div>
