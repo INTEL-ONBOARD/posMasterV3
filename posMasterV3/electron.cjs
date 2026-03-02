@@ -1,5 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path = require("path");
+const os = require("os");
 const { pathToFileURL } = require("url");
 const axios = require("axios");
 const fs = require("fs").promises;
@@ -18,12 +20,16 @@ function getBackend() {
 // Load the version from package.json
 const appVersion = require(path.join(__dirname, "package.json")).version;
 
+// Auto-updater configuration - user must trigger download manually
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
+
 let mainWindow;
 let storedUser = null;
 let isQuitting = false;
 
-// Default folder path
-const defaultFolderPath = "C:\\POS Master";
+// Default folder path - platform-aware
+const defaultFolderPath = path.join(os.homedir(), "POS Master");
 
 // Paths to your DTOs (as you specified)
 const dtoPaths = {
@@ -565,6 +571,93 @@ ipcMain.handle("app:logoutAndRestart", async () => {
   // Relaunch the app
   app.relaunch();
   app.exit(0);
+});
+
+// ============================================================
+// AUTO-UPDATER EVENT HANDLERS
+// Push update status events to the renderer window
+// ============================================================
+
+autoUpdater.on("update-available", (info) => {
+  if (mainWindow) {
+    mainWindow.webContents.send("updates:available", {
+      latestVersion: info.version,
+      releaseNotes: info.releaseNotes,
+    });
+  }
+});
+
+autoUpdater.on("download-progress", (progress) => {
+  if (mainWindow) {
+    mainWindow.webContents.send("updates:download-progress", {
+      percent: Math.round(progress.percent),
+      transferred: progress.transferred,
+      total: progress.total,
+    });
+  }
+});
+
+autoUpdater.on("update-downloaded", (info) => {
+  if (mainWindow) {
+    mainWindow.webContents.send("updates:downloaded", {
+      version: info.version,
+    });
+  }
+});
+
+autoUpdater.on("error", (err) => {
+  if (mainWindow) {
+    mainWindow.webContents.send("updates:error", {
+      message: err.message,
+    });
+  }
+});
+
+// ============================================================
+// AUTO-UPDATER IPC HANDLERS
+// ============================================================
+
+ipcMain.handle("updates:check-for-updates", async () => {
+  // Cannot check for updates in development (app not packaged)
+  if (!app.isPackaged) {
+    return {
+      status: "error",
+      message: "Update checks are only available in the packaged app.",
+    };
+  }
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    const currentVersion = app.getVersion();
+    if (!result || !result.updateInfo) {
+      return { status: "success", data: { available: false, currentVersion } };
+    }
+    const latestVersion = result.updateInfo.version;
+    const available = latestVersion !== currentVersion;
+    return {
+      status: "success",
+      data: {
+        available,
+        currentVersion,
+        latestVersion,
+        releaseNotes: result.updateInfo.releaseNotes,
+      },
+    };
+  } catch (err) {
+    return { status: "error", message: err.message };
+  }
+});
+
+ipcMain.handle("updates:download-update", async () => {
+  try {
+    await autoUpdater.downloadUpdate();
+    return { status: "success" };
+  } catch (err) {
+    return { status: "error", message: err.message };
+  }
+});
+
+ipcMain.handle("updates:install-update", () => {
+  autoUpdater.quitAndInstall(false, true);
 });
 
 app.whenReady().then(async () => {
