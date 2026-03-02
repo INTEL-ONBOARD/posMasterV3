@@ -51,7 +51,7 @@
     ],
     "publish": {
       "provider": "github",
-      "owner": "Revo-infosurv",
+      "owner": "INTEL-ONBOARD",
       "repo": "posMasterV3"
     }
   },
