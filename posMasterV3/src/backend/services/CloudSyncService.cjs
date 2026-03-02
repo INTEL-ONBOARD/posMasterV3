@@ -159,7 +159,8 @@ class CloudSyncService {
         this._pendingChangeKeys.clear();
         console.log('[CloudSyncService] Pending changes cleared on logout');
         try {
-            this.syncQueueRepo.cleanupCompleted(0);
+            // Delete all completed records immediately (on logout, we want a clean slate)
+            this.syncQueueRepo.db.prepare("DELETE FROM sync_queue WHERE status = 'completed'").run();
         } catch (err) {
             console.warn('[CloudSync] Failed to clean up completed DB queue records:', err.message);
         }
@@ -173,19 +174,26 @@ class CloudSyncService {
         try {
             const pending = this.syncQueueRepo.getNextPending(10000);
             if (pending.length > 0) {
-                this.pendingChanges = pending.map(r => ({
-                    tableName: r.entity_type,
-                    operation: r.operation,
-                    record: r.payload,
-                    recordId: r.entity_id,
-                    timestamp: r.created_at,
-                    queueId: r.id
-                }));
-                // Rebuild deduplication key set from recovered changes
-                for (const change of this.pendingChanges) {
-                    this._addPendingKey(change.tableName, change.operation, change.recordId);
+                const existingIds = new Set(this.pendingChanges.map(c => c.queueId).filter(Boolean));
+                let recovered = 0;
+                for (const r of pending) {
+                    if (!existingIds.has(r.id)) {
+                        this.pendingChanges.push({
+                            tableName: r.entity_type,
+                            operation: r.operation,
+                            record: r.payload,
+                            recordId: r.entity_id,
+                            timestamp: r.created_at,
+                            queueId: r.id
+                        });
+                        // Also update the deduplication key set
+                        this._addPendingKey(r.entity_type, r.operation, r.entity_id);
+                        recovered++;
+                    }
                 }
-                console.log(`[CloudSync] Recovered ${pending.length} pending changes from DB queue`);
+                if (recovered > 0) {
+                    console.log(`[CloudSync] Recovered ${recovered} pending changes from DB queue`);
+                }
             }
         } catch (err) {
             console.warn('[CloudSync] Failed to recover pending changes:', err.message);
