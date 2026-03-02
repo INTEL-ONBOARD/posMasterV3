@@ -91,6 +91,16 @@ class AuthService {
                     // Invalidate all sessions for this user
                     const invalidatedCount = this.sessionRepo.invalidateAllForUser(user.id);
                     console.log(`[AuthService] Invalidated ${invalidatedCount} session(s) for user ${user.username}`);
+
+                    // Immediately clear cache for each forced-out session token
+                    try {
+                        const { invalidateCache } = require('./SessionValidator.cjs');
+                        for (const existingSession of existingSessions) {
+                            invalidateCache(existingSession.token);
+                        }
+                    } catch (e) {
+                        // SessionValidator not available — harmless, cache will expire normally
+                    }
                 }
 
                 // Create new session (this will be the only active session)
@@ -329,6 +339,14 @@ class AuthService {
             }
 
             const invalidated = this.sessionRepo.invalidateByToken(token);
+
+            // Immediately clear the session cache so the token is rejected at once
+            try {
+                const { invalidateCache } = require('./SessionValidator.cjs');
+                invalidateCache(token);
+            } catch (e) {
+                // SessionValidator not available — harmless, cache will expire normally
+            }
 
             return {
                 success: true,
