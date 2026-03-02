@@ -69,10 +69,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     createFiles: (folderPath, outlet) =>
         ipcRenderer.invoke("create-files", { folderPath, outlet }),
 
-    // Ensure sample.json (legacy feature)
-    ensureSampleJson: (folderPath) =>
-        ipcRenderer.invoke("ensure-sample-json", folderPath),
-
     // ============================================
     // AUTHENTICATION API
     // ============================================
@@ -210,8 +206,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
         getValue: () => ipcRenderer.invoke("stock:get-value"),
         upsert: (data) => ipcRenderer.invoke("stock:upsert", data),
         updateQuantity: (id, quantity) => ipcRenderer.invoke("stock:update-quantity", id, quantity),
-        updatePrices: (id, stockPrice, retailPrice) =>
-            ipcRenderer.invoke("stock:update-prices", id, stockPrice, retailPrice),
+        updatePrices: (id, stockPrice, retailPrice, changedBy, reason) =>
+            ipcRenderer.invoke("stock:update-prices", id, stockPrice, retailPrice, changedBy, reason),
         delete: (id) => ipcRenderer.invoke("stock:delete", id)
     },
 
@@ -252,6 +248,29 @@ contextBridge.exposeInMainWorld("electronAPI", {
     },
 
     // ============================================
+    // OFFERS & DISCOUNTS API
+    // ============================================
+
+    offers: {
+        getAll:       () => ipcRenderer.invoke("offers:get-all"),
+        getActive:    () => ipcRenderer.invoke("offers:get-active"),
+        create:       (data) => ipcRenderer.invoke("offers:create", data),
+        update:       (id, data) => ipcRenderer.invoke("offers:update", id, data),
+        delete:       (id) => ipcRenderer.invoke("offers:delete", id),
+        toggleActive: (id) => ipcRenderer.invoke("offers:toggle-active", id)
+    },
+
+    // ============================================
+    // DISPOSED ITEMS API
+    // ============================================
+
+    disposed: {
+        getAll:          () => ipcRenderer.invoke("disposed:get-all"),
+        create:          (data) => ipcRenderer.invoke("disposed:create", data),
+        getByDateRange:  (startDate, endDate) => ipcRenderer.invoke("disposed:get-by-date-range", startDate, endDate)
+    },
+
+    // ============================================
     // SALES API
     // ============================================
 
@@ -267,6 +286,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
         hold: (data) => ipcRenderer.invoke("sales:hold", data),
         completeHeld: (id, updateData) => ipcRenderer.invoke("sales:complete-held", id, updateData),
         cancel: (id) => ipcRenderer.invoke("sales:cancel", id),
+        return: (saleId, data) => ipcRenderer.invoke("sales:return", saleId, data),
         getSummary: (startDate, endDate) =>
             ipcRenderer.invoke("sales:get-summary", startDate, endDate),
         getDaily: (days) => ipcRenderer.invoke("sales:get-daily", days),
@@ -350,6 +370,47 @@ contextBridge.exposeInMainWorld("electronAPI", {
         // Logout user and restart the application
         logoutAndRestart: () =>
             ipcRenderer.invoke("app:logoutAndRestart")
+    },
+
+    // ============================================
+    // SOFTWARE UPDATES API
+    // ============================================
+
+    updates: {
+        // Check GitHub for a newer version
+        checkForUpdates: () =>
+            ipcRenderer.invoke("updates:check-for-updates"),
+        // Start downloading the available update
+        downloadUpdate: () =>
+            ipcRenderer.invoke("updates:download-update"),
+        // Quit and install the downloaded update
+        installUpdate: () =>
+            ipcRenderer.invoke("updates:install-update"),
+        // Register listener: called when an update is found
+        onUpdateAvailable: (callback) => {
+            ipcRenderer.on("updates:available", (_, data) => callback(data));
+            return () => ipcRenderer.removeAllListeners("updates:available");
+        },
+        // Register listener: called when no update is available
+        onUpdateNotAvailable: (callback) => {
+            ipcRenderer.on("updates:not-available", (_, data) => callback(data));
+            return () => ipcRenderer.removeAllListeners("updates:not-available");
+        },
+        // Register listener: called with download progress { percent, transferred, total }
+        onDownloadProgress: (callback) => {
+            ipcRenderer.on("updates:download-progress", (_, data) => callback(data));
+            return () => ipcRenderer.removeAllListeners("updates:download-progress");
+        },
+        // Register listener: called when download is complete
+        onUpdateDownloaded: (callback) => {
+            ipcRenderer.on("updates:downloaded", (_, data) => callback(data));
+            return () => ipcRenderer.removeAllListeners("updates:downloaded");
+        },
+        // Register listener: called on error
+        onUpdateError: (callback) => {
+            ipcRenderer.on("updates:error", (_, data) => callback(data));
+            return () => ipcRenderer.removeAllListeners("updates:error");
+        },
     },
 
     // ============================================
