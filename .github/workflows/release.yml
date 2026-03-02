@@ -11,6 +11,9 @@ permissions:
 jobs:
   build-windows:
     runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: posMasterV3
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,6 +23,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+          cache-dependency-path: posMasterV3/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -31,6 +35,9 @@ jobs:
 
   build-mac:
     runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: posMasterV3
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -40,6 +47,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+          cache-dependency-path: posMasterV3/package-lock.json
 
       - name: Install dependencies
         run: npm ci
