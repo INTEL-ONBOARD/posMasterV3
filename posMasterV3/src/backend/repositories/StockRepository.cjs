@@ -22,7 +22,7 @@ class StockRepository extends BaseRepository {
      */
     findAll(options = {}) {
         const {
-            limit = 10000,
+            limit = 500,
             offset = 0,
             orderBy = 'created_at',
             order = 'DESC',

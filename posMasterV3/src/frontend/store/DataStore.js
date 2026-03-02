@@ -272,12 +272,13 @@ class DataStore {
                 console.log(`[DataStore] Skipping batch change for ${normalizedTable} (debounced)`);
                 return;
             }
+            // Set timestamp BEFORE refetch to prevent concurrent events from also refetching
+            if (!this._lastRefreshTime) this._lastRefreshTime = new Map();
+            this._lastRefreshTime.set(normalizedTable, Date.now());
             // For batch operations, just invalidate and refetch if there are subscribers
             this.invalidate(normalizedTable);
             const subscribers = this.subscribers.get(normalizedTable);
             if (subscribers && subscribers.size > 0) {
-                if (!this._lastRefreshTime) this._lastRefreshTime = new Map();
-                this._lastRefreshTime.set(normalizedTable, Date.now());
                 this.refetch(normalizedTable);
             }
             return;
