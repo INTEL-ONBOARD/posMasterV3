@@ -114,7 +114,7 @@ function Dashboard() {
     console.log('[Dashboard] Forced logout:', message);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       if (token) {
         await authApi.logout(token);
       }
@@ -123,7 +123,7 @@ function Dashboard() {
     }
 
     // Clear localStorage
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('email');
     localStorage.removeItem('_id');

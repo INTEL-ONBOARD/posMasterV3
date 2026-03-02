@@ -265,9 +265,7 @@ class AuthService {
                     email: user.email,
                     full_name: user.full_name,
                     roles: user.roles,
-                    branch_id: user.branch_id,
-                    // Note: We don't sync the password hash - cloud should handle its own auth
-                    password: password  // Send plain password to cloud (over HTTPS)
+                    branch_id: user.branch_id
                 },
                 priority: 10
             });

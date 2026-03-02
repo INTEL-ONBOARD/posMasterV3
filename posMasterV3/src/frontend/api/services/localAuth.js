@@ -93,7 +93,7 @@ export const localAuth = {
      * @returns {Promise<Object>} Logout result
      */
     async logout() {
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('token');
 
         if (isElectron() && token) {
             try {
@@ -114,7 +114,7 @@ export const localAuth = {
      * @returns {Promise<Object>} Validation result
      */
     async validateSession() {
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('token');
 
         if (!token) {
             return { valid: false, message: 'No token' };
@@ -137,7 +137,7 @@ export const localAuth = {
      * @returns {Promise<Object|null>} Current user
      */
     async getCurrentUser() {
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('token');
 
         if (isElectron() && token) {
             try {
@@ -191,7 +191,7 @@ export const localAuth = {
      * @returns {boolean}
      */
     isLoggedIn() {
-        return !!localStorage.getItem('token');
+        return !!sessionStorage.getItem('token');
     },
 
     /**
@@ -199,7 +199,7 @@ export const localAuth = {
      * @returns {string|null}
      */
     getToken() {
-        return localStorage.getItem('token');
+        return sessionStorage.getItem('token');
     },
 
     /**
@@ -214,7 +214,7 @@ export const localAuth = {
             localStorage.setItem('_id', result.data._id || result.data.id || '');
         }
         if (result.token) {
-            localStorage.setItem('token', result.token);
+            sessionStorage.setItem('token', result.token);
         }
         if (result.sessionId) {
             localStorage.setItem('sessionId', result.sessionId);
@@ -227,7 +227,7 @@ export const localAuth = {
      */
     _clearUserData() {
         localStorage.removeItem('user');
-        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
         localStorage.removeItem('sessionId');
         localStorage.removeItem('username');
         localStorage.removeItem('email');
