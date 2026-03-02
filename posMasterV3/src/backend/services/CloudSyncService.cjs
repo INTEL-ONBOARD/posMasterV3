@@ -346,6 +346,20 @@ class CloudSyncService {
     }
 
     /**
+     * Remove the sync_metadata row for a table so the next pull is a full fetch.
+     * Used by performFullSync when the force option is set.
+     * @param {string} tableName - The table whose metadata to clear
+     */
+    _clearSyncMetadataFor(tableName) {
+        try {
+            const db = getDatabase();
+            db.prepare('DELETE FROM sync_metadata WHERE table_name = ?').run(tableName);
+        } catch (err) {
+            console.warn('[CloudSync] Could not clear sync_metadata for', tableName, ':', err.message);
+        }
+    }
+
+    /**
      * Initialize the cloud sync service
      */
     async initialize() {
@@ -815,13 +829,8 @@ class CloudSyncService {
         for (const tableName of PULL_FIRST_TABLES) {
             try {
                 // If force option is set, clear sync_metadata so we do a full pull for this table
-                if (options?.force) {
-                    try {
-                        const db = getDatabase();
-                        db.prepare('DELETE FROM sync_metadata WHERE table_name = ?').run(tableName);
-                    } catch (err) {
-                        console.warn('[CloudSync] Could not clear sync_metadata for', tableName, ':', err.message);
-                    }
+                if (options.force) {
+                    this._clearSyncMetadataFor(tableName);
                 }
 
                 // First, pull from cloud to get latest changes
@@ -848,17 +857,11 @@ class CloudSyncService {
             if (PULL_FIRST_TABLES.includes(tableName)) continue;
 
             try {
-                // If force option is set, clear sync_metadata so we do a full pull for this table
-                if (options?.force) {
-                    try {
-                        // Prepare for future incremental extension to bidirectionalSyncTable.
-                        // Currently bidirectionalSyncTable always fetches all rows, so this delete
-                        // has no functional effect yet, but ensures a clean slate when that is wired up.
-                        const db = getDatabase();
-                        db.prepare('DELETE FROM sync_metadata WHERE table_name = ?').run(tableName);
-                    } catch (err) {
-                        console.warn('[CloudSync] Could not clear sync_metadata for', tableName, ':', err.message);
-                    }
+                // If force option is set, clear sync_metadata so we do a full pull for this table.
+                // Currently bidirectionalSyncTable always fetches all rows, so this delete has no
+                // functional effect yet, but ensures a clean slate when incremental is wired up there.
+                if (options.force) {
+                    this._clearSyncMetadataFor(tableName);
                 }
 
                 const syncResult = await this.bidirectionalSyncTable(tableName, false); // version-based
@@ -1405,17 +1408,27 @@ class CloudSyncService {
             // when syncing child records before parent records exist
             db.pragma('foreign_keys = OFF');
 
+            // Check local table schema upfront (needed for incremental logic and column filtering)
+            const tableInfo = db.prepare(`PRAGMA table_info(${tableName})`).all();
+            const localColumns = tableInfo.map(col => col.name);
+            const hasUpdatedAt = localColumns.includes('updated_at');
+
             // Incremental pull: only fetch rows changed since the last pull
-            const lastPull = this._getLastPullAt(tableName);
+            // Only applicable for tables that have an updated_at column.
+            // Tables like login_history and audit_log lack updated_at, so we always
+            // do a full SELECT * for them (and skip writing to sync_metadata since
+            // there is no timestamp to filter on next time).
+            const lastPull = hasUpdatedAt ? this._getLastPullAt(tableName) : null;
             const SKEW_MS = 5 * 60 * 1000; // 5-minute buffer for clock skew
-            const pullStart = new Date().toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
-            const sinceTs = lastPull
+            const pullStart = nowISO().replace('T', ' ').replace(/\.\d+Z$/, '');
+            const sinceTs = (hasUpdatedAt && lastPull)
                 ? new Date(new Date(lastPull).getTime() - SKEW_MS).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '')
                 : null;
 
             // Build the query conditionally
             let query, queryParams;
             if (sinceTs) {
+                // hasUpdatedAt is true here (sinceTs is only set when hasUpdatedAt && lastPull)
                 query = `SELECT * FROM ${tableName} WHERE updated_at > ?`;
                 queryParams = [sinceTs];
             } else {
@@ -1425,16 +1438,14 @@ class CloudSyncService {
             const cloudRecords = await executeQuery(query, queryParams);
             if (!cloudRecords || cloudRecords.length === 0) {
                 console.log(`[CloudSync] No records in cloud ${tableName}${sinceTs ? ` since ${sinceTs}` : ''}`);
-                this._setLastPullAt(tableName, pullStart);
+                if (hasUpdatedAt) {
+                    this._setLastPullAt(tableName, pullStart);
+                }
                 return result;
             }
 
             const columns = Object.keys(cloudRecords[0]);
             const primaryKey = this.getPrimaryKeyColumn(tableName);
-
-            // Get local table info to check which columns exist locally
-            const tableInfo = db.prepare(`PRAGMA table_info(${tableName})`).all();
-            const localColumns = tableInfo.map(col => col.name);
 
             // Filter to only columns that exist in both cloud and local
             const commonColumns = columns.filter(col => localColumns.includes(col));
@@ -1663,8 +1674,11 @@ class CloudSyncService {
                 broadcastBatchChange(tableName, result.actuallyChanged, 'SYNC_PULL');
             }
 
-            // Record the timestamp of this successful pull for incremental sync on next run
-            this._setLastPullAt(tableName, pullStart);
+            // Record the timestamp of this successful pull for incremental sync on next run.
+            // Only meaningful for tables that have an updated_at column.
+            if (hasUpdatedAt) {
+                this._setLastPullAt(tableName, pullStart);
+            }
 
             return result;
         } catch (error) {
