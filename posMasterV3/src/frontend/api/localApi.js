@@ -866,6 +866,21 @@ export const stockApi = {
         const api = getElectronAPI();
         if (!api) return { status: 'error', message: 'Not in Electron environment' };
         return api.stock.upsert(data);
+    },
+
+    /**
+     * Update stock prices with optional audit trail
+     * @param {number} id - Stock ID
+     * @param {number} stockPrice - New stock price
+     * @param {number} retailPrice - New retail price
+     * @param {string} [changedBy] - Username making the change
+     * @param {string} [reason] - Reason for price change
+     * @returns {Promise<ApiResponse & {data: Stock}>}
+     */
+    updatePrices: async (id, stockPrice, retailPrice, changedBy, reason) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.stock.updatePrices(id, stockPrice, retailPrice, changedBy, reason);
     }
 };
 
@@ -1159,6 +1174,18 @@ export const salesApi = {
         const api = getElectronAPI();
         if (!api) return { status: 'error', message: 'Not in Electron environment' };
         return api.sales.cancel(id);
+    },
+
+    /**
+     * Return items from a completed sale
+     * @param {number} saleId - Sale ID
+     * @param {{ items: Array, reason: string }} data
+     * @returns {Promise<ApiResponse>}
+     */
+    returnItems: async (saleId, data) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.sales.return(saleId, data);
     },
 
     /**
@@ -1874,6 +1901,53 @@ export const cloudSyncApi = {
     }
 };
 
+/**
+ * Software Updates API - Check and install app updates via GitHub Releases
+ * @namespace
+ */
+export const updatesApi = {
+    checkForUpdates: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.updates.checkForUpdates();
+    },
+    downloadUpdate: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.updates.downloadUpdate();
+    },
+    installUpdate: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.updates.installUpdate();
+    },
+    onUpdateAvailable: (callback) => {
+        const api = getElectronAPI();
+        if (!api) return () => {};
+        return api.updates.onUpdateAvailable(callback);
+    },
+    onUpdateNotAvailable: (callback) => {
+        const api = getElectronAPI();
+        if (!api) return () => {};
+        return api.updates.onUpdateNotAvailable(callback);
+    },
+    onDownloadProgress: (callback) => {
+        const api = getElectronAPI();
+        if (!api) return () => {};
+        return api.updates.onDownloadProgress(callback);
+    },
+    onUpdateDownloaded: (callback) => {
+        const api = getElectronAPI();
+        if (!api) return () => {};
+        return api.updates.onUpdateDownloaded(callback);
+    },
+    onUpdateError: (callback) => {
+        const api = getElectronAPI();
+        if (!api) return () => {};
+        return api.updates.onUpdateError(callback);
+    },
+};
+
 // ============================================
 // LOGIN HISTORY API
 // ============================================
@@ -2329,6 +2403,65 @@ export const teaCoopApi = {
 };
 
 // ============================================
+// OFFERS & DISCOUNTS API
+// ============================================
+
+export const offersApi = {
+    getAll: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.offers.getAll();
+    },
+    getActive: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.offers.getActive();
+    },
+    create: async (data) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.offers.create(data);
+    },
+    update: async (id, data) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.offers.update(id, data);
+    },
+    delete: async (id) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.offers.delete(id);
+    },
+    toggleActive: async (id) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.offers.toggleActive(id);
+    }
+};
+
+// ============================================
+// DISPOSED ITEMS API
+// ============================================
+
+export const disposedApi = {
+    getAll: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.disposed.getAll();
+    },
+    create: async (data) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.disposed.create(data);
+    },
+    getByDateRange: async (startDate, endDate) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.disposed.getByDateRange(startDate, endDate);
+    }
+};
+
+// ============================================
 // DEFAULT EXPORT
 // ============================================
 
@@ -2350,9 +2483,12 @@ export default {
     users: userApi,
     settings: settingsApi,
     cloudSync: cloudSyncApi,
+    updates: updatesApi,
     loginHistory: loginHistoryApi,
     dataChange: dataChangeApi,
     branchContext: branchContextApi,
     teaCoop: teaCoopApi,
+    offers: offersApi,
+    disposed: disposedApi,
     isElectron
 };
