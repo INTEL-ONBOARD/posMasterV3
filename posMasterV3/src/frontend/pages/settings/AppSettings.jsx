@@ -116,7 +116,8 @@ function AppSettings() {
       setUpdateState('ready-to-install');
     });
     const unsubError = updatesApi.onUpdateError((data) => {
-      setUpdateError(data.message);
+      console.error('[AppSettings] Update error event:', data.message);
+      setUpdateError('An update error occurred. Please try again.');
       setUpdateState('error');
     });
     return () => {
@@ -339,7 +340,8 @@ function AppSettings() {
     try {
       const result = await updatesApi.checkForUpdates();
       if (result.status === 'error') {
-        setUpdateError(result.message);
+        console.error('[AppSettings] Update check failed:', result.message);
+        setUpdateError('Failed to check for updates. Please try again.');
         setUpdateState('error');
         return;
       }
