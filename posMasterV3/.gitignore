@@ -25,6 +25,9 @@ dist-ssr
 *.sw?
 .worktrees/
 
+# Backup folders
+../posMasterV3_backup*/
+
 # Database data directories and SQLite files
 C:\POS Master/
 *.db
