@@ -1861,6 +1861,16 @@ export const cloudSyncApi = {
     },
 
     /**
+     * Pull branches from cloud (safety net when branch selector shows empty on fresh install)
+     * @returns {Promise<ApiResponse>}
+     */
+    pullBranches: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.cloudSync.pullBranches();
+    },
+
+    /**
      * Push a user to cloud
      * Use this to sync a locally created/updated user to the cloud
      * @param {User} user - The user object to push to cloud

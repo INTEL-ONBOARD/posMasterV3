@@ -70,6 +70,9 @@ function initializeBackend(configPath) {
             console.error('[Backend] Migration errors:', migrationResult.errors);
         }
 
+        // Step 2b: Startup session cleanup (closes orphaned sessions from crash/force-quit)
+        startupSessionCleanup();
+
         // Step 3: Run seeders (create default admin if no users exist)
         //console.log('[Backend] Step 3: Running database seeders...');
         //runSeeders();
@@ -163,8 +166,7 @@ async function shutdownBackend() {
 
             if (logoutOnClose) {
                 console.log('[Backend] Logout on close is enabled, logging out all active sessions...');
-                const LoginHistoryRepository = require('./repositories/LoginHistoryRepository.cjs');
-                const loginHistoryRepo = new LoginHistoryRepository();
+                const loginHistoryRepo = require('./repositories/LoginHistoryRepository.cjs');
                 const { getActiveSessionRepository } = require('./repositories/index.cjs');
                 const activeSessionRepo = getActiveSessionRepository();
 
@@ -264,6 +266,66 @@ function getBackendStatus() {
             error: error.message
         };
     }
+}
+
+/**
+ * Startup session cleanup — runs once, immediately after migrations complete.
+ * Closes any login_history / sessions / active_sessions records that were left
+ * "active" by a crash, force-quit, or power loss on the previous run.
+ *
+ * Each of the three steps is wrapped in an independent try/catch so that a
+ * failure in one step does not prevent the others from running.
+ *
+ * CloudSync is NOT started yet when this runs (it starts at Step 6), so we
+ * do NOT call notifyDataChange here. Instead we set sync_status='pending' on
+ * the affected rows; CloudSyncService will push them on its first sync cycle.
+ */
+function startupSessionCleanup() {
+    console.log('[Backend] Running startup session cleanup...');
+    const db = require('./database/connection.cjs').getDatabase();
+    const { nowISO } = require('./utils/helpers.cjs');
+    const now = nowISO();
+
+    // Step A: Close orphaned login_history records (drives the green dot in UI)
+    try {
+        const loginHistoryRepo = require('./repositories/LoginHistoryRepository.cjs');
+        const closed = loginHistoryRepo.closeAllActiveSessions();
+        if (closed > 0) {
+            console.log(`[Backend] Startup cleanup: closed ${closed} orphaned login_history record(s) (status → 'app_crashed')`);
+        }
+    } catch (err) {
+        console.error('[Backend] Startup cleanup: login_history step failed:', err.message);
+    }
+
+    // Step B: Invalidate orphaned local sessions
+    try {
+        const result = db.prepare(
+            `UPDATE sessions SET is_active = 0, updated_at = ? WHERE is_active = 1`
+        ).run(now);
+        if (result.changes > 0) {
+            console.log(`[Backend] Startup cleanup: invalidated ${result.changes} orphaned session(s)`);
+        }
+    } catch (err) {
+        console.error('[Backend] Startup cleanup: sessions step failed:', err.message);
+    }
+
+    // Step C: Deactivate this device's active_sessions record (cloud-synced)
+    try {
+        const SettingsService = require('./services/SettingsService.cjs');
+        const deviceId = new SettingsService().getDeviceId();
+        const result = db.prepare(`
+            UPDATE active_sessions
+            SET is_active = 0, updated_at = ?, sync_status = 'pending'
+            WHERE device_id = ? AND is_active = 1
+        `).run(now, deviceId);
+        if (result.changes > 0) {
+            console.log(`[Backend] Startup cleanup: deactivated ${result.changes} active_session(s) for device '${deviceId}'`);
+        }
+    } catch (err) {
+        console.error('[Backend] Startup cleanup: active_sessions step failed:', err.message);
+    }
+
+    console.log('[Backend] Startup session cleanup complete');
 }
 
 // Maintenance task interval

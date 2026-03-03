@@ -114,6 +114,21 @@ class CloudSyncController {
             }
         }));
 
+        // Pull branches from cloud (used as safety net when branch selector is empty)
+        ipcMain.handle('cloudSync:pullBranches', wrapIpcHandler(async () => {
+            try {
+                const service = getCloudSyncService();
+                const result = await service.pullFromCloud('branches');
+                return {
+                    status: 'success',
+                    data: result
+                };
+            } catch (error) {
+                console.error('[CloudSyncController] Pull branches error:', error);
+                return { status: 'error', message: error.message };
+            }
+        }));
+
         // Push a user to cloud
         ipcMain.handle('cloudSync:pushUser', wrapIpcHandler(async (event, user) => {
             try {

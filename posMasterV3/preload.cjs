@@ -485,6 +485,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
         // Pull users from cloud (cloud is primary source for users)
         pullUsers: () =>
             ipcRenderer.invoke("cloudSync:pullUsers"),
+        // Pull branches from cloud (safety net for branch selector on fresh install)
+        pullBranches: () =>
+            ipcRenderer.invoke("cloudSync:pullBranches"),
         // Push a user to cloud
         pushUser: (user) =>
             ipcRenderer.invoke("cloudSync:pushUser", user),
