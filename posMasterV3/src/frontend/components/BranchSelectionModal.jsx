@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, MapPin, Phone, Check, AlertTriangle, Loader2 } from 'lucide-react';
-import { branchContextApi } from '../api/localApi';
+import { branchContextApi, cloudSyncApi } from '../api/localApi';
 
 /**
  * BranchSelectionModal
@@ -25,6 +25,7 @@ export default function BranchSelectionModal({
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
+    const [syncingFromCloud, setSyncingFromCloud] = useState(false);
 
     // Fetch available branches on mount
     useEffect(() => {
@@ -39,7 +40,26 @@ export default function BranchSelectionModal({
         try {
             const response = await branchContextApi.getAvailableBranches();
             if (response.status === 'success') {
-                const availableBranches = response.data || [];
+                let availableBranches = response.data || [];
+
+                // If empty, attempt a targeted pull from cloud before giving up.
+                // This handles the race condition where the user reaches the modal
+                // before the background full sync has pulled the branches table.
+                if (availableBranches.length === 0) {
+                    setSyncingFromCloud(true);
+                    try {
+                        await cloudSyncApi.pullBranches();
+                        const retryResponse = await branchContextApi.getAvailableBranches();
+                        if (retryResponse.status === 'success') {
+                            availableBranches = retryResponse.data || [];
+                        }
+                    } catch (pullErr) {
+                        console.warn('[BranchSelectionModal] Cloud pull failed:', pullErr.message);
+                    } finally {
+                        setSyncingFromCloud(false);
+                    }
+                }
+
                 setBranches(availableBranches);
 
                 // If only one branch is available (user has assigned branch), auto-select AND auto-confirm
@@ -167,8 +187,16 @@ export default function BranchSelectionModal({
                         </div>
                     )}
 
+                    {/* Syncing from cloud state */}
+                    {!loading && syncingFromCloud && (
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <Loader2 className="w-10 h-10 text-[#1A318C] animate-spin mb-4" />
+                            <p className="text-gray-500">Fetching branches from cloud...</p>
+                        </div>
+                    )}
+
                     {/* No branches available */}
-                    {!loading && !error && branches.length === 0 && (
+                    {!loading && !syncingFromCloud && !error && branches.length === 0 && (
                         <div className="text-center py-8">
                             <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                             <p className="text-gray-500">No branches available</p>
@@ -179,7 +207,7 @@ export default function BranchSelectionModal({
                     )}
 
                     {/* Branch list */}
-                    {!loading && !error && branches.length > 0 && (
+                    {!loading && !syncingFromCloud && !error && branches.length > 0 && (
                         <div className="space-y-3 max-h-[300px] overflow-y-auto">
                             {branches.map((branch) => (
                                 <button

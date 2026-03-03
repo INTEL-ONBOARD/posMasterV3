@@ -327,6 +327,33 @@ class LoginHistoryRepository extends BaseRepository {
     countActiveSessions() {
         return this.countWhere({ status: 'active' });
     }
+
+    /**
+     * Close all active login_history records on startup.
+     * Marks any session that survived a crash/force-quit as 'app_crashed'.
+     * Called once by startupSessionCleanup() in backend.cjs before IPC handlers
+     * are registered, so notifyDataChange is intentionally NOT triggered here —
+     * CloudSyncService will pick up the sync_status='pending' records on its
+     * first sync cycle.
+     * @returns {number} Number of records closed
+     */
+    closeAllActiveSessions() {
+        const currentTime = nowISO();
+        const stmt = this.db.prepare(`
+            UPDATE login_history
+            SET
+                status           = 'app_crashed',
+                logout_at        = ?,
+                logout_reason    = 'app_crashed',
+                duration_seconds = CAST(
+                    (julianday(?) - julianday(login_at)) * 86400 AS INTEGER
+                ),
+                sync_status      = 'pending'
+            WHERE status = 'active'
+        `);
+        const result = stmt.run(currentTime, currentTime);
+        return result.changes;
+    }
 }
 
 module.exports = new LoginHistoryRepository();

@@ -59,6 +59,19 @@ function registerAuthHandlers() {
                 branchContextService.setCurrentUser(user);
                 console.log('[AuthController] User context set for:', user.username, 'branch_id:', user.branch_id);
 
+                // Pull branches from cloud to avoid race condition where the user reaches
+                // the branch selector before the background performFullSync has pulled branches
+                try {
+                    const { getCloudSyncService } = require('../services/CloudSyncService.cjs');
+                    const cloudSync = getCloudSyncService();
+                    if (cloudSync.isOnline && cloudSync.mysqlInitialized) {
+                        await cloudSync.pullFromCloud('branches');
+                        console.log('[AuthController] Branches pulled from cloud on login');
+                    }
+                } catch (branchPullErr) {
+                    console.warn('[AuthController] Could not pull branches on login:', branchPullErr.message);
+                }
+
                 // If user has an assigned branch, auto-select it
                 if (user.branch_id) {
                     try {

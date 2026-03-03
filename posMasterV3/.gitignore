@@ -24,3 +24,9 @@ dist-ssr
 *.sln
 *.sw?
 .worktrees/
+
+# Database data directories and SQLite files
+C:\POS Master/
+*.db
+*.db-shm
+*.db-wal
