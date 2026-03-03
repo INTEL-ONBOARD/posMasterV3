@@ -1,0 +1,101 @@
+{
+  "name": "posmasterv3",
+  "private": true,
+  "version": "1.1.0",
+  "main": "electron.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:electron": "npx wait-on http://localhost:5173 && node run-electron.cjs",
+    "dev:all": "concurrently \"npm:dev\" \"npm:dev:electron\"",
+    "dev:dev:electron": "npx wait-on http://localhost:5173 && node run-electron.cjs",
+    "dev:dev:all": "concurrently \"npm:dev\" \"npm:dev:electron\"",
+    "build": "vite build",
+    "dist": "vite build && electron-builder",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "electron": "node run-electron.cjs",
+    "electron-dev": "vite build && node run-electron.cjs",
+    "postinstall": "electron-rebuild",
+    "rebuild": "electron-rebuild"
+  },
+  "build": {
+    "appId": "com.posmaster.app",
+    "productName": "POSMaster",
+    "files": [
+      "dist/**",
+      "preload.cjs",
+      "electron.cjs",
+      "src/main/**",
+      "src/backend/**",
+      "src/frontend/templates/**",
+      "node_modules/**",
+      "!node_modules/fsevents",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "extraResources": [
+      {
+        "from": "node_modules/better-sqlite3",
+        "to": "node_modules/better-sqlite3"
+      }
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "INTEL-ONBOARD",
+      "repo": "posMasterV3"
+    }
+  },
+  "dependencies": {
+    "@emotion/is-prop-valid": "^1.4.0",
+    "@react-pdf/renderer": "^4.3.0",
+    "auto-launch": "^5.0.6",
+    "axios": "^1.10.0",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.5.0",
+    "electron-updater": "^6.8.3",
+    "flowbite": "^3.1.2",
+    "framer-motion": "^12.23.3",
+    "html2canvas": "^1.4.1",
+    "jsbarcode": "^3.12.1",
+    "jspdf": "^3.0.3",
+    "lucide-react": "^0.515.0",
+    "mysql2": "^3.16.0",
+    "pdf-to-printer": "^5.6.0",
+    "print-js": "^1.6.0",
+    "react": "^19.1.0",
+    "react-barcode": "^1.6.1",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.2",
+    "react-to-print": "^3.1.0",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.1",
+    "electron": "^30.5.1",
+    "electron-builder": "^26.0.12",
+    "electron-rebuild": "^3.2.9",
+    "electron-reload": "^2.0.0-alpha.1",
+    "eslint": "^9.25.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^16.0.0",
+    "postcss": "^8.5.5",
+    "tailwindcss": "^3.4.3",
+    "vite": "^6.3.5"
+  }
+}

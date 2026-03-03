@@ -1,0 +1,127 @@
+#root {
+  /* max-width: 1280px; */
+  /* margin: 0 auto; */
+  /* padding: 2rem; */
+  /* background-color: blueviolet; */
+  /* text-align: center; */
+}
+
+/* Stagger children in the notification list using nth-child selectors */
+.notification-list>.notification-item:nth-child(1) .animate-fade-up {
+  animation-delay: 0ms;
+}
+
+.notification-list>.notification-item:nth-child(2) .animate-fade-up {
+  animation-delay: 60ms;
+}
+
+.notification-list>.notification-item:nth-child(3) .animate-fade-up {
+  animation-delay: 120ms;
+}
+
+.notification-list>.notification-item:nth-child(4) .animate-fade-up {
+  animation-delay: 180ms;
+}
+
+.notification-list>.notification-item:nth-child(5) .animate-fade-up {
+  animation-delay: 240ms;
+}
+
+.notification-list>.notification-item:nth-child(6) .animate-fade-up {
+  animation-delay: 300ms;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* Hide scrollbars globally for body and html */
+html,
+body {
+  overflow: hidden;
+}
+
+input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Notification card animations */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 320ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+/* Subtle pop on hover */
+.hover-pop {
+  transition: transform 180ms cubic-bezier(.2, .8, .2, 1), box-shadow 180ms;
+}
+
+.hover-pop:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 8px 20px rgba(16, 24, 40, 0.08);
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+  .animate-fade-up,
+  .hover-pop {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}
