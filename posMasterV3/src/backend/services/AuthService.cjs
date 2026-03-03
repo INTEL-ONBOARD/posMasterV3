@@ -552,6 +552,13 @@ class AuthService {
                 priority: 10
             });
 
+            // Real-time cloud push
+            try {
+                const { notifyDataChange } = require('./CloudSyncService.cjs');
+                const updatedUser = this.userRepo.findById(userId);
+                if (updatedUser) notifyDataChange('users', 'UPDATE', updatedUser, userId);
+            } catch (e) { console.error('[AuthService] Cloud sync error (non-fatal):', e.message); }
+
             return {
                 success: true,
                 status: 'success',

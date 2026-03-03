@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const os = require('os');
 const { UserSettingsRepository, AppSettingsRepository } = require('../repositories/SettingsRepository.cjs');
 const UserRepository = require('../repositories/UserRepository.cjs');
+const { notifyDataChange } = require('./CloudSyncService.cjs');
 
 class SettingsService {
     constructor() {
@@ -223,6 +224,7 @@ class SettingsService {
             );
 
             const updatedUser = this.userRepo.update(userId, updateData);
+            try { notifyDataChange('users', 'UPDATE', updatedUser, userId); } catch (e) { console.error('[SettingsService] Cloud sync error (non-fatal):', e.message); }
 
             return {
                 status: 'success',

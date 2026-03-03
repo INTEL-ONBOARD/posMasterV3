@@ -5,6 +5,7 @@
  */
 
 const offersRepo = require('../repositories/OffersDiscountsRepository.cjs');
+const { notifyDataChange } = require('./CloudSyncService.cjs');
 
 class OffersDiscountsService {
     getAll() {
@@ -50,6 +51,7 @@ class OffersDiscountsService {
                 target_id: data.target_id || null,
                 sync_status: 'pending'
             });
+            try { notifyDataChange('offers_discounts', 'INSERT', record, record.id); } catch (e) { console.error('[OffersDiscountsService] Cloud sync error (non-fatal):', e.message); }
             return { status: 'success', data: record, message: 'Discount created successfully' };
         } catch (error) {
             console.error('[OffersDiscountsService] create error:', error);
@@ -85,6 +87,7 @@ class OffersDiscountsService {
             updates.sync_status = 'pending';
 
             const updated = offersRepo.update(id, updates);
+            try { notifyDataChange('offers_discounts', 'UPDATE', updated, updated.id); } catch (e) { console.error('[OffersDiscountsService] Cloud sync error (non-fatal):', e.message); }
             return { status: 'success', data: updated, message: 'Discount updated successfully' };
         } catch (error) {
             console.error('[OffersDiscountsService] update error:', error);
@@ -99,6 +102,7 @@ class OffersDiscountsService {
                 return { status: 'error', message: 'Discount not found' };
             }
             offersRepo.delete(id);
+            try { notifyDataChange('offers_discounts', 'DELETE', {}, id); } catch (e) { console.error('[OffersDiscountsService] Cloud sync error (non-fatal):', e.message); }
             return { status: 'success', message: 'Discount deleted successfully' };
         } catch (error) {
             console.error('[OffersDiscountsService] delete error:', error);
@@ -113,6 +117,7 @@ class OffersDiscountsService {
                 return { status: 'error', message: 'Discount not found' };
             }
             const updated = offersRepo.toggleActive(id);
+            try { notifyDataChange('offers_discounts', 'UPDATE', updated, updated.id); } catch (e) { console.error('[OffersDiscountsService] Cloud sync error (non-fatal):', e.message); }
             return { status: 'success', data: updated, message: `Discount ${updated.is_active ? 'activated' : 'disabled'}` };
         } catch (error) {
             console.error('[OffersDiscountsService] toggleActive error:', error);

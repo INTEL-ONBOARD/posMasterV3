@@ -10,6 +10,7 @@ const stockRepository = require('../repositories/StockRepository.cjs');
 const { branchContextService } = require('./BranchContextService.cjs');
 const { getDatabase } = require('../database/connection.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
+const { notifyDataChange } = require('./CloudSyncService.cjs');
 
 const disposedRepo = new DisposedItemsRepository();
 
@@ -88,6 +89,12 @@ class DisposedItemsService {
             });
 
             transaction();
+
+            try {
+                notifyDataChange('disposed_items', 'INSERT', disposedRecord, disposedRecord.id);
+                const updatedStock = stockRepository.findById(data.stock_id);
+                if (updatedStock) notifyDataChange('stock', 'UPDATE', updatedStock, updatedStock.id);
+            } catch (e) { console.error('[DisposedItemsService] Cloud sync error (non-fatal):', e.message); }
 
             return {
                 status: 'success',

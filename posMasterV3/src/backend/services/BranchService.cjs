@@ -6,6 +6,7 @@
 
 const branchRepository = require('../repositories/BranchRepository.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
+const { notifyDataChange } = require('./CloudSyncService.cjs');
 
 class BranchService {
     /**
@@ -121,6 +122,7 @@ class BranchService {
             };
 
             const branch = branchRepository.create(branchData);
+            try { notifyDataChange('branches', 'INSERT', branch, branch.id); } catch (e) { console.error('[BranchService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: this.formatBranch(branch),
@@ -159,6 +161,7 @@ class BranchService {
             updateData.sync_status = 'pending';
 
             const branch = branchRepository.update(id, updateData);
+            try { notifyDataChange('branches', 'UPDATE', branch, branch.id); } catch (e) { console.error('[BranchService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: this.formatBranch(branch),
@@ -189,6 +192,7 @@ class BranchService {
             }
 
             branchRepository.delete(id);
+            try { notifyDataChange('branches', 'DELETE', {}, id); } catch (e) { console.error('[BranchService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 message: 'Branch deleted successfully'

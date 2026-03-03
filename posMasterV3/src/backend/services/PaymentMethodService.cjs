@@ -6,6 +6,7 @@
 
 const paymentMethodRepository = require('../repositories/PaymentMethodRepository.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
+const { notifyDataChange } = require('./CloudSyncService.cjs');
 
 class PaymentMethodService {
     /**
@@ -167,6 +168,7 @@ class PaymentMethodService {
             };
 
             const method = paymentMethodRepository.create(methodData);
+            try { notifyDataChange('payment_methods', 'INSERT', method, method.id); } catch (e) { console.error('[PaymentMethodService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: this.formatPaymentMethod(method),
@@ -214,6 +216,7 @@ class PaymentMethodService {
             if (data.color !== undefined) updateData.color = data.color;
 
             const method = paymentMethodRepository.update(id, updateData);
+            try { notifyDataChange('payment_methods', 'UPDATE', method, method.id); } catch (e) { console.error('[PaymentMethodService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: this.formatPaymentMethod(method),
@@ -244,6 +247,7 @@ class PaymentMethodService {
             }
 
             const method = paymentMethodRepository.toggleActive(id, !existing.is_active);
+            try { notifyDataChange('payment_methods', 'UPDATE', method, method.id); } catch (e) { console.error('[PaymentMethodService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: this.formatPaymentMethod(method),
@@ -274,6 +278,7 @@ class PaymentMethodService {
             }
 
             paymentMethodRepository.delete(id);
+            try { notifyDataChange('payment_methods', 'DELETE', {}, id); } catch (e) { console.error('[PaymentMethodService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 message: 'Payment method deleted successfully'

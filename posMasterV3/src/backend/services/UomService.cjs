@@ -6,6 +6,7 @@
 
 const uomRepository = require('../repositories/UomRepository.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
+const { notifyDataChange } = require('./CloudSyncService.cjs');
 
 class UomService {
     /**
@@ -108,6 +109,7 @@ class UomService {
             };
 
             const uom = uomRepository.create(uomData);
+            try { notifyDataChange('uom', 'INSERT', uom, uom.id); } catch (e) { console.error('[UomService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: this.formatUom(uom),
@@ -144,6 +146,7 @@ class UomService {
             updateData.sync_status = 'pending';
 
             const uom = uomRepository.update(id, updateData);
+            try { notifyDataChange('uom', 'UPDATE', uom, uom.id); } catch (e) { console.error('[UomService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: this.formatUom(uom),
@@ -174,6 +177,7 @@ class UomService {
             }
 
             uomRepository.delete(id);
+            try { notifyDataChange('uom', 'DELETE', {}, id); } catch (e) { console.error('[UomService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 message: 'UOM deleted successfully'
