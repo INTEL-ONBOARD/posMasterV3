@@ -7,6 +7,7 @@
 
 const salesRepository = require('../repositories/SalesRepository.cjs');
 const { branchContextService } = require('./BranchContextService.cjs');
+const { notifyDataChange } = require('./CloudSyncService.cjs');
 
 class SalesService {
     /**
@@ -225,6 +226,13 @@ class SalesService {
             // Log audit entry
             branchContextService.logAudit('sales_transactions', sale.id, 'INSERT', null, saleData);
 
+            try {
+                notifyDataChange('sales_transactions', 'INSERT', sale, sale.id);
+                if (sale.items && Array.isArray(sale.items)) {
+                    sale.items.forEach(item => notifyDataChange('sales_items', 'INSERT', item, item.id));
+                }
+            } catch (e) { console.error('[SalesService] Cloud sync error (non-fatal):', e.message); }
+
             return {
                 status: 'success',
                 data: sale,
@@ -263,6 +271,7 @@ class SalesService {
                     message: 'Held order not found or already completed'
                 };
             }
+            try { notifyDataChange('sales_transactions', 'UPDATE', sale, sale.id); } catch (e) { console.error('[SalesService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: sale,
@@ -291,6 +300,7 @@ class SalesService {
                     message: 'Sale not found'
                 };
             }
+            try { notifyDataChange('sales_transactions', 'UPDATE', { id, status: 'cancelled' }, id); } catch (e) { console.error('[SalesService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 message: 'Sale cancelled successfully'

@@ -314,6 +314,12 @@ class AuthService {
                 priority: 10
             });
 
+            // Real-time cloud push
+            try {
+                const { notifyDataChange } = require('./CloudSyncService.cjs');
+                notifyDataChange('users', 'INSERT', user, user.id);
+            } catch (e) { console.error('[AuthService] Cloud sync error (non-fatal):', e.message); }
+
             return {
                 success: true,
                 status: 'success',

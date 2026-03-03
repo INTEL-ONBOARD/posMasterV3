@@ -6,6 +6,7 @@
 
 const categoryRepository = require('../repositories/CategoryRepository.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
+const { notifyDataChange } = require('./CloudSyncService.cjs');
 
 class CategoryService {
     /**
@@ -119,6 +120,7 @@ class CategoryService {
             };
 
             const category = categoryRepository.create(categoryData);
+            try { notifyDataChange('categories', 'INSERT', category, category.id); } catch (e) { console.error('[CategoryService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: this.formatCategory(category),
@@ -155,6 +157,7 @@ class CategoryService {
             updateData.sync_status = 'pending';
 
             const category = categoryRepository.update(id, updateData);
+            try { notifyDataChange('categories', 'UPDATE', category, category.id); } catch (e) { console.error('[CategoryService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: this.formatCategory(category),
@@ -185,6 +188,7 @@ class CategoryService {
             }
 
             categoryRepository.delete(id);
+            try { notifyDataChange('categories', 'DELETE', {}, id); } catch (e) { console.error('[CategoryService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 message: 'Category deleted successfully'

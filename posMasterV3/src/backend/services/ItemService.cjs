@@ -8,6 +8,7 @@
 
 const itemRepository = require('../repositories/ItemRepository.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
+const { notifyDataChange } = require('./CloudSyncService.cjs');
 
 class ItemService {
     /**
@@ -167,8 +168,14 @@ class ItemService {
                 };
             }
 
-            // Generate SKU if not provided
-            const sku = data.sku || itemRepository.generateSku();
+            // SKU is required and must be user-provided
+            if (!data.sku || !data.sku.trim()) {
+                return {
+                    status: 'error',
+                    message: 'SKU is required'
+                };
+            }
+            const sku = data.sku.trim();
 
             // Check if SKU already exists
             const existingSku = itemRepository.findBySku(sku);
@@ -195,6 +202,7 @@ class ItemService {
             };
 
             const item = itemRepository.create(itemData);
+            try { notifyDataChange('items', 'INSERT', item, item.id); } catch (e) { console.error('[ItemService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: this.formatItem(item),
@@ -235,9 +243,24 @@ class ItemService {
             if (data.inventory_id !== undefined) updateData.branch_id = data.inventory_id;
             if (data.branch_id !== undefined) updateData.branch_id = data.branch_id;
             if (data.availability !== undefined) updateData.availability = data.availability ? 1 : 0;
+            if (data.item_code !== undefined) updateData.item_code = data.item_code;
+            if (data.sku !== undefined && data.sku.trim()) {
+                const trimmedSku = data.sku.trim();
+                if (trimmedSku !== existing.sku) {
+                    const skuConflict = itemRepository.findBySku(trimmedSku);
+                    if (skuConflict) {
+                        return {
+                            status: 'error',
+                            message: 'SKU already exists'
+                        };
+                    }
+                }
+                updateData.sku = trimmedSku;
+            }
             updateData.sync_status = 'pending';
 
             const item = itemRepository.update(id, updateData);
+            try { notifyDataChange('items', 'UPDATE', item, item.id); } catch (e) { console.error('[ItemService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: this.formatItem(item),
@@ -277,6 +300,7 @@ class ItemService {
             }
 
             itemRepository.delete(id);
+            try { notifyDataChange('items', 'DELETE', {}, id); } catch (e) { console.error('[ItemService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 message: 'Item deleted successfully'

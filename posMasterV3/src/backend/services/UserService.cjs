@@ -219,6 +219,14 @@ class UserService {
                     priority: 5
                 });
 
+                // Immediately delete from MySQL cloud
+                try {
+                    const { notifyDataChange } = require('./CloudSyncService.cjs');
+                    notifyDataChange('users', 'DELETE', {}, userId);
+                } catch (syncError) {
+                    console.error('[UserService] Cloud delete sync error (non-fatal):', syncError.message);
+                }
+
                 return {
                     success: true,
                     status: 'success',
@@ -239,6 +247,15 @@ class UserService {
                 },
                 priority: 5
             });
+
+            // Immediately update MySQL cloud (set is_active = 0)
+            try {
+                const { notifyDataChange } = require('./CloudSyncService.cjs');
+                const deactivatedUser = this.userRepo.findById(userId);
+                if (deactivatedUser) notifyDataChange('users', 'UPDATE', deactivatedUser, userId);
+            } catch (syncError) {
+                console.error('[UserService] Cloud deactivate sync error (non-fatal):', syncError.message);
+            }
 
             return {
                 success: true,
@@ -406,6 +423,15 @@ class UserService {
                 },
                 priority: 5
             });
+
+            // Immediately push roles update to MySQL cloud
+            try {
+                const { notifyDataChange } = require('./CloudSyncService.cjs');
+                const updatedUser = this.userRepo.findById(userId);
+                if (updatedUser) notifyDataChange('users', 'UPDATE', updatedUser, userId);
+            } catch (syncError) {
+                console.error('[UserService] Cloud roles sync error (non-fatal):', syncError.message);
+            }
 
             return {
                 success: true,

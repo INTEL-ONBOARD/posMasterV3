@@ -8,6 +8,7 @@
 const stockRepository = require('../repositories/StockRepository.cjs');
 const itemRepository = require('../repositories/ItemRepository.cjs');
 const { branchContextService } = require('./BranchContextService.cjs');
+const { notifyDataChange } = require('./CloudSyncService.cjs');
 
 class StockService {
     /**
@@ -259,6 +260,8 @@ class StockService {
             // Log audit entry
             branchContextService.logAudit('stock', stock.id, 'UPSERT', null, stockData);
 
+            try { notifyDataChange('stock', 'INSERT', stock, stock.id); } catch (e) { console.error('[StockService] Cloud sync error (non-fatal):', e.message); }
+
             return {
                 status: 'success',
                 data: stock,
@@ -290,6 +293,7 @@ class StockService {
             }
 
             const stock = stockRepository.updateQuantity(id, quantity);
+            try { notifyDataChange('stock', 'UPDATE', stock, stock.id); } catch (e) { console.error('[StockService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: stock,
@@ -324,6 +328,7 @@ class StockService {
             }
 
             const stock = stockRepository.updatePrices(id, stockPrice, retailPrice, changedBy, reason);
+            try { notifyDataChange('stock', 'UPDATE', stock, stock.id); } catch (e) { console.error('[StockService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: stock,
@@ -354,6 +359,7 @@ class StockService {
             }
 
             stockRepository.delete(id);
+            try { notifyDataChange('stock', 'DELETE', {}, id); } catch (e) { console.error('[StockService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 message: 'Stock deleted successfully'

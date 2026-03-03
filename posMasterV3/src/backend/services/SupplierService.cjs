@@ -6,6 +6,7 @@
 
 const supplierRepository = require('../repositories/SupplierRepository.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
+const { notifyDataChange } = require('./CloudSyncService.cjs');
 
 class SupplierService {
     /**
@@ -134,6 +135,7 @@ class SupplierService {
             };
 
             const supplier = supplierRepository.create(supplierData);
+            try { notifyDataChange('suppliers', 'INSERT', supplier, supplier.id); } catch (e) { console.error('[SupplierService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: supplierRepository.formatForFrontend(supplier),
@@ -192,6 +194,7 @@ class SupplierService {
             updateData.sync_status = 'pending';
 
             const supplier = supplierRepository.update(id, updateData);
+            try { notifyDataChange('suppliers', 'UPDATE', supplier, supplier.id); } catch (e) { console.error('[SupplierService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: supplierRepository.formatForFrontend(supplier),
@@ -222,6 +225,7 @@ class SupplierService {
             }
 
             supplierRepository.delete(id);
+            try { notifyDataChange('suppliers', 'DELETE', {}, id); } catch (e) { console.error('[SupplierService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 message: 'Supplier deleted successfully'
@@ -253,6 +257,7 @@ class SupplierService {
             }
 
             const supplier = supplierRepository.updateAmounts(id, currentAmount, previousAmount);
+            try { notifyDataChange('suppliers', 'UPDATE', supplier, supplier.id); } catch (e) { console.error('[SupplierService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: supplierRepository.formatForFrontend(supplier),

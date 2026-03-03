@@ -213,6 +213,11 @@ function AddItem({ isActive }) {
     setFormStatus("loading");
     statusLog.database("Registering new item...", true);
     e.preventDefault();
+    if (!formData.sku || !formData.sku.trim()) {
+      setStatusModal({ open: true, type: 'failed', description: 'SKU is required' });
+      setFormStatus("form");
+      return;
+    }
     try {
       const selectedCategory = (itemCategories || []).find(c =>
         c.type === formCategoryData.categoryType &&
@@ -378,13 +383,13 @@ function AddItem({ isActive }) {
       (searchAvailability === "Available" && isAvailable) ||
       (searchAvailability === "Unavailable" && !isAvailable);
 
-    // Item name or batch code text search match
+    // Item name, SKU, or product code text search match
     const searchTerm = (search || "").toLowerCase();
     // text search match
     const matchesSearch =
       (item?.item_name || "").toLowerCase().includes(searchTerm) ||
-      (item?.batch_code || "").toLowerCase().includes(searchTerm) ||
-      (item?.sku || "").toLowerCase().includes(searchTerm);
+      (item?.sku || "").toLowerCase().includes(searchTerm) ||
+      (item?.item_code || "").toLowerCase().includes(searchTerm);
 
     return matchesCategory && matchesAvailability && matchesSearch;
   });
@@ -714,7 +719,7 @@ function AddItem({ isActive }) {
                   type="text"
                   value={search}
                   onChange={handleSearch}
-                  placeholder="Search items by name, SKU, or batch code..."
+                  placeholder="Search items by name, SKU, or product code..."
                   className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                 />
               </div>

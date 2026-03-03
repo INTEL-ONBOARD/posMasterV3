@@ -6,6 +6,7 @@
 
 const memberRepository = require('../repositories/MemberRepository.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
+const { notifyDataChange } = require('./CloudSyncService.cjs');
 
 class MemberService {
     /**
@@ -194,6 +195,7 @@ class MemberService {
             };
 
             const member = memberRepository.create(memberData);
+            try { notifyDataChange('members', 'INSERT', member, member.id); } catch (e) { console.error('[MemberService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: this.formatMember(member),
@@ -233,6 +235,7 @@ class MemberService {
             updateData.sync_status = 'pending';
 
             const member = memberRepository.update(id, updateData);
+            try { notifyDataChange('members', 'UPDATE', member, member.id); } catch (e) { console.error('[MemberService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: this.formatMember(member),
@@ -263,6 +266,7 @@ class MemberService {
             }
 
             memberRepository.delete(id);
+            try { notifyDataChange('members', 'DELETE', {}, id); } catch (e) { console.error('[MemberService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 message: 'Member deleted successfully'

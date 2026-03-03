@@ -8,6 +8,7 @@
 const restockRepository = require('../repositories/RestockRepository.cjs');
 const stockRepository = require('../repositories/StockRepository.cjs');
 const { branchContextService } = require('./BranchContextService.cjs');
+const { notifyDataChange } = require('./CloudSyncService.cjs');
 
 class RestockService {
     /**
@@ -236,6 +237,13 @@ class RestockService {
 
             // Log audit entry
             branchContextService.logAudit('restock_transactions', restock.id, 'INSERT', null, transactionData);
+
+            try {
+                notifyDataChange('restock_transactions', 'INSERT', restock, restock.id);
+                if (restock.items && Array.isArray(restock.items)) {
+                    restock.items.forEach(item => notifyDataChange('restock_items', 'INSERT', item, item.id));
+                }
+            } catch (e) { console.error('[RestockService] Cloud sync error (non-fatal):', e.message); }
 
             return {
                 status: 'success',
