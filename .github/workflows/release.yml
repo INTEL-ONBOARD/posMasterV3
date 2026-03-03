@@ -5,10 +5,6 @@ on:
     tags:
       - 'v*.*.*'
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Version tag to release (e.g. v1.2.0)'
-        required: true
 
 permissions:
   contents: write
@@ -19,15 +15,25 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       release_id: ${{ steps.create_release.outputs.id }}
+      version: ${{ steps.get_version.outputs.version }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from package.json
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./posMasterV3/package.json').version")
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref_name || inputs.tag }}
-          release_name: ${{ github.ref_name || inputs.tag }}
+          tag_name: ${{ github.ref_name != 'develop' && github.ref_name != 'live' && github.ref_name || steps.get_version.outputs.version }}
+          release_name: ${{ github.ref_name != 'develop' && github.ref_name != 'live' && github.ref_name || steps.get_version.outputs.version }}
           draft: false
           prerelease: false
 
