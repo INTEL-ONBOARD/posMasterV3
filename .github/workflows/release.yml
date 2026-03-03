@@ -10,35 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      release_id: ${{ steps.create_release.outputs.id }}
-      version: ${{ steps.get_version.outputs.version }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Get version from package.json
-        id: get_version
-        run: |
-          VERSION=$(node -p "require('./posMasterV3/package.json').version")
-          echo "version=v$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.get_version.outputs.version }}
-          release_name: ${{ steps.get_version.outputs.version }}
-          draft: false
-          prerelease: false
-
   build-windows:
-    needs: create-release
     runs-on: windows-latest
     defaults:
       run:
@@ -57,13 +29,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Get version from package.json
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create git tag if not exists
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=${{ steps.get_version.outputs.version }}
+          git config user.email "github-actions@github.com"
+          git config user.name "github-actions"
+          git tag $TAG || true
+          git push origin $TAG || true
+
       - name: Build and publish (Windows)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run dist -- --publish always
 
   build-mac:
-    needs: create-release
+    needs: build-windows
     runs-on: macos-latest
     defaults:
       run:
