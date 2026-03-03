@@ -3,14 +3,40 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*.*.*'   # triggers on tags like v1.0.0, v1.0.1, etc.
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag to release (e.g. v1.2.0)'
+        required: true
 
 permissions:
-  contents: write   # required to create GitHub Releases
+  contents: write
 
 jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
+    steps:
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name || inputs.tag }}
+          release_name: ${{ github.ref_name || inputs.tag }}
+          draft: false
+          prerelease: false
+
   build-windows:
+    needs: create-release
     runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: posMasterV3
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,6 +46,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+          cache-dependency-path: posMasterV3/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -30,7 +57,11 @@ jobs:
         run: npm run dist -- --publish always
 
   build-mac:
+    needs: create-release
     runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: posMasterV3
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -40,6 +71,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+          cache-dependency-path: posMasterV3/package-lock.json
 
       - name: Install dependencies
         run: npm ci
