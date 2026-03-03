@@ -100,13 +100,25 @@ function AppSettings() {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch current version on mount so it's always visible
+  useEffect(() => {
+    updatesApi.getVersion().then((result) => {
+      if (result?.status === 'success' && result.data?.currentVersion) {
+        setUpdateInfo((prev) => ({ ...prev, currentVersion: result.data.currentVersion }));
+      }
+    }).catch(() => {});
+  }, []);
+
   // Register electron-updater push event listeners
   useEffect(() => {
     const unsubAvailable = updatesApi.onUpdateAvailable((data) => {
       setUpdateInfo(data);
       setUpdateState('update-available');
     });
-    const unsubNotAvailable = updatesApi.onUpdateNotAvailable(() => {
+    const unsubNotAvailable = updatesApi.onUpdateNotAvailable((data) => {
+      if (data?.currentVersion) {
+        setUpdateInfo((prev) => ({ ...prev, currentVersion: data.currentVersion }));
+      }
       setUpdateState('up-to-date');
     });
     const unsubProgress = updatesApi.onDownloadProgress((data) => {

@@ -626,6 +626,10 @@ autoUpdater.on("update-not-available", (info) => {
 // AUTO-UPDATER IPC HANDLERS
 // ============================================================
 
+ipcMain.handle("updates:get-version", () => {
+  return { status: "success", data: { currentVersion: app.getVersion() } };
+});
+
 ipcMain.handle("updates:check-for-updates", async () => {
   // Cannot check for updates in development (app not packaged)
   if (!app.isPackaged) {
@@ -842,6 +846,12 @@ app.whenReady().then(async () => {
     }
   } else {
     await mainWindow.loadFile(path.join(__dirname, "dist", "index.html"));
+    // Auto-check for updates in background after app loads (packaged only)
+    setTimeout(() => {
+      autoUpdater.checkForUpdates().catch((err) => {
+        console.log("[AutoUpdater] Background check failed:", err.message);
+      });
+    }, 5000);
   }
 
   async function waitForDevServer(url, timeoutMs = 15000) {

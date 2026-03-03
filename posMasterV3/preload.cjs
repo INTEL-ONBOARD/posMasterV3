@@ -377,6 +377,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     // ============================================
 
     updates: {
+        // Get the current installed app version
+        getVersion: () =>
+            ipcRenderer.invoke("updates:get-version"),
         // Check GitHub for a newer version
         checkForUpdates: () =>
             ipcRenderer.invoke("updates:check-for-updates"),

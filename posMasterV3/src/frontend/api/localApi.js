@@ -1916,6 +1916,11 @@ export const cloudSyncApi = {
  * @namespace
  */
 export const updatesApi = {
+    getVersion: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.updates.getVersion();
+    },
     checkForUpdates: async () => {
         const api = getElectronAPI();
         if (!api) return { status: 'error', message: 'Not in Electron environment' };
