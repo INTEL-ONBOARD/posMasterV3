@@ -82,13 +82,6 @@ function SalesSidebar({
       permissionKey: "sale_view_inventory",
     },
     {
-      id: "sales-report",
-      label: "Sales Report",
-      icon: inventoryReportImg,
-      onClick: onSalesReportClick,
-      permissionKey: "sale_reports",
-    },
-    {
       id: "sales-config",
       label: "Sales Configurations",
       icon: salesConfigImg,

@@ -863,61 +863,6 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
                 <span className="relative text-xs text-slate-500 mt-1">Add registered items to sale</span>
               </button>
 
-              {/* Select Customer Card */}
-              <button
-                onClick={() => setModal(true)}
-                className="bg-white rounded-2xl p-5 flex flex-col items-center justify-center hover:shadow-xl transition-all border border-slate-100 hover:border-emerald-300 group relative overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-500/30">
-                  <User className="w-8 h-8 text-white" />
-                </div>
-                <span className="relative text-base font-bold text-slate-800">Select Customer</span>
-                <span className="relative text-xs text-slate-500 mt-1">Member or Guest</span>
-              </button>
-
-              {/* Sale Summary */}
-              <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Sale Summary</p>
-                <div className="space-y-4">
-                  {/* Items Count */}
-                  <div className="bg-gradient-to-r from-teal-50 to-transparent rounded-xl p-4 flex items-center gap-4 border border-teal-100">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-lg shadow-teal-500/30">
-                      <Package className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-teal-600 font-semibold uppercase tracking-wide">Total Items</p>
-                      <p className="text-2xl font-bold text-teal-700 tabular-nums">{selectedItems.length}</p>
-                    </div>
-                  </div>
-
-                  {/* Total Amount */}
-                  <div className="bg-gradient-to-r from-[#1A318C]/10 to-transparent rounded-xl p-4 flex items-center gap-4 border border-[#1A318C]/20">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1A318C] to-[#2541B2] flex items-center justify-center shadow-lg shadow-[#1A318C]/30">
-                      <DollarSign className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-[#1A318C] font-semibold uppercase tracking-wide">Total Amount</p>
-                      <p className="text-2xl font-bold text-[#1A318C] tabular-nums">{formatCurrency(stockTotal)}</p>
-                    </div>
-                  </div>
-
-                  {/* Customer Info */}
-                  <div className="bg-gradient-to-r from-slate-50 to-transparent rounded-xl p-4 border border-slate-200">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        selectedMember?.is_guest ? "bg-slate-500" : "bg-emerald-500"
-                      }`}>
-                        <User className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">Customer</p>
-                        <p className="text-sm font-bold text-slate-700 truncate">{selectedMember?.full_name || "Guest"}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           ) : (
             /* Items List View */

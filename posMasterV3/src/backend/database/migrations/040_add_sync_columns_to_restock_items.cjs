@@ -24,7 +24,8 @@ function up(db) {
 
     if (!cols.includes('updated_at')) {
         db.exec(`ALTER TABLE restock_items ADD COLUMN updated_at TEXT;`);
-        db.exec(`UPDATE restock_items SET updated_at = COALESCE(created_at, datetime('now')) WHERE updated_at IS NULL;`);
+        // Avoid referencing created_at — it may not exist on older schema devices
+        db.exec(`UPDATE restock_items SET updated_at = datetime('now') WHERE updated_at IS NULL;`);
     }
 
     db.exec(`

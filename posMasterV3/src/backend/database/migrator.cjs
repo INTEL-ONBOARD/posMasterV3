@@ -119,8 +119,8 @@ function runMigrations(db) {
                 name: migration.name,
                 error: error.message
             });
-            // Stop on first error
-            break;
+            // Continue to next migration — a failed migration should not block
+            // safety-net or independent migrations that follow it.
         }
     }
 
