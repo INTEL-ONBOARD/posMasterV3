@@ -5,10 +5,41 @@
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
+const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
 
 class SupplierRepository extends BaseRepository {
     constructor() {
         super('suppliers');
+    }
+
+    /**
+     * Suppress base class broadcasts — we broadcast the formatted record ourselves
+     * so DataStore cache entries stay in the nested shape the frontend expects.
+     */
+    shouldBroadcast() {
+        return false;
+    }
+
+    /**
+     * Override update to broadcast formatted (nested) record.
+     */
+    update(id, data) {
+        const raw = super.update(id, data);
+        if (raw) {
+            broadcastDataChange(this.tableName, 'UPDATE', id, this.formatForFrontend(raw));
+        }
+        return raw;
+    }
+
+    /**
+     * Override create to broadcast formatted (nested) record.
+     */
+    create(data) {
+        const raw = super.create(data);
+        if (raw) {
+            broadcastDataChange(this.tableName, 'INSERT', raw.id, this.formatForFrontend(raw));
+        }
+        return raw;
     }
 
     /**

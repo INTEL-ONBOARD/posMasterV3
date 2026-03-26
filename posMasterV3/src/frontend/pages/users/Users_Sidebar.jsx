@@ -18,10 +18,10 @@ function UsersSidebar({
       try {
         const currentUser = await localAuth.getCurrentUser();
         if (currentUser) {
-          // Check if user is admin
+          // Check if user is admin (case-insensitive)
           const userRoles = currentUser.roles || [];
           const adminCheck = userRoles.some(role =>
-            ['admin', 'superadmin', 'Admin', 'SuperAdmin'].includes(role)
+            typeof role === 'string' && ['admin', 'superadmin'].includes(role.toLowerCase())
           );
           setIsAdmin(adminCheck);
 

@@ -49,10 +49,10 @@ function Sidebar() {
       try {
         const currentUser = await localAuth.getCurrentUser();
         if (currentUser) {
-          // Check if user is admin
+          // Check if user is admin (case-insensitive)
           const userRoles = currentUser.roles || [];
           const adminCheck = userRoles.some(role =>
-            ['admin', 'superadmin', 'Admin', 'SuperAdmin'].includes(role)
+            typeof role === 'string' && ['admin', 'superadmin'].includes(role.toLowerCase())
           );
           setIsAdmin(adminCheck);
 
@@ -73,7 +73,8 @@ function Sidebar() {
           }
         }
       } catch (error) {
-        // Silent fail - permissions will default to showing all
+        // On failure, deny access to protected sections rather than showing all
+        setPermissions({});
       }
     };
 
@@ -87,9 +88,9 @@ function Sidebar() {
       return true;
     }
 
-    // If permissions not loaded yet or null, check user role for defaults
-    if (!permissions) {
-      return true; // Show all by default until permissions load
+    // If permissions not loaded yet (null = still loading), show all temporarily
+    if (permissions === null) {
+      return true;
     }
 
     switch (section) {

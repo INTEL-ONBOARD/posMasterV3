@@ -330,6 +330,9 @@ function ManageRole() {
     }));
   };
 
+  // Reserved system role IDs that custom roles must not collide with
+  const SYSTEM_ROLE_IDS = ['admin', 'manager', 'cashier', 'assistant', 'user', 'superadmin'];
+
   // Validate form data
   const validateFormData = () => {
     if (!formData.name?.trim()) {
@@ -337,12 +340,19 @@ function ManageRole() {
       return false;
     }
 
-    // Check for duplicate role names
+    // Check for duplicate role names (case-insensitive)
     const existingRole = rolesList.find(
-      r => r.name.toLowerCase() === formData.name.toLowerCase() && r.id !== formData.id
+      r => r.name.toLowerCase() === formData.name.trim().toLowerCase() && r.id !== formData.id
     );
     if (existingRole) {
       toast.open("A role with this name already exists", 4000, "Validation Error", "error");
+      return false;
+    }
+
+    // Prevent custom role name from colliding with system role IDs
+    const candidateId = formData.name.trim().toLowerCase().replace(/\s+/g, '_');
+    if (!formData.id && SYSTEM_ROLE_IDS.includes(candidateId)) {
+      toast.open("This name conflicts with a system role. Please choose a different name.", 4000, "Validation Error", "error");
       return false;
     }
 
@@ -360,17 +370,30 @@ function ManageRole() {
     setFormStatus("loading");
 
     try {
+      // Re-fetch settings inside the save to avoid stale read-modify-write race
+      const currentSettings = await settingsApi.getAppSettings();
+      const customRoles = currentSettings.data?.custom_roles || [];
+
+      // Generate a unique ID — append timestamp suffix to prevent collisions
+      const baseId = formData.name.trim().toLowerCase().replace(/\s+/g, '_');
+      const candidateId = `${baseId}_${Date.now()}`;
+
+      // Double-check uniqueness against freshly fetched list
+      const idCollision = customRoles.find(r => r.id === candidateId);
+      if (idCollision) {
+        setFormStatus("form");
+        setStatusModal({ open: true, type: 'failed', description: 'Role ID conflict, please try again' });
+        return;
+      }
+
       const roleData = {
-        id: formData.name.toLowerCase().replace(/\s+/g, '_'),
+        id: candidateId,
         name: formData.name.trim(),
         description: formData.description.trim(),
         is_system: false,
         permissions: permissions,
       };
 
-      // Save custom role to app settings
-      const currentSettings = await settingsApi.getAppSettings();
-      const customRoles = currentSettings.data?.custom_roles || [];
       customRoles.push(roleData);
 
       await settingsApi.updateAppSettings({ custom_roles: customRoles });

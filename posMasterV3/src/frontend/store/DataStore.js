@@ -652,8 +652,8 @@ class DataStore {
             return [];
         }
 
-        // Check if we have a pending fetch for this table
-        if (this.pendingFetches.has(table)) {
+        // Check if we have a pending fetch for this table (skip if forcing refresh)
+        if (!forceRefresh && this.pendingFetches.has(table)) {
             return this.pendingFetches.get(table);
         }
 

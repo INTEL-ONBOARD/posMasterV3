@@ -187,6 +187,22 @@ function InventoryRestock({ isActive }) {
     });
   }, [inventoryItems, searchCategory, searchAvailability, search]);
 
+  // Stock batches for restock (add) mode — items that have existing stock records
+  const filteredRestockItems = useMemo(() => {
+    if (!stockItems || stockItems.length === 0) return [];
+    const searchTerm = (search || "").toLowerCase();
+    return stockItems.filter((stock) => {
+      const matchesCategory =
+        searchCategory === "All" ||
+        (stock.item?.category?.type === searchCategory);
+      const matchesSearch =
+        (stock.item?.item_name || "").toLowerCase().includes(searchTerm) ||
+        (stock.batch_code || "").toLowerCase().includes(searchTerm) ||
+        (stock.item?.sku || "").toLowerCase().includes(searchTerm);
+      return matchesCategory && matchesSearch;
+    });
+  }, [stockItems, searchCategory, search]);
+
   // Stock batches with actual quantity > 0, for dispose mode
   const filteredDisposeItems = useMemo(() => {
     if (!stockItems || stockItems.length === 0) return [];
@@ -2259,7 +2275,7 @@ function InventoryRestock({ isActive }) {
                     }`}></div>
                     <p className="text-gray-500">Loading items...</p>
                   </div>
-                ) : (rightActiveSection === "dispose" || rightActiveSection === "return" ? filteredDisposeItems : filteredItems).length === 0 ? (
+                ) : (rightActiveSection === "dispose" || rightActiveSection === "return" ? filteredDisposeItems : filteredRestockItems).length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20">
                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${
                       rightActiveSection === "add"
@@ -2301,8 +2317,29 @@ function InventoryRestock({ isActive }) {
                     />
                   ))
                 ) : (
-                  filteredItems.map((item) => (
-                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={() => loadItemtoList(item)} label="Add Item" />
+                  filteredRestockItems.map((stock) => (
+                    <SalesItemCard
+                      key={stock.id}
+                      item={{
+                        ...stock.item,
+                        quantity: stock.quantity,
+                        batch_code: stock.batch_code,
+                        stock_id: stock.id,
+                        retail_price: stock.retail_price,
+                        stock_price: stock.stock_price,
+                        threshold_limit: stock.threshold_limit,
+                      }}
+                      onOpen={() => loadItemtoList({
+                        ...stock.item,
+                        quantity: stock.quantity,
+                        batch_code: stock.batch_code,
+                        stock_id: stock.id,
+                        retail_price: stock.retail_price,
+                        stock_price: stock.stock_price,
+                        threshold_limit: stock.threshold_limit,
+                      })}
+                      label="Add Item"
+                    />
                   ))
                 )}
               </div>
@@ -2347,7 +2384,7 @@ function InventoryRestock({ isActive }) {
                     ? "bg-amber-500 text-white"
                     : "bg-red-500 text-white"
               }`}>
-                {rightActiveSection === "dispose" || rightActiveSection === "return" ? filteredDisposeItems.length : filteredItems.length} items
+                {rightActiveSection === "dispose" || rightActiveSection === "return" ? filteredDisposeItems.length : filteredRestockItems.length} items
               </span>
             </div>
           </div>

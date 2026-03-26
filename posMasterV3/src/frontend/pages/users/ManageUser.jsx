@@ -2,7 +2,7 @@ import React, { useEffect, useContext, useRef, useState } from "react";
 import { X, ChevronDown, ChevronUp, Upload, RefreshCw } from "lucide-react";
 import { userApi, authApi, branchApi, settingsApi } from "../../api/localApi";
 import ToastContext from "../toasts/ToastService";
-import { useReactiveData, TABLES } from "../../store";
+import { useReactiveData, TABLES, dataStore } from "../../store";
 import StatusModal from "../../components/StatusModal.jsx";
 
 function ManageUser() {
@@ -77,6 +77,9 @@ function ManageUser() {
   const [isUserEditing, setIsUserEditing] = useState(false);
   const [formStatus, setFormStatus] = useState("form");
   const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDirtyWarning, setShowDirtyWarning] = useState(false);
+  const [pendingSelectUser, setPendingSelectUser] = useState(null);
   const timerRef = useRef(null);
 
   const closeStatusModal = () => {
@@ -239,6 +242,25 @@ function ManageUser() {
       }
     } catch (error) {
       console.log("[ManageUser] Using default role permissions");
+    }
+  };
+
+  // Check if form has unsaved changes (any non-empty editable field differs from blank state)
+  const isFormDirty = () => {
+    if (!isUserEditing) return false;
+    return !!(
+      formData.password ||
+      formData.confirm_password
+    );
+  };
+
+  // Handle clicking a user in the list — show dirty warning if needed
+  const handleSelectUser = (user) => {
+    if (isFormDirty()) {
+      setPendingSelectUser(user);
+      setShowDirtyWarning(true);
+    } else {
+      loadUser(user);
     }
   };
 
@@ -423,6 +445,20 @@ function ManageUser() {
   const handleProfileImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.open("Only image files are allowed (JPEG, PNG, WebP, GIF)", 4000, "Error", "error");
+        e.target.value = "";
+        return;
+      }
+      // Validate file size (max 5MB before compression)
+      const MAX_SIZE_MB = 5;
+      if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+        toast.open(`Image file must be smaller than ${MAX_SIZE_MB}MB`, 4000, "Error", "error");
+        e.target.value = "";
+        return;
+      }
       try {
         // Compress image before storing (200x200, 80% quality)
         const compressedImage = await compressImage(file, 200, 200, 0.8);
@@ -453,15 +489,28 @@ function ManageUser() {
       toast.open("Please enter full name", 4000, "Validation Error", "error");
       return false;
     }
-    if (!formData.username?.trim()) {
+
+    // Username: required, 3–30 chars, alphanumeric + underscore only
+    const username = formData.username?.trim() || "";
+    if (!username) {
       toast.open("Please enter username", 4000, "Validation Error", "error");
       return false;
     }
+    if (username.length < 3 || username.length > 30) {
+      toast.open("Username must be between 3 and 30 characters", 4000, "Validation Error", "error");
+      return false;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      toast.open("Username can only contain letters, numbers, and underscores", 4000, "Validation Error", "error");
+      return false;
+    }
+
     if (!formData.email?.trim()) {
       toast.open("Please enter email", 4000, "Validation Error", "error");
       return false;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+    // Stricter email validation
+    if (!/^[^\s@]+@[^\s@]{2,}\.[^\s@]{2,}$/.test(formData.email.trim())) {
       toast.open("Please enter a valid email address", 4000, "Validation Error", "error");
       return false;
     }
@@ -472,8 +521,12 @@ function ManageUser() {
         toast.open("Please enter password", 4000, "Validation Error", "error");
         return false;
       }
-      if (formData.password.length < 6) {
-        toast.open("Password must be at least 6 characters", 4000, "Validation Error", "error");
+      if (formData.password.length < 8) {
+        toast.open("Password must be at least 8 characters", 4000, "Validation Error", "error");
+        return false;
+      }
+      if (!/[0-9]/.test(formData.password)) {
+        toast.open("Password must contain at least one number", 4000, "Validation Error", "error");
         return false;
       }
       if (formData.password !== formData.confirm_password) {
@@ -484,8 +537,12 @@ function ManageUser() {
 
     // For editing, only validate password if provided
     if (isUserEditing && formData.password) {
-      if (formData.password.length < 6) {
-        toast.open("Password must be at least 6 characters", 4000, "Validation Error", "error");
+      if (formData.password.length < 8) {
+        toast.open("Password must be at least 8 characters", 4000, "Validation Error", "error");
+        return false;
+      }
+      if (!/[0-9]/.test(formData.password)) {
+        toast.open("Password must contain at least one number", 4000, "Validation Error", "error");
         return false;
       }
       if (formData.password !== formData.confirm_password) {
@@ -520,13 +577,22 @@ function ManageUser() {
       const response = await authApi.register(userData);
 
       if (response.status === "success") {
-        // Save user permissions and profile image
+        // Save user permissions and profile image (must succeed for a complete user setup)
         if (response.data?.id) {
-          await settingsApi.updateUserPermissions(response.data.id, permissions);
+          try {
+            await settingsApi.updateUserPermissions(response.data.id, permissions);
+          } catch (permErr) {
+            console.error("[ManageUser] Failed to save user permissions:", permErr);
+            toast.open("User created but permissions could not be saved — please edit the user to set permissions", 6000, "Warning", "warning");
+          }
 
-          // Save profile image if uploaded
+          // Save profile image if uploaded (non-critical)
           if (formData.profile_image) {
-            await settingsApi.updateProfileImage(response.data.id, formData.profile_image);
+            try {
+              await settingsApi.updateProfileImage(response.data.id, formData.profile_image);
+            } catch (imgErr) {
+              console.error("[ManageUser] Failed to save profile image:", imgErr);
+            }
           }
         }
 
@@ -598,8 +664,10 @@ function ManageUser() {
     }
   };
 
-  // Delete user
+  // Delete user — called only after confirmation dialog approves
   const deleteUser = async () => {
+    setShowDeleteConfirm(false);
+
     if (!formData.id) {
       toast.open("Please select a user to delete", 4000, "Error", "error");
       return;
@@ -612,9 +680,11 @@ function ManageUser() {
 
       if (response.status === "success") {
         setStatusModal({ open: true, type: 'success', description: 'User deleted successfully' });
+        // Immediately remove from cache so UI updates without waiting for refetch
+        dataStore.optimisticUpdate(TABLES.USERS, 'DELETE', {}, formData.id);
         clearUserInput();
-        // Refetch users after successful deletion
-        await refetchUsers();
+        // Refetch to confirm final state from DB
+        refetchUsers();
         setFormStatus("form");
       } else {
         setFormStatus("form");
@@ -671,9 +741,9 @@ function ManageUser() {
                           className="w-full h-full object-cover"
                           style={{ display: 'block' }}
                           onError={(e) => {
-                            console.error("[ManageUser] Image failed to load:", e);
-                            console.log("[ManageUser] Image src was:", formData.profile_image?.substring(0, 100));
+                            console.error("[ManageUser] Image failed to load");
                             e.target.style.display = 'none';
+                            toast.open("Profile image could not be displayed", 3000, "Warning", "warning");
                           }}
                           onLoad={() => {
                             console.log("[ManageUser] Image loaded successfully");
@@ -890,7 +960,7 @@ function ManageUser() {
           {/* Bottom button set */}
           <div className="flex flex-row w-full gap-3 mt-4">
             <button
-              onClick={deleteUser}
+              onClick={() => setShowDeleteConfirm(true)}
               disabled={!isUserEditing}
               className={`flex-1 min-w-0 h-11 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
                 isUserEditing
@@ -1047,7 +1117,7 @@ function ManageUser() {
                     className={`grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
                       formData.id === user.id ? "bg-[#1A318C]/5 border-l-4 border-l-[#1A318C]" : ""
                     }`}
-                    onClick={() => loadUser(user)}
+                    onClick={() => handleSelectUser(user)}
                   >
                     <div className="col-span-1 text-sm text-gray-500 font-medium">{index + 1}</div>
                     <div className="col-span-2 text-sm font-medium text-gray-800">{user.full_name || "-"}</div>
@@ -1072,7 +1142,7 @@ function ManageUser() {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          loadUser(user);
+                          handleSelectUser(user);
                         }}
                         className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-[#1A318C] hover:text-white inline-flex items-center justify-center transition-all duration-200 group"
                       >
@@ -1098,6 +1168,77 @@ function ManageUser() {
         description={statusModal.description}
         context="user"
       />
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white shadow-2xl rounded-2xl p-6 w-80 relative animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center">
+                <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 text-center mb-1">Delete User?</h2>
+            <p className="text-sm text-gray-500 text-center mb-6">
+              Are you sure you want to delete <span className="font-semibold text-gray-700">{formData.full_name}</span>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                className="flex-1 px-4 py-2.5 bg-white border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-200"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 shadow-lg shadow-red-200 transition-all duration-200"
+                onClick={deleteUser}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dirty-state Warning Dialog */}
+      {showDirtyWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white shadow-2xl rounded-2xl p-6 w-80 relative animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center">
+                <svg className="w-8 h-8 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 text-center mb-1">Unsaved Changes</h2>
+            <p className="text-sm text-gray-500 text-center mb-6">
+              You have unsaved changes. Switching users will discard them.
+            </p>
+            <div className="flex gap-3">
+              <button
+                className="flex-1 px-4 py-2.5 bg-white border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-200"
+                onClick={() => { setShowDirtyWarning(false); setPendingSelectUser(null); }}
+              >
+                Stay
+              </button>
+              <button
+                className="flex-1 px-4 py-2.5 bg-amber-500 text-white rounded-xl font-semibold hover:bg-amber-600 shadow-lg shadow-amber-200 transition-all duration-200"
+                onClick={() => {
+                  setShowDirtyWarning(false);
+                  const user = pendingSelectUser;
+                  setPendingSelectUser(null);
+                  loadUser(user);
+                }}
+              >
+                Discard & Switch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

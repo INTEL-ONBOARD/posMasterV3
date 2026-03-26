@@ -129,6 +129,20 @@ class UserService {
                 }
             }
 
+            // Validate branch_id if provided
+            if (safeData.branch_id) {
+                const BranchRepository = require('../repositories/BranchRepository.cjs');
+                const branchRepo = new BranchRepository();
+                const branch = branchRepo.findById(safeData.branch_id);
+                if (!branch) {
+                    return {
+                        success: false,
+                        status: 'error',
+                        message: 'Selected branch does not exist'
+                    };
+                }
+            }
+
             // Handle roles serialization
             if (safeData.roles && Array.isArray(safeData.roles)) {
                 safeData.roles = JSON.stringify(safeData.roles);
@@ -157,12 +171,13 @@ class UserService {
                 const { getCloudSyncService } = require('./CloudSyncService.cjs');
                 const cloudSync = getCloudSyncService();
                 if (cloudSync && cloudSync.isOnline && cloudSync.mysqlInitialized) {
-                    // Get the full updated user record for syncing
+                    // Get the full updated user record for syncing (exclude password_hash)
                     const fullUser = this.userRepo.findById(userId);
                     if (fullUser) {
+                        const { password_hash: _ph, ...userWithoutHash } = fullUser;
                         // Re-serialize roles if they were parsed
                         const userToSync = {
-                            ...fullUser,
+                            ...userWithoutHash,
                             roles: Array.isArray(fullUser.roles) ? JSON.stringify(fullUser.roles) : fullUser.roles
                         };
                         cloudSync.pushUser(userToSync, false).catch(err => {
@@ -262,6 +277,29 @@ class UserService {
             }
 
             if (hardDelete) {
+                // Check if user is referenced in transactions (sales/restock)
+                try {
+                    const db = this.userRepo.db;
+                    const salesRef = db.prepare(
+                        `SELECT COUNT(*) as cnt FROM sales_transactions WHERE prepared_by = ? OR authorized_by = ? LIMIT 1`
+                    ).get(user.username, user.username);
+                    const restockRef = db.prepare(
+                        `SELECT COUNT(*) as cnt FROM restock_transactions WHERE prepared_by = ? OR authorized_by = ? LIMIT 1`
+                    ).get(user.username, user.username);
+
+                    if ((salesRef?.cnt || 0) > 0 || (restockRef?.cnt || 0) > 0) {
+                        // Soft-delete instead to preserve referential integrity
+                        this.userRepo.deactivate(userId);
+                        return {
+                            success: true,
+                            status: 'success',
+                            message: 'User deactivated (has transaction history — full deletion skipped to preserve records)'
+                        };
+                    }
+                } catch (refErr) {
+                    console.warn('[UserService] Referential check failed (non-fatal):', refErr.message);
+                }
+
                 // Permanent delete from local DB
                 this.userRepo.delete(userId);
 
@@ -342,9 +380,12 @@ class UserService {
 
             const stmt = this.userRepo.db.prepare(`
                 SELECT * FROM users
-                WHERE username LIKE ?
-                OR email LIKE ?
-                OR full_name LIKE ?
+                WHERE is_active = 1
+                AND (
+                    username LIKE ?
+                    OR email LIKE ?
+                    OR full_name LIKE ?
+                )
                 ORDER BY username ASC
                 LIMIT 50
             `);

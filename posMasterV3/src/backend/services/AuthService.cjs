@@ -22,7 +22,7 @@ const SALT_ROUNDS = 10;
 // a full app restart is a reasonable reset for a desktop POS).
 const failedAttempts = new Map(); // key → { count, lockedUntil }
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_MS = 30 * 1000; // 30 seconds
+const LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 function _recordFailedAttempt(key) {
     const entry = failedAttempts.get(key) || { count: 0, lockedUntil: 0 };

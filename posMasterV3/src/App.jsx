@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   Outlet,
+  useOutletContext,
 } from "react-router-dom";
 
 import './App.css';
@@ -34,6 +35,82 @@ import { DataStoreProvider } from './frontend/store';
 function PrivateRoute() {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   return token ? <Outlet /> : <Navigate to="/login" replace />;
+}
+
+/**
+ * PermissionRoute - guards a route by checking if the current user
+ * has at least one of the required permissions.
+ * Props:
+ *   requiredPermissions: string[]  - any of these must be true
+ *   anyRole: string[]              - OR any of these roles suffices
+ */
+function PermissionRoute({ requiredPermissions = [], anyRole = [] }) {
+  const [allowed, setAllowed] = React.useState(null); // null = loading
+  const outletContext = useOutletContext();
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function check() {
+      try {
+        const { localAuth } = await import('./frontend/api/services/localAuth.js');
+        const { settingsApi } = await import('./frontend/api/localApi.js');
+
+        const currentUser = await localAuth.getCurrentUser();
+        if (!currentUser) {
+          if (!cancelled) setAllowed(false);
+          return;
+        }
+
+        const userRoles = Array.isArray(currentUser.roles) ? currentUser.roles : [];
+
+        // Admin always allowed
+        if (userRoles.some(r => typeof r === 'string' && r.toLowerCase() === 'admin')) {
+          if (!cancelled) setAllowed(true);
+          return;
+        }
+
+        // Role shortcut
+        if (anyRole.length > 0 && userRoles.some(r => anyRole.includes((r || '').toLowerCase()))) {
+          if (!cancelled) setAllowed(true);
+          return;
+        }
+
+        if (requiredPermissions.length === 0) {
+          if (!cancelled) setAllowed(true);
+          return;
+        }
+
+        // Check saved permissions
+        const userId = currentUser.id || currentUser._id;
+        const response = await settingsApi.getUserSettings(userId);
+        const perms = response?.data?.settings?.permissions;
+
+        if (!perms) {
+          // No permissions saved — deny non-admins for protected routes
+          if (!cancelled) setAllowed(false);
+          return;
+        }
+
+        const allPermValues = Object.values(perms).reduce((acc, cat) => {
+          if (cat && typeof cat === 'object') Object.assign(acc, cat);
+          return acc;
+        }, {});
+
+        const hasAny = requiredPermissions.some(p => allPermValues[p] === true);
+        if (!cancelled) setAllowed(hasAny);
+      } catch {
+        if (!cancelled) setAllowed(false);
+      }
+    }
+
+    check();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (allowed === null) return null; // loading — render nothing briefly
+  if (!allowed) return <Navigate to="/dashboard/notifications" replace />;
+  return <Outlet context={outletContext} />;
 }
 
 function App() {
@@ -111,7 +188,9 @@ function App() {
                   <Route path="settings/*" element={<Settings />} />
                   <Route path="notifications" element={<Notification />} />
                   <Route path="sales" element={<Sales />} />
-                  <Route path="users" element={<Users />} />
+                  <Route element={<PermissionRoute requiredPermissions={['user_manage', 'user_role_manage']} anyRole={['admin', 'manager']} />}>
+                    <Route path="users" element={<Users />} />
+                  </Route>
                 </Route>
               </Route>
 

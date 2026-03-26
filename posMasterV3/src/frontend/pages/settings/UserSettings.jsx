@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Upload, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
 import { settingsApi } from '../../api/localApi';
 import { localAuth } from '../../api/services/localAuth';
@@ -6,6 +7,7 @@ import ToastContext from '../toasts/ToastService';
 
 function UserSettings() {
   const toast = useContext(ToastContext);
+  const navigate = useNavigate();
 
   // Section collapse states
   const [openProfile, setOpenProfile] = useState(true);
@@ -259,8 +261,8 @@ function UserSettings() {
         return;
       }
 
-      if (!formData.newPassword || formData.newPassword.length < 4) {
-        toast.open('New password must be at least 4 characters', 5000, 'Validation Error', 'warning');
+      if (!formData.newPassword || formData.newPassword.length < 6) {
+        toast.open('New password must be at least 6 characters', 5000, 'Validation Error', 'warning');
         return;
       }
 
@@ -275,7 +277,10 @@ function UserSettings() {
           toast.open(pwResult.message || 'Password change failed', 5000, 'Error', 'error');
           return;
         }
-        toast.open('Password changed successfully', 3000, 'Success', 'success');
+        toast.open('Password changed. Please log in again.', 3000, 'Success', 'success');
+        await localAuth.logout();
+        setTimeout(() => navigate('/'), 1500);
+        return;
       } catch (err) {
         toast.open('Password change failed: ' + err.message, 5000, 'Error', 'error');
         return;

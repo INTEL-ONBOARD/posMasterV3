@@ -13,6 +13,41 @@ const { nowISO } = require('../utils/helpers.cjs');
 class RestockRepository extends BaseRepository {
     constructor() {
         super('restock_transactions');
+        this._ensureRestockItemsColumns();
+    }
+
+    /**
+     * Self-heal: add missing sync columns to restock_items if absent.
+     * Runs at construction time so the INSERT never fails regardless of
+     * which migrations ran on this device.
+     */
+    _ensureRestockItemsColumns() {
+        try {
+            const cols = this.db.prepare('PRAGMA table_info(restock_items)').all().map(c => c.name);
+
+            if (!cols.includes('sync_status')) {
+                this.db.exec(`ALTER TABLE restock_items ADD COLUMN sync_status TEXT DEFAULT 'pending';`);
+                this.db.exec(`UPDATE restock_items SET sync_status = 'synced' WHERE sync_status IS NULL;`);
+                console.log('[RestockRepository] Self-healed: added sync_status to restock_items');
+            }
+            if (!cols.includes('cloud_id')) {
+                this.db.exec(`ALTER TABLE restock_items ADD COLUMN cloud_id TEXT;`);
+                console.log('[RestockRepository] Self-healed: added cloud_id to restock_items');
+            }
+            if (!cols.includes('updated_at')) {
+                this.db.exec(`ALTER TABLE restock_items ADD COLUMN updated_at TEXT;`);
+                this.db.exec(`UPDATE restock_items SET updated_at = datetime('now') WHERE updated_at IS NULL;`);
+                console.log('[RestockRepository] Self-healed: added updated_at to restock_items');
+            }
+            if (!cols.includes('created_at')) {
+                this.db.exec(`ALTER TABLE restock_items ADD COLUMN created_at TEXT;`);
+                this.db.exec(`UPDATE restock_items SET created_at = COALESCE(updated_at, datetime('now')) WHERE created_at IS NULL;`);
+                console.log('[RestockRepository] Self-healed: added created_at to restock_items');
+            }
+        } catch (e) {
+            // Non-fatal — will still fail at INSERT time with original error if truly broken
+            console.error('[RestockRepository] Column self-heal failed:', e.message);
+        }
     }
 
     /**
