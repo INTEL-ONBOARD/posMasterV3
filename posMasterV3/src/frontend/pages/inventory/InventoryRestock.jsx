@@ -18,7 +18,42 @@ function InventoryRestock({ isActive }) {
 
   // success/fail modal state: { open: boolean, type: 'success' | 'failed' | null }
   const [modal, setModal] = useState({ open: false, type: null, description: "" });
-  const closeModal = () => setModal({ open: false, type: null,  description: ""});
+
+  const clearTransactionForm = () => {
+    setSelectedStockItemList([]);
+    setSelectedReturnItemList([]);
+    setFinalDiscount(0);
+    setCashAmount(0);
+    setRightActiveSection("buttons");
+    setFormDataSupplier({
+      id: 0,
+      supplier_name: "",
+      type: "",
+      supplier_address: "",
+      status: false,
+      contact: "",
+      current_amount: 0,
+      previous_amount: 0,
+      invoice_no: "",
+      bill_no: "",
+      payment_method: "",
+      expenses: 0,
+      account_name: "",
+      account_nickName: "",
+      account_related_bank: "",
+      account_number: "",
+      account_related_branch: "",
+    });
+    clearFormInput();
+    setStockEntries([]);
+    setInvoiceGenerate(prev => prev + 1);
+  };
+
+  const closeModal = () => {
+    const wasSuccess = modal.type === 'success';
+    setModal({ open: false, type: null, description: "" });
+    if (wasSuccess) clearTransactionForm();
+  };
 
   // Use reactive data hooks for suppliers, users, items, and categories
   const { data: suppliers } = useReactiveData(
@@ -1043,9 +1078,6 @@ function InventoryRestock({ isActive }) {
       const response = await restockApi.create(requestData);
 
       if (response.status === "success") {
-        //generate a new invoice number
-        setInvoiceGenerate(invoiceGenerate + 1);
-
         setModal({ open: true, type: 'success', description: 'Restock transaction completed successfully' });
         statusLog.success("Restock transaction completed successfully");
       } else {

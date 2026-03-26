@@ -379,11 +379,11 @@ export default function SalesView({ isActive }) {
           const stockId = item.stock_id || item.id;
           const qty = item.customer_quantity;
           if (!itemId || !stockId) {
-              toast.error(`Item "${item.item_name || 'unknown'}" is missing required IDs`);
+              toast.open(`Item "${item.item_name || 'unknown'}" is missing required IDs`, 5000, 'Validation Error', 'error');
               return { success: false };
           }
           if (!Number.isFinite(qty) || qty <= 0) {
-              toast.error(`Invalid quantity for "${item.item_name || 'unknown'}"`);
+              toast.open(`Invalid quantity for "${item.item_name || 'unknown'}"`, 5000, 'Validation Error', 'error');
               return { success: false };
           }
       }
@@ -420,19 +420,19 @@ export default function SalesView({ isActive }) {
             await generateBillPdf(checkoutData);
         } catch (printError) {
             console.error('[SalesView] Bill generation failed:', printError);
-            toast.error('Sale saved but bill printing failed');
+            toast.open('Sale saved but bill printing failed', 5000, 'Print Warning', 'warning');
         }
         // Mark sale as completed - clearForm will be called when modal closes
         setSaleCompleted(true);
         // Return success for the modal to show animation
         return { success: true, data: response.data };
       } else {
-        toast.error(response.message || "Failed to process sale");
+        toast.open(response.message || "Failed to process sale", 5000, 'Sale Error', 'error');
         throw new Error(response.message || "Failed to process sale");
       }
     } catch (error) {
       console.error("[SalesView] Error processing sale:", error);
-      toast.error("Failed to process sale");
+      toast.open("Failed to process sale", 5000, 'Sale Error', 'error');
       throw error;
     }
   };
@@ -440,20 +440,54 @@ export default function SalesView({ isActive }) {
   // Open checkout modal
   const handleProceedClick = () => {
     if (selectedItems.length === 0) {
-      toast.error("Please add items to the sale");
+      toast.open("Please add items to the sale", 4000, 'Cart Empty', 'warning');
       return;
     }
     setCheckoutModal(true);
   };
 
-  // Hold sale for later (placeholder)
-  const handleHoldSale = () => {
+  // Hold sale for later - saves to DB without completing payment or decrementing stock
+  const handleHoldSale = async () => {
     if (selectedItems.length === 0) {
-      toast.error("No items to hold");
+      toast.open("No items to hold", 4000, 'Cart Empty', 'warning');
       return;
     }
-    toast.info("Sale held for later");
-    // TODO: Implement hold functionality - save to local storage or database
+
+    const saleData = {
+      invoice_no: invoiceNo,
+      member_id: selectedMember?.is_guest ? null : (selectedMember?.id || selectedMember?._id),
+      member_name: selectedMember?.full_name || "Guest",
+      payment_method: "cash",
+      total_amount: stockTotal,
+      discount_amount: 0,
+      cash_amount: 0,
+      change_amount: 0,
+      cashier_name: preparedBy,
+      items: selectedItems.map(item => ({
+        item_id: item.item_id || item.id,
+        stock_id: item.stock_id || item.id,
+        batch_code: item.batch_code,
+        item_name: item.item_name,
+        sku: item.sku,
+        quantity: item.customer_quantity,
+        unit_price: item.retail_price,
+        discount: item.customer_discount || 0,
+        total_price: (item.retail_price - (item.customer_discount || 0)) * item.customer_quantity
+      }))
+    };
+
+    try {
+      const response = await salesApi.hold(saleData);
+      if (response.status === "success") {
+        toast.open("Sale held successfully", 4000, 'Sale Held', 'success');
+        clearForm();
+      } else {
+        toast.open(response.message || "Failed to hold sale", 5000, 'Hold Failed', 'error');
+      }
+    } catch (error) {
+      console.error("[SalesView] Error holding sale:", error);
+      toast.open("Failed to hold sale", 5000, 'Hold Failed', 'error');
+    }
   };
 
   // Store checkout data for bill generation

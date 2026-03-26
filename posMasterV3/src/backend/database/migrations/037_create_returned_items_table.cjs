@@ -1,5 +1,6 @@
 module.exports = {
     version: 37,
+    name: 'create_returned_items_table',
     description: 'Create returned_items table for customer return/refund workflow',
     up(db) {
         db.exec(`

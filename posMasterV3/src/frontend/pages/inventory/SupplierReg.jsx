@@ -174,26 +174,7 @@ function SupplierReg() {
       return false;
     }
 
-    // Check financial_info fields
-    if (
-      //!basic_info.current_amount?.toString().trim() ||
-      !financial_info.previous_amount?.toString().trim()
-    ) {
-      console.log(basic_info.previous_amount);
-      console.log("financial info missing");
-      return false;
-    }
-
-    //Check account_info fields
-    if (
-      !payment_info.account_number?.trim() ||
-      !payment_info.account_bank?.trim() ||
-      !payment_info.account_branch?.trim() ||
-      !payment_info.account_name?.trim() ||
-      !payment_info.account_nickname?.trim()
-    ) {
-      return false;
-    }
+    // previous_amount and all payment/account fields are optional
 
     return true;
   };

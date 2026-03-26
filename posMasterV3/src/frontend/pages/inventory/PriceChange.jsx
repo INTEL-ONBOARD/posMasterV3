@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useContext } from "react";
 import { ChevronDown, ChevronUp, Search, Package, DollarSign, Tag, Percent, Calendar, X, CheckCircle, Filter, AlertCircle } from "lucide-react";
 import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
 import { restockApi, stockApi } from "../../api/localApi";
 import { useReactiveData, TABLES } from "../../store";
+import ToastContext from "../toasts/ToastService";
 
 // Initial form state
 const INITIAL_STOCK_FORM = {
@@ -23,6 +24,8 @@ const INITIAL_PRICE_CHANGE_FORM = {
 };
 
 function PriceChange() {
+  const toast = useContext(ToastContext);
+
   // Form section state
   const [openFormBlock, setOpenFormBlock] = useState("item");
 
@@ -273,8 +276,8 @@ function PriceChange() {
   const validateStockForm = () => {
     const errors = {};
     if (!formDataStock.batch_code.trim()) errors.batch_code = "Batch code is required";
-    if (!formDataStock.stock_price.trim()) errors.stock_price = "Stock price is required";
-    if (!formDataStock.retail_price.trim()) errors.retail_price = "Retail price is required";
+    if (!formDataPriceChange.new_price.toString().trim()) errors.new_price = "New price is required";
+    if (isNaN(parseFloat(formDataPriceChange.new_price)) || parseFloat(formDataPriceChange.new_price) < 0) errors.new_price = "Enter a valid price";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -287,8 +290,8 @@ function PriceChange() {
 
       try {
         if (selectedItemForDetails) {
+          const newRetailPrice = parseFloat(formDataPriceChange.new_price);
           const newStockPrice = parseFloat(formDataStock.stock_price) || selectedItemForDetails.stock_price;
-          const newRetailPrice = parseFloat(formDataStock.retail_price) || selectedItemForDetails.retail_price;
           const reason = formDataPriceChange.price_change_description || null;
 
           // Get current user for audit trail
@@ -305,11 +308,14 @@ function PriceChange() {
           if (response?.status === 'success') {
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 3000);
+            toast.open('Price updated successfully', 3000, 'Success', 'success');
           } else {
+            toast.open(response?.message || 'Failed to update price', 5000, 'Error', 'error');
             console.error('[PriceChange] updatePrices failed:', response?.message);
           }
         }
       } catch (error) {
+        toast.open(error.message || 'Failed to update price', 5000, 'Error', 'error');
         console.error('[PriceChange] Submit error:', error);
       } finally {
         setSubmitLoading(false);
@@ -346,7 +352,7 @@ function PriceChange() {
   return (
     <div className="flex bg-gray-50 w-full h-[calc(100vh-2rem)]">
       {/* Left Form Section */}
-      <div className="bg-gray-100 w-[26rem] h-full p-3">
+      <div className="bg-gray-100 w-[26rem] h-full p-3 relative">
         <div className="flex flex-col h-full gap-3">
           {/* Item Description Block */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -583,6 +589,9 @@ function PriceChange() {
                     />
                     {selectedItemForDetails && (
                       <p className="text-xs text-gray-400 mt-1">Current: Rs.{selectedItemForDetails.retail_price}</p>
+                    )}
+                    {formErrors.new_price && (
+                      <p className="text-xs text-red-500 mt-1">{formErrors.new_price}</p>
                     )}
                   </div>
                   <div>
