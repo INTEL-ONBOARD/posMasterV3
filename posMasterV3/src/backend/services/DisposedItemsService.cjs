@@ -11,6 +11,7 @@ const { branchContextService } = require('./BranchContextService.cjs');
 const { getDatabase } = require('../database/connection.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
 const { notifyDataChange } = require('./CloudSyncService.cjs');
+const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
 
 const disposedRepo = new DisposedItemsRepository();
 
@@ -71,10 +72,11 @@ class DisposedItemsService {
                 `).run(qty, nowISO(), data.stock_id);
 
                 // Insert disposal record
+                const disposedAt = nowISO();
                 const result = db.prepare(`
                     INSERT INTO disposed_items
-                        (item_id, stock_id, batch_code, quantity, reason, disposed_by, disposed_at, sync_status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+                        (item_id, stock_id, batch_code, quantity, reason, disposed_by, disposed_at, sync_status, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
                 `).run(
                     stock.item_id,
                     data.stock_id,
@@ -82,7 +84,8 @@ class DisposedItemsService {
                     qty,
                     data.reason || null,
                     data.disposed_by || null,
-                    nowISO()
+                    disposedAt,
+                    disposedAt
                 );
 
                 disposedRecord = disposedRepo.findById(result.lastInsertRowid);
@@ -92,8 +95,12 @@ class DisposedItemsService {
 
             try {
                 notifyDataChange('disposed_items', 'INSERT', disposedRecord, disposedRecord.id);
+                broadcastDataChange('disposed_items', 'INSERT', disposedRecord.id, disposedRecord);
                 const updatedStock = stockRepository.findById(data.stock_id);
-                if (updatedStock) notifyDataChange('stock', 'UPDATE', updatedStock, updatedStock.id);
+                if (updatedStock) {
+                    notifyDataChange('stock', 'UPDATE', updatedStock, updatedStock.id);
+                    broadcastDataChange('stock', 'UPDATE', updatedStock.id, updatedStock);
+                }
             } catch (e) { console.error('[DisposedItemsService] Cloud sync error (non-fatal):', e.message); }
 
             return {

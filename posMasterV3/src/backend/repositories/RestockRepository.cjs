@@ -312,8 +312,8 @@ class RestockRepository extends BaseRepository {
 
             // Insert added items and update stock
             const addItemStmt = this.db.prepare(`
-                INSERT INTO restock_items (restock_id, item_id, batch_code, quantity, stock_price, retail_price, expiry_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO restock_items (restock_id, item_id, batch_code, quantity, stock_price, retail_price, expiry_date, sync_status, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
             `);
 
             const findItemStmt = this.db.prepare(`SELECT id FROM items WHERE sku = ?`);
@@ -327,7 +327,8 @@ class RestockRepository extends BaseRepository {
                     retail_price = @retail_price,
                     expiry_date = COALESCE(@expiry_date, expiry_date),
                     branch_id = COALESCE(@branch_id, branch_id),
-                    updated_at = @updated_at
+                    updated_at = @updated_at,
+                    sync_status = 'pending'
             `);
 
             for (const item of addedItems) {
@@ -341,7 +342,8 @@ class RestockRepository extends BaseRepository {
                     item.qty,
                     item.stock_price,
                     item.retail_price,
-                    item.exp_date
+                    item.exp_date,
+                    nowISO()
                 );
 
                 // Update stock with branch_id
@@ -361,8 +363,8 @@ class RestockRepository extends BaseRepository {
 
             // Insert return items and update stock (decrease quantity)
             const returnItemStmt = this.db.prepare(`
-                INSERT INTO return_items (restock_id, item_id, batch_code, quantity, description)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO return_items (restock_id, item_id, batch_code, quantity, description, sync_status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
             `);
 
             const decreaseStockStmt = this.db.prepare(`
@@ -374,12 +376,15 @@ class RestockRepository extends BaseRepository {
                 const itemRecord = findItemStmt.get(item.sku);
                 if (!itemRecord) continue;
 
+                const returnNow = nowISO();
                 returnItemStmt.run(
                     restockId,
                     itemRecord.id,
                     item.batch_code,
                     item.qty,
-                    item.description
+                    item.description,
+                    returnNow,
+                    returnNow
                 );
 
                 // Decrease stock
@@ -407,8 +412,28 @@ class RestockRepository extends BaseRepository {
                 notifyDataChange('return_items', 'INSERT', item, item.id);
             }
 
-            // Broadcast a SINGLE batch stock update instead of individual broadcasts per item
-            // This prevents UI refresh storms when restocking many items
+            // Notify CloudSync for each stock change (added items → increased, return items → decreased)
+            // Batch the UI broadcast to avoid refresh storms
+            const stockIdsNotified = new Set();
+            for (const item of fullRestock.added_items) {
+                const updatedStock = this.db.prepare(
+                    'SELECT * FROM stock WHERE item_id = ? AND batch_code = ?'
+                ).get(item.item_id, item.batch_code);
+                if (updatedStock && !stockIdsNotified.has(updatedStock.id)) {
+                    notifyDataChange('stock', 'UPDATE', updatedStock, updatedStock.id);
+                    stockIdsNotified.add(updatedStock.id);
+                }
+            }
+            for (const item of fullRestock.return_items) {
+                const updatedStock = this.db.prepare(
+                    'SELECT * FROM stock WHERE item_id = ? AND batch_code = ?'
+                ).get(item.item_id, item.batch_code);
+                if (updatedStock && !stockIdsNotified.has(updatedStock.id)) {
+                    notifyDataChange('stock', 'UPDATE', updatedStock, updatedStock.id);
+                    stockIdsNotified.add(updatedStock.id);
+                }
+            }
+
             const totalStockChanges = addedItems.length + returnItems.length;
             if (totalStockChanges > 0) {
                 broadcastBatchChange('stock', totalStockChanges, 'RESTOCK');

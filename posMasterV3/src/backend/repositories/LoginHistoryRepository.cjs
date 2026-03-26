@@ -14,16 +14,20 @@ class LoginHistoryRepository extends BaseRepository {
     }
 
     /**
-     * Override update to not add updated_at (login_history table doesn't have this column)
+     * Override update to handle updated_at (migration 041 adds this column)
      * @param {string} id - The record ID
      * @param {Object} data - The data to update
      * @returns {Object|null} The updated record
      */
     update(id, data) {
         const { notifyDataChange } = require('../services/CloudSyncService.cjs');
+        const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
+        const { nowISO } = require('../utils/helpers.cjs');
 
-        const keys = Object.keys(data);
-        const values = Object.values(data);
+        // Inject updated_at and sync_status so CloudSync picks up this change
+        const dataWithTimestamp = { ...data, updated_at: nowISO(), sync_status: 'pending' };
+        const keys = Object.keys(dataWithTimestamp);
+        const values = Object.values(dataWithTimestamp);
 
         if (keys.length === 0) {
             return this.findById(id);
@@ -39,10 +43,12 @@ class LoginHistoryRepository extends BaseRepository {
 
         stmt.run(...values, id);
 
-        // Get the updated record and notify CloudSync
+
+        // Get the updated record and notify CloudSync + broadcast to UI
         const updatedRecord = this.findById(id);
         if (updatedRecord) {
             notifyDataChange(this.tableName, 'UPDATE', updatedRecord, id);
+            broadcastDataChange(this.tableName, 'UPDATE', id, updatedRecord);
         }
 
         return updatedRecord;
@@ -62,18 +68,20 @@ class LoginHistoryRepository extends BaseRepository {
      * @returns {Object} Created login history record
      */
     recordLogin(data) {
+        const loginAt = nowISO();
         const loginData = {
             user_id: data.user_id,
             session_id: data.session_id,
             username: data.username,
             full_name: data.full_name || null,
-            login_at: nowISO(),
+            login_at: loginAt,
             device_info: data.device_info || null,
             ip_address: data.ip_address || null,
             branch_id: data.branch_id || null,
             branch_name: data.branch_name || null,
             status: 'active',
-            sync_status: 'pending'
+            sync_status: 'pending',
+            updated_at: loginAt  // Required for incremental cloud sync (migration 041)
         };
 
         return this.create(loginData);
@@ -302,7 +310,8 @@ class LoginHistoryRepository extends BaseRepository {
                 logout_reason = 'stale_session',
                 duration_seconds = CAST(
                     (julianday(?) - julianday(login_at)) * 86400 AS INTEGER
-                )
+                ),
+                sync_status = 'pending'
             WHERE status = 'active'
             AND login_at < ?
         `);

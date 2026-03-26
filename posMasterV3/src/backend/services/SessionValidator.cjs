@@ -22,7 +22,7 @@ setInterval(() => {
     for (const [key, entry] of sessionCache) {
         if (entry.timestamp < cutoff) sessionCache.delete(key);
     }
-}, 60 * 1000); // run every 60 seconds
+}, 5 * 1000); // run every 5 seconds (CACHE_TTL is 2s, so 60s caused 58s stale entries)
 
 // Track tokens for which a kick broadcast has already been emitted, to prevent
 // multiple modals firing when validateSessionFast is called repeatedly.
@@ -166,39 +166,18 @@ function validateSessionFast(token) {
 
 /**
  * Trigger background cloud sync for active_sessions
- * Non-blocking - runs in background
+ *
+ * NOTE: This is intentionally a no-op. RealTimeSyncService owns active_sessions
+ * polling at 1-second intervals via checkActiveSessionsFromCloud(). Running a
+ * second concurrent pull from SessionValidator would:
+ *   1. Toggle foreign_keys ON/OFF concurrently with the batch sync (FK pragma race)
+ *   2. Clear sessionCache during the middle of validation loops
+ *   3. Double the pull frequency with no benefit
+ *
+ * If you need to force an immediate re-validation, call clearCache() directly.
  */
 async function triggerCloudSync() {
-    // Prevent multiple simultaneous syncs
-    if (cloudSyncInProgress) return;
-
-    // Rate limit cloud syncs
-    if (Date.now() - lastCloudSyncTime < CLOUD_SYNC_INTERVAL) return;
-
-    cloudSyncInProgress = true;
-    lastCloudSyncTime = Date.now();
-
-    // Use setImmediate for non-blocking execution
-    setImmediate(async () => {
-        try {
-            const { getCloudSyncService } = require('./CloudSyncService.cjs');
-            const cloudSync = getCloudSyncService();
-
-            if (cloudSync.isOnline && cloudSync.mysqlInitialized) {
-                // Pull active_sessions from cloud
-                await cloudSync.pullFromCloud('active_sessions');
-
-                // Clear session cache to force re-validation with new data
-                sessionCache.clear();
-
-                console.log('[SessionValidator] Cloud sync completed');
-            }
-        } catch (error) {
-            console.log('[SessionValidator] Cloud sync error:', error.message);
-        } finally {
-            cloudSyncInProgress = false;
-        }
-    });
+    // Delegated to RealTimeSyncService — no-op here to avoid concurrent pull races
 }
 
 /**
@@ -230,8 +209,8 @@ async function validateSessionStrict(token) {
         const cloudSync = getCloudSyncService();
 
         if (cloudSync.isOnline && cloudSync.mysqlInitialized) {
-            // Force sync active_sessions
-            await cloudSync.pullFromCloud('active_sessions');
+            // Force sync active_sessions (skipFkPragma to avoid concurrent FK toggle race)
+            await cloudSync.pullFromCloud('active_sessions', { skipFkPragma: true });
             sessionCache.clear();
         }
     } catch (error) {

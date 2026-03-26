@@ -22,6 +22,16 @@ const isElectron = () => {
     return typeof window !== 'undefined' && window.electronAPI;
 };
 
+// Lazy import to avoid circular deps — useRealTimeSync imports nothing from auth
+let _resetSyncModuleState = null;
+async function getResetSyncFn() {
+    if (!_resetSyncModuleState) {
+        const mod = await import('../../hooks/useRealTimeSync');
+        _resetSyncModuleState = mod.resetSyncModuleState;
+    }
+    return _resetSyncModuleState;
+}
+
 /**
  * Local Authentication Service
  */
@@ -100,6 +110,24 @@ export const localAuth = {
                 await window.electronAPI.auth.logout(token);
             } catch (error) {
                 console.warn('[LocalAuth] Logout error:', error);
+            }
+        }
+
+        // Reset real-time sync module state so the next user's session
+        // doesn't inherit stale subscribers or sync status from this user.
+        try {
+            const resetFn = await getResetSyncFn();
+            resetFn();
+        } catch (e) {
+            console.warn('[LocalAuth] Could not reset sync module state:', e);
+        }
+
+        // Clean up DataStore subscribers and cache so no stale data leaks to the next user.
+        if (typeof window !== 'undefined' && window.dataStore?.cleanup) {
+            try {
+                window.dataStore.cleanup();
+            } catch (e) {
+                console.warn('[LocalAuth] Could not clean up DataStore:', e);
             }
         }
 

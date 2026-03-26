@@ -255,12 +255,12 @@ class SalesRepository extends BaseRepository {
 
             // Insert sale items and update stock
             const addItemStmt = this.db.prepare(`
-                INSERT INTO sales_items (sale_id, item_id, stock_id, batch_code, quantity, unit_price, discount, total_price)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO sales_items (sale_id, item_id, stock_id, batch_code, quantity, unit_price, discount, total_price, sync_status, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
             `);
 
             const decreaseStockStmt = this.db.prepare(`
-                UPDATE stock SET quantity = MAX(0, quantity - ?), updated_at = ?
+                UPDATE stock SET quantity = MAX(0, quantity - ?), updated_at = ?, sync_status = 'pending'
                 WHERE id = ?
             `);
 
@@ -278,7 +278,8 @@ class SalesRepository extends BaseRepository {
                     item.quantity,
                     item.unit_price,
                     item.discount || 0,
-                    item.total_price
+                    item.total_price,
+                    nowISO()
                 );
 
                 // Decrease stock if not a held order
@@ -296,7 +297,8 @@ class SalesRepository extends BaseRepository {
                 const updateMemberStmt = this.db.prepare(`
                     UPDATE members SET
                         total_income = total_income + ?,
-                        updated_at = ?
+                        updated_at = ?,
+                        sync_status = 'pending'
                     WHERE id = ?
                 `);
                 updateMemberStmt.run(data.total_amount, nowISO(), data.member_id);
@@ -306,7 +308,8 @@ class SalesRepository extends BaseRepository {
                     const updateCreditsStmt = this.db.prepare(`
                         UPDATE members SET
                             total_credits = total_credits + ?,
-                            updated_at = ?
+                            updated_at = ?,
+                            sync_status = 'pending'
                         WHERE id = ?
                     `);
                     updateCreditsStmt.run(data.total_amount, nowISO(), data.member_id);
@@ -329,9 +332,14 @@ class SalesRepository extends BaseRepository {
                 notifyDataChange('sales_items', 'INSERT', item, item.id);
             }
 
-            // Broadcast a SINGLE batch stock update instead of individual broadcasts per item
-            // This prevents UI refresh storms when selling many items
+            // Notify CloudSync for each stock change and broadcast a single batch event to UI
             if (!data.is_held && items.length > 0) {
+                for (const item of items) {
+                    const updatedStock = this.db.prepare('SELECT * FROM stock WHERE id = ?').get(item.stock_id);
+                    if (updatedStock) {
+                        notifyDataChange('stock', 'UPDATE', updatedStock, item.stock_id);
+                    }
+                }
                 broadcastBatchChange('stock', items.length, 'SALE');
             }
 
@@ -342,9 +350,9 @@ class SalesRepository extends BaseRepository {
                 if (updatedMember) {
                     // Notify CloudSync to sync member credit changes to cloud
                     notifyDataChange('members', 'UPDATE', updatedMember, data.member_id);
+                    // Broadcast updated member data to UI (not null — cache needs the actual record)
+                    broadcastDataChange('members', 'UPDATE', data.member_id, updatedMember);
                 }
-                // Broadcast to UI for immediate update
-                broadcastDataChange('members', 'UPDATE', data.member_id, null);
             }
 
             return fullSale;
@@ -377,7 +385,7 @@ class SalesRepository extends BaseRepository {
             `).all(id);
 
             const decreaseStockStmt = this.db.prepare(`
-                UPDATE stock SET quantity = MAX(0, quantity - ?), updated_at = ?
+                UPDATE stock SET quantity = MAX(0, quantity - ?), updated_at = ?, sync_status = 'pending'
                 WHERE id = ?
             `);
 
@@ -402,7 +410,8 @@ class SalesRepository extends BaseRepository {
                 const updateMemberStmt = this.db.prepare(`
                     UPDATE members SET
                         total_income = total_income + ?,
-                        updated_at = ?
+                        updated_at = ?,
+                        sync_status = 'pending'
                     WHERE id = ?
                 `);
                 updateMemberStmt.run(completedSale.total_amount, nowISO(), completedSale.member_id);
@@ -412,7 +421,8 @@ class SalesRepository extends BaseRepository {
                     const updateCreditsStmt = this.db.prepare(`
                         UPDATE members SET
                             total_credits = total_credits + ?,
-                            updated_at = ?
+                            updated_at = ?,
+                            sync_status = 'pending'
                         WHERE id = ?
                     `);
                     updateCreditsStmt.run(completedSale.total_amount, nowISO(), completedSale.member_id);
@@ -422,8 +432,8 @@ class SalesRepository extends BaseRepository {
                 const updatedMember = this.db.prepare('SELECT * FROM members WHERE id = ?').get(completedSale.member_id);
                 if (updatedMember) {
                     notifyDataChange('members', 'UPDATE', updatedMember, completedSale.member_id);
+                    broadcastDataChange('members', 'UPDATE', completedSale.member_id, updatedMember);
                 }
-                broadcastDataChange('members', 'UPDATE', completedSale.member_id, null);
             }
 
             // Notify CloudSync of sale update
@@ -432,8 +442,14 @@ class SalesRepository extends BaseRepository {
             // Broadcast the sale update
             broadcastDataChange('sales_transactions', 'UPDATE', id, completedSale);
 
-            // Broadcast a SINGLE batch stock update instead of per-item
+            // Notify CloudSync for each stock change, broadcast single batch event to UI
             if (items.length > 0) {
+                for (const item of items) {
+                    const updatedStock = this.db.prepare('SELECT * FROM stock WHERE id = ?').get(item.stock_id);
+                    if (updatedStock) {
+                        notifyDataChange('stock', 'UPDATE', updatedStock, item.stock_id);
+                    }
+                }
                 broadcastBatchChange('stock', items.length, 'SALE_COMPLETE');
             }
 
@@ -455,7 +471,7 @@ class SalesRepository extends BaseRepository {
 
             // Restore stock
             const restoreStockStmt = this.db.prepare(`
-                UPDATE stock SET quantity = quantity + ?, updated_at = ?
+                UPDATE stock SET quantity = quantity + ?, updated_at = ?, sync_status = 'pending'
                 WHERE id = ?
             `);
 
@@ -472,7 +488,8 @@ class SalesRepository extends BaseRepository {
                 const reverseMemberStmt = this.db.prepare(`
                     UPDATE members SET
                         total_income = total_income - ?,
-                        updated_at = ?
+                        updated_at = ?,
+                        sync_status = 'pending'
                     WHERE id = ?
                 `);
                 reverseMemberStmt.run(sale.total_amount, nowISO(), sale.member_id);
@@ -482,7 +499,8 @@ class SalesRepository extends BaseRepository {
                     const reverseCreditsStmt = this.db.prepare(`
                         UPDATE members SET
                             total_credits = total_credits - ?,
-                            updated_at = ?
+                            updated_at = ?,
+                            sync_status = 'pending'
                         WHERE id = ?
                     `);
                     reverseCreditsStmt.run(sale.total_amount, nowISO(), sale.member_id);
@@ -492,15 +510,21 @@ class SalesRepository extends BaseRepository {
                 const updatedMember = this.db.prepare('SELECT * FROM members WHERE id = ?').get(sale.member_id);
                 if (updatedMember) {
                     notifyDataChange('members', 'UPDATE', updatedMember, sale.member_id);
+                    broadcastDataChange('members', 'UPDATE', sale.member_id, updatedMember);
                 }
-                broadcastDataChange('members', 'UPDATE', sale.member_id, null);
             }
 
             // Update sale status (this.update already broadcasts via BaseRepository)
             this.update(id, { status: 'cancelled' });
 
-            // Broadcast a SINGLE batch stock update instead of per-item
+            // Notify CloudSync for each stock restore, broadcast single batch event to UI
             if (sale.items.length > 0) {
+                for (const item of sale.items) {
+                    const updatedStock = this.db.prepare('SELECT * FROM stock WHERE id = ?').get(item.stock_id);
+                    if (updatedStock) {
+                        notifyDataChange('stock', 'UPDATE', updatedStock, item.stock_id);
+                    }
+                }
                 broadcastBatchChange('stock', sale.items.length, 'SALE_CANCEL');
             }
 
@@ -536,11 +560,11 @@ class SalesRepository extends BaseRepository {
                 // Restore stock
                 restoreStockStmt.run(item.quantity, returnedAt, item.stock_id);
 
-                // Insert return record
+                // Insert return record with explicit timestamps for incremental cloud sync
                 const result = this.db.prepare(`
                     INSERT INTO returned_items
-                        (sale_id, item_id, stock_id, batch_code, quantity, unit_price, reason, returned_by, returned_at, sync_status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                        (sale_id, item_id, stock_id, batch_code, quantity, unit_price, reason, returned_by, returned_at, sync_status, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
                 `).run(
                     saleId,
                     item.item_id,
@@ -550,10 +574,25 @@ class SalesRepository extends BaseRepository {
                     item.unit_price || 0,
                     reason || null,
                     returnedBy || null,
+                    returnedAt,
+                    returnedAt,
                     returnedAt
                 );
 
-                insertedReturns.push(returnRepo.findById(result.lastInsertRowid));
+                const inserted = returnRepo.findById(result.lastInsertRowid);
+                insertedReturns.push(inserted);
+
+                // Notify CloudSync and broadcast to UI for the new return record
+                if (inserted) {
+                    notifyDataChange('returned_items', 'INSERT', inserted, inserted.id);
+                    broadcastDataChange('returned_items', 'INSERT', inserted.id, inserted);
+                }
+
+                // Notify CloudSync for the restored stock
+                const updatedStock = this.db.prepare('SELECT * FROM stock WHERE id = ?').get(item.stock_id);
+                if (updatedStock) {
+                    notifyDataChange('stock', 'UPDATE', updatedStock, item.stock_id);
+                }
             }
 
             // Determine new sale status
@@ -570,7 +609,7 @@ class SalesRepository extends BaseRepository {
                 this.update(saleId, { status: allReturned ? 'returned' : 'partial_return' });
             }
 
-            // Broadcast stock update
+            // Broadcast stock update to UI
             broadcastBatchChange('stock', itemsToReturn.length, 'SALE_RETURN');
         });
 

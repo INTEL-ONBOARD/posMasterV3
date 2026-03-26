@@ -283,6 +283,7 @@ class TeaCoopPaymentRepository extends BaseRepository {
                 paymentData.sync_status = 'pending';
                 const updated = this.update(existing.id, paymentData);
                 notifyDataChange(this.tableName, 'UPDATE', updated, existing.id);
+                broadcastDataChange(this.tableName, 'UPDATE', existing.id, updated);
                 return updated;
             } else {
                 // Data unchanged - only update last_fetched_at
@@ -296,6 +297,7 @@ class TeaCoopPaymentRepository extends BaseRepository {
             paymentData.sync_status = 'pending';
             const created = this.create(paymentData);
             notifyDataChange(this.tableName, 'INSERT', created, created.id);
+            broadcastDataChange(this.tableName, 'INSERT', created.id, created);
             return created;
         }
     }

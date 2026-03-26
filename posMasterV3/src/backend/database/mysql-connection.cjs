@@ -13,10 +13,10 @@ const MYSQL_CONFIG = {
     password: 'Abc@1234#tea',
     database: 'toursurv_posdb',
     waitForConnections: true,
-    connectionLimit: 5,
-    connectTimeout: 30000,
-    acquireTimeout: 30000,
-    queueLimit: 0
+    connectionLimit: 20,      // Raised from 5 to support parallel 1s polling across all tables
+    connectTimeout: 5000,     // Match checkNetworkStatus 5s timeout for faster failure detection
+    acquireTimeout: 5000,     // Tighter acquire timeout (was 30s)
+    queueLimit: 50            // Cap queue so slow connections fail fast rather than pile up
 };
 
 let pool = null;
@@ -76,7 +76,7 @@ async function testConnection() {
  * @param {number} timeoutMs - Query timeout in ms (default: 30000)
  * @returns {Promise<Array>} Query results
  */
-async function executeQuery(sql, params = [], timeoutMs = 30000) {
+async function executeQuery(sql, params = [], timeoutMs = 5000) {
     if (!pool) {
         await initializeMySQLPool();
     }

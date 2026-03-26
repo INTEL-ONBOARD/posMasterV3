@@ -247,10 +247,19 @@ class BaseRepository {
             return this.findById(id);
         }
 
-        // Add updated_at if column exists (using Sri Lankan time)
+        // Auto-inject updated_at so incremental cloud sync can detect this change
         if (!keys.includes('updated_at')) {
             keys.push('updated_at');
             values.push(nowISO());
+        }
+
+        // Auto-inject sync_status = 'pending' so CloudSync picks up this change.
+        // Skip tables that are local-only (no cloud sync) and skip if the caller
+        // is explicitly setting sync_status themselves (e.g. to 'synced').
+        const localOnlyTables = ['sessions', 'sync_queue', 'migrations', 'app_settings', 'sync_metadata', 'price_change_history'];
+        if (!keys.includes('sync_status') && !localOnlyTables.includes(this.tableName)) {
+            keys.push('sync_status');
+            values.push('pending');
         }
 
         const setClause = keys.map(k => `${k} = ?`).join(', ');

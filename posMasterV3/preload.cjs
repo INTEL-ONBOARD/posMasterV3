@@ -643,6 +643,28 @@ contextBridge.exposeInMainWorld("electronAPI", {
         return () => ipcRenderer.removeListener("sync:multi-table-changed", handler);
     },
 
+    /**
+     * Listen for sync drop alerts
+     * Called when a change is permanently dropped after max retry attempts.
+     * The callback will be called with: { tableName, operation, recordId, attempts, message }
+     */
+    onSyncDropAlert: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on("sync:drop-alert", handler);
+        return () => ipcRenderer.removeListener("sync:drop-alert", handler);
+    },
+
+    /**
+     * Listen for per-table sync progress during a full sync
+     * Called after each table completes syncing
+     * The callback will be called with: { table, downloaded, uploaded, hasError, index, total, totalDownloaded, totalUploaded }
+     */
+    onSyncTableProgress: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on("sync:table-progress", handler);
+        return () => ipcRenderer.removeListener("sync:table-progress", handler);
+    },
+
     // ============================================
     // BRANCH CONTEXT API
     // ============================================

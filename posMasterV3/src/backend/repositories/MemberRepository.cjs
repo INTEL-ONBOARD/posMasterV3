@@ -81,7 +81,8 @@ class MemberRepository extends BaseRepository {
         const stmt = this.db.prepare(`
             UPDATE ${this.tableName}
             SET total_income = total_income + ?,
-                updated_at = ?
+                updated_at = ?,
+                sync_status = 'pending'
             WHERE id = ?
         `);
         const result = stmt.run(amount, new Date().toISOString(), id);
@@ -115,7 +116,8 @@ class MemberRepository extends BaseRepository {
         const stmt = this.db.prepare(`
             UPDATE ${this.tableName}
             SET total_credits = total_credits + ?,
-                updated_at = ?
+                updated_at = ?,
+                sync_status = 'pending'
             WHERE id = ?
         `);
         const result = stmt.run(amount, new Date().toISOString(), id);

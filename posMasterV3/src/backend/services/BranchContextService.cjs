@@ -74,10 +74,12 @@ class BranchContextService {
     registerIpcHandlers() {
         // Get current branch context
         ipcMain.handle('branch-context:get-current', () => {
-            return {
-                status: 'success',
-                data: this.currentBranch
-            };
+            try {
+                return { status: 'success', data: this.currentBranch };
+            } catch (error) {
+                console.error('[BranchContextService] get-current error:', error.message);
+                return { status: 'error', message: error.message };
+            }
         });
 
         // Set current branch context
@@ -92,20 +94,30 @@ class BranchContextService {
 
         // Clear branch context
         ipcMain.handle('branch-context:clear', () => {
-            this.currentBranch = null;
-            this.broadcastBranchChange(null);
-            return { status: 'success', data: null };
+            try {
+                this.currentBranch = null;
+                this.broadcastBranchChange(null);
+                return { status: 'success', data: null };
+            } catch (error) {
+                console.error('[BranchContextService] clear error:', error.message);
+                return { status: 'error', message: error.message };
+            }
         });
 
         // Check if branch is required
         ipcMain.handle('branch-context:is-required', () => {
-            return {
-                status: 'success',
-                data: {
-                    required: this.currentBranch === null,
-                    currentBranch: this.currentBranch
-                }
-            };
+            try {
+                return {
+                    status: 'success',
+                    data: {
+                        required: this.currentBranch === null,
+                        currentBranch: this.currentBranch
+                    }
+                };
+            } catch (error) {
+                console.error('[BranchContextService] is-required error:', error.message);
+                return { status: 'error', message: error.message };
+            }
         });
 
         // Get branches available to current user
@@ -292,19 +304,22 @@ class BranchContextService {
      */
     getBranchFilterSQL(tableName, alias = '') {
         const prefix = alias ? `${alias}.` : '';
+        // Use integer cast to guarantee numeric-only value — prevents injection
+        // if currentBranch.id ever comes from user-supplied data.
+        const branchId = this.currentBranch ? parseInt(this.currentBranch.id, 10) : null;
 
         if (this.isBranchSpecificTable(tableName)) {
-            if (this.currentBranch) {
-                return `${prefix}branch_id = ${this.currentBranch.id}`;
+            if (branchId !== null && !isNaN(branchId)) {
+                return `${prefix}branch_id = ${branchId}`;
             }
             // No branch selected - return all (or could throw error)
             return '1=1';
         }
 
         if (this.hasOptionalBranch(tableName)) {
-            if (this.currentBranch) {
+            if (branchId !== null && !isNaN(branchId)) {
                 // Return items for this branch OR global items (NULL branch_id)
-                return `(${prefix}branch_id = ${this.currentBranch.id} OR ${prefix}branch_id IS NULL)`;
+                return `(${prefix}branch_id = ${branchId} OR ${prefix}branch_id IS NULL)`;
             }
             return '1=1';
         }

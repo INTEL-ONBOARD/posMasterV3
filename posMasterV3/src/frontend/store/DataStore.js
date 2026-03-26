@@ -83,22 +83,24 @@ const DEFAULT_FETCHERS = {
 };
 
 // Cache TTL in milliseconds (how long before data is considered stale)
+// Kept at 2s so back-to-back renders don't hammer the IPC bridge,
+// but data is never more than 2s old when the backend pushes a change.
 const CACHE_TTL = {
-    [TABLES.CATEGORIES]: 60000,        // 1 minute (rarely changes)
-    [TABLES.UOM]: 60000,               // 1 minute
-    [TABLES.BRANCHES]: 60000,          // 1 minute
-    [TABLES.SUPPLIERS]: 30000,         // 30 seconds
-    [TABLES.ITEMS]: 30000,             // 30 seconds
-    [TABLES.STOCK]: 15000,             // 15 seconds (changes frequently)
-    [TABLES.STOCK_ITEMS]: 15000,       // 15 seconds
-    [TABLES.RESTOCK_TRANSACTIONS]: 30000,
-    [TABLES.MEMBERS]: 30000,           // 30 seconds
-    [TABLES.SALES_TRANSACTIONS]: 10000, // 10 seconds (most volatile)
-    [TABLES.PAYMENT_METHODS]: 60000,   // 1 minute (rarely changes)
-    [TABLES.USERS]: 30000,             // 30 seconds
-    [TABLES.LOGIN_HISTORY]: 30000,     // 30 seconds
-    [TABLES.TEA_COOP_MEMBERS]: 60000,  // 1 minute (syncs from external API)
-    default: 30000                     // 30 seconds default
+    [TABLES.CATEGORIES]: 2000,
+    [TABLES.UOM]: 2000,
+    [TABLES.BRANCHES]: 2000,
+    [TABLES.SUPPLIERS]: 2000,
+    [TABLES.ITEMS]: 2000,
+    [TABLES.STOCK]: 2000,
+    [TABLES.STOCK_ITEMS]: 2000,
+    [TABLES.RESTOCK_TRANSACTIONS]: 2000,
+    [TABLES.MEMBERS]: 2000,
+    [TABLES.SALES_TRANSACTIONS]: 2000,
+    [TABLES.PAYMENT_METHODS]: 2000,
+    [TABLES.USERS]: 2000,
+    [TABLES.LOGIN_HISTORY]: 2000,
+    [TABLES.TEA_COOP_MEMBERS]: 2000,
+    default: 2000
 };
 
 class DataStore {
@@ -299,7 +301,7 @@ class DataStore {
             }
             // Debounce batch updates - skip if we recently handled this table
             const lastRefresh = this._lastRefreshTime?.get(normalizedTable) || 0;
-            if (Date.now() - lastRefresh < 2000) {
+            if (Date.now() - lastRefresh < 500) {
                 console.log(`[DataStore] Skipping batch change for ${normalizedTable} (debounced)`);
                 return;
             }
@@ -384,9 +386,9 @@ class DataStore {
             return;
         }
 
-        // Debounce: Skip if we recently refreshed this table (within 2 seconds)
+        // Debounce: Skip if we recently refreshed this table (within 500ms)
         const lastRefresh = this._lastRefreshTime?.get(normalizedTable) || 0;
-        if (Date.now() - lastRefresh < 2000) {
+        if (Date.now() - lastRefresh < 500) {
             console.log(`[DataStore] Skipping refresh for ${normalizedTable} (debounced)`);
             return;
         }
@@ -450,7 +452,7 @@ class DataStore {
 
                 // Debounce: Skip if we recently refreshed this table
                 const lastRefresh = this._lastRefreshTime?.get(normalizedTable) || 0;
-                if (Date.now() - lastRefresh < 2000) {
+                if (Date.now() - lastRefresh < 500) {
                     console.log(`[DataStore] Skipping multi-table refresh for ${normalizedTable} (debounced)`);
                     continue;
                 }
@@ -481,7 +483,7 @@ class DataStore {
 
                     // Debounce check
                     const lastRefresh = this._lastRefreshTime?.get(normalizedTable) || 0;
-                    if (Date.now() - lastRefresh < 2000) {
+                    if (Date.now() - lastRefresh < 500) {
                         continue;
                     }
 

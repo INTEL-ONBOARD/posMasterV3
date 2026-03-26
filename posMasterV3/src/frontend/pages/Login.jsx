@@ -1,44 +1,28 @@
 import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, Cloud, CloudOff, RefreshCw } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import ToastContext from "./toasts/ToastService";
 import { localAuth } from "../api/services/localAuth";
 import { useStatusLog } from "../services/StatusLogService.jsx";
 import { appSettingsApi, cloudSyncApi } from "../api/localApi";
 
-
-const containerVariants = {
-  hidden: { opacity: 0, scale: 0.95, filter: "blur(4px)" },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    filter: "blur(0px)",
-    transition: { duration: 1.0, ease: "easeOut" },
-  },
-};
-
-const cardVariants = {
-  hidden: { y: 60, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: { type: "spring", stiffness: 50, damping: 18 },
-  },
-};
-
-const staggerContainer = {
+// Staggered children animation
+const container = {
   hidden: {},
   visible: {
-    transition: {
-      staggerChildren: 0.2,
-    },
+    transition: { staggerChildren: 0.07, delayChildren: 0.15 },
   },
 };
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.8 } },
+const item = {
+  hidden: { opacity: 0, y: 16, filter: "blur(4px)" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] },
+  },
 };
 
 function Login() {
@@ -49,34 +33,24 @@ function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
 
-  // Cloud sync state
+  // Cloud sync state (kept for logic, banner removed from UI)
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
-  const [syncStatus, setSyncStatus] = useState(null); // 'syncing', 'synced', 'offline', 'error'
+  const [syncStatus, setSyncStatus] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Check cloud sync status on mount
   useEffect(() => {
     const checkCloudSync = async () => {
       try {
-        // Check if cloud sync is enabled
         const enabledResult = await appSettingsApi.isCloudSyncEnabled();
         const isEnabled = enabledResult?.status === 'success' && enabledResult?.data?.enabled;
         setCloudSyncEnabled(isEnabled);
 
         if (isEnabled) {
-          // Check sync status
           const statusResult = await cloudSyncApi.getStatus();
           if (statusResult?.status === 'success') {
             const data = statusResult.data;
             if (data.isOnline && data.mysqlInitialized) {
-              // Check if this might be first run (no previous sync)
-              if (!data.lastSyncTime) {
-                setSyncStatus('syncing');
-                // Trigger initial sync
-                handleSyncNow(true);
-              } else {
-                setSyncStatus('synced');
-              }
+              setSyncStatus('synced');
             } else if (!data.isOnline) {
               setSyncStatus('offline');
             } else {
@@ -88,22 +62,15 @@ function Login() {
         console.error('Failed to check cloud sync status:', error);
       }
     };
-
     checkCloudSync();
   }, []);
 
-  // Handle manual sync
   const handleSyncNow = async (silent = false) => {
     setIsSyncing(true);
     setSyncStatus('syncing');
-    if (!silent) {
-      statusLog.loading("Syncing with cloud...");
-    }
-
+    if (!silent) statusLog.loading("Syncing with cloud...");
     try {
-      // Pull users from cloud first
       const pullResult = await cloudSyncApi.pullUsers();
-
       if (pullResult?.status === 'success') {
         setSyncStatus('synced');
         if (!silent) {
@@ -112,16 +79,12 @@ function Login() {
         }
       } else {
         setSyncStatus('error');
-        if (!silent) {
-          statusLog.error("Sync failed");
-        }
+        if (!silent) statusLog.error("Sync failed");
       }
     } catch (error) {
       console.error('Sync failed:', error);
       setSyncStatus('error');
-      if (!silent) {
-        statusLog.error("Sync failed");
-      }
+      if (!silent) statusLog.error("Sync failed");
     } finally {
       setIsSyncing(false);
     }
@@ -138,8 +101,6 @@ function Login() {
     statusLog.loading("Authenticating user...");
 
     try {
-      // Use local SQLite login only (no cloud fallback)
-      // deviceInfo is resolved on the backend via SettingsService
       const result = await localAuth.login(formData.email, formData.password, null);
 
       if (result.success) {
@@ -148,9 +109,6 @@ function Login() {
 
         statusLog.success(`Welcome back, ${userData.full_name || userData.username}`);
 
-        // Persist user fields in sessionStorage (cleared on app close) and localStorage
-        // (legacy readers). Both are cleared on logout; sessionStorage ensures fields
-        // don't persist across Electron restarts even if logout is skipped.
         const userJson = JSON.stringify(userData);
         sessionStorage.setItem("user", userJson);
         localStorage.setItem("user", userJson);
@@ -161,7 +119,6 @@ function Login() {
           sessionStorage.removeItem('token');
         }
 
-        // common keys used across app
         const usernameVal = userData.username ?? userData.email ?? '';
         const emailVal = userData.email ?? '';
         const idVal = userData._id ?? userData.id ?? '';
@@ -172,7 +129,6 @@ function Login() {
         localStorage.setItem('email', emailVal);
         localStorage.setItem('_id', idVal);
 
-        // Send user data to main process for logout handling
         if (window.electronAPI && window.electronAPI.sendUserData) {
           window.electronAPI.sendUserData(userData.email, token);
         }
@@ -192,206 +148,235 @@ function Login() {
 
   return (
     <motion.div
-      className="fixed inset-0 min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 overflow-hidden flex items-center justify-center p-4"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
+      className="fixed inset-0 flex items-center justify-center overflow-hidden p-4"
+      style={{ background: "#ffffff" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
     >
-      {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-[#1A318C]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#1A318C]/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
-      <motion.div className="w-full max-w-md flex flex-col justify-center min-h-[60vh] relative z-10" variants={cardVariants} initial="hidden" animate="visible">
-        <div>
+      {/* Card */}
+      <motion.div
+        className="relative w-full max-w-[380px] z-10"
+        initial={{ opacity: 0, y: 24, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
+        <div
+          className="rounded-2xl p-8"
+          style={{
+            background: "#ffffff",
+          }}
+        >
           <motion.div
-            className="bg-white rounded-2xl p-8"
-            variants={staggerContainer}
+            className="flex flex-col items-center"
+            variants={container}
             initial="hidden"
             animate="visible"
           >
-            {/* Logo Icon */}
-            <motion.div className="flex justify-center mb-6" variants={fadeUp}>
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#1A318C] to-[#152870] flex items-center justify-center shadow-lg shadow-blue-900/20">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            {/* Logo */}
+            <motion.div className="mb-5" variants={item}>
+              <div
+                className="w-[60px] h-[60px] rounded-[18px] flex items-center justify-center"
+                style={{
+                  background: "linear-gradient(145deg, #1e3ba8 0%, #152870 100%)",
+                  boxShadow: "0 6px 24px rgba(26,49,140,0.3), 0 2px 6px rgba(26,49,140,0.15), inset 0 1px 0 rgba(255,255,255,0.12)",
+                }}
+              >
+                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
             </motion.div>
 
             {/* Title */}
-            <motion.div className="text-center mb-2" variants={fadeUp}>
-              <h1 className="text-3xl font-bold">
-                <span className="font-bold text-[#1A318C]">POS</span>
-                <span className="text-gray-800"> MASTER</span>
-                <span className="text-gray-400 text-xl">.3</span>
-              </h1>
-            </motion.div>
+            <motion.h1
+              className="text-[26px] font-bold tracking-tight mb-1"
+              variants={item}
+            >
+              <span style={{ color: "#1A318C" }}>POS</span>
+              <span className="text-slate-800"> MASTER</span>
+              <span className="text-slate-400 font-normal text-lg">.3</span>
+            </motion.h1>
 
             {/* Subtitle */}
-            <motion.div className="text-center mb-4" variants={fadeUp}>
-              <p className="text-sm leading-relaxed text-gray-400">
-                Welcome back! Enter your credentials to continue.
-              </p>
+            <motion.p
+              className="text-[13px] text-slate-400 mb-7 text-center leading-relaxed"
+              variants={item}
+            >
+              Welcome back! Enter your credentials to continue.
+            </motion.p>
+
+            {/* Email field */}
+            <motion.div className="w-full mb-3" variants={item}>
+              <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">
+                Email or Username
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Mail className="h-4 w-4 text-slate-400" />
+                </div>
+                <input
+                  id="email"
+                  name="email"
+                  type="text"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="w-full h-11 pl-10 pr-4 rounded-xl text-[13px] text-slate-800 placeholder-slate-400 transition-all duration-200 outline-none"
+                  style={{
+                    background: "rgba(248,250,252,0.8)",
+                    border: "1px solid rgba(203,213,225,0.8)",
+                  }}
+                  onFocus={e => {
+                    e.target.style.borderColor = "rgba(26,49,140,0.5)";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(26,49,140,0.08)";
+                    e.target.style.background = "#fff";
+                  }}
+                  onBlur={e => {
+                    e.target.style.borderColor = "rgba(203,213,225,0.8)";
+                    e.target.style.boxShadow = "none";
+                    e.target.style.background = "rgba(248,250,252,0.8)";
+                  }}
+                  placeholder="Enter your email or username"
+                  required
+                />
+              </div>
             </motion.div>
 
-            {/* Cloud Sync Status Banner */}
-            {cloudSyncEnabled && (
-              <motion.div className="mb-6" variants={fadeUp}>
-                {/* Sync Status Indicator */}
-                <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
-                  syncStatus === 'synced' ? 'bg-emerald-50 border-emerald-200' :
-                  syncStatus === 'syncing' ? 'bg-blue-50 border-blue-200' :
-                  syncStatus === 'offline' ? 'bg-amber-50 border-amber-200' :
-                  'bg-gray-50 border-gray-200'
-                }`}>
-                  <div className="flex items-center gap-2">
-                    {syncStatus === 'syncing' ? (
-                      <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
-                    ) : syncStatus === 'synced' ? (
-                      <Cloud className="w-4 h-4 text-emerald-500" />
-                    ) : syncStatus === 'offline' ? (
-                      <CloudOff className="w-4 h-4 text-amber-500" />
-                    ) : (
-                      <Cloud className="w-4 h-4 text-gray-400" />
-                    )}
-                    <span className={`text-xs font-medium ${
-                      syncStatus === 'synced' ? 'text-emerald-700' :
-                      syncStatus === 'syncing' ? 'text-blue-700' :
-                      syncStatus === 'offline' ? 'text-amber-700' :
-                      'text-gray-500'
-                    }`}>
-                      {syncStatus === 'syncing' ? 'Syncing with cloud...' :
-                       syncStatus === 'synced' ? 'Cloud connected' :
-                       syncStatus === 'offline' ? 'Offline mode' :
-                       'Cloud sync enabled'}
-                    </span>
-                  </div>
-                  {!isSyncing && syncStatus !== 'syncing' && (
-                    <button
-                      type="button"
-                      onClick={() => handleSyncNow(false)}
-                      className="p-1.5 rounded-lg hover:bg-white/50 transition-colors"
-                      title="Sync now"
+            {/* Password field */}
+            <motion.div className="w-full mb-5" variants={item}>
+              <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Lock className="h-4 w-4 text-slate-400" />
+                </div>
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="w-full h-11 pl-10 pr-11 rounded-xl text-[13px] text-slate-800 placeholder-slate-400 transition-all duration-200 outline-none"
+                  style={{
+                    background: "rgba(248,250,252,0.8)",
+                    border: "1px solid rgba(203,213,225,0.8)",
+                  }}
+                  onFocus={e => {
+                    e.target.style.borderColor = "rgba(26,49,140,0.5)";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(26,49,140,0.08)";
+                    e.target.style.background = "#fff";
+                  }}
+                  onBlur={e => {
+                    e.target.style.borderColor = "rgba(203,213,225,0.8)";
+                    e.target.style.boxShadow = "none";
+                    e.target.style.background = "rgba(248,250,252,0.8)";
+                  }}
+                  placeholder="Enter your password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={showPassword ? "off" : "on"}
+                      initial={{ opacity: 0, scale: 0.7 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.7 }}
+                      transition={{ duration: 0.15 }}
                     >
-                      <RefreshCw className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            )}
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </motion.span>
+                  </AnimatePresence>
+                </button>
+              </div>
+            </motion.div>
 
-            {/* Login Form */}
-            <motion.form onSubmit={handleSubmit} className="space-y-5 w-full" variants={staggerContainer}>
-              {/* Email Field */}
-              <motion.div className="space-y-1.5" variants={fadeUp}>
-                <label htmlFor="email" className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Email or Username
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="email"
-                    name="email"
-                    type="text"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all duration-200 text-gray-800 placeholder-gray-400"
-                    placeholder="Enter your email or username"
-                    required
-                  />
-                </div>
-              </motion.div>
-
-              {/* Password Field */}
-              <motion.div className="space-y-1.5" variants={fadeUp}>
-                <label htmlFor="password" className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Password
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="w-full h-12 pl-12 pr-12 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all duration-200 text-gray-800 placeholder-gray-400"
-                    placeholder="Enter your password"
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-[#1A318C] transition-colors" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-[#1A318C] transition-colors" />
-                    )}
-                  </button>
-                </div>
-              </motion.div>
-
-              {/* Login Button */}
+            {/* Sign in button */}
+            <motion.div className="w-full" variants={item}>
               <motion.button
-                type="submit"
+                type="button"
+                onClick={handleSubmit}
                 disabled={isLoading}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 200 }}
-                className="w-full h-12 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1A318C]/50 transition-all duration-200 text-white font-semibold flex items-center justify-center bg-gradient-to-r from-[#1A318C] to-[#152870] shadow-lg shadow-blue-900/20 hover:shadow-xl hover:shadow-blue-900/30 disabled:opacity-70 disabled:cursor-not-allowed"
-                variants={fadeUp}
+                className="w-full h-11 rounded-xl font-semibold text-[13px] text-white flex items-center justify-center gap-2 relative overflow-hidden"
+                style={{
+                  background: "linear-gradient(135deg, #1e3ba8 0%, #152870 100%)",
+                  boxShadow: "0 4px 16px rgba(26,49,140,0.3), 0 1px 0 rgba(255,255,255,0.12) inset",
+                }}
+                whileHover={{ scale: 1.015, boxShadow: "0 6px 24px rgba(26,49,140,0.38), 0 1px 0 rgba(255,255,255,0.12) inset" }}
+                whileTap={{ scale: 0.975 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
               >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
-                    Signing in...
-                  </div>
-                ) : (
-                  <>
-                    <span>Sign In</span>
-                    <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                  </>
-                )}
+                <AnimatePresence mode="wait">
+                  {isLoading ? (
+                    <motion.div
+                      key="loading"
+                      className="flex items-center gap-2"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <motion.div
+                        className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                      />
+                      <span>Signing in...</span>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="idle"
+                      className="flex items-center gap-2"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <span>Sign In</span>
+                      <motion.svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        initial={{ x: 0 }}
+                        whileHover={{ x: 3 }}
+                        transition={{ type: "spring", stiffness: 400 }}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </motion.svg>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.button>
-            </motion.form>
+            </motion.div>
 
-            {/* Support Section */}
-            <motion.div className="mt-8 text-center" variants={fadeUp}>
-              <p className="text-sm text-gray-400">Need help?</p>
-              <button
-                className="text-sm font-medium text-[#1A318C] hover:underline transition-colors mt-1"
-              >
+            {/* Support */}
+            <motion.div className="mt-6 text-center" variants={item}>
+              <p className="text-[12px] text-slate-400">Need help?</p>
+              <button className="text-[12px] font-medium mt-0.5 transition-colors" style={{ color: "#1A318C" }}>
                 Contact Support
               </button>
             </motion.div>
           </motion.div>
         </div>
-
-        {/*bottom Footer section*/}
-        <motion.div
-          className="mt-6 text-center"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.6, duration: 0.7 }}
-        >
-          <p className="text-xs text-gray-400">
-            © 2025 SLTC ® · v{import.meta.env.VITE_VERSION_NUMBER}
-          </p>
-        </motion.div>
-
-
       </motion.div>
+
+      {/* Footer */}
+      <motion.p
+        className="absolute bottom-5 text-[11px] text-slate-400 tracking-wide"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.7, duration: 0.6 }}
+      >
+        © 2025 SLTC ® · v{import.meta.env.VITE_VERSION_NUMBER}
+      </motion.p>
     </motion.div>
   );
 }
 
 export default Login;
-

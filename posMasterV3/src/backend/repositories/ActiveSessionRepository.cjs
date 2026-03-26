@@ -8,6 +8,7 @@
 const BaseRepository = require('./BaseRepository.cjs');
 const crypto = require('crypto');
 const { nowISO } = require('../utils/helpers.cjs');
+const { notifyDataChange } = require('../services/CloudSyncService.cjs');
 
 class ActiveSessionRepository extends BaseRepository {
     constructor() {
@@ -57,7 +58,11 @@ class ActiveSessionRepository extends BaseRepository {
         stmt.run(user_id, device_id, device_name, session_token_hash,
                  now, now, now, now);
 
-        return this.findOneWhere({ user_id });
+        const session = this.findOneWhere({ user_id });
+        if (session) {
+            notifyDataChange(this.tableName, 'INSERT', session, session.id);
+        }
+        return session;
     }
 
     /**
@@ -126,6 +131,14 @@ class ActiveSessionRepository extends BaseRepository {
         `);
 
         const result = stmt.run(nowISO(), userId);
+
+        if (result.changes > 0) {
+            const session = this.findOneWhere({ user_id: userId });
+            if (session) {
+                notifyDataChange(this.tableName, 'UPDATE', session, session.id);
+            }
+        }
+
         return result.changes;
     }
 
@@ -138,14 +151,19 @@ class ActiveSessionRepository extends BaseRepository {
     updateLastActivity(userId, deviceId) {
         const stmt = this.db.prepare(`
             UPDATE ${this.tableName}
-            SET last_activity_at = ?, updated_at = ?, sync_status = 'pending'
+            SET last_activity_at = ?, updated_at = ?
             WHERE user_id = ? AND device_id = ?
         `);
 
         const now = nowISO();
-        stmt.run(now, now, userId, deviceId);
+        const result = stmt.run(now, now, userId, deviceId);
 
-        return this.findOneWhere({ user_id: userId, device_id: deviceId });
+        // Do NOT call notifyDataChange here — heartbeat updates fire every few seconds
+        // and would overwhelm the sync queue. Session-critical changes (login/logout)
+        // are synced via upsertActiveSession and deactivateForUser instead.
+        return result.changes > 0
+            ? this.findOneWhere({ user_id: userId, device_id: deviceId })
+            : null;
     }
 
     /**

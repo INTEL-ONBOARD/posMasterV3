@@ -27,13 +27,22 @@ const {
     broadcastSyncStatus,
     broadcastSyncComplete,
     broadcastBatchChange,
-    broadcastMultiTableChange
+    broadcastMultiTableChange,
+    broadcastEvent
 } = require('../utils/eventBroadcaster.cjs');
 
 // Sync configuration
-const NETWORK_CHECK_INTERVAL_MS = 5000; // Check network every 5 seconds (faster for real-time)
-const PENDING_SYNC_INTERVAL_MS = 10000; // Try to sync pending changes every 10 seconds (faster)
+const NETWORK_CHECK_INTERVAL_MS = 2000; // Check network every 2 seconds
+const PENDING_SYNC_INTERVAL_MS = 1000;  // Flush pending (offline) changes every 1 second
 
+// WARNING: cloud_id column exists in all synced tables but is NEVER populated by any
+// code path. The local SQLite `id` is used directly as the cloud MySQL primary key.
+// This means cloud_id is always NULL in both local and cloud DBs.
+// RISK: If the local `id` sequence on two different offline devices ever produces the
+// same integer for different records in the same table, those records will silently
+// overwrite each other on the next sync (last-writer-wins UPSERT). Until cloud_id is
+// wired up as a proper UUID-based PK, avoid running two branches offline simultaneously
+// with the same SQLite auto-increment state for any shared table.
 const TABLES_TO_SYNC = [
     'users',
     'categories',
@@ -50,6 +59,7 @@ const TABLES_TO_SYNC = [
     'sales_items',
     'disposed_items',
     'offers_discounts',
+    'returned_items',    // Customer return/refund records (migration 037)
     // NOTE: app_settings is intentionally NOT synced - it's device-specific
     'user_settings',
     'login_history',
@@ -126,12 +136,15 @@ const PULL_FIRST_TABLES = ['users', 'user_settings'];
 const MAX_RETRY_ATTEMPTS = 3;
 
 const SL_UTC_OFFSET = '+05:30'; // Sri Lanka Standard Time (UTC+5:30)
-const INCREMENTAL_SYNC_SKEW_MS = 5 * 60 * 1000; // 5-minute clock-skew buffer for incremental pull
+const INCREMENTAL_SYNC_SKEW_MS = 10 * 1000; // 10-second clock-skew buffer for incremental pull
 
 class CloudSyncService {
     constructor() {
         this.networkCheckInterval = null;
         this.pendingSyncInterval = null;
+        this.activeSessionsPollInterval = null;  // Dedicated active_sessions poll (5s)
+        this.incrementalPullInterval = null;      // Batched incremental pull for all tables (7s)
+        this._pullTableIndex = 0;                 // Round-robin index for incremental pull batches
         this.isOnline = false;
         this.isSyncing = false;
         this.lastSyncTime = null;
@@ -142,8 +155,9 @@ class CloudSyncService {
         this.mysqlInitialized = false;
         this.wasOffline = false; // Track if we were offline before
 
-        // Track pending change keys to prevent duplicates
+        // Track pending changes by key to prevent duplicates; Map allows updating stale record data
         this._pendingChangeKeys = new Set();
+        this._pendingChangeRecords = new Map(); // key -> latest record data
 
         // Track retry counts for failed operations
         this._retryCountMap = new Map();
@@ -162,6 +176,7 @@ class CloudSyncService {
     clearPendingChanges() {
         this.pendingChanges = [];
         this._pendingChangeKeys.clear();
+        this._pendingChangeRecords.clear();
         console.log('[CloudSyncService] Pending changes cleared on logout');
         if (this.syncQueueRepo) {
             try {
@@ -285,6 +300,7 @@ class CloudSyncService {
     _removePendingKey(tableName, operation, recordId) {
         const key = this._getChangeKey(tableName, operation, recordId);
         this._pendingChangeKeys.delete(key);
+        this._pendingChangeRecords.delete(key);
     }
 
     /**
@@ -424,7 +440,8 @@ class CloudSyncService {
         console.log(`[CloudSync] Initial network status: ${this.isOnline ? 'online' : 'offline'}`);
 
         if (this.isOnline) {
-            await this.initializeMySQL();
+            // Pass skipPing=true since checkNetworkStatus() already confirmed connectivity
+            await this.initializeMySQL(true);
         }
 
         // Start network monitoring
@@ -432,6 +449,12 @@ class CloudSyncService {
 
         // Start pending sync interval
         this.startPendingSyncInterval();
+
+        // Start active_sessions polling (single-device enforcement)
+        this.startActiveSessionsPolling();
+
+        // Start incremental pull loop (replaces RealTimeSyncService's parallel flood)
+        this.startIncrementalPullLoop();
 
         // Initialize the persistent queue repository now that DB is ready
         this.syncQueueRepo = new SyncQueueRepository();
@@ -451,20 +474,25 @@ class CloudSyncService {
 
     /**
      * Initialize MySQL connection and schema
+     * @param {boolean} skipPing - Skip the connection test if caller already confirmed connectivity
      */
-    async initializeMySQL() {
+    async initializeMySQL(skipPing = false) {
         if (this.mysqlInitialized) return true;
 
         try {
             console.log('[CloudSync] Initializing MySQL connection pool...');
             await initializeMySQLPool();
 
-            console.log('[CloudSync] Testing MySQL connection...');
-            const connected = await testConnection();
+            let connected = skipPing;
+            if (!skipPing) {
+                console.log('[CloudSync] Testing MySQL connection...');
+                connected = await testConnection();
+            }
 
             if (connected) {
                 console.log('[CloudSync] Connection successful, creating schema...');
                 await this.createMySQLSchema();
+                await this.cleanupGhostPendingRecords();
                 this.mysqlInitialized = true;
                 console.log('[CloudSync] MySQL initialized successfully');
                 return true;
@@ -588,9 +616,16 @@ class CloudSyncService {
             return;
         }
 
-        // Check for duplicate changes (deduplication)
+        // Deduplication: if same table+operation+record is already pending, update
+        // its record data with the latest snapshot so the most recent state is pushed.
         if (this._isChangePending(tableName, operation, recordId)) {
-            console.log(`[CloudSync] Skipping duplicate change: ${operation} on ${tableName} (ID: ${recordId})`);
+            const key = this._getChangeKey(tableName, operation, recordId);
+            this._pendingChangeRecords.set(key, record);
+            const existing = this.pendingChanges.find(
+                c => c.tableName === tableName && c.operation === operation && c.recordId === recordId
+            );
+            if (existing) existing.record = record;
+            console.log(`[CloudSync] Updated pending record data: ${operation} on ${tableName} (ID: ${recordId})`);
             return;
         }
 
@@ -704,8 +739,11 @@ class CloudSyncService {
         } else {
             // INSERT or UPDATE - use REPLACE INTO for upsert behavior
             // Filter out local-only columns that don't exist in cloud MySQL
+            const tableExclusions = TABLE_SPECIFIC_EXCLUSIONS[tableName] || [];
             const allColumns = Object.keys(record);
-            const columns = allColumns.filter(col => !LOCAL_ONLY_COLUMNS.includes(col));
+            const columns = allColumns.filter(col =>
+                !LOCAL_ONLY_COLUMNS.includes(col) && !tableExclusions.includes(col)
+            );
 
             const values = columns.map(col => {
                 const val = record[col];
@@ -719,18 +757,27 @@ class CloudSyncService {
 
             const placeholders = columns.map(() => '?').join(', ');
 
-            // For users table, use INSERT ... ON DUPLICATE KEY UPDATE to ensure all fields are updated
+            // Tables that have FK children in MySQL — REPLACE INTO (DELETE+INSERT) would
+            // cascade-delete child rows if MySQL FK is ON DELETE CASCADE.
+            // Use INSERT ... ON DUPLICATE KEY UPDATE for all tables with FK children.
+            const FK_PARENT_TABLES = [
+                'users', 'items', 'members', 'suppliers', 'categories',
+                'branches', 'units_of_measurement', 'payment_methods',
+                'sales_transactions', 'restock_transactions'
+            ];
+
             let query;
-            if (tableName === 'users') {
+            if (FK_PARENT_TABLES.includes(tableName)) {
                 const updateClauses = columns
                     .filter(col => col !== 'id')
                     .map(col => `${col} = VALUES(${col})`)
                     .join(', ');
                 query = `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateClauses}`;
 
-                // Log roles value for debugging
-                const rolesIndex = columns.indexOf('roles');
-                console.log(`[CloudSync] syncSingleChange pushing user: roles=${rolesIndex >= 0 ? values[rolesIndex] : 'NOT_IN_COLUMNS'}`);
+                if (tableName === 'users') {
+                    const rolesIndex = columns.indexOf('roles');
+                    console.log(`[CloudSync] syncSingleChange pushing user: roles=${rolesIndex >= 0 ? values[rolesIndex] : 'NOT_IN_COLUMNS'}`);
+                }
             } else {
                 query = `REPLACE INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})`;
             }
@@ -799,6 +846,14 @@ class CloudSyncService {
                     if (change.queueId) {
                         try { this.syncQueueRepo.markFailed(change.queueId, 'Max retries exceeded'); } catch (e) { console.warn('[CloudSync] Failed to update sync queue record:', e.message); }
                     }
+                    // Alert the UI so the user knows data was not saved to cloud
+                    broadcastEvent('sync:drop-alert', {
+                        tableName,
+                        operation,
+                        recordId,
+                        attempts: MAX_RETRY_ATTEMPTS,
+                        message: `Failed to sync ${operation} on ${tableName} (ID: ${recordId}) after ${MAX_RETRY_ATTEMPTS} attempts. Data saved locally but not synced to cloud.`
+                    });
                     dropped++;
                     continue;
                 }
@@ -882,53 +937,67 @@ class CloudSyncService {
         const startTime = Date.now();
         const results = { uploaded: 0, downloaded: 0, conflicts: 0, errors: [] };
 
+        const totalTables = TABLES_TO_SYNC.length;
+        let tableIndex = 0;
+
+        const broadcastTableProgress = (tableName, downloaded, uploaded, hasError) => {
+            broadcastEvent('sync:table-progress', {
+                table: tableName,
+                downloaded,
+                uploaded,
+                hasError,
+                index: tableIndex,
+                total: totalTables,
+                totalDownloaded: results.downloaded,
+                totalUploaded: results.uploaded
+            });
+        };
+
         // Step 1: Pull-first tables (users, user_settings) - Pull from cloud FIRST, then push local
         console.log('[CloudSync] Step 1: Syncing pull-first tables (pull from cloud first, then push local)...');
         for (const tableName of PULL_FIRST_TABLES) {
+            tableIndex++;
             try {
-                // If force option is set, clear sync_metadata so we do a full pull for this table
                 if (options.force) {
                     this._clearSyncMetadataFor(tableName);
                 }
 
-                // First, pull from cloud to get latest changes
-                console.log(`[CloudSync] ${tableName}: Pulling from cloud first...`);
                 const pullResult = await this.pullFromCloud(tableName);
                 results.downloaded += pullResult.downloaded || 0;
 
-                // Then, push local changes to cloud
-                console.log(`[CloudSync] ${tableName}: Now pushing local changes...`);
                 const pushResult = await this.syncTable(tableName);
                 results.uploaded += pushResult.uploaded || 0;
 
                 console.log(`[CloudSync] ${tableName}: Pulled ${pullResult.downloaded || 0}, Pushed ${pushResult.uploaded || 0}`);
+                broadcastTableProgress(tableName, pullResult.downloaded || 0, pushResult.uploaded || 0, false);
             } catch (error) {
                 console.error(`[CloudSync] Error syncing ${tableName}:`, error.message);
                 results.errors.push({ table: tableName, error: error.message });
+                broadcastTableProgress(tableName, 0, 0, true);
             }
         }
 
         // Step 2: Bidirectional sync for all other tables (version-based: pull first, then push)
         console.log('[CloudSync] Step 2: Bidirectional sync for other tables (pull first, then push)...');
         for (const tableName of TABLES_TO_SYNC) {
-            // Skip pull-first tables (already handled above)
             if (PULL_FIRST_TABLES.includes(tableName)) continue;
 
+            tableIndex++;
             try {
-                // If force option is set, clear sync_metadata so we do a full pull for this table.
-                // Currently bidirectionalSyncTable always fetches all rows, so this delete has no
-                // functional effect yet, but ensures a clean slate when incremental is wired up there.
                 if (options.force) {
                     this._clearSyncMetadataFor(tableName);
                 }
 
-                const syncResult = await this.bidirectionalSyncTable(tableName, false); // version-based
+                const syncResult = await this.bidirectionalSyncTable(tableName, false);
                 results.uploaded += syncResult.pushed || 0;
                 results.downloaded += syncResult.pulled || 0;
                 results.conflicts += syncResult.conflicts || 0;
+
+                broadcastTableProgress(tableName, syncResult.pulled || 0, syncResult.pushed || 0, false);
             } catch (error) {
                 console.error(`[CloudSync] Error syncing ${tableName}:`, error.message);
                 results.errors.push({ table: tableName, error: error.message });
+                broadcastTableProgress(tableName, 0, 0, true);
             }
         }
 
@@ -1497,7 +1566,7 @@ class CloudSyncService {
      * Pull records from cloud to local (for cloud-primary tables like users)
      * @param {string} tableName - Table to pull from cloud
      */
-    async pullFromCloud(tableName) {
+    async pullFromCloud(tableName, { skipFkPragma = false } = {}) {
         const db = getDatabase();
         if (!db) throw new Error('Local database not initialized');
 
@@ -1505,8 +1574,12 @@ class CloudSyncService {
 
         try {
             // Disable foreign key checks during sync to avoid FK constraint failures
-            // when syncing child records before parent records exist
-            db.pragma('foreign_keys = OFF');
+            // when syncing child records before parent records exist.
+            // skipFkPragma=true when the caller (e.g. performFastSync) manages FK globally
+            // to prevent concurrent ON/OFF races across parallel Promise.all() calls.
+            if (!skipFkPragma) {
+                db.pragma('foreign_keys = OFF');
+            }
 
             // Check local table schema upfront (needed for incremental logic and column filtering)
             const tableInfo = db.prepare(`PRAGMA table_info(${tableName})`).all();
@@ -1519,14 +1592,15 @@ class CloudSyncService {
             // do a full SELECT * for them (and skip writing to sync_metadata since
             // there is no timestamp to filter on next time).
             const lastPull = hasUpdatedAt ? this._getLastPullAt(tableName) : null;
+            // pullStart is stored as UTC (YYYY-MM-DD HH:mm:ss) — MySQL DATETIME columns are UTC.
             const pullStart = nowISO().replace('T', ' ').replace(/\.\d+Z$/, '');
-            // lastPull is stored as SL local time (YYYY-MM-DD HH:mm:ss) with no TZ suffix.
-            // Appending SL_UTC_OFFSET makes new Date() parse it unambiguously as SL local time,
-            // so the INCREMENTAL_SYNC_SKEW_MS subtraction produces the correct SL-local sinceTs string.
+            // lastPull is stored as UTC. Subtract skew buffer to tolerate minor clock drift.
+            // The resulting sinceTs is also UTC, matching MySQL DATETIME storage.
             const sinceTs = (hasUpdatedAt && lastPull)
-                ? new Date(new Date(lastPull + SL_UTC_OFFSET).getTime() - INCREMENTAL_SYNC_SKEW_MS)
-                    .toLocaleString('sv-SE', { timeZone: 'Asia/Colombo' })
+                ? new Date(new Date(lastPull + 'Z').getTime() - INCREMENTAL_SYNC_SKEW_MS)
+                    .toISOString()
                     .replace('T', ' ')
+                    .replace(/\.\d+Z$/, '')
                 : null;
 
             // Build the query conditionally
@@ -1785,6 +1859,25 @@ class CloudSyncService {
                 }
             }
 
+            // Delete propagation: on full pulls (sinceTs is null), remove local records
+            // that no longer exist in the cloud. This prevents ghost record resurrection.
+            // Skip active_sessions — it uses user_id keying and is managed separately.
+            if (!sinceTs && tableName !== 'active_sessions' && cloudRecords.length > 0) {
+                try {
+                    const primaryKey = this.getPrimaryKeyColumn(tableName);
+                    const cloudIds = new Set(cloudRecords.map(r => String(r[primaryKey])));
+                    const localRecords = db.prepare(`SELECT ${primaryKey} FROM ${tableName}`).all();
+                    const toDelete = localRecords.filter(r => !cloudIds.has(String(r[primaryKey])));
+                    for (const r of toDelete) {
+                        db.prepare(`DELETE FROM ${tableName} WHERE ${primaryKey} = ?`).run(r[primaryKey]);
+                        result.actuallyChanged++;
+                        console.log(`[CloudSync] Delete propagation: removed local ${tableName} ${r[primaryKey]} (deleted from cloud)`);
+                    }
+                } catch (delErr) {
+                    console.warn(`[CloudSync] Delete propagation error for ${tableName}:`, delErr.message);
+                }
+            }
+
             // Broadcast batch change ONLY if records actually changed
             // Skip broadcasting for tables that are polled frequently (active_sessions, users, user_settings)
             // These cause UI refreshes every few seconds when polling, which is undesirable
@@ -1804,8 +1897,10 @@ class CloudSyncService {
             console.error(`[CloudSync] Failed to pull from cloud ${tableName}:`, error.message);
             throw error;
         } finally {
-            // Always re-enable foreign key checks after sync
-            db.pragma('foreign_keys = ON');
+            // Re-enable foreign key checks after sync (unless caller manages it globally)
+            if (!skipFkPragma) {
+                db.pragma('foreign_keys = ON');
+            }
         }
     }
 
@@ -1835,7 +1930,7 @@ class CloudSyncService {
                         // For users table, ensure roles is always a valid JSON string
                         if (tableName === 'users' && col === 'roles') {
                             if (!val || val === '' || val === 'null' || val === '[]') {
-                                val = record.username === 'admin' ? '["admin"]' : '["user"]';
+                                val = record.username === 'admin' ? '["admin"]' : '["cashier"]';
                                 console.log(`[CloudSync] syncTable: Setting default roles for ${record.username}: ${val}`);
                             } else if (typeof val === 'object' && Array.isArray(val)) {
                                 val = JSON.stringify(val);
@@ -1843,7 +1938,7 @@ class CloudSyncService {
                             try {
                                 JSON.parse(val);
                             } catch (e) {
-                                val = record.username === 'admin' ? '["admin"]' : '["user"]';
+                                val = record.username === 'admin' ? '["admin"]' : '["cashier"]';
                             }
                             return val;
                         }
@@ -2003,6 +2098,8 @@ class CloudSyncService {
                     sku VARCHAR(255) UNIQUE NOT NULL,
                     item_name VARCHAR(255) NOT NULL,
                     item_image_url TEXT,
+                    item_code VARCHAR(255) DEFAULT NULL,
+                    item_image_blob LONGTEXT DEFAULT NULL,
                     maximum_capacity INT DEFAULT 0,
                     category_id INT,
                     uom_id INT,
@@ -2091,13 +2188,18 @@ class CloudSyncService {
             return_items: `
                 CREATE TABLE IF NOT EXISTS return_items (
                     id INT AUTO_INCREMENT PRIMARY KEY,
+                    cloud_id VARCHAR(255) DEFAULT NULL,
                     restock_id INT NOT NULL,
                     item_id INT NOT NULL,
                     batch_code VARCHAR(255) NOT NULL,
                     quantity DECIMAL(15,2) NOT NULL,
                     description TEXT,
+                    sync_status VARCHAR(50) DEFAULT 'pending',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_restock (restock_id),
-                    INDEX idx_item (item_id)
+                    INDEX idx_item (item_id),
+                    INDEX idx_sync_status (sync_status)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `,
             members: `
@@ -2180,8 +2282,10 @@ class CloudSyncService {
                     disposed_by VARCHAR(255),
                     disposed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_item (item_id),
-                    INDEX idx_stock (stock_id)
+                    INDEX idx_stock (stock_id),
+                    INDEX idx_sync_status (sync_status)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `,
             offers_discounts: `
@@ -2199,25 +2303,16 @@ class CloudSyncService {
                     applies_to VARCHAR(50) DEFAULT 'all',
                     target_id INT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
                     INDEX idx_active (is_active)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `,
-            app_settings: `
-                CREATE TABLE IF NOT EXISTS app_settings (
-                    id VARCHAR(255) PRIMARY KEY,
-                    setting_key VARCHAR(255) UNIQUE NOT NULL,
-                    setting_value TEXT,
-                    setting_type VARCHAR(50) DEFAULT 'string',
-                    description TEXT,
-                    created_at DATETIME NOT NULL,
-                    updated_at DATETIME NOT NULL,
-                    INDEX idx_key (setting_key)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            `,
+            // NOTE: app_settings intentionally excluded — it is device-specific (LOCAL_ONLY_TABLES)
             user_settings: `
                 CREATE TABLE IF NOT EXISTS user_settings (
                     id VARCHAR(255) PRIMARY KEY,
+                    cloud_id VARCHAR(255) DEFAULT NULL,
                     user_id VARCHAR(255) NOT NULL UNIQUE,
                     profile_image TEXT,
                     permissions TEXT,
@@ -2226,12 +2321,15 @@ class CloudSyncService {
                     notifications_enabled TINYINT DEFAULT 1,
                     created_at DATETIME NOT NULL,
                     updated_at DATETIME NOT NULL,
-                    INDEX idx_user_id (user_id)
+                    sync_status VARCHAR(50) DEFAULT 'pending',
+                    INDEX idx_user_id (user_id),
+                    INDEX idx_user_settings_sync_status (sync_status)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `,
             login_history: `
                 CREATE TABLE IF NOT EXISTS login_history (
                     id INT AUTO_INCREMENT PRIMARY KEY,
+                    cloud_id VARCHAR(255) DEFAULT NULL,
                     user_id VARCHAR(255) NOT NULL,
                     session_id VARCHAR(255),
                     username VARCHAR(255) NOT NULL,
@@ -2246,12 +2344,14 @@ class CloudSyncService {
                     branch_name VARCHAR(255) DEFAULT NULL,
                     status VARCHAR(50) DEFAULT 'active',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
                     INDEX idx_user_id (user_id),
                     INDEX idx_login_at (login_at),
                     INDEX idx_status (status),
                     INDEX idx_session_id (session_id),
-                    INDEX idx_branch_id (branch_id)
+                    INDEX idx_branch_id (branch_id),
+                    INDEX idx_login_history_sync_status (sync_status)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `,
             active_sessions: `
@@ -2359,6 +2459,8 @@ class CloudSyncService {
                     green_leaf_value DECIMAL(15,2) DEFAULT 0,
                     loans DECIMAL(15,2) DEFAULT 0,
                     net_amount DECIMAL(15,2) DEFAULT 0,
+                    additions DECIMAL(15,2) DEFAULT 0,
+                    deductions DECIMAL(15,2) DEFAULT 0,
                     payment_date DATE,
                     factory_id INT DEFAULT 1,
                     last_fetched_at DATETIME,
@@ -2368,6 +2470,29 @@ class CloudSyncService {
                     UNIQUE INDEX idx_member_year_month (member_id, year, month),
                     INDEX idx_member_id (member_id),
                     INDEX idx_year_month (year, month)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `,
+            returned_items: `
+                CREATE TABLE IF NOT EXISTS returned_items (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    cloud_id VARCHAR(255) DEFAULT NULL,
+                    sale_id INT NOT NULL,
+                    item_id INT NOT NULL,
+                    stock_id INT NOT NULL,
+                    batch_code VARCHAR(255) NOT NULL,
+                    quantity DECIMAL(15,2) NOT NULL,
+                    unit_price DECIMAL(15,2) NOT NULL DEFAULT 0,
+                    reason TEXT,
+                    returned_by VARCHAR(255),
+                    returned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    sync_status VARCHAR(50) DEFAULT 'pending',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_returns_sale_id (sale_id),
+                    INDEX idx_returns_item_id (item_id),
+                    INDEX idx_returns_returned_at (returned_at),
+                    INDEX idx_returns_sync_status (sync_status),
+                    INDEX idx_returns_updated_at (updated_at)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `
         };
@@ -2383,6 +2508,9 @@ class CloudSyncService {
 
         // Add missing columns to existing tables (for schema updates)
         await this.addMissingColumns();
+
+        // Add missing indexes to existing tables
+        await this.addMissingIndexes();
     }
 
     /**
@@ -2459,7 +2587,27 @@ class CloudSyncService {
             // restock_items sync columns (needed for proper sync tracking)
             { table: 'restock_items', column: 'cloud_id',    definition: 'VARCHAR(255) DEFAULT NULL',                                      after: 'id' },
             { table: 'restock_items', column: 'sync_status', definition: "VARCHAR(50) DEFAULT 'pending'",                                  after: 'expiry_date' },
-            { table: 'restock_items', column: 'updated_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', after: 'sync_status' }
+            { table: 'restock_items', column: 'updated_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', after: 'sync_status' },
+            // offers_discounts updated_at (needed for incremental sync — was missing)
+            { table: 'offers_discounts', column: 'updated_at', definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', after: 'created_at' },
+            // login_history sync columns
+            { table: 'login_history', column: 'cloud_id',    definition: 'VARCHAR(255) DEFAULT NULL',                                       after: 'id' },
+            { table: 'login_history', column: 'updated_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',  after: 'created_at' },
+            // user_settings sync columns (were missing from original schema)
+            { table: 'user_settings', column: 'cloud_id',    definition: 'VARCHAR(255) DEFAULT NULL',                                       after: 'id' },
+            { table: 'user_settings', column: 'sync_status', definition: "VARCHAR(50) DEFAULT 'pending'",                                   after: 'updated_at' },
+            // returned_items sync columns (migration 042)
+            { table: 'returned_items', column: 'cloud_id',    definition: 'VARCHAR(255) DEFAULT NULL',                                       after: 'id' },
+            { table: 'returned_items', column: 'sync_status', definition: "VARCHAR(50) DEFAULT 'pending'",                                   after: 'returned_at' },
+            { table: 'returned_items', column: 'created_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP',                              after: 'sync_status' },
+            { table: 'returned_items', column: 'updated_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',  after: 'created_at' },
+            // disposed_items updated_at (migration 042)
+            { table: 'disposed_items', column: 'updated_at', definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', after: 'sync_status' },
+            // return_items sync columns (migration 042)
+            { table: 'return_items', column: 'cloud_id',    definition: 'VARCHAR(255) DEFAULT NULL',                                       after: 'id' },
+            { table: 'return_items', column: 'sync_status', definition: "VARCHAR(50) DEFAULT 'pending'",                                   after: 'description' },
+            { table: 'return_items', column: 'created_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP',                              after: 'sync_status' },
+            { table: 'return_items', column: 'updated_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',  after: 'created_at' }
         ];
 
         for (const update of columnUpdates) {
@@ -2477,6 +2625,50 @@ class CloudSyncService {
                 }
             } catch (error) {
                 console.error(`[CloudSync] Failed to add column ${update.column} to ${update.table}:`, error.message);
+            }
+        }
+    }
+
+    /**
+     * Reset ghost 'pending' sync_status on cloud records that are permanently inactive.
+     * E.g. active_sessions rows with is_active=0 that were never marked 'synced' because
+     * the app crashed or went offline before the deactivation push completed.
+     */
+    async cleanupGhostPendingRecords() {
+        try {
+            const result = await executeQuery(
+                `UPDATE active_sessions SET sync_status = 'synced' WHERE is_active = 0 AND sync_status = 'pending'`
+            );
+            if (result && result.affectedRows > 0) {
+                console.log(`[CloudSync] Cleaned up ${result.affectedRows} ghost pending active_sessions row(s)`);
+            }
+        } catch (error) {
+            console.error('[CloudSync] Failed to cleanup ghost pending records:', error.message);
+        }
+    }
+
+    /**
+     * Add missing indexes to existing MySQL tables
+     * Idempotent: skips indexes that already exist
+     */
+    async addMissingIndexes() {
+        const indexUpdates = [
+            { table: 'login_history',  index: 'idx_login_history_sync_status', column: 'sync_status' },
+            { table: 'restock_items',  index: 'idx_sync_status',               column: 'sync_status' },
+        ];
+
+        for (const update of indexUpdates) {
+            try {
+                const rows = await executeQuery(
+                    `SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?`,
+                    [update.table, update.index]
+                );
+                if (!rows || rows.length === 0) {
+                    await executeQuery(`ALTER TABLE ${update.table} ADD INDEX ${update.index} (${update.column})`);
+                    console.log(`[CloudSync] Added index ${update.index} to ${update.table}`);
+                }
+            } catch (error) {
+                console.error(`[CloudSync] Failed to add index ${update.index} to ${update.table}:`, error.message);
             }
         }
     }
@@ -2654,10 +2846,105 @@ class CloudSyncService {
                 clearInterval(this.pendingSyncInterval);
                 this.pendingSyncInterval = null;
             }
+            if (this.activeSessionsPollInterval) {
+                clearInterval(this.activeSessionsPollInterval);
+                this.activeSessionsPollInterval = null;
+            }
+            if (this.incrementalPullInterval) {
+                clearInterval(this.incrementalPullInterval);
+                this.incrementalPullInterval = null;
+            }
         } else {
             this.startNetworkMonitoring();
             this.startPendingSyncInterval();
+            this.startActiveSessionsPolling();
+            this.startIncrementalPullLoop();
         }
+    }
+
+    /**
+     * Start dedicated active_sessions polling (5s interval).
+     * Owns single-device enforcement — detects when another device logs in
+     * and kicks the current session via SessionValidator.
+     */
+    startActiveSessionsPolling() {
+        if (this.activeSessionsPollInterval) {
+            clearInterval(this.activeSessionsPollInterval);
+        }
+
+        this.activeSessionsPollInterval = setInterval(async () => {
+            if (!this.isOnline || !this.mysqlInitialized) return;
+
+            try {
+                const db = getDatabase();
+                if (!db) return;
+
+                db.pragma('foreign_keys = OFF');
+                const pullResult = await this.pullFromCloud('active_sessions', { skipFkPragma: true });
+                db.pragma('foreign_keys = ON');
+
+                // Clear session cache to force revalidation
+                const { clearCache, validateSessionFast } = require('./SessionValidator.cjs');
+                clearCache();
+
+                if (pullResult.actuallyChanged > 0) {
+                    console.log('[CloudSync] Active sessions changed, validating current session...');
+                    const sessions = db.prepare('SELECT token FROM sessions WHERE is_active = 1').all();
+                    for (const session of sessions) {
+                        const result = validateSessionFast(session.token);
+                        if (!result.valid && result.forcedLogout) {
+                            console.log('[CloudSync] Session kicked detected after active_sessions pull');
+                            break;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log('[CloudSync] Active sessions poll failed:', error.message);
+            }
+        }, 5000); // 5 seconds — fast enough for single-device enforcement
+
+        console.log('[CloudSync] Active sessions polling started (every 5s)');
+    }
+
+    /**
+     * Start incremental pull loop for all tables.
+     * Pulls tables in round-robin batches of 4 every 7 seconds.
+     * This replaces the old RealTimeSyncService Promise.all() flood that exhausted
+     * the MySQL user connection limit.
+     */
+    startIncrementalPullLoop() {
+        if (this.incrementalPullInterval) {
+            clearInterval(this.incrementalPullInterval);
+        }
+
+        // All tables except active_sessions (managed by dedicated poll above)
+        const PULL_TABLES = TABLES_TO_SYNC.filter(t => t !== 'active_sessions');
+        const BATCH_SIZE = 4;
+
+        this.incrementalPullInterval = setInterval(async () => {
+            if (!this.isOnline || !this.mysqlInitialized || this.isSyncing) return;
+
+            const db = getDatabase();
+            if (!db) return;
+
+            // Pick next batch (round-robin)
+            const start = this._pullTableIndex % PULL_TABLES.length;
+            const batch = PULL_TABLES.slice(start, start + BATCH_SIZE);
+            this._pullTableIndex = (start + BATCH_SIZE) % PULL_TABLES.length;
+
+            db.pragma('foreign_keys = OFF');
+            try {
+                await Promise.all(batch.map(table =>
+                    this.pullFromCloud(table, { skipFkPragma: true }).catch(err => {
+                        console.log(`[CloudSync] Incremental pull error for ${table}:`, err.message);
+                    })
+                ));
+            } finally {
+                db.pragma('foreign_keys = ON');
+            }
+        }, 7000); // 7 seconds — max 4 connections at a time, well within server limits
+
+        console.log('[CloudSync] Incremental pull loop started (batch of 4 every 7s)');
     }
 
     /**
@@ -2671,6 +2958,14 @@ class CloudSyncService {
         if (this.pendingSyncInterval) {
             clearInterval(this.pendingSyncInterval);
             this.pendingSyncInterval = null;
+        }
+        if (this.activeSessionsPollInterval) {
+            clearInterval(this.activeSessionsPollInterval);
+            this.activeSessionsPollInterval = null;
+        }
+        if (this.incrementalPullInterval) {
+            clearInterval(this.incrementalPullInterval);
+            this.incrementalPullInterval = null;
         }
         await closeMySQLPool();
         console.log('[CloudSync] Service cleaned up');

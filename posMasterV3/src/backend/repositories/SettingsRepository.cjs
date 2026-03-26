@@ -57,7 +57,8 @@ class UserSettingsRepository extends BaseRepository {
                 notifications_enabled: settingsData.notifications_enabled !== undefined
                     ? (settingsData.notifications_enabled ? 1 : 0) : 1,
                 created_at: now,
-                updated_at: now
+                updated_at: now,
+                sync_status: 'pending'
             };
 
             return this._parseSettings(super.create(newSettings));

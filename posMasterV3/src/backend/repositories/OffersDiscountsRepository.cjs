@@ -8,10 +8,31 @@
 const BaseRepository = require('./BaseRepository.cjs');
 const { getDatabase } = require('../database/connection.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
+const { notifyDataChange } = require('../services/CloudSyncService.cjs');
+const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
 
 class OffersDiscountsRepository extends BaseRepository {
     constructor() {
         super('offers_discounts');
+    }
+
+    /**
+     * Override create() to ensure sync columns are always populated.
+     * BaseRepository.create() does not inject sync_status/updated_at defaults.
+     * @param {Object} data - Offer/discount data
+     * @returns {Object} The created record
+     */
+    create(data) {
+        const now = nowISO();
+        // Inject sync columns before passing to BaseRepository.create(), which
+        // will call notifyDataChange + broadcastDataChange automatically.
+        const enriched = {
+            sync_status: 'pending',
+            created_at: now,
+            updated_at: now,
+            ...data,
+        };
+        return super.create(enriched);
     }
 
     /**
@@ -45,7 +66,12 @@ class OffersDiscountsRepository extends BaseRepository {
             WHERE id = ?
         `);
         stmt.run(nowISO(), id);
-        return this.findById(id);
+        const updated = this.findById(id);
+        if (updated) {
+            notifyDataChange(this.tableName, 'UPDATE', updated, id);
+            broadcastDataChange(this.tableName, 'UPDATE', id, updated);
+        }
+        return updated;
     }
 }
 

@@ -7,10 +7,27 @@
 
 const BaseRepository = require('./BaseRepository.cjs');
 const { getDatabase } = require('../database/connection.cjs');
+const { nowISO } = require('../utils/helpers.cjs');
 
 class DisposedItemsRepository extends BaseRepository {
     constructor() {
         super('disposed_items');
+    }
+
+    /**
+     * Override create() to ensure sync columns are always populated.
+     * @param {Object} data - Disposed item data
+     * @returns {Object} The created record
+     */
+    create(data) {
+        const now = nowISO();
+        const enriched = {
+            sync_status: 'pending',
+            created_at: now,
+            updated_at: now,
+            ...data,
+        };
+        return super.create(enriched);
     }
 
     /**

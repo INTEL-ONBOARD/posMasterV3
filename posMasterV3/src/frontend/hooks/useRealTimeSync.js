@@ -36,22 +36,61 @@ const tableSubscribers = new Map();
 // Global status subscribers
 const statusSubscribers = new Set();
 
+// Track whether Electron IPC listeners are attached at module level.
+// Using a module-level flag (not a useRef) prevents duplicate listener
+// registration on React Fast Refresh cycles — useRef resets per-instance
+// while this persists across remounts.
+let electronListenersAttached = false;
+let electronUnsubscribeData = null;
+let electronUnsubscribeStatus = null;
+
+/**
+ * Reset all module-level sync state.
+ * MUST be called on user logout to prevent subscriber callbacks and sync
+ * status from leaking into the next user's session.
+ */
+export function resetSyncModuleState() {
+    // Detach IPC listeners
+    if (electronUnsubscribeData) {
+        try { electronUnsubscribeData(); } catch (e) { /* ignore */ }
+        electronUnsubscribeData = null;
+    }
+    if (electronUnsubscribeStatus) {
+        try { electronUnsubscribeStatus(); } catch (e) { /* ignore */ }
+        electronUnsubscribeStatus = null;
+    }
+    electronListenersAttached = false;
+
+    // Clear all table and status subscribers
+    tableSubscribers.clear();
+    statusSubscribers.clear();
+
+    // Reset sync status to defaults
+    globalSyncStatus = {
+        isOnline: true,
+        isSyncing: false,
+        connectionQuality: 'unknown',
+        pendingCount: 0,
+        lastSyncTime: null
+    };
+}
+
 /**
  * Hook for real-time sync status and data change subscriptions
  */
 export function useRealTimeSync(options = {}) {
     const [syncStatus, setSyncStatus] = useState(globalSyncStatus);
-    const listenersSetup = useRef(false);
 
-    // Setup global listeners once
+    // Attach Electron IPC listeners once at module level (not per-component-instance).
+    // This prevents duplicate listeners on React Fast Refresh or multiple hook consumers.
     useEffect(() => {
-        if (listenersSetup.current) return;
+        if (electronListenersAttached) return;
         if (!window.electronAPI) return;
 
-        listenersSetup.current = true;
+        electronListenersAttached = true;
 
         // Listen for data changes
-        const unsubscribeData = window.electronAPI.onDataChange?.((data) => {
+        electronUnsubscribeData = window.electronAPI.onDataChange?.((data) => {
             const { table, operation, recordId, record } = data;
 
             // Notify table subscribers
@@ -80,7 +119,7 @@ export function useRealTimeSync(options = {}) {
         });
 
         // Listen for sync status changes
-        const unsubscribeStatus = window.electronAPI.onSyncStatusChange?.((status) => {
+        electronUnsubscribeStatus = window.electronAPI.onSyncStatusChange?.((status) => {
             globalSyncStatus = {
                 isOnline: status.isOnline ?? globalSyncStatus.isOnline,
                 isSyncing: status.isSyncing ?? false,
@@ -99,11 +138,8 @@ export function useRealTimeSync(options = {}) {
             });
         });
 
-        return () => {
-            unsubscribeData?.();
-            unsubscribeStatus?.();
-        };
-
+        // No cleanup here intentionally — these listeners live for the app's lifetime.
+        // Individual table subscriptions are cleaned up in their own useEffect returns.
     }, []);
 
     // Subscribe to status updates for this component

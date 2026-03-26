@@ -1,55 +1,26 @@
 /**
  * Real-Time Sync Service
  *
- * Provides fast, real-time synchronization between local SQLite and cloud MySQL.
- * Optimized for immediate sync when online with aggressive polling.
+ * Thin status broadcaster and connection-restore handler.
+ * MySQL polling (active_sessions + incremental table pulls) now lives exclusively
+ * in CloudSyncService to prevent the connection-flood that exhausted
+ * max_user_connections on the shared MySQL host.
  *
- * Features:
- * - Immediate sync on data changes (no queueing when online)
- * - Fast polling for active_sessions (2-3 seconds)
- * - Broadcasts UI updates instantly
- * - Connection status monitoring with fast recovery
+ * Responsibilities:
+ * - Mirror CloudSyncService online/offline state to the UI
+ * - Flush pending offline changes to CloudSyncService when connection is restored
+ * - Expose getStatus() / forceFullSync() / syncChangeNow() as a stable API
+ *   (called by repositories and controllers — do NOT change the exports)
  */
 
-const { getDatabase } = require('../database/connection.cjs');
 const {
-    broadcastDataChange,
     broadcastSyncStatus,
-    broadcastEvent,
-    broadcastSyncComplete
+    broadcastEvent
 } = require('../utils/eventBroadcaster.cjs');
 const EventEmitter = require('events');
 
-// Configuration for real-time sync
-const CONFIG = {
-    // Active sessions polling (critical for single-device enforcement)
-    ACTIVE_SESSIONS_POLL_INTERVAL: 3000,  // 3 seconds
-
-    // General sync intervals
-    FAST_SYNC_INTERVAL: 5000,             // 5 seconds when online
-    SLOW_SYNC_INTERVAL: 30000,            // 30 seconds for less critical tables
-
-    // Network check
-    NETWORK_CHECK_INTERVAL: 5000,         // 5 seconds
-
-    // Retry settings
-    MAX_RETRY_ATTEMPTS: 3,
-    RETRY_DELAY_MS: 1000,
-
-    // Cache settings
-    SESSION_CACHE_TTL: 2000,              // 2 seconds for session cache
-};
-
-// Tables that need fast sync (critical for real-time features)
-const FAST_SYNC_TABLES = ['active_sessions', 'users', 'user_settings'];
-
-// All other tables sync at normal speed
-const NORMAL_SYNC_TABLES = [
-    'categories', 'units_of_measurement', 'branches', 'suppliers',
-    'items', 'stock', 'restock_transactions', 'restock_items',
-    'return_items', 'members', 'sales_transactions', 'sales_items',
-    'disposed_items', 'offers_discounts', 'login_history'
-];
+// Network status check interval (reads CloudSync state — no MySQL queries here)
+const NETWORK_CHECK_INTERVAL_MS = 2000;
 
 class RealTimeSyncService extends EventEmitter {
     constructor() {
@@ -60,23 +31,14 @@ class RealTimeSyncService extends EventEmitter {
         this.syncStatus = 'idle';
         this.connectionQuality = 'unknown'; // 'excellent', 'good', 'poor', 'offline'
 
-        // Polling intervals
-        this.activeSessionsInterval = null;
-        this.fastSyncInterval = null;
+        // Network check interval (reads CloudSync.isOnline — no direct MySQL)
         this.networkCheckInterval = null;
 
-        // Change queue for offline mode
+        // Legacy in-memory change queue (drained into CloudSync DB queue on restore)
         this.pendingChanges = [];
-
-        // Session monitoring
-        this.lastActiveSessionCheck = 0;
-        this.sessionCheckInProgress = false;
 
         // CloudSync reference (lazy loaded)
         this._cloudSync = null;
-
-        // Debounce map for sync operations
-        this.syncDebounce = new Map();
     }
 
     /**
@@ -94,28 +56,23 @@ class RealTimeSyncService extends EventEmitter {
      * Initialize real-time sync service
      */
     async initialize() {
-        console.log('[RealTimeSync] Initializing real-time sync service...');
+        console.log('[RealTimeSync] Initializing (status bridge mode)...');
 
-        // Get initial connection status
         const cloudSync = this.getCloudSync();
         this.isOnline = cloudSync.isOnline && cloudSync.mysqlInitialized;
 
-        // Start monitoring
         this.startNetworkMonitoring();
-        this.startActiveSessionsPolling();
-        this.startFastSync();
-
-        // Broadcast initial status
         this.broadcastStatus();
 
-        console.log('[RealTimeSync] Real-time sync service initialized');
+        console.log('[RealTimeSync] Initialized');
         console.log(`[RealTimeSync] Status: ${this.isOnline ? 'ONLINE' : 'OFFLINE'}`);
 
         return this;
     }
 
     /**
-     * Start fast network monitoring
+     * Monitor connection status by reading CloudSyncService state.
+     * No MySQL queries here — CloudSyncService owns the connection check.
      */
     startNetworkMonitoring() {
         if (this.networkCheckInterval) {
@@ -128,256 +85,62 @@ class RealTimeSyncService extends EventEmitter {
 
             this.isOnline = cloudSync.isOnline && cloudSync.mysqlInitialized;
 
-            // Connection restored
+            // Connection restored — flush any in-memory pending changes
             if (!wasOnline && this.isOnline) {
-                console.log('[RealTimeSync] Connection restored! Syncing immediately...');
+                console.log('[RealTimeSync] Connection restored — flushing pending changes...');
                 this.connectionQuality = 'good';
                 this.broadcastStatus();
-
-                // Sync pending changes immediately
                 await this.syncPendingChanges();
-
-                // Pull latest active_sessions immediately
-                await this.pullActiveSessionsNow();
             }
 
             // Connection lost
             if (wasOnline && !this.isOnline) {
-                console.log('[RealTimeSync] Connection lost. Queueing changes.');
+                console.log('[RealTimeSync] Connection lost. Changes will be queued.');
                 this.connectionQuality = 'offline';
                 this.broadcastStatus();
             }
-        }, CONFIG.NETWORK_CHECK_INTERVAL);
+        }, NETWORK_CHECK_INTERVAL_MS);
 
-        console.log('[RealTimeSync] Network monitoring started (every 5s)');
+        console.log('[RealTimeSync] Network monitoring started (every 2s, reads CloudSync state)');
     }
 
     /**
-     * Start aggressive active_sessions polling
-     * This is critical for single-device enforcement
-     */
-    startActiveSessionsPolling() {
-        if (this.activeSessionsInterval) {
-            clearInterval(this.activeSessionsInterval);
-        }
-
-        this.activeSessionsInterval = setInterval(async () => {
-            if (!this.isOnline) return;
-            if (this.sessionCheckInProgress) return;
-
-            this.sessionCheckInProgress = true;
-            try {
-                await this.checkActiveSessionsFromCloud();
-            } finally {
-                this.sessionCheckInProgress = false;
-            }
-        }, CONFIG.ACTIVE_SESSIONS_POLL_INTERVAL);
-
-        console.log('[RealTimeSync] Active sessions polling started (every 3s)');
-    }
-
-    /**
-     * Check active_sessions from cloud for session kicks
-     */
-    async checkActiveSessionsFromCloud() {
-        try {
-            const cloudSync = this.getCloudSync();
-            if (!cloudSync.isOnline || !cloudSync.mysqlInitialized) return;
-
-            // Pull active_sessions from cloud
-            const pullResult = await cloudSync.pullFromCloud('active_sessions');
-
-            // Clear session cache to force revalidation
-            const { clearCache, validateSessionFast } = require('./SessionValidator.cjs');
-            clearCache();
-
-            this.lastActiveSessionCheck = Date.now();
-
-            // If there were ACTUAL changes (not just synced same data), validate session
-            // This triggers the kick detection if another device logged in
-            if (pullResult.actuallyChanged > 0) {
-                console.log('[RealTimeSync] Active sessions changed, validating current session...');
-
-                // Get current token from main process storage or try to validate
-                // The validation will trigger broadcastSessionKicked if kicked
-                const { getDatabase } = require('../database/connection.cjs');
-                const db = getDatabase();
-
-                // Get all active local sessions and validate them
-                const sessions = db.prepare('SELECT token FROM sessions WHERE is_active = 1').all();
-                for (const session of sessions) {
-                    const result = validateSessionFast(session.token);
-                    if (!result.valid && result.forcedLogout) {
-                        console.log('[RealTimeSync] Session kicked detected after cloud sync');
-                        // The broadcastSessionKicked is already called inside validateSessionFast
-                        break;
-                    }
-                }
-            }
-
-        } catch (error) {
-            console.log('[RealTimeSync] Active sessions check failed:', error.message);
-        }
-    }
-
-    /**
-     * Pull active_sessions immediately (called on connection restore)
-     */
-    async pullActiveSessionsNow() {
-        try {
-            const cloudSync = this.getCloudSync();
-            if (!cloudSync.isOnline || !cloudSync.mysqlInitialized) return;
-
-            console.log('[RealTimeSync] Pulling active_sessions immediately...');
-            await cloudSync.pullFromCloud('active_sessions');
-
-            // Clear session cache
-            const { clearCache } = require('./SessionValidator.cjs');
-            clearCache();
-
-            // Broadcast that sessions were updated
-            broadcastEvent('sync:active-sessions-updated', {
-                timestamp: new Date().toISOString()
-            });
-
-        } catch (error) {
-            console.error('[RealTimeSync] Immediate active_sessions pull failed:', error.message);
-        }
-    }
-
-    /**
-     * Start fast sync for critical tables
-     */
-    startFastSync() {
-        if (this.fastSyncInterval) {
-            clearInterval(this.fastSyncInterval);
-        }
-
-        this.fastSyncInterval = setInterval(async () => {
-            if (!this.isOnline || this.isSyncing) return;
-
-            this.isSyncing = true;
-            try {
-                await this.performFastSync();
-            } finally {
-                this.isSyncing = false;
-            }
-        }, CONFIG.FAST_SYNC_INTERVAL);
-
-        console.log('[RealTimeSync] Fast sync started (every 5s)');
-    }
-
-    /**
-     * Perform fast sync of critical tables
-     */
-    async performFastSync() {
-        const cloudSync = this.getCloudSync();
-        if (!cloudSync.isOnline || !cloudSync.mysqlInitialized) return;
-
-        const startTime = Date.now();
-
-        try {
-            // Sync fast tables (users, user_settings - but NOT active_sessions as it has its own polling)
-            for (const table of FAST_SYNC_TABLES) {
-                if (table === 'active_sessions') continue; // Handled by dedicated polling
-
-                await cloudSync.pullFromCloud(table);
-            }
-
-            const elapsed = Date.now() - startTime;
-            this.lastSyncTime = new Date().toISOString();
-
-            // Update connection quality based on sync speed
-            if (elapsed < 500) {
-                this.connectionQuality = 'excellent';
-            } else if (elapsed < 2000) {
-                this.connectionQuality = 'good';
-            } else {
-                this.connectionQuality = 'poor';
-            }
-
-        } catch (error) {
-            console.log('[RealTimeSync] Fast sync error:', error.message);
-            this.connectionQuality = 'poor';
-        }
-    }
-
-    /**
-     * Sync a data change immediately
-     * Called when data is modified locally
+     * Queue a local data change for sync.
+     * Delegates to CloudSyncService which owns the DB-backed sync_queue.
      */
     async syncChangeNow(tableName, operation, record, recordId) {
-        if (!this.isOnline) {
-            // Queue for later
-            this.pendingChanges.push({ tableName, operation, record, recordId, timestamp: new Date().toISOString() });
-            console.log(`[RealTimeSync] Queued change: ${operation} on ${tableName}`);
-            return { queued: true };
-        }
-
         try {
             const cloudSync = this.getCloudSync();
-
-            // Use cloud sync's queue mechanism for immediate sync
             await cloudSync.queueChange(tableName, operation, record, recordId);
-
-            // Broadcast the change to UI
-            broadcastDataChange(tableName, operation, recordId, record);
-
-            console.log(`[RealTimeSync] Synced immediately: ${operation} on ${tableName}`);
+            console.log(`[RealTimeSync] Queued change via CloudSync: ${operation} on ${tableName}`);
             return { success: true };
-
         } catch (error) {
-            console.error(`[RealTimeSync] Immediate sync failed:`, error.message);
-            this.pendingChanges.push({ tableName, operation, record, recordId, timestamp: new Date().toISOString() });
-            return { queued: true, error: error.message };
+            console.error(`[RealTimeSync] Failed to queue change:`, error.message);
+            return { queued: false, error: error.message };
         }
     }
 
     /**
-     * Sync all pending changes
+     * Flush any legacy in-memory pending changes into the CloudSync DB queue,
+     * then trigger CloudSync to sync them.
      */
     async syncPendingChanges() {
-        if (this.pendingChanges.length === 0) return { synced: 0 };
-        if (!this.isOnline) return { synced: 0, reason: 'offline' };
-
-        console.log(`[RealTimeSync] Syncing ${this.pendingChanges.length} pending changes...`);
-
-        const cloudSync = this.getCloudSync();
-        let synced = 0;
-        const failed = [];
-
-        while (this.pendingChanges.length > 0) {
-            const change = this.pendingChanges.shift();
-
-            try {
-                await cloudSync.queueChange(change.tableName, change.operation, change.record, change.recordId);
-                synced++;
-
-                // Broadcast each change
-                broadcastDataChange(change.tableName, change.operation, change.recordId, change.record);
-
-            } catch (error) {
-                failed.push(change);
+        if (this.pendingChanges.length > 0) {
+            console.log(`[RealTimeSync] Draining ${this.pendingChanges.length} in-memory pending changes to CloudSync queue...`);
+            const cloudSync = this.getCloudSync();
+            const leftovers = [...this.pendingChanges];
+            this.pendingChanges = [];
+            for (const change of leftovers) {
+                try {
+                    await cloudSync.queueChange(change.tableName, change.operation, change.record, change.recordId);
+                } catch (err) {
+                    console.error('[RealTimeSync] Failed to drain pending change:', err.message);
+                }
             }
         }
 
-        // Re-queue failed changes
-        this.pendingChanges = [...failed];
-
-        console.log(`[RealTimeSync] Pending sync complete. Synced: ${synced}, Failed: ${failed.length}`);
-
-        // Broadcast sync completion to update UI
-        if (synced > 0) {
-            broadcastSyncComplete({
-                success: failed.length === 0,
-                recordsUpdated: synced,
-                uploaded: synced,
-                downloaded: 0,
-                errors: failed.length > 0 ? [{ count: failed.length }] : []
-            });
-        }
-
-        return { synced, failed: failed.length };
+        const cloudSync = this.getCloudSync();
+        return cloudSync.syncPendingChanges ? cloudSync.syncPendingChanges() : { synced: 0 };
     }
 
     /**
@@ -403,13 +166,12 @@ class RealTimeSyncService extends EventEmitter {
             syncStatus: this.syncStatus,
             connectionQuality: this.connectionQuality,
             pendingCount: this.pendingChanges.length,
-            lastSyncTime: this.lastSyncTime,
-            lastActiveSessionCheck: this.lastActiveSessionCheck
+            lastSyncTime: this.lastSyncTime
         };
     }
 
     /**
-     * Force an immediate full sync
+     * Force an immediate full sync via CloudSyncService
      */
     async forceFullSync() {
         if (!this.isOnline) {
@@ -429,7 +191,6 @@ class RealTimeSyncService extends EventEmitter {
             this.broadcastStatus();
 
             return { success: true, ...result };
-
         } catch (error) {
             this.syncStatus = 'error';
             this.broadcastStatus();
@@ -438,23 +199,14 @@ class RealTimeSyncService extends EventEmitter {
     }
 
     /**
-     * Stop all sync intervals
+     * Stop all intervals
      */
     stop() {
         if (this.networkCheckInterval) {
             clearInterval(this.networkCheckInterval);
             this.networkCheckInterval = null;
         }
-        if (this.activeSessionsInterval) {
-            clearInterval(this.activeSessionsInterval);
-            this.activeSessionsInterval = null;
-        }
-        if (this.fastSyncInterval) {
-            clearInterval(this.fastSyncInterval);
-            this.fastSyncInterval = null;
-        }
-
-        console.log('[RealTimeSync] All sync intervals stopped');
+        console.log('[RealTimeSync] Stopped');
     }
 }
 

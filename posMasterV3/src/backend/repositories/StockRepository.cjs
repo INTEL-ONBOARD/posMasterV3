@@ -291,7 +291,8 @@ class StockRepository extends BaseRepository {
         const stmt = this.db.prepare(`
             UPDATE ${this.tableName}
             SET quantity = quantity + ?,
-                updated_at = ?
+                updated_at = ?,
+                sync_status = 'pending'
             WHERE id = ?
         `);
         const result = stmt.run(amount, new Date().toISOString(), id);
@@ -329,7 +330,8 @@ class StockRepository extends BaseRepository {
                     WHEN quantity - ? < 0 THEN 0
                     ELSE quantity - ?
                 END,
-                updated_at = ?
+                updated_at = ?,
+                sync_status = 'pending'
             WHERE id = ?
         `);
         const result = stmt.run(amount, amount, new Date().toISOString(), id);
