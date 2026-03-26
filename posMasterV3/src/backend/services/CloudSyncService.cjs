@@ -1798,6 +1798,16 @@ class CloudSyncService {
                     db.prepare(query).run(...values);
                     result.downloaded++;
 
+                    // Mark local record as synced (it came from cloud — it is synced)
+                    if (localColumns.includes('sync_status')) {
+                        try {
+                            db.prepare(`UPDATE ${tableName} SET sync_status = 'synced' WHERE ${primaryKey} = ?`)
+                                .run(record[primaryKey]);
+                        } catch (e) {
+                            // Non-fatal
+                        }
+                    }
+
                     if (recordChanged) {
                         result.actuallyChanged++;
                     }
@@ -1983,7 +1993,17 @@ class CloudSyncService {
                     await executeQuery(query, values);
                     result.uploaded++;
 
-                    // Mark as synced (check if synced_at column exists)
+                    // Mark cloud record as synced after successful push
+                    try {
+                        await executeQuery(
+                            `UPDATE ${tableName} SET sync_status = 'synced' WHERE ${primaryKey} = ?`,
+                            [record[primaryKey]]
+                        );
+                    } catch (e) {
+                        // Non-fatal — cloud table may not have sync_status column yet
+                    }
+
+                    // Mark as synced locally (check if synced_at column exists)
                     if (allColumns.includes('sync_status')) {
                         const hasSyncedAt = allColumns.includes('synced_at');
                         if (hasSyncedAt) {

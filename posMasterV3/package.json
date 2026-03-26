@@ -1,7 +1,7 @@
 {
   "name": "posmasterv3",
   "private": true,
-  "version": "1.2find.0",
+  "version": "1.2.1",
   "main": "electron.cjs",
   "type": "module",
   "scripts": {
