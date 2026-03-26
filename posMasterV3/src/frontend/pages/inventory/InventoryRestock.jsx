@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { restockApi } from "../../api/localApi";
+import { restockApi, disposedApi } from "../../api/localApi";
 import { ChevronDown, ChevronUp, Package, Layers, Building2, RotateCcw, Search, ArrowLeft, Plus, Trash2, Sparkles } from "lucide-react";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
 import barcodeImg from "../../assets/barcode.png";
@@ -25,6 +25,9 @@ function InventoryRestock({ isActive }) {
     setFinalDiscount(0);
     setCashAmount(0);
     setRightActiveSection("buttons");
+    setDisposeItemSelected(false);
+    setFormDataDisposeItem({ stock_id: "", quantity: "", reason: "" });
+    setFormDisposeErrors({});
     setFormDataSupplier({
       id: 0,
       supplier_name: "",
@@ -665,6 +668,48 @@ function InventoryRestock({ isActive }) {
     );
   }
 
+  // Submit a dispose item directly to the disposed_items table
+  const addDisposeItem = async () => {
+    const errors = {};
+    const qty = parseFloat(formDataDisposeItem.quantity);
+    if (!formDataDisposeItem.quantity || isNaN(qty) || qty <= 0) {
+      errors.quantity = "Enter a valid quantity greater than 0.";
+    } else if (formDataDisposeItem.available_qty != null && qty > formDataDisposeItem.available_qty) {
+      errors.quantity = `Cannot exceed available quantity (${formDataDisposeItem.available_qty}).`;
+    }
+    if (!formDataDisposeItem.reason || !formDataDisposeItem.reason.trim()) {
+      errors.reason = "Reason is required.";
+    }
+    if (Object.keys(errors).length > 0) {
+      setFormDisposeErrors(errors);
+      return;
+    }
+
+    try {
+      const response = await disposedApi.create({
+        stock_id: formDataDisposeItem.stock_id,
+        quantity: qty,
+        reason: formDataDisposeItem.reason.trim(),
+        disposed_by: null,
+      });
+
+      if (response.status === "success") {
+        setModal({ open: true, type: 'success', description: 'Item disposed successfully' });
+        statusLog.success("Item disposed successfully");
+        setDisposeItemSelected(false);
+        setFormDataDisposeItem({ stock_id: "", quantity: "", reason: "" });
+        setFormDisposeErrors({});
+        clearFormInput();
+      } else {
+        setModal({ open: true, type: 'failed', description: response.message || 'Disposal failed' });
+        statusLog.error("Disposal failed: " + (response.message || ""));
+      }
+    } catch (err) {
+      setModal({ open: true, type: 'failed', description: err.message || 'An error occurred during disposal' });
+      statusLog.error("Disposal error");
+    }
+  };
+
   //verify if it's a return item, register item or a dispose item
   //if it doesn't exists and a register item, add it to the list(for now adding from form state but i can also add it from selectedRegItem just in case)
 
@@ -848,6 +893,7 @@ function InventoryRestock({ isActive }) {
     console.log(name + ": " + value);
     setFormDataReturnItem(prev => ({ ...prev, [name]: value }));
 
+
   // Clear error for this field if present
   setFormReturnErrors(prev => {
     if (!prev || !prev[name]) return prev;
@@ -857,6 +903,26 @@ function InventoryRestock({ isActive }) {
   });
 
   };
+  // Dispose item form state
+  const [disposeItemSelected, setDisposeItemSelected] = useState(false);
+  const [formDataDisposeItem, setFormDataDisposeItem] = useState({
+    stock_id: "",
+    quantity: "",
+    reason: "",
+  });
+  const [formDisposeErrors, setFormDisposeErrors] = useState({});
+
+  const handleDisposeItemInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormDataDisposeItem(prev => ({ ...prev, [name]: value }));
+    setFormDisposeErrors(prev => {
+      if (!prev || !prev[name]) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  };
+
   const [transactionData, setTransactionData] = useState({
     supplier_id: "",
     supplierName: "",
@@ -891,6 +957,32 @@ function InventoryRestock({ isActive }) {
   const loadItemtoList = (item) => {
     // Use consistent ID (prefer id, fallback to _id)
     const itemId = item.id ?? item._id;
+
+    // Handle dispose mode separately
+    if (rightActiveSection === "dispose") {
+      console.log("Loading dispose item to form:", item.item_name);
+      setFormDataRegItem(prev => ({
+        ...prev,
+        sku: item.sku,
+        _id: item._id,
+        id: itemId,
+        item_name: item.item_name,
+        item_image_url: item.item_image_url,
+        category: item.category,
+        uom: item.uom,
+      }));
+      setFormDataDisposeItem({
+        stock_id: item.stock_id,
+        batch_code: item.batch_code,
+        available_qty: item.quantity,
+        quantity: "",
+        reason: "",
+      });
+      setFormDisposeErrors({});
+      setDisposeItemSelected(true);
+      setopenFormBlock('dispose');
+      return;
+    }
 
     if (rightActiveSection != "return") {
       // clear item selection error if it existed
@@ -1601,6 +1693,74 @@ function InventoryRestock({ isActive }) {
 
 
 
+          {/* ▼ dispose description block ▼ */}
+          {disposeItemSelected && (
+            <div className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden">
+              <button
+                onClick={() => setopenFormBlock('dispose')}
+                className="w-full flex justify-between items-center px-4 py-3 hover:bg-amber-50 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                    <Trash2 className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Dispose Description</span>
+                </div>
+                {openFormBlock === 'dispose' ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+              </button>
+              {openFormBlock === 'dispose' && (
+                <div className="px-4 pb-4 border-t border-amber-100">
+                  <div className="space-y-3 pt-4">
+                    {/* Selected batch info */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-medium text-amber-700 uppercase tracking-wide">Batch</p>
+                        <p className="text-sm font-bold text-gray-800">{formDataDisposeItem.batch_code || '—'}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-medium text-amber-700 uppercase tracking-wide">Available</p>
+                        <p className="text-sm font-bold text-gray-800">{formDataDisposeItem.available_qty ?? '—'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Quantity to Dispose
+                      </label>
+                      <input
+                        type="number"
+                        name="quantity"
+                        value={formDataDisposeItem.quantity}
+                        onChange={handleDisposeItemInputChange}
+                        placeholder="Enter quantity"
+                        min="1"
+                        className={`w-full px-4 py-2.5 border rounded-lg text-sm tabular-nums ${
+                          formDisposeErrors.quantity ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-amber-500/20 focus:border-amber-500"
+                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all`}
+                      />
+                      {formDisposeErrors.quantity && <p className="text-red-500 text-xs mt-1">{formDisposeErrors.quantity}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        Reason
+                      </label>
+                      <textarea
+                        name="reason"
+                        value={formDataDisposeItem.reason}
+                        onChange={handleDisposeItemInputChange}
+                        placeholder="Enter reason for disposal..."
+                        rows={3}
+                        className={`w-full px-4 py-2.5 border rounded-lg text-sm ${
+                          formDisposeErrors.reason ? "border-red-500 focus:ring-red-500/20" : "border-gray-200 focus:ring-amber-500/20 focus:border-amber-500"
+                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all resize-none`}
+                      />
+                      {formDisposeErrors.reason && <p className="text-red-500 text-xs mt-1">{formDisposeErrors.reason}</p>}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
         {/* End of scrollable content area */}
         </div>
         {/* Bottom bar */}
@@ -1609,6 +1769,9 @@ function InventoryRestock({ isActive }) {
             onClick={() => {
               clearFormInput();
               setReturnItemSelected(false);
+              setDisposeItemSelected(false);
+              setFormDataDisposeItem({ stock_id: "", quantity: "", reason: "" });
+              setFormDisposeErrors({});
               setStockEntries([]);
             }}
             className="flex-1 min-w-0 h-11 px-3 py-2 bg-white border-2 border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 text-sm font-medium"
@@ -1616,12 +1779,16 @@ function InventoryRestock({ isActive }) {
             Cancel
           </button>
           <button
-            onClick={addNewRegItem}
+            onClick={disposeItemSelected ? addDisposeItem : addNewRegItem}
             disabled={!(formDataRegItem.id ?? formDataRegItem._id) || (formDataRegItem.id ?? formDataRegItem._id) === 0}
-            className="flex-1 min-w-0 h-11 px-4 py-2 bg-[#1A318C] text-white rounded-xl text-sm font-semibold enabled:hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
+            className={`flex-1 min-w-0 h-11 px-4 py-2 text-white rounded-xl text-sm font-semibold transition-all duration-200 shadow-md disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2 ${
+              disposeItemSelected
+                ? "bg-amber-500 hover:bg-amber-600 shadow-amber-500/20"
+                : "bg-[#1A318C] enabled:hover:bg-[#152870] shadow-blue-900/20"
+            }`}
           >
             <Plus className="w-4 h-4" />
-            Add Item
+            {disposeItemSelected ? "Dispose Item" : "Add Item"}
           </button>
         </div>
         {formErrors.item_id && (
@@ -2092,7 +2259,7 @@ function InventoryRestock({ isActive }) {
                     }`}></div>
                     <p className="text-gray-500">Loading items...</p>
                   </div>
-                ) : (rightActiveSection === "dispose" ? filteredDisposeItems : filteredItems).length === 0 ? (
+                ) : (rightActiveSection === "dispose" || rightActiveSection === "return" ? filteredDisposeItems : filteredItems).length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20">
                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${
                       rightActiveSection === "add"
@@ -2108,13 +2275,29 @@ function InventoryRestock({ isActive }) {
                     <h3 className="text-lg font-semibold text-gray-800">No items found</h3>
                     <p className="text-sm text-gray-500 mt-1">{rightActiveSection === "dispose" ? "No stock available to dispose" : "Try adjusting your search"}</p>
                   </div>
-                ) : rightActiveSection === "dispose" ? (
+                ) : rightActiveSection === "dispose" || rightActiveSection === "return" ? (
                   filteredDisposeItems.map((stock) => (
                     <SalesItemCard
                       key={stock.id}
-                      item={{ ...stock.item, quantity: stock.quantity, batch_code: stock.batch_code, stock_id: stock.id }}
-                      onOpen={() => loadItemtoList({ ...stock.item, quantity: stock.quantity, batch_code: stock.batch_code, stock_id: stock.id })}
-                      label="Dispose"
+                      item={{
+                        ...stock.item,
+                        quantity: stock.quantity,
+                        batch_code: stock.batch_code,
+                        stock_id: stock.id,
+                        retail_price: stock.retail_price,
+                        stock_price: stock.stock_price,
+                        threshold_limit: stock.threshold_limit,
+                      }}
+                      onOpen={() => loadItemtoList({
+                        ...stock.item,
+                        quantity: stock.quantity,
+                        batch_code: stock.batch_code,
+                        stock_id: stock.id,
+                        retail_price: stock.retail_price,
+                        stock_price: stock.stock_price,
+                        threshold_limit: stock.threshold_limit,
+                      })}
+                      label={rightActiveSection === "return" ? "Return Item" : "Dispose"}
                     />
                   ))
                 ) : (
@@ -2164,7 +2347,7 @@ function InventoryRestock({ isActive }) {
                     ? "bg-amber-500 text-white"
                     : "bg-red-500 text-white"
               }`}>
-                {rightActiveSection === "dispose" ? filteredDisposeItems.length : filteredItems.length} items
+                {rightActiveSection === "dispose" || rightActiveSection === "return" ? filteredDisposeItems.length : filteredItems.length} items
               </span>
             </div>
           </div>

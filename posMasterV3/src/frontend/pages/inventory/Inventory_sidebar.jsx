@@ -133,7 +133,7 @@ function InventorySidebar({
 
   return (
     <aside className="bg-white border-r z-20 border-gray-100 h-screen shadow-sm">
-      <div className="flex flex-col py-2">
+      <div className="flex flex-col py-2 overflow-y-auto h-full">
         {sidebarItems.map((item) => {
           const isActive = activeSection === item.id;
           return (

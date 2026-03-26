@@ -42,36 +42,34 @@ function PriceChange() {
   // Derive loading state
   const loadingData = categoriesLoading || itemsLoading;
 
-  // Transform stock items to expected format (stock data includes item info + quantities)
+  // Transform stock items to expected format
+  // formatStockWithItem returns: { id, batch_code, quantity, stock_price, retail_price,
+  //   expiry_date, availability, item: { id, sku, item_name, item_image_url, category, uom } }
   const items = useMemo(() => {
     if (!rawItems || rawItems.length === 0) return [];
-    return rawItems.map((item, index) => ({
-      id: item.id || item.item_id || item._id || index + 1,
-      _id: item._id || `item_${index + 1}`,
-      item_id: item.item_id || item.id,
-      stock_trace: item.stock_trace || [item.id || index + 1],
-      item_name: item.item_name || item.name || "Unknown Item",
-      item_image_url: item.item_image_url || item.image_url || "",
-      item_image_blob: item.item_image_blob || null,
-      sku: item.sku || `SKU_${index + 1}`,
-      maximum_capacity: item.maximum_capacity || 100,
-      threshold_limit: item.threshold_limit || 20,
-      uom_id: item.uom_id || 1,
-      category_id: item.category_id || 1,
-      inventory_id: item.inventory_id || 1,
-      uom: item.uom || { symbol: item.uom_symbol || "pcs", unit_name: item.uom_unit_name || "Pieces" },
-      category: item.category || { brand: item.category_brand || "Unknown", type: item.category_type || "General" },
-      inventory: item.inventory || null,
-      availability: item.availability !== undefined ? item.availability : true,
-      // Use quantity from stock data (this is the actual stock quantity)
-      quantity: item.quantity || 0,
-      current_qty: item.quantity || 0,
-      stock_price: item.stock_price || item.price || 0,
-      retail_price: item.retail_price || item.selling_price || item.stock_price || 0,
-      batch_code: item.batch_code || `BATCH_${item.sku || index + 1}`,
-      expire_date: item.expiry_date || item.expire_date || "2025-12-31",
-      status: item.availability ? "In Stock" : "Out of Stock",
-    }));
+    return rawItems.map((stockRow, index) => {
+      const nested = stockRow.item || {};
+      return {
+        id: stockRow.id || index + 1,
+        _id: stockRow._id || `stock_${index + 1}`,
+        item_id: nested.id || stockRow.item_id,
+        item_name: nested.item_name || "Unknown Item",
+        item_image_url: nested.item_image_url || "",
+        sku: nested.sku || `SKU_${index + 1}`,
+        maximum_capacity: nested.maximum_capacity || 100,
+        threshold_limit: stockRow.threshold_limit || 20,
+        uom: nested.uom || { symbol: "pcs", unit_name: "Pieces" },
+        category: nested.category || { brand: "Unknown", type: "General" },
+        availability: stockRow.availability !== undefined ? stockRow.availability : true,
+        quantity: stockRow.quantity || 0,
+        current_qty: stockRow.quantity || 0,
+        stock_price: stockRow.stock_price || 0,
+        retail_price: stockRow.retail_price || 0,
+        batch_code: stockRow.batch_code || `BATCH_${nested.sku || index + 1}`,
+        expire_date: stockRow.expiry_date || null,
+        status: stockRow.availability ? "In Stock" : "Out of Stock",
+      };
+    });
   }, [rawItems]);
 
   // Separate states for different sections

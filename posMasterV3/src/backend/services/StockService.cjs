@@ -327,8 +327,8 @@ class StockService {
                 };
             }
 
+            // BaseRepository.update() (called inside updatePrices) already fires notifyDataChange + broadcast
             const stock = stockRepository.updatePrices(id, stockPrice, retailPrice, changedBy, reason);
-            try { notifyDataChange('stock', 'UPDATE', stock, stock.id); } catch (e) { console.error('[StockService] Cloud sync error (non-fatal):', e.message); }
             return {
                 status: 'success',
                 data: stock,

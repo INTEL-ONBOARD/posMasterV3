@@ -136,16 +136,18 @@ class StockRepository extends BaseRepository {
             SELECT
                 s.id,
                 s.batch_code,
-                s.quantity as qty,
+                s.quantity,
                 s.stock_price,
                 s.retail_price,
                 s.discount_price,
                 s.expiry_date as exp_date,
                 s.threshold_limit,
                 s.availability,
-                i.sku
+                i.sku,
+                u.symbol as uom_symbol
             FROM stock s
             JOIN items i ON s.item_id = i.id
+            LEFT JOIN units_of_measurement u ON i.uom_id = u.id
             WHERE i.sku = ?
         `;
         const params = [sku];
@@ -360,30 +362,31 @@ class StockRepository extends BaseRepository {
      */
     updatePrices(id, stockPrice, retailPrice, changedBy, reason) {
         const existing = this.findById(id);
+        if (!existing) return null;
 
-        if (existing) {
-            try {
-                const PriceChangeHistoryRepository = require('./PriceChangeHistoryRepository.cjs');
-                const histRepo = new PriceChangeHistoryRepository();
-                histRepo.create({
-                    stock_id: id,
-                    old_stock_price: existing.stock_price,
-                    new_stock_price: stockPrice,
-                    old_retail_price: existing.retail_price,
-                    new_retail_price: retailPrice,
-                    changed_by: changedBy || null,
-                    reason: reason || null,
-                    changed_at: nowISO()
-                });
-            } catch (e) {
-                console.warn('[StockRepository] Could not log price change history:', e.message);
-            }
-        }
+        const PriceChangeHistoryRepository = require('./PriceChangeHistoryRepository.cjs');
+        const histRepo = new PriceChangeHistoryRepository();
 
-        return this.update(id, {
-            stock_price: stockPrice,
-            retail_price: retailPrice
+        // Wrap history write + price update in a single atomic transaction
+        const runTransaction = this.db.transaction(() => {
+            histRepo.create({
+                stock_id: id,
+                old_stock_price: existing.stock_price,
+                new_stock_price: stockPrice,
+                old_retail_price: existing.retail_price,
+                new_retail_price: retailPrice,
+                changed_by: changedBy || null,
+                reason: reason || null,
+                changed_at: nowISO()
+            });
+
+            return this.update(id, {
+                stock_price: stockPrice,
+                retail_price: retailPrice
+            });
         });
+
+        return runTransaction();
     }
 
     /**
