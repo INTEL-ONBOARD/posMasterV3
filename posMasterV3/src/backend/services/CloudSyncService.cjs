@@ -783,6 +783,17 @@ class CloudSyncService {
             }
 
             await executeQuery(query, values);
+
+            // Mark cloud record as synced after successful push
+            const primaryKey = this.getPrimaryKeyColumn(tableName);
+            try {
+                await executeQuery(
+                    `UPDATE ${tableName} SET sync_status = 'synced' WHERE ${primaryKey} = ?`,
+                    [recordId]
+                );
+            } catch (e) {
+                // Non-fatal — cloud record may not have sync_status column
+            }
         }
 
         // Update local sync status

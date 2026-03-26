@@ -176,11 +176,11 @@ function CheckoutSummaryModal({
   const cashReceivedNum = parseFloat(cashReceived) || 0;
   const balanceAmount = cashReceivedNum - totalAmount;
 
-  // Credit validation
-  const availableCredit = (selectedMember?.credit_limit || 0) - (selectedMember?.credit_balance || 0);
+  // Credit validation — any non-guest member can use credit regardless of balance
+  const availableCredit = selectedMember?.credit_balance || 0;
   const isCredit = selectedPaymentMethod?.type === 'credit';
-  const canUseCredit = !selectedMember?.is_guest && availableCredit >= totalAmount;
-  const creditWarning = isCredit && !canUseCredit;
+  const canUseCredit = !selectedMember?.is_guest;
+  const creditWarning = false;
 
   const formatCurrency = (amount) => `Rs. ${(parseFloat(amount) || 0).toFixed(2)}`;
 
@@ -466,17 +466,16 @@ function CheckoutSummaryModal({
                           {creditMethods.map((method) => {
                             const IconComponent = getMethodIcon(method.icon);
                             const isSelected = selectedPaymentMethod?.id === method.id;
-                            const canAfford = availableCredit >= totalAmount;
                             return (
                               <button
                                 key={method.id}
-                                onClick={() => canAfford && setSelectedPaymentMethod(method)}
-                                disabled={!canAfford || isProcessing}
+                                onClick={() => !isProcessing && setSelectedPaymentMethod(method)}
+                                disabled={isProcessing}
                                 className={`w-full p-3 rounded-xl transition-all border-2 flex items-center gap-3 ${
                                   isSelected
                                     ? 'border-blue-500 bg-blue-50 shadow-md'
                                     : 'border-gray-200 bg-white hover:border-gray-300'
-                                } ${!canAfford || isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                               >
                                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                                   isSelected ? 'bg-blue-500' : 'bg-blue-100'
@@ -498,10 +497,9 @@ function CheckoutSummaryModal({
                             );
                           })}
                         </div>
-                        {!canUseCredit && (
-                          <p className="text-[10px] text-red-500 mt-2 flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />
-                            Available credit: {formatCurrency(availableCredit)}
+                        {isCredit && (
+                          <p className="text-[10px] text-gray-500 mt-2 flex items-center gap-1">
+                            Current credit balance: {formatCurrency(availableCredit)}
                           </p>
                         )}
                       </div>

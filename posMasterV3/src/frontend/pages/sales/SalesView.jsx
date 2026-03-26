@@ -370,7 +370,7 @@ export default function SalesView({ isActive }) {
   // Handle checkout from summary modal
   // Returns a promise that resolves when sale is complete (for success animation)
   const handleConfirmSale = async (checkoutData) => {
-    const { finalDiscount, paymentMethod, cashAmount, totalAmount, changeAmount } = checkoutData;
+    const { finalDiscount, paymentMethod, paymentMethodId, paymentMethodName, creditMonths, cashAmount, totalAmount, changeAmount } = checkoutData;
 
     try {
       // Validate cart items before sending to backend
@@ -394,6 +394,9 @@ export default function SalesView({ isActive }) {
         member_id: selectedMember?.is_guest ? null : (selectedMember?.id || selectedMember?._id),
         member_name: selectedMember?.full_name || "Guest",
         payment_method: paymentMethod,
+        payment_method_id: paymentMethodId || null,
+        payment_method_name: paymentMethodName || null,
+        credit_duration: creditMonths ? `${creditMonths} months` : null,
         total_amount: totalAmount,
         discount_amount: finalDiscount,
         cash_amount: cashAmount,
