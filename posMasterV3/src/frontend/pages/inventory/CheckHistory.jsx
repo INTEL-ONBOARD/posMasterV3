@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { ChevronDown, ChevronUp, Search, Filter, SortAsc, ArrowLeft, FileText, Calendar, DollarSign, User, Package, Clock, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { restockApi } from '../../api/localApi';
 import { extractDateOnly } from '../../util/common/date';
@@ -49,16 +49,63 @@ function CheckHistory({ isActive }) {
   // Safe access to transaction data
   const safeTransData = transData || [];
 
+  // Build unique supplier list for dropdown
+  const uniqueSuppliers = useMemo(() => {
+    const seen = new Set();
+    const list = [];
+    for (const t of safeTransData) {
+      const name = t.supplier?.basic_info?.supplier_name;
+      const id = String(t.supplier_id);
+      const key = name || id;
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        list.push({ id, name: name || `Supplier #${id}` });
+      }
+    }
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  }, [safeTransData]);
+
   // Filter transactions
-  const filteredTransactions = safeTransData.filter((t) => {
-    const searchTerm = search.toLowerCase();
-    const matchesSearch =
-      t.invoice_no?.toLowerCase().includes(searchTerm) ||
-      t.bill_no?.toLowerCase().includes(searchTerm) ||
-      String(t.supplier_id).includes(searchTerm) ||
-      t.supplier?.basic_info?.supplier_name?.toLowerCase().includes(searchTerm);
-    return matchesSearch;
-  });
+  const filteredTransactions = useMemo(() => {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfDay);
+    startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    return safeTransData.filter((t) => {
+      // Search
+      const searchTerm = search.toLowerCase();
+      const matchesSearch = searchTerm === "" ||
+        t.invoice_no?.toLowerCase().includes(searchTerm) ||
+        t.bill_no?.toLowerCase().includes(searchTerm) ||
+        String(t.supplier_id).includes(searchTerm) ||
+        t.supplier?.basic_info?.supplier_name?.toLowerCase().includes(searchTerm);
+
+      // Supplier
+      const matchesSupplier = filterSupplier === "all" ||
+        String(t.supplier_id) === filterSupplier ||
+        t.supplier?.basic_info?.supplier_name === filterSupplier;
+
+      // Date range
+      let matchesDate = true;
+      if (filterDate !== "all" && t.created_at) {
+        const txDate = new Date(t.created_at);
+        if (filterDate === "today") matchesDate = txDate >= startOfDay;
+        else if (filterDate === "week") matchesDate = txDate >= startOfWeek;
+        else if (filterDate === "month") matchesDate = txDate >= startOfMonth;
+      }
+
+      // Amount range
+      const amount = t.total_amount || 0;
+      let matchesAmount = true;
+      if (filterAmount === "low") matchesAmount = amount < 5000;
+      else if (filterAmount === "medium") matchesAmount = amount >= 5000 && amount <= 20000;
+      else if (filterAmount === "high") matchesAmount = amount > 20000;
+
+      return matchesSearch && matchesSupplier && matchesDate && matchesAmount;
+    });
+  }, [safeTransData, search, filterSupplier, filterDate, filterAmount]);
 
   // Sort transactions
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
@@ -455,6 +502,9 @@ function CheckHistory({ isActive }) {
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                     >
                       <option value="all">All Suppliers</option>
+                      {uniqueSuppliers.map((s) => (
+                        <option key={s.id} value={s.name}>{s.name}</option>
+                      ))}
                     </select>
                   </div>
 

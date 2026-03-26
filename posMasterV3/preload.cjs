@@ -116,7 +116,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
         updateRoles: (userId, roles) =>
             ipcRenderer.invoke("users:update-roles", { userId, roles }),
         getStatistics: () =>
-            ipcRenderer.invoke("users:statistics")
+            ipcRenderer.invoke("users:statistics"),
+        resetPassword: (userId, newPassword) =>
+            ipcRenderer.invoke("users:reset-password", { userId, newPassword })
     },
 
     // ============================================

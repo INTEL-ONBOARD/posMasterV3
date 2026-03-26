@@ -100,8 +100,15 @@ class UserService {
             // Don't allow updating password through this method
             const { password, password_hash, ...safeData } = updateData;
 
-            // Check email uniqueness if changing
+            // Check email format and uniqueness if changing
             if (safeData.email && safeData.email !== existingUser.email) {
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(safeData.email)) {
+                    return {
+                        success: false,
+                        status: 'error',
+                        message: 'Please enter a valid email address'
+                    };
+                }
                 if (this.userRepo.emailExists(safeData.email, userId)) {
                     return {
                         success: false,
@@ -183,6 +190,57 @@ class UserService {
                 status: 'error',
                 message: 'Failed to update user: ' + error.message
             };
+        }
+    }
+
+    /**
+     * Reset a user's password (admin action, no current password required)
+     * @param {string} userId - User ID
+     * @param {string} newPassword - New plain-text password
+     * @returns {Object} Result
+     */
+    async resetPassword(userId, newPassword) {
+        try {
+            if (!userId || !newPassword) {
+                return { success: false, status: 'error', message: 'User ID and new password are required' };
+            }
+
+            if (newPassword.length < 6) {
+                return { success: false, status: 'error', message: 'Password must be at least 6 characters' };
+            }
+
+            const user = this.userRepo.findById(userId);
+            if (!user) {
+                return { success: false, status: 'error', message: 'User not found' };
+            }
+
+            const bcrypt = require('bcryptjs');
+            const SALT_ROUNDS = 12;
+            const password_hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+            this.userRepo.update(userId, { password_hash });
+
+            // Queue for cloud sync
+            this.syncQueueRepo.enqueue({
+                entity_type: 'user',
+                entity_id: userId,
+                operation: 'password_change',
+                payload: { user_id: user.cloud_id || userId, new_password_hash: password_hash },
+                priority: 10
+            });
+
+            // Real-time cloud push
+            try {
+                const { notifyDataChange } = require('./CloudSyncService.cjs');
+                const updatedUser = this.userRepo.findById(userId);
+                if (updatedUser) notifyDataChange('users', 'UPDATE', updatedUser, userId);
+            } catch (e) { console.error('[UserService] Cloud sync error (non-fatal):', e.message); }
+
+            return { success: true, status: 'success', message: 'Password reset successfully' };
+
+        } catch (error) {
+            console.error('[UserService] Reset password error:', error.message);
+            return { success: false, status: 'error', message: 'Failed to reset password: ' + error.message };
         }
     }
 

@@ -39,6 +39,7 @@ function Sidebar() {
   const currentPath = location.pathname;
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [permissions, setPermissions] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -109,10 +110,11 @@ function Sidebar() {
     }
   };
 
-  // Logout function
+  // Logout function — called after confirmation
   const handleLogout = async () => {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
+    setShowLogoutConfirm(false);
 
     try {
       await localAuth.logout();
@@ -209,7 +211,7 @@ function Sidebar() {
           {/* Logout */}
           <motion.li variants={tileVariant} className="relative group">
             <button
-              onClick={handleLogout}
+              onClick={() => setShowLogoutConfirm(true)}
               disabled={isLoggingOut}
               className={`relative w-28 h-28 flex flex-col items-center justify-center rounded-xl transition-all duration-300 bg-gray-50 hover:bg-red-50 hover:shadow-md ${
                 isLoggingOut ? "opacity-50 cursor-not-allowed" : ""
@@ -229,6 +231,45 @@ function Sidebar() {
           </motion.li>
         </motion.ul>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white shadow-2xl rounded-2xl p-6 w-80 relative animate-in fade-in zoom-in duration-200">
+            {/* Icon */}
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center">
+                <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </div>
+            </div>
+
+            <h2 className="text-xl font-bold text-gray-800 text-center mb-1">Logout?</h2>
+            <p className="text-sm text-gray-500 text-center mb-6">
+              Are you sure you want to log out of your session?
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                className="flex-1 px-4 py-2.5 bg-white border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
+                onClick={() => setShowLogoutConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 shadow-lg shadow-red-200 transition-all duration-200 flex items-center justify-center gap-2"
+                onClick={handleLogout}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

@@ -2055,7 +2055,7 @@ function InventoryRestock({ isActive }) {
                   </div>
                 ) : (
                   filteredItems.map((item) => (
-                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={() => loadItemtoList(item)} />
+                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={() => loadItemtoList(item)} label="Add Item" />
                   ))
                 )}
               </div>

@@ -86,6 +86,7 @@ function AddItem({ isActive }) {
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
   const [searchAvailability, setSearchAvailability] = useState("All");
+  const [sortOrder, setSortOrder] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
 
@@ -392,6 +393,11 @@ function AddItem({ isActive }) {
       (item?.item_code || "").toLowerCase().includes(searchTerm);
 
     return matchesCategory && matchesAvailability && matchesSearch;
+  }).sort((a, b) => {
+    if (sortOrder === "name_asc") return (a.item_name || "").localeCompare(b.item_name || "");
+    if (sortOrder === "name_desc") return (b.item_name || "").localeCompare(a.item_name || "");
+    if (sortOrder === "recent") return new Date(b.item_created_datetime || 0) - new Date(a.item_created_datetime || 0);
+    return 0;
   });
 
   const [openBasic, setOpenBasic] = useState(false);
@@ -539,7 +545,7 @@ function AddItem({ isActive }) {
                     <input
                       type="text"
                       name="item_code"
-                      value={formData.item_code}
+                      value={formData.item_code ?? ""}
                       onChange={handleInputChange}
                       placeholder="Enter product code"
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
@@ -593,7 +599,7 @@ function AddItem({ isActive }) {
                       <input
                         type="text"
                         name="sku"
-                        value={formData.sku}
+                        value={formData.sku ?? ""}
                         onChange={handleInputChange}
                         placeholder="Enter SKU"
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
@@ -850,6 +856,8 @@ function AddItem({ isActive }) {
                 <div className="pt-4">
                   <select
                     name="sortOrder"
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                   >
                     <option value="">Default</option>

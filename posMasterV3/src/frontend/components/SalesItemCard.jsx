@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import barcodeImg from "../assets/barcode.png";
 import placeholderImg from "../assets/card_placeholder_img.png";
 
-export default function SalesItemCard({ item, onOpen }) {
+export default function SalesItemCard({ item, onOpen, label = "Add to Cart" }) {
   const nameRef = useRef(null);
   const [overflowing, setOverflowing] = useState(false);
   const imageSrc = item.item_image_url || placeholderImg;
@@ -45,7 +45,7 @@ export default function SalesItemCard({ item, onOpen }) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         </div>
-        <span className="text-white text-sm font-semibold tracking-wide">Add to Cart</span>
+        <span className="text-white text-sm font-semibold tracking-wide">{label}</span>
       </div>
 
       {/* Status Badge */}

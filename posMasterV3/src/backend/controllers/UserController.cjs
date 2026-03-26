@@ -191,6 +191,22 @@ function registerUserHandlers() {
     }));
 
     /**
+     * Reset user password (admin)
+     * Channel: 'users:reset-password'
+     * Payload: { userId: string, newPassword: string }
+     * Response: { success: boolean, message: string }
+     */
+    ipcMain.handle('users:reset-password', wrapIpcHandler(async (event, payload) => {
+        try {
+            const { userId, newPassword } = payload;
+            return userService.resetPassword(userId, newPassword);
+        } catch (error) {
+            console.error('[UserController] Reset password error:', error.message);
+            return { success: false, status: 'error', message: 'Failed to reset password: ' + error.message };
+        }
+    }));
+
+    /**
      * Get user statistics
      * Channel: 'users:statistics'
      * Payload: none
@@ -226,6 +242,7 @@ function unregisterUserHandlers() {
         'users:search',
         'users:get-by-role',
         'users:update-roles',
+        'users:reset-password',
         'users:statistics'
     ];
 

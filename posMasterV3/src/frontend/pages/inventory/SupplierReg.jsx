@@ -96,11 +96,11 @@ function SupplierReg() {
         current_amount: supplier?.financial_info?.current_amount,
         previous_amount: supplier?.financial_info?.previous_amount,
 
-        account_name: supplier?.payment_info?.account_name,
-        account_nickName: supplier?.payment_info?.account_nickName,
-        account_related_bank: supplier?.payment_info?.account_related_bank,
-        account_number: supplier?.payment_info?.account_number,
-        account_related_branch: supplier?.payment_info?.account_related_branch
+        account_name: supplier?.account_info?.account_name,
+        account_nickname: supplier?.account_info?.account_nickname,
+        account_bank: supplier?.account_info?.account_bank,
+        account_number: supplier?.account_info?.account_number,
+        account_branch: supplier?.account_info?.account_branch
       }
     );
   };
@@ -118,10 +118,10 @@ function SupplierReg() {
       previous_amount: 0,
 
       account_name: "",
-      account_nickName: "",
-      account_related_bank: "",
+      account_nickname: "",
+      account_bank: "",
       account_number: "",
-      account_related_branch: "",
+      account_branch: "",
     }
   );
 
@@ -141,13 +141,13 @@ function SupplierReg() {
         previous_amount: 0,
 
         account_name: "",
-        account_nickName: "",
-        account_related_bank: "",
+        account_nickname: "",
+        account_bank: "",
         account_number: "",
-        account_related_branch: "",
+        account_branch: "",
       }
     )
-    //switch from update item button to add item button 
+    //switch from update item button to add item button
     setUserEditing(false)
   }
 
@@ -159,7 +159,7 @@ function SupplierReg() {
 
   //request data validation
   const isRequestDataValid = (requestData) => {
-    const { basic_info, financial_info, payment_info } = requestData;
+    const { basic_info, financial_info, account_info: payment_info } = requestData;
 
     // Check basic_info fields
     if (
@@ -184,13 +184,13 @@ function SupplierReg() {
       return false;
     }
 
-    //Check payment_info fields
+    //Check account_info fields
     if (
       !payment_info.account_number?.trim() ||
-      !payment_info.account_related_bank?.trim() ||
-      !payment_info.account_related_branch?.trim() ||
+      !payment_info.account_bank?.trim() ||
+      !payment_info.account_branch?.trim() ||
       !payment_info.account_name?.trim() ||
-      !payment_info.account_nickName?.trim()
+      !payment_info.account_nickname?.trim()
     ) {
       return false;
     }
@@ -215,12 +215,12 @@ function SupplierReg() {
           current_amount: formData.current_amount,
           previous_amount: formData.previous_amount
         },
-        payment_info: {
+        account_info: {
           account_number: formData.account_number,
-          account_related_bank: formData.account_related_bank,
-          account_related_branch: formData.account_related_branch,
-          account_name: formData.supplier_name,
-          account_nickName: formData.account_nickName
+          account_bank: formData.account_bank,
+          account_branch: formData.account_branch,
+          account_name: formData.account_name,
+          account_nickname: formData.account_nickname
         }
       };
 
@@ -271,12 +271,12 @@ function SupplierReg() {
           current_amount: formData.current_amount,
           previous_amount: formData.previous_amount
         },
-        payment_info: {
+        account_info: {
           account_number: formData.account_number,
-          account_related_bank: formData.account_related_bank,
-          account_related_branch: formData.account_related_branch,
+          account_bank: formData.account_bank,
+          account_branch: formData.account_branch,
           account_name: formData.account_name,
-          account_nickName: formData.account_nickName
+          account_nickname: formData.account_nickname
         }
       };
       if (!isRequestDataValid(requestData)) {
@@ -455,8 +455,8 @@ function SupplierReg() {
                             </label>
                             <input
                               type="text"
-                              name="account_related_bank"
-                              value={formData.account_related_bank}
+                              name="account_bank"
+                              value={formData.account_bank}
                               onChange={handleInputChange}
                               placeholder="Bank name"
                               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
@@ -484,8 +484,8 @@ function SupplierReg() {
                             </label>
                             <input
                               type="text"
-                              name="account_related_branch"
-                              value={formData.account_related_branch}
+                              name="account_branch"
+                              value={formData.account_branch}
                               onChange={handleInputChange}
                               placeholder="Branch name"
                               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
@@ -497,13 +497,26 @@ function SupplierReg() {
                             </label>
                             <input
                               type="text"
-                              name="account_nickName"
-                              value={formData.account_nickName}
+                              name="account_nickname"
+                              value={formData.account_nickname}
                               onChange={handleInputChange}
                               placeholder="Nickname"
                               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                             />
                           </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                            Account Name
+                          </label>
+                          <input
+                            type="text"
+                            name="account_name"
+                            value={formData.account_name}
+                            onChange={handleInputChange}
+                            placeholder="Account holder name"
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
+                          />
                         </div>
                       </div>
                     </div>

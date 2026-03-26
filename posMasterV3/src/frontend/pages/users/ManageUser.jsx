@@ -461,6 +461,10 @@ function ManageUser() {
       toast.open("Please enter email", 4000, "Validation Error", "error");
       return false;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      toast.open("Please enter a valid email address", 4000, "Validation Error", "error");
+      return false;
+    }
 
     // Password validation only for new users
     if (!isUserEditing) {
@@ -565,6 +569,16 @@ function ManageUser() {
       const response = await userApi.update(formData.id, updateData);
 
       if (response.status === "success") {
+        // Reset password if provided
+        if (formData.password) {
+          const pwResult = await userApi.resetPassword(formData.id, formData.password);
+          if (!pwResult.success) {
+            setFormStatus("form");
+            setStatusModal({ open: true, type: 'failed', description: pwResult.message || 'Failed to reset password' });
+            return;
+          }
+        }
+
         // Update user permissions
         await settingsApi.updateUserPermissions(formData.id, permissions);
 

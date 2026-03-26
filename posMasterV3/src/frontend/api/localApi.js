@@ -1562,6 +1562,12 @@ export const userApi = {
         const api = getElectronAPI();
         if (!api) return { status: 'error', message: 'Not in Electron environment' };
         return api.users.search(query);
+    },
+
+    resetPassword: async (userId, newPassword) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.users.resetPassword(userId, newPassword);
     }
 };
 

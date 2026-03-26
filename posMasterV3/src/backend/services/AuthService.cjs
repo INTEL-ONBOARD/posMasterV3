@@ -259,11 +259,19 @@ class AuthService {
             };
         }
 
-        if (password.length < 8) {
+        if (password.length < 6) {
             return {
                 success: false,
                 status: 'error',
-                message: 'Password must be at least 8 characters'
+                message: 'Password must be at least 6 characters'
+            };
+        }
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return {
+                success: false,
+                status: 'error',
+                message: 'Please enter a valid email address'
             };
         }
 
@@ -516,11 +524,11 @@ class AuthService {
                 };
             }
 
-            if (newPassword.length < 8) {
+            if (newPassword.length < 6) {
                 return {
                     success: false,
                     status: 'error',
-                    message: 'New password must be at least 8 characters'
+                    message: 'New password must be at least 6 characters'
                 };
             }
 

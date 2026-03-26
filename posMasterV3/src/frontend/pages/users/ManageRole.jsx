@@ -377,8 +377,9 @@ function ManageRole() {
 
       setFormStatus("form");
       setStatusModal({ open: true, type: 'success', description: `Role "${formData.name}" created successfully` });
-      clearRoleInput();
       fetchRoles();
+      // Load the newly created role so the delete button is immediately available
+      loadRole(roleData);
     } catch (err) {
       console.error("Create role error:", err);
       setFormStatus("form");
@@ -559,7 +560,7 @@ function ManageRole() {
               <button
                 onClick={() => {
                   setOpenPermissions(!openPermissions)
-                  setOpenRoleInfo(!setOpenRoleInfo)
+                  setOpenRoleInfo(!openRoleInfo)
                 }}
                 className="w-full flex justify-between items-center px-5 py-4 hover:bg-gray-50 transition-colors"
               >
@@ -628,9 +629,9 @@ function ManageRole() {
           <div className="flex flex-row w-full gap-3 mt-4">
             <button
               onClick={deleteRole}
-              disabled={!isRoleEditing || formData.is_system}
+              disabled={!isRoleEditing || formData.is_system || (userStats.roleBreakdown[formData.id] > 0)}
               className={`flex-1 min-w-0 h-11 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
-                isRoleEditing && !formData.is_system
+                isRoleEditing && !formData.is_system && !(userStats.roleBreakdown[formData.id] > 0)
                   ? "bg-red-500 text-white hover:bg-red-600 shadow-sm shadow-red-200"
                   : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}

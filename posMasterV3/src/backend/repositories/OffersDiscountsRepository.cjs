@@ -75,4 +75,4 @@ class OffersDiscountsRepository extends BaseRepository {
     }
 }
 
-module.exports = OffersDiscountsRepository;
+module.exports = new OffersDiscountsRepository();
