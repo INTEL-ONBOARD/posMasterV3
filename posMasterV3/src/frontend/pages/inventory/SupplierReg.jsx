@@ -93,14 +93,14 @@ function SupplierReg() {
         status: supplier?.basic_info?.status,
         contact: supplier?.basic_info?.contact,
 
-        current_amount: supplier?.financial_info?.current_amount,
-        previous_amount: supplier?.financial_info?.previous_amount,
+        current_amount: supplier?.financial_info?.current_amount ?? 0,
+        previous_amount: supplier?.financial_info?.previous_amount ?? 0,
 
-        account_name: supplier?.account_info?.account_name,
-        account_nickname: supplier?.account_info?.account_nickname,
-        account_bank: supplier?.account_info?.account_bank,
-        account_number: supplier?.account_info?.account_number,
-        account_branch: supplier?.account_info?.account_branch
+        account_name: supplier?.account_info?.account_name ?? "",
+        account_nickname: supplier?.account_info?.account_nickname ?? "",
+        account_bank: supplier?.account_info?.account_bank ?? "",
+        account_number: supplier?.account_info?.account_number ?? "",
+        account_branch: supplier?.account_info?.account_branch ?? ""
       }
     );
   };

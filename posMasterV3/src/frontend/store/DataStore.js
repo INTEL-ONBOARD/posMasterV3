@@ -326,12 +326,42 @@ class DataStore {
         let newData;
 
         switch (operation) {
-            case 'INSERT':
+            case 'INSERT': {
+                // For formatted tables, broadcast record is flat — refetch to get formatted shape
+                const FORMATTED_TABLES_INSERT = [
+                    TABLES.SUPPLIERS, TABLES.STOCK, TABLES.STOCK_ITEMS
+                ];
+                if (FORMATTED_TABLES_INSERT.includes(normalizedTable)) {
+                    this.invalidate(normalizedTable);
+                    const subscribers = this.subscribers.get(normalizedTable);
+                    if (subscribers && subscribers.size > 0) {
+                        this.refetch(normalizedTable);
+                    }
+                    return;
+                }
                 // Add new record to cache
                 newData = [...currentData, record];
                 break;
+            }
 
-            case 'UPDATE':
+            case 'UPDATE': {
+                // For tables that use a nested/formatted structure in the cache
+                // (suppliers, stock), the broadcast record is a flat raw DB row —
+                // merging it would corrupt nested fields like account_info, item{}.
+                // Detect this mismatch by checking if the cached item has nested objects
+                // that the incoming record does not, and refetch instead.
+                const FORMATTED_TABLES = [
+                    TABLES.SUPPLIERS, TABLES.STOCK, TABLES.STOCK_ITEMS
+                ];
+                if (FORMATTED_TABLES.includes(normalizedTable)) {
+                    // Don't merge — just invalidate and refetch
+                    this.invalidate(normalizedTable);
+                    const subscribers = this.subscribers.get(normalizedTable);
+                    if (subscribers && subscribers.size > 0) {
+                        this.refetch(normalizedTable);
+                    }
+                    return;
+                }
                 // Update existing record in cache
                 newData = currentData.map(item =>
                     (item.id === recordId || item.id === record?.id)
@@ -339,6 +369,7 @@ class DataStore {
                         : item
                 );
                 break;
+            }
 
             case 'DELETE':
                 // Remove record from cache
