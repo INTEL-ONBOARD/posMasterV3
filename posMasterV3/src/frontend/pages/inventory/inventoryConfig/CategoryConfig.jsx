@@ -1,11 +1,11 @@
 import React, { useState, useContext, useMemo } from "react";
 import { Search, X, Check, Tag, ChevronDown, RefreshCw } from "lucide-react";
 import { categoryApi } from "../../../api/localApi";
-import ToastContext from "../../toasts/ToastService";
 import { useReactiveData, TABLES } from "../../../store";
+import StatusModal from "../../../components/StatusModal.jsx";
 
 function CategoryConfig() {
-  const toast = useContext(ToastContext);
+  const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
 
   // Use reactive data hook - automatically updates when categories change
   const { data: categories, loading: isLoading, refetch } = useReactiveData(TABLES.CATEGORIES);
@@ -64,7 +64,7 @@ function CategoryConfig() {
       if (response.status === "success") {
         // Data will auto-refresh via reactive hook - no need to manually fetch
         handleClear();
-        toast?.open(editingId ? "Category updated successfully" : "Category added successfully", 3000, 'Success', 'success');
+        setStatusModal({ open: true, type: 'success', description: editingId ? "Category updated successfully" : "Category added successfully" });
       } else {
         setError(response.message || "Operation failed");
       }
@@ -84,7 +84,7 @@ function CategoryConfig() {
       if (response.status === "success") {
         // Data will auto-refresh via reactive hook - no need to manually update state
         if (editingId === id) handleClear();
-        toast?.open("Category deleted successfully", 3000, 'Success', 'success');
+        setStatusModal({ open: true, type: 'success', description: "Category deleted successfully" });
       }
     } catch (error) {
       setError(error.message || 'Delete failed');
@@ -320,6 +320,14 @@ function CategoryConfig() {
           Showing {filteredCategories.length} of {(categories || []).length} categories
         </div>
       </div>
+
+      <StatusModal
+        isOpen={statusModal.open}
+        closeModal={() => setStatusModal({ open: false, type: null, description: "" })}
+        type={statusModal.type}
+        description={statusModal.description}
+        context="inventory"
+      />
     </div>
   );
 }

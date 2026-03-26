@@ -1,12 +1,10 @@
-import React, { useEffect, useContext, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { ChevronDown, ChevronUp, Shield, Users, Settings } from "lucide-react";
 import { settingsApi } from "../../api/localApi";
-import ToastContext from "../toasts/ToastService";
 import { useReactiveData, TABLES } from "../../store";
 import StatusModal from "../../components/StatusModal.jsx";
 
 function ManageRole() {
-  const toast = useContext(ToastContext);
 
   // Form section collapse controls
   const [openRoleInfo, setOpenRoleInfo] = useState(true);
@@ -245,7 +243,7 @@ function ManageRole() {
       }
     } catch (err) {
       console.error("Error fetching roles:", err);
-      toast.open("Failed to load roles", 4000, "Error", "error");
+      setStatusModal({ open: true, type: 'failed', description: "Failed to load roles" });
     } finally {
       setIsLoading(false);
     }
@@ -336,7 +334,7 @@ function ManageRole() {
   // Validate form data
   const validateFormData = () => {
     if (!formData.name?.trim()) {
-      toast.open("Please enter role name", 4000, "Validation Error", "error");
+      setStatusModal({ open: true, type: 'failed', description: "Please enter role name" });
       return false;
     }
 
@@ -345,14 +343,14 @@ function ManageRole() {
       r => r.name.toLowerCase() === formData.name.trim().toLowerCase() && r.id !== formData.id
     );
     if (existingRole) {
-      toast.open("A role with this name already exists", 4000, "Validation Error", "error");
+      setStatusModal({ open: true, type: 'failed', description: "A role with this name already exists" });
       return false;
     }
 
     // Prevent custom role name from colliding with system role IDs
     const candidateId = formData.name.trim().toLowerCase().replace(/\s+/g, '_');
     if (!formData.id && SYSTEM_ROLE_IDS.includes(candidateId)) {
-      toast.open("This name conflicts with a system role. Please choose a different name.", 4000, "Validation Error", "error");
+      setStatusModal({ open: true, type: 'failed', description: "This name conflicts with a system role. Please choose a different name." });
       return false;
     }
 
@@ -430,7 +428,7 @@ function ManageRole() {
 
         await settingsApi.updateAppSettings({ system_role_permissions: systemRolePerms });
 
-        toast.open("System role permissions updated successfully", 4000, "Success", "success");
+        setStatusModal({ open: true, type: 'success', description: "System role permissions updated successfully" });
       } else {
         // Update custom role in app settings
         const roleData = {
@@ -461,18 +459,18 @@ function ManageRole() {
   // Delete custom role
   const deleteRole = async () => {
     if (!formData.id) {
-      toast.open("Please select a role to delete", 4000, "Error", "error");
+      setStatusModal({ open: true, type: 'failed', description: "Please select a role to delete" });
       return;
     }
 
     if (formData.is_system) {
-      toast.open("Cannot delete system roles", 4000, "Warning", "warning");
+      setStatusModal({ open: true, type: 'failed', description: "Cannot delete system roles" });
       return;
     }
 
     // Check if any users have this role
     if (userStats.roleBreakdown[formData.id] > 0) {
-      toast.open(`Cannot delete role: ${userStats.roleBreakdown[formData.id]} users have this role`, 4000, "Warning", "warning");
+      setStatusModal({ open: true, type: 'failed', description: `Cannot delete role: ${userStats.roleBreakdown[formData.id]} users have this role` });
       return;
     }
 

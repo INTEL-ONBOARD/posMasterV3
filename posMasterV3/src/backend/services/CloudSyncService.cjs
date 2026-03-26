@@ -1747,6 +1747,14 @@ class CloudSyncService {
                     const existingRecord = db.prepare(`SELECT * FROM ${tableName} WHERE ${primaryKey} = ?`).get(record[primaryKey]);
                     let recordChanged = !existingRecord; // New record = changed
 
+                    // If local record has pending unsent changes, skip cloud overwrite.
+                    // The push phase (syncTable / bidirectionalSyncTable) will push local first,
+                    // then the next pull cycle will receive the authoritative merged result.
+                    if (existingRecord && existingRecord.sync_status === 'pending') {
+                        result.downloaded++;
+                        continue;
+                    }
+
                     // For users table: if local record doesn't exist, it was intentionally deleted locally.
                     // Don't re-insert from cloud — the pending DELETE will clean cloud on next sync.
                     if (tableName === 'users' && !existingRecord) {

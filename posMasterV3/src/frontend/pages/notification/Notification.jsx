@@ -33,6 +33,7 @@ function Dashboard() {
   // Admin-specific data that needs custom fetching (date-based)
   const [recentSales, setRecentSales] = useState([]);
   const [recentLogins, setRecentLogins] = useState([]);
+  const [activeSessionsCount, setActiveSessionsCount] = useState(0);
   const [salesStats, setSalesStats] = useState({
     todaySales: 0,
     weekSales: 0,
@@ -56,7 +57,7 @@ function Dashboard() {
 
   // Compute stats from reactive data
   const stats = useMemo(() => {
-    const lowStockItems = (stockItems || []).filter(s => s.quantity <= (s.threshold_limit || 10));
+    const lowStockItems = (stockItems || []).filter(s => s.quantity <= (s.threshold_limit ?? 10));
     const expiringItems = (stockItems || []).filter(s => {
       if (!s.expiry_date) return false;
       const expiryDate = new Date(s.expiry_date);
@@ -64,8 +65,6 @@ function Dashboard() {
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
       return expiryDate <= thirtyDaysFromNow && expiryDate > new Date();
     });
-
-    const activeSessions = (loginHistory || []).filter(l => l.status === 'active');
 
     return {
       todaySales: salesStats.todaySales,
@@ -78,14 +77,14 @@ function Dashboard() {
       totalSuppliers: (suppliers || []).length,
       expiringItems: expiringItems.length,
       totalUsers: (users || []).length,
-      activeSessions: activeSessions.length,
+      activeSessions: activeSessionsCount,
     };
-  }, [items, stockItems, members, suppliers, users, loginHistory, salesStats]);
+  }, [items, stockItems, members, suppliers, users, salesStats, activeSessionsCount]);
 
   // Low stock list for admin view - uses stockItems which includes item_name and sku
   const lowStockList = useMemo(() => {
     return (stockItems || [])
-      .filter(s => s.quantity <= (s.threshold_limit || 10))
+      .filter(s => s.quantity <= (s.threshold_limit ?? 10))
       .slice(0, 5);
   }, [stockItems]);
 
@@ -129,20 +128,22 @@ function Dashboard() {
 
       setSalesStats({
         todaySales: todayRes?.data?.total_sales || todayRes?.data?.total_amount || 0,
-        totalSalesCount: todayRes?.data?.count || todayRes?.data?.total_count || 0,
+        totalSalesCount: todayRes?.data?.total_transactions || 0,
         weekSales: weekRes?.data?.total_sales || weekRes?.data?.total_amount || 0,
         monthSales: monthRes?.data?.total_sales || monthRes?.data?.total_amount || 0
       });
 
       // Fetch recent sales for admin
       if (isAdmin) {
-        const [recentSalesRes, loginsRes] = await Promise.all([
-          salesApi.getAll({ limit: 5 }).catch(() => ({ data: [] })),
-          loginHistoryApi.getAll({ limit: 5 }).catch(() => ({ data: [] }))
+        const [recentSalesRes, loginsRes, activeSessionsRes] = await Promise.all([
+          salesApi.getAll({ limit: 5, status: 'completed' }).catch(() => ({ data: [] })),
+          loginHistoryApi.getAll({ limit: 5 }).catch(() => ({ data: [] })),
+          loginHistoryApi.getActiveSessions().catch(() => ({ data: [] }))
         ]);
 
         setRecentSales(recentSalesRes?.data || []);
         setRecentLogins(loginsRes?.data || []);
+        setActiveSessionsCount(Array.isArray(activeSessionsRes?.data) ? activeSessionsRes.data.length : 0);
       }
     } catch (error) {
       console.error('Error fetching sales stats:', error);

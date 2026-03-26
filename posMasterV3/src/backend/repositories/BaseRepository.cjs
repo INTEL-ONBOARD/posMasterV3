@@ -266,7 +266,7 @@ class BaseRepository {
         // Auto-inject sync_status = 'pending' so CloudSync picks up this change.
         // Skip tables that are local-only (no cloud sync) and skip if the caller
         // is explicitly setting sync_status themselves (e.g. to 'synced').
-        const localOnlyTables = ['sessions', 'sync_queue', 'migrations', 'app_settings', 'sync_metadata', 'price_change_history'];
+        const localOnlyTables = ['sessions', 'sync_queue', 'migrations', 'app_settings', 'sync_metadata', 'price_change_history', 'audit_log'];
         if (!keys.includes('sync_status') && !localOnlyTables.includes(this.tableName)) {
             keys.push('sync_status');
             values.push('pending');

@@ -1,11 +1,11 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, Cloud, CloudOff, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import ToastContext from "./toasts/ToastService";
 import { localAuth } from "../api/services/localAuth";
 import { useStatusLog } from "../services/StatusLogService.jsx";
 import { appSettingsApi, cloudSyncApi } from "../api/localApi";
+import StatusModal from "../components/StatusModal.jsx";
 
 // Staggered children animation
 const container = {
@@ -27,7 +27,7 @@ const item = {
 
 function Login() {
   const navigate = useNavigate();
-  const toast = useContext(ToastContext);
+  const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
   const statusLog = useStatusLog();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -75,7 +75,7 @@ function Login() {
         setSyncStatus('synced');
         if (!silent) {
           statusLog.success("Cloud sync complete");
-          toast.open("User data synced from cloud.", 5000, "Sync Complete", "success");
+          setStatusModal({ open: true, type: 'success', description: 'User data synced from cloud.' });
         }
       } else {
         setSyncStatus('error');
@@ -136,17 +136,18 @@ function Login() {
         navigate("/dashboard");
       } else {
         statusLog.error("Login failed: Invalid credentials");
-        toast.open(result.message || 'Login failed', 4000, 'Login Failed', 'warning');
+        setStatusModal({ open: true, type: 'failed', description: result.message || 'Login failed' });
       }
     } catch (error) {
       statusLog.error("Login error occurred");
-      toast.open(error.message || "Login error: Please try again", 4000, 'Login Failed', 'warning');
+      setStatusModal({ open: true, type: 'failed', description: error.message || 'Login error: Please try again' });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
+    <>
     <motion.div
       className="fixed inset-0 flex items-center justify-center overflow-hidden p-4"
       style={{ background: "#ffffff" }}
@@ -376,6 +377,14 @@ function Login() {
         © 2025 SLTC ® · v{import.meta.env.VITE_VERSION_NUMBER}
       </motion.p>
     </motion.div>
+    <StatusModal
+      isOpen={statusModal.open}
+      closeModal={() => setStatusModal({ open: false, type: null, description: "" })}
+      type={statusModal.type}
+      description={statusModal.description}
+      context="default"
+    />
+    </>
   );
 }
 

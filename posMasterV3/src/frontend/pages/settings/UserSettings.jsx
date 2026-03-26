@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
 import { settingsApi } from '../../api/localApi';
 import { localAuth } from '../../api/services/localAuth';
-import ToastContext from '../toasts/ToastService';
+import StatusModal from '../../components/StatusModal.jsx';
 
 function UserSettings() {
-  const toast = useContext(ToastContext);
+  const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
   const navigate = useNavigate();
 
   // Section collapse states
@@ -212,11 +212,11 @@ function UserSettings() {
         if (formData.id) {
           const response = await settingsApi.updateProfileImage(formData.id, compressedImage);
           if (response.status === 'success') {
-            toast.open('Profile image updated', 3000, 'Success', 'success');
+            setStatusModal({ open: true, type: 'success', description: 'Profile image updated' });
           }
         }
       } catch (err) {
-        toast.open('Failed to upload image', 3000, 'Error', 'error');
+        setStatusModal({ open: true, type: 'failed', description: 'Failed to upload image' });
       }
     }
   };
@@ -240,49 +240,49 @@ function UserSettings() {
 
   const handleSave = async () => {
     if (formData.email && !isValidEmail(formData.email)) {
-      toast.open('Enter a valid Email Address', 5000, 'Invalid Email', 'warning');
+      setStatusModal({ open: true, type: 'failed', description: 'Enter a valid Email Address' });
       return;
     }
 
     if (!formData.username?.trim()) {
-      toast.open('Username is required', 5000, 'Validation Error', 'warning');
+      setStatusModal({ open: true, type: 'failed', description: 'Username is required' });
       return;
     }
 
     if (!formData.fullName?.trim()) {
-      toast.open('Full name is required', 5000, 'Validation Error', 'warning');
+      setStatusModal({ open: true, type: 'failed', description: 'Full name is required' });
       return;
     }
 
     // Handle password change if fields are filled
     if (formData.currentPassword || formData.newPassword || formData.confirmPassword) {
       if (!formData.currentPassword) {
-        toast.open('Current password is required', 5000, 'Validation Error', 'warning');
+        setStatusModal({ open: true, type: 'failed', description: 'Current password is required' });
         return;
       }
 
       if (!formData.newPassword || formData.newPassword.length < 6) {
-        toast.open('New password must be at least 6 characters', 5000, 'Validation Error', 'warning');
+        setStatusModal({ open: true, type: 'failed', description: 'New password must be at least 6 characters' });
         return;
       }
 
       if (formData.confirmPassword !== formData.newPassword) {
-        toast.open('New passwords do not match', 5000, 'Password Mismatch', 'warning');
+        setStatusModal({ open: true, type: 'failed', description: 'New passwords do not match' });
         return;
       }
 
       try {
         const pwResult = await localAuth.changePassword(formData.currentPassword, formData.newPassword);
         if (!pwResult.success) {
-          toast.open(pwResult.message || 'Password change failed', 5000, 'Error', 'error');
+          setStatusModal({ open: true, type: 'failed', description: pwResult.message || 'Password change failed' });
           return;
         }
-        toast.open('Password changed. Please log in again.', 3000, 'Success', 'success');
+        setStatusModal({ open: true, type: 'success', description: 'Password changed. Please log in again.' });
         await localAuth.logout();
         setTimeout(() => navigate('/'), 1500);
         return;
       } catch (err) {
-        toast.open('Password change failed: ' + err.message, 5000, 'Error', 'error');
+        setStatusModal({ open: true, type: 'failed', description: 'Password change failed: ' + err.message });
         return;
       }
     }
@@ -299,12 +299,12 @@ function UserSettings() {
       const profileResult = await settingsApi.updateUserProfile(formData.id, profileData);
 
       if (profileResult.status !== 'success') {
-        toast.open(profileResult.message || 'Failed to update profile', 5000, 'Error', 'error');
+        setStatusModal({ open: true, type: 'failed', description: profileResult.message || 'Failed to update profile' });
         setSaving(false);
         return;
       }
 
-      toast.open('Settings saved successfully', 3000, 'Success', 'success');
+      setStatusModal({ open: true, type: 'success', description: 'Settings saved successfully' });
 
       setFormData(prev => ({
         ...prev,
@@ -314,7 +314,7 @@ function UserSettings() {
       }));
 
     } catch (err) {
-      toast.open('Failed to save settings: ' + err.message, 5000, 'Error', 'error');
+      setStatusModal({ open: true, type: 'failed', description: 'Failed to save settings: ' + err.message });
     } finally {
       setSaving(false);
     }
@@ -742,6 +742,13 @@ function UserSettings() {
           </div>
         </div>
       </div>
+      <StatusModal
+        isOpen={statusModal.open}
+        closeModal={() => setStatusModal({ open: false, type: null, description: "" })}
+        type={statusModal.type}
+        description={statusModal.description}
+        context="user"
+      />
     </div>
   );
 }

@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useCallback, useContext } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { ChevronDown, ChevronUp, Search, Package, DollarSign, Tag, Percent, Calendar, X, CheckCircle, Filter, AlertCircle } from "lucide-react";
 import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
 import { restockApi, stockApi } from "../../api/localApi";
 import { useReactiveData, TABLES } from "../../store";
-import ToastContext from "../toasts/ToastService";
+import StatusModal from "../../components/StatusModal.jsx";
 
 // Initial form state
 const INITIAL_STOCK_FORM = {
@@ -24,7 +24,7 @@ const INITIAL_PRICE_CHANGE_FORM = {
 };
 
 function PriceChange() {
-  const toast = useContext(ToastContext);
+  const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
 
   // Form section state
   const [openFormBlock, setOpenFormBlock] = useState("item");
@@ -306,14 +306,14 @@ function PriceChange() {
           if (response?.status === 'success') {
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 3000);
-            toast.open('Price updated successfully', 3000, 'Success', 'success');
+            setStatusModal({ open: true, type: 'success', description: 'Price updated successfully' });
           } else {
-            toast.open(response?.message || 'Failed to update price', 5000, 'Error', 'error');
+            setStatusModal({ open: true, type: 'failed', description: response?.message || 'Failed to update price' });
             console.error('[PriceChange] updatePrices failed:', response?.message);
           }
         }
       } catch (error) {
-        toast.open(error.message || 'Failed to update price', 5000, 'Error', 'error');
+        setStatusModal({ open: true, type: 'failed', description: error.message || 'Failed to update price' });
         console.error('[PriceChange] Submit error:', error);
       } finally {
         setSubmitLoading(false);
@@ -842,6 +842,14 @@ function PriceChange() {
           </div>
         </div>
       </div>
+
+      <StatusModal
+        isOpen={statusModal.open}
+        closeModal={() => setStatusModal({ open: false, type: null, description: "" })}
+        type={statusModal.type}
+        description={statusModal.description}
+        context="inventory"
+      />
     </div>
   );
 }

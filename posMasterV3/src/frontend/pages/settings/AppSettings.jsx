@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, RefreshCw, Database, Cloud, Wifi, WifiOff, Download, CheckCircle, XCircle } from 'lucide-react';
 import { settingsApi, cloudSyncApi, appSettingsApi, updatesApi } from '../../api/localApi';
-import ToastContext from '../toasts/ToastService';
 import { useReactiveData, TABLES } from '../../store';
 import { useBranchContext } from '../../context/BranchContext';
+import StatusModal from '../../components/StatusModal.jsx';
 
 function AppSettings() {
-  const toast = useContext(ToastContext);
+  const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
   const { currentBranch, branchName, setBranch } = useBranchContext();
 
   // Section collapse states
@@ -165,13 +165,13 @@ function AppSettings() {
         case 'logout_on_close':
           result = await appSettingsApi.setLogoutOnClose(newValue);
           if (result.status === 'success') {
-            toast.open(newValue ? 'Logout on close enabled' : 'Logout on close disabled', 2000, 'Info', 'info');
+            setStatusModal({ open: true, type: 'success', description: newValue ? 'Logout on close enabled' : 'Logout on close disabled' });
           }
           break;
         case 'notifications':
           result = await appSettingsApi.setNotifications(newValue);
           if (result.status === 'success') {
-            toast.open(newValue ? 'Notifications enabled' : 'Notifications disabled', 2000, 'Info', 'info');
+            setStatusModal({ open: true, type: 'success', description: newValue ? 'Notifications enabled' : 'Notifications disabled' });
             // Test notification if enabled
             if (newValue) {
               setTimeout(() => appSettingsApi.testNotification(), 500);
@@ -181,15 +181,15 @@ function AppSettings() {
         case 'cloud_sync':
           result = await appSettingsApi.setCloudSync(newValue);
           if (result.status === 'success') {
-            toast.open(newValue ? 'Cloud sync enabled' : 'Cloud sync disabled', 2000, 'Info', 'info');
+            setStatusModal({ open: true, type: 'success', description: newValue ? 'Cloud sync enabled' : 'Cloud sync disabled' });
           }
           break;
         case 'run_on_startup':
           result = await appSettingsApi.setRunOnStartup(newValue);
           if (result.status === 'success') {
-            toast.open(result.message, 2000, 'Info', 'info');
+            setStatusModal({ open: true, type: 'success', description: result.message });
           } else {
-            toast.open(result.message || 'Failed to update startup setting', 3000, 'Error', 'error');
+            setStatusModal({ open: true, type: 'failed', description: result.message || 'Failed to update startup setting' });
             // Revert on failure
             setSettings((prev) => ({ ...prev, [key]: !newValue }));
           }
@@ -197,7 +197,7 @@ function AppSettings() {
         case 'maximize_window':
           result = await appSettingsApi.setMaximizeOnStart(newValue);
           if (result.status === 'success') {
-            toast.open(newValue ? 'App will maximize on start' : 'App will start in normal window', 2000, 'Info', 'info');
+            setStatusModal({ open: true, type: 'success', description: newValue ? 'App will maximize on start' : 'App will start in normal window' });
           }
           break;
         default:
@@ -234,12 +234,12 @@ function AppSettings() {
           default_outlet: data.default_outlet || ''
         });
 
-        toast.open('Settings reset to defaults', 3000, 'Success', 'success');
+        setStatusModal({ open: true, type: 'success', description: 'Settings reset to defaults' });
       } else {
-        toast.open('Failed to reset settings', 3000, 'Error', 'error');
+        setStatusModal({ open: true, type: 'failed', description: 'Failed to reset settings' });
       }
     } catch {
-      toast.open('Failed to reset settings', 3000, 'Error', 'error');
+      setStatusModal({ open: true, type: 'failed', description: 'Failed to reset settings' });
     } finally {
       setSaving(false);
     }
@@ -263,7 +263,7 @@ function AppSettings() {
       if (response.status === 'success') {
         // If branch changed, update the BranchContext and restart
         if (branchChanged && selectedBranch) {
-          toast.open('Branch changed! App will restart with fresh data...', 3000, 'Success', 'success');
+          setStatusModal({ open: true, type: 'success', description: 'Branch changed! App will restart with fresh data...' });
 
           // Update branch context
           await setBranch(selectedBranch.id);
@@ -275,13 +275,13 @@ function AppSettings() {
             }, 1500);
           }
         } else {
-          toast.open('Settings saved successfully!', 3000, 'Success', 'success');
+          setStatusModal({ open: true, type: 'success', description: 'Settings saved successfully!' });
         }
       } else {
-        toast.open('Failed to save settings', 3000, 'Error', 'error');
+        setStatusModal({ open: true, type: 'failed', description: 'Failed to save settings' });
       }
     } catch {
-      toast.open('Failed to save settings', 3000, 'Error', 'error');
+      setStatusModal({ open: true, type: 'failed', description: 'Failed to save settings' });
     } finally {
       setSaving(false);
     }
@@ -291,23 +291,23 @@ function AppSettings() {
   const handleSyncNow = async () => {
     try {
       setSyncingNow(true);
-      toast.open('Starting sync...', 2000, 'Info', 'info');
+      setStatusModal({ open: true, type: 'success', description: 'Starting sync...' });
 
       const result = await cloudSyncApi.syncNow();
 
       if (result.status === 'success') {
-        toast.open('Sync completed successfully!', 3000, 'Success', 'success');
+        setStatusModal({ open: true, type: 'success', description: 'Sync completed successfully!' });
         // Refresh status
         const statusResult = await cloudSyncApi.getStatus();
         if (statusResult.status === 'success') {
           setSyncStatus(statusResult.data);
         }
       } else {
-        toast.open(result.message || 'Sync failed', 3000, 'Error', 'error');
+        setStatusModal({ open: true, type: 'failed', description: result.message || 'Sync failed' });
       }
     } catch (err) {
       console.error('[AppSettings] Sync error:', err);
-      toast.open('Sync failed: ' + err.message, 3000, 'Error', 'error');
+      setStatusModal({ open: true, type: 'failed', description: 'Sync failed: ' + err.message });
     } finally {
       setSyncingNow(false);
     }
@@ -316,18 +316,18 @@ function AppSettings() {
   const handleEnsureSchema = async () => {
     try {
       setEnsuringSchema(true);
-      toast.open('Creating cloud database tables...', 2000, 'Info', 'info');
+      setStatusModal({ open: true, type: 'success', description: 'Creating cloud database tables...' });
 
       const result = await cloudSyncApi.ensureSchema();
 
       if (result.status === 'success' && result.data?.success) {
-        toast.open('Database tables created successfully!', 3000, 'Success', 'success');
+        setStatusModal({ open: true, type: 'success', description: 'Database tables created successfully!' });
       } else {
-        toast.open(result.data?.message || result.message || 'Failed to create tables', 3000, 'Error', 'error');
+        setStatusModal({ open: true, type: 'failed', description: result.data?.message || result.message || 'Failed to create tables' });
       }
     } catch (err) {
       console.error('[AppSettings] Ensure schema error:', err);
-      toast.open('Failed to create tables: ' + err.message, 3000, 'Error', 'error');
+      setStatusModal({ open: true, type: 'failed', description: 'Failed to create tables: ' + err.message });
     } finally {
       setEnsuringSchema(false);
     }
@@ -338,7 +338,7 @@ function AppSettings() {
       const result = await cloudSyncApi.checkNetwork();
       if (result.status === 'success') {
         setSyncStatus(prev => ({ ...prev, isOnline: result.data.isOnline }));
-        toast.open(result.data.isOnline ? 'Connected to network' : 'Network offline', 2000, 'Info', 'info');
+        setStatusModal({ open: true, type: result.data.isOnline ? 'success' : 'failed', description: result.data.isOnline ? 'Connected to network' : 'Network offline' });
       }
     } catch (err) {
       console.error('[AppSettings] Network check error:', err);
@@ -395,7 +395,7 @@ function AppSettings() {
   };
 
   const handleInstallUpdate = async () => {
-    toast.open('Installing update and restarting...', 3000, 'Info', 'info');
+    setStatusModal({ open: true, type: 'success', description: 'Installing update and restarting...' });
     await updatesApi.installUpdate();
   };
 
@@ -938,6 +938,13 @@ function AppSettings() {
           </div>
         </div>
       </div>
+      <StatusModal
+        isOpen={statusModal.open}
+        closeModal={() => setStatusModal({ open: false, type: null, description: "" })}
+        type={statusModal.type}
+        description={statusModal.description}
+        context="default"
+      />
     </div>
   );
 }

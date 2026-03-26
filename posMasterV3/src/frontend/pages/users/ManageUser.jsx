@@ -1,12 +1,10 @@
-import React, { useEffect, useContext, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { X, ChevronDown, ChevronUp, Upload, RefreshCw } from "lucide-react";
 import { userApi, authApi, branchApi, settingsApi } from "../../api/localApi";
-import ToastContext from "../toasts/ToastService";
 import { useReactiveData, TABLES } from "../../store";
 import StatusModal from "../../components/StatusModal.jsx";
 
 function ManageUser() {
-  const toast = useContext(ToastContext);
 
   // Form section collapse controls
   const [openUser, setOpenUser] = useState(true);
@@ -488,14 +486,14 @@ function ManageUser() {
       // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
       if (!allowedTypes.includes(file.type)) {
-        toast.open("Only image files are allowed (JPEG, PNG, WebP, GIF)", 4000, "Error", "error");
+        setStatusModal({ open: true, type: 'failed', description: "Only image files are allowed (JPEG, PNG, WebP, GIF)" });
         e.target.value = "";
         return;
       }
       // Validate file size (max 5MB before compression)
       const MAX_SIZE_MB = 5;
       if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-        toast.open(`Image file must be smaller than ${MAX_SIZE_MB}MB`, 4000, "Error", "error");
+        setStatusModal({ open: true, type: 'failed', description: `Image file must be smaller than ${MAX_SIZE_MB}MB` });
         e.target.value = "";
         return;
       }
@@ -511,14 +509,14 @@ function ManageUser() {
         if (isUserEditing && formData.id) {
           const response = await settingsApi.updateProfileImage(formData.id, compressedImage);
           if (response.status === 'success') {
-            toast.open('Profile image updated', 3000, 'Success', 'success');
+            setStatusModal({ open: true, type: 'success', description: 'Profile image updated' });
           } else {
-            toast.open('Failed to save profile image', 3000, 'Error', 'error');
+            setStatusModal({ open: true, type: 'failed', description: 'Failed to save profile image' });
           }
         }
       } catch (err) {
         console.error('[ManageUser] Image upload error:', err);
-        toast.open('Failed to upload image', 3000, 'Error', 'error');
+        setStatusModal({ open: true, type: 'failed', description: 'Failed to upload image' });
       }
     }
   };
@@ -526,51 +524,51 @@ function ManageUser() {
   // Validate form data
   const validateFormData = () => {
     if (!formData.full_name?.trim()) {
-      toast.open("Please enter full name", 4000, "Validation Error", "error");
+      setStatusModal({ open: true, type: 'failed', description: "Please enter full name" });
       return false;
     }
 
     // Username: required, 3–30 chars, alphanumeric + underscore only
     const username = formData.username?.trim() || "";
     if (!username) {
-      toast.open("Please enter username", 4000, "Validation Error", "error");
+      setStatusModal({ open: true, type: 'failed', description: "Please enter username" });
       return false;
     }
     if (username.length < 3 || username.length > 30) {
-      toast.open("Username must be between 3 and 30 characters", 4000, "Validation Error", "error");
+      setStatusModal({ open: true, type: 'failed', description: "Username must be between 3 and 30 characters" });
       return false;
     }
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      toast.open("Username can only contain letters, numbers, and underscores", 4000, "Validation Error", "error");
+      setStatusModal({ open: true, type: 'failed', description: "Username can only contain letters, numbers, and underscores" });
       return false;
     }
 
     if (!formData.email?.trim()) {
-      toast.open("Please enter email", 4000, "Validation Error", "error");
+      setStatusModal({ open: true, type: 'failed', description: "Please enter email" });
       return false;
     }
     // Stricter email validation
     if (!/^[^\s@]+@[^\s@]{2,}\.[^\s@]{2,}$/.test(formData.email.trim())) {
-      toast.open("Please enter a valid email address", 4000, "Validation Error", "error");
+      setStatusModal({ open: true, type: 'failed', description: "Please enter a valid email address" });
       return false;
     }
 
     // Password validation only for new users
     if (!isUserEditing) {
       if (!formData.password?.trim()) {
-        toast.open("Please enter password", 4000, "Validation Error", "error");
+        setStatusModal({ open: true, type: 'failed', description: "Please enter password" });
         return false;
       }
       if (formData.password.length < 6) {
-        toast.open("Password must be at least 6 characters", 4000, "Validation Error", "error");
+        setStatusModal({ open: true, type: 'failed', description: "Password must be at least 6 characters" });
         return false;
       }
       if (!/[0-9]/.test(formData.password)) {
-        toast.open("Password must contain at least one number", 4000, "Validation Error", "error");
+        setStatusModal({ open: true, type: 'failed', description: "Password must contain at least one number" });
         return false;
       }
       if (formData.password !== formData.confirm_password) {
-        toast.open("Passwords do not match", 4000, "Validation Error", "error");
+        setStatusModal({ open: true, type: 'failed', description: "Passwords do not match" });
         return false;
       }
     }
@@ -578,15 +576,15 @@ function ManageUser() {
     // For editing, only validate password if provided
     if (isUserEditing && formData.password) {
       if (formData.password.length < 6) {
-        toast.open("Password must be at least 6 characters", 4000, "Validation Error", "error");
+        setStatusModal({ open: true, type: 'failed', description: "Password must be at least 6 characters" });
         return false;
       }
       if (!/[0-9]/.test(formData.password)) {
-        toast.open("Password must contain at least one number", 4000, "Validation Error", "error");
+        setStatusModal({ open: true, type: 'failed', description: "Password must contain at least one number" });
         return false;
       }
       if (formData.password !== formData.confirm_password) {
-        toast.open("Passwords do not match", 4000, "Validation Error", "error");
+        setStatusModal({ open: true, type: 'failed', description: "Passwords do not match" });
         return false;
       }
     }
@@ -623,7 +621,7 @@ function ManageUser() {
             await settingsApi.updateUserPermissions(response.data.id, permissions);
           } catch (permErr) {
             console.error("[ManageUser] Failed to save user permissions:", permErr);
-            toast.open("User created but permissions could not be saved — please edit the user to set permissions", 6000, "Warning", "warning");
+            setStatusModal({ open: true, type: 'failed', description: "User created but permissions could not be saved — please edit the user to set permissions" });
           }
 
           // Save profile image if uploaded (non-critical)
@@ -690,7 +688,7 @@ function ManageUser() {
           await settingsApi.updateUserPermissions(formData.id, permissions);
         } catch (permErr) {
           console.error("[ManageUser] Failed to save permissions on update:", permErr);
-          toast.open("User updated but permissions could not be saved — please edit the user to set permissions", 6000, "Warning", "warning");
+          setStatusModal({ open: true, type: 'failed', description: "User updated but permissions could not be saved — please edit the user to set permissions" });
         }
 
         setStatusModal({ open: true, type: 'success', description: `User "${formData.full_name}" updated successfully` });
@@ -714,7 +712,7 @@ function ManageUser() {
     setShowDeleteConfirm(false);
 
     if (!formData.id) {
-      toast.open("Please select a user to delete", 4000, "Error", "error");
+      setStatusModal({ open: true, type: 'failed', description: "Please select a user to delete" });
       return;
     }
 
@@ -788,7 +786,7 @@ function ManageUser() {
                           onError={(e) => {
                             console.error("[ManageUser] Image failed to load");
                             e.target.style.display = 'none';
-                            toast.open("Profile image could not be displayed", 3000, "Warning", "warning");
+                            setStatusModal({ open: true, type: 'failed', description: "Profile image could not be displayed" });
                           }}
                           onLoad={() => {
                             console.log("[ManageUser] Image loaded successfully");

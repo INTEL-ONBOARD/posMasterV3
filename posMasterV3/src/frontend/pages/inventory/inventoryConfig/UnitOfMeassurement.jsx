@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useContext, useMemo } from "react";
 import { Search, Plus, X, Check, Ruler, Trash2 } from "lucide-react";
 import { uomApi } from "../../../api/localApi";
-import ToastContext from "../../toasts/ToastService";
 import { useReactiveData, TABLES } from "../../../store";
+import StatusModal from "../../../components/StatusModal.jsx";
 
 function UnitOfMeassurement() {
-  const toast = useContext(ToastContext);
+  const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
 
   // Use reactive data hook for UOMs
   const { data: allUnits, refetch: refetchUoms } = useReactiveData(TABLES.UOM);
@@ -50,7 +50,7 @@ function UnitOfMeassurement() {
       if (response.status === "success") {
         refetchUoms();
         handleClear();
-        toast?.open(editingId ? "Unit updated successfully" : "Unit added successfully", 3000, 'Success', 'success');
+        setStatusModal({ open: true, type: 'success', description: editingId ? "Unit updated successfully" : "Unit added successfully" });
       } else {
         setError(response.message || "Operation failed");
       }
@@ -70,7 +70,7 @@ function UnitOfMeassurement() {
       if (response.status === "success") {
         refetchUoms();
         if (editingId === id) handleClear();
-        toast?.open("Unit deleted successfully", 3000, 'Success', 'success');
+        setStatusModal({ open: true, type: 'success', description: "Unit deleted successfully" });
       }
     } catch (error) {
       setError(error.message || 'Delete failed');
@@ -242,6 +242,14 @@ function UnitOfMeassurement() {
           Showing {units.length} of {(allUnits || []).length} units
         </div>
       </div>
+
+      <StatusModal
+        isOpen={statusModal.open}
+        closeModal={() => setStatusModal({ open: false, type: null, description: "" })}
+        type={statusModal.type}
+        description={statusModal.description}
+        context="inventory"
+      />
     </div>
   );
 }

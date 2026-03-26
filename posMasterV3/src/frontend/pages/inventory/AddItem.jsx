@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useContext, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { uomApi, categoryApi, itemApi } from "../../api/localApi";
 import { useNavigate } from "react-router-dom";
 import { X, Printer, ChevronDown, ChevronUp, Search, Package, Filter, SortAsc, Upload, Image } from "lucide-react";
@@ -6,7 +6,6 @@ import AddItemCard from "../../components/AddItemCard.jsx";
 import ConfirmDeleteModal from "../../components/ConfirmDeleteModal.jsx";
 import StatusModal from "../../components/StatusModal.jsx";
 import barcodeImg from "../../assets/barcode.png";
-import ToastContext from "../toasts/ToastService.jsx";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
 import { useReactiveData, TABLES } from "../../store";
 
@@ -17,7 +16,6 @@ import registerItemService from "../../api/services/inventory/registerItemServic
 
 
 function AddItem({ isActive }) {
-  const toast = useContext(ToastContext);
   const statusLog = useStatusLog();
 
   // Use reactive data hooks for UOMs, Categories, and Items
@@ -139,7 +137,7 @@ function AddItem({ isActive }) {
     } catch (error) {
       console.error('Error:', error);
       //alert('Failed to generate PDF');
-      toast.open("Failed to generate PDF", 4000, 'Pdf Failed', 'error');
+      setStatusModal({ open: true, type: 'failed', description: "Failed to generate PDF" });
     }
   };
 
@@ -165,14 +163,14 @@ function AddItem({ isActive }) {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      toast.open("Please select an image file", 4000, 'Invalid File', 'error');
+      setStatusModal({ open: true, type: 'failed', description: "Please select an image file" });
       return;
     }
 
     // Validate file size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      toast.open("Image size must be less than 5MB", 4000, 'File Too Large', 'error');
+      setStatusModal({ open: true, type: 'failed', description: "Image size must be less than 5MB" });
       return;
     }
 
@@ -183,10 +181,10 @@ function AddItem({ isActive }) {
         ...prev,
         item_image_blob: base64String
       }));
-      toast.open("Image uploaded successfully", 2000, 'Success', 'success');
+      setStatusModal({ open: true, type: 'success', description: "Image uploaded successfully" });
     };
     reader.onerror = () => {
-      toast.open("Failed to read image file", 4000, 'Error', 'error');
+      setStatusModal({ open: true, type: 'failed', description: "Failed to read image file" });
     };
     reader.readAsDataURL(file);
   };
@@ -252,7 +250,6 @@ function AddItem({ isActive }) {
       setFormStatus("form");
       setStatusModal({ open: true, type: 'failed', description: err.message || 'Item registration failed' });
       statusLog.error("Item registration failed");
-      toast.open("Create item operation failed", 4000, 'Item creation Failed', 'error');
     }
     finally {
       //repopulate items
@@ -300,7 +297,6 @@ function AddItem({ isActive }) {
       setFormStatus("form");
       setStatusModal({ open: true, type: 'failed', description: err.message || 'Item update failed' });
       statusLog.error("Item update failed");
-      toast.open("Update item operation failed. Please try again", 4000, 'Item update Failed', 'error');
     }
     finally {
       //repopulate items

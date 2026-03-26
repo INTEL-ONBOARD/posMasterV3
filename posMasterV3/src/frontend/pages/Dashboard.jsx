@@ -1,6 +1,6 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
-import ToastContext from "./toasts/ToastService.jsx";
+import React, { useState, useEffect, useRef } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
+import StatusModal from "../components/StatusModal.jsx";
 import Sidebar from "../components/Sidebar.jsx";
 import { useStatusLog, StatusType } from "../services/StatusLogService.jsx";
 import { useRealTimeSync } from "../hooks/useRealTimeSync";
@@ -102,7 +102,7 @@ const formatTime = (date) => {
 
 function Dashboard() {
   const [activeSection, setActiveSection] = useState(null);
-  const toast = useContext(ToastContext);
+  const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
   const navigate = useNavigate();
   const { currentStatus, isOnline: statusIsOnline } = useStatusLog();
   const { pendingCount, lastSyncTime, isSyncing, isOnline } = useRealTimeSync();
@@ -182,7 +182,7 @@ function Dashboard() {
         setShowKickedModal(true);
       } else if (event.type === 'invalid') {
         // Session expired - logout directly
-        toast.open('Session expired', 3000, 'Warning', 'warning');
+        setStatusModal({ open: true, type: 'failed', description: 'Session expired' });
         handleForcedLogout('Session expired');
       }
     });
@@ -205,7 +205,7 @@ function Dashboard() {
       unsubscribeKicked?.();
       stopMonitor();
     };
-  }, [toast]);
+  }, []);
 
   // Auto-enforce kicked modal: force logout after 8 seconds if user doesn't click OK
   useEffect(() => {
@@ -225,6 +225,7 @@ function Dashboard() {
   };
 
   return (
+    <>
     <BranchProvider>
       <div className="min-h-screen flex flex-col">
         {/* Session Kicked Modal */}
@@ -333,6 +334,14 @@ function Dashboard() {
       </footer>
       </div>
     </BranchProvider>
+    <StatusModal
+      isOpen={statusModal.open}
+      closeModal={() => setStatusModal({ open: false, type: null, description: "" })}
+      type={statusModal.type}
+      description={statusModal.description}
+      context="default"
+    />
+    </>
   );
 }
 

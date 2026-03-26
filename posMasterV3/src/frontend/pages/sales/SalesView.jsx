@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useContext, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import SalesItemCard from "../../components/SalesItemCard";
 import { salesApi } from "../../api/localApi";
-import { ChevronDown, User, Package, ShoppingCart, X, DollarSign, RefreshCw, Pause, Trash2, ScanLine } from "lucide-react";
-import ToastContext from "../toasts/ToastService.jsx";
+import { ChevronDown, User, Package, ShoppingCart, X, DollarSign, RefreshCw, Pause, Play, Trash2, ScanLine } from "lucide-react";
+import StatusModal from "../../components/StatusModal.jsx";
 import { localAuth } from "../../api/services/localAuth";
 import { useReactiveData, TABLES } from "../../store";
 
@@ -104,7 +104,7 @@ export default function SalesView({ isActive }) {
   const billRef = useRef(null);
   const searchInputRef = useRef(null);
   const proceedBtnRef = useRef(null);
-  const toast = useContext(ToastContext);
+  const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
 
   const focusSearch = () => {
     setTimeout(() => searchInputRef.current?.focus(), 50);
@@ -173,6 +173,9 @@ export default function SalesView({ isActive }) {
   const [modal, setModal] = useState(false);
   const closeModal = () => setModal(false);
 
+  // Held sale state
+  const [heldOrder, setHeldOrder] = useState(null); // the most recent held order
+
   // Cart item edit modal state
   const [cartItemModal, setCartItemModal] = useState(false);
   const [selectedCartItem, setSelectedCartItem] = useState(null);
@@ -222,8 +225,24 @@ export default function SalesView({ isActive }) {
     if (isActive) {
       fetchCurrentUser();
       focusSearch();
+      fetchHeldOrder();
     }
   }, [isActive]);
+
+  // Fetch the most recent held order for this session
+  const fetchHeldOrder = async () => {
+    try {
+      const response = await salesApi.getHeldOrders();
+      if (response?.status === 'success' && response.data?.length > 0) {
+        // Use the most recently held order
+        setHeldOrder(response.data[response.data.length - 1]);
+      } else {
+        setHeldOrder(null);
+      }
+    } catch (e) {
+      console.error('[SalesView] Failed to fetch held orders:', e);
+    }
+  };
 
   // Shift+Space opens the member selection modal
   useEffect(() => {
@@ -364,6 +383,7 @@ export default function SalesView({ isActive }) {
       // New item added via item card modal
       return [...prev, updatedItem];
     });
+    setSearch("");
   };
 
   const [searchLoading, setSearchLoading] = useState(false);
@@ -452,11 +472,11 @@ export default function SalesView({ isActive }) {
           const stockId = item.stock_id || item.id;
           const qty = item.customer_quantity;
           if (!itemId || !stockId) {
-              toast.open(`Item "${item.item_name || 'unknown'}" is missing required IDs`, 5000, 'Validation Error', 'error');
+              setStatusModal({ open: true, type: 'failed', description: `Item "${item.item_name || 'unknown'}" is missing required IDs` });
               return { success: false };
           }
           if (!Number.isFinite(qty) || qty <= 0) {
-              toast.open(`Invalid quantity for "${item.item_name || 'unknown'}"`, 5000, 'Validation Error', 'error');
+              setStatusModal({ open: true, type: 'failed', description: `Invalid quantity for "${item.item_name || 'unknown'}"` });
               return { success: false };
           }
       }
@@ -496,19 +516,19 @@ export default function SalesView({ isActive }) {
             await generateBillPdf(checkoutData);
         } catch (printError) {
             console.error('[SalesView] Bill generation failed:', printError);
-            toast.open('Sale saved but bill printing failed', 5000, 'Print Warning', 'warning');
+            setStatusModal({ open: true, type: 'failed', description: 'Sale saved but bill printing failed' });
         }
         // Mark sale as completed - clearForm will be called when modal closes
         setSaleCompleted(true);
         // Return success for the modal to show animation
         return { success: true, data: response.data };
       } else {
-        toast.open(response.message || "Failed to process sale", 5000, 'Sale Error', 'error');
+        setStatusModal({ open: true, type: 'failed', description: response.message || "Failed to process sale" });
         throw new Error(response.message || "Failed to process sale");
       }
     } catch (error) {
       console.error("[SalesView] Error processing sale:", error);
-      toast.open("Failed to process sale", 5000, 'Sale Error', 'error');
+      setStatusModal({ open: true, type: 'failed', description: "Failed to process sale" });
       throw error;
     }
   };
@@ -516,7 +536,7 @@ export default function SalesView({ isActive }) {
   // Open checkout modal
   const handleProceedClick = () => {
     if (selectedItems.length === 0) {
-      toast.open("Please add items to the sale", 4000, 'Cart Empty', 'warning');
+      setStatusModal({ open: true, type: 'failed', description: "Please add items to the sale" });
       return;
     }
     setCheckoutModal(true);
@@ -525,7 +545,7 @@ export default function SalesView({ isActive }) {
   // Hold sale for later - saves to DB without completing payment or decrementing stock
   const handleHoldSale = async () => {
     if (selectedItems.length === 0) {
-      toast.open("No items to hold", 4000, 'Cart Empty', 'warning');
+      setStatusModal({ open: true, type: 'failed', description: "No items to hold" });
       return;
     }
 
@@ -555,15 +575,55 @@ export default function SalesView({ isActive }) {
     try {
       const response = await salesApi.hold(saleData);
       if (response.status === "success") {
-        toast.open("Sale held successfully", 4000, 'Sale Held', 'success');
+        setStatusModal({ open: true, type: 'success', description: "Sale held. Click Release to resume." });
         clearForm();
+        await fetchHeldOrder();
       } else {
-        toast.open(response.message || "Failed to hold sale", 5000, 'Hold Failed', 'error');
+        setStatusModal({ open: true, type: 'failed', description: response.message || "Failed to hold sale" });
       }
     } catch (error) {
       console.error("[SalesView] Error holding sale:", error);
-      toast.open("Failed to hold sale", 5000, 'Hold Failed', 'error');
+      setStatusModal({ open: true, type: 'failed', description: "Failed to hold sale" });
     }
+  };
+
+  // Release held order — loads items back into cart
+  const handleReleaseSale = () => {
+    if (!heldOrder) return;
+
+    if (selectedItems.length > 0) {
+      setStatusModal({ open: true, type: 'failed', description: "Clear the current cart first before releasing the held sale" });
+      return;
+    }
+
+    const restoredItems = (heldOrder.items || []).map(item => ({
+      id: item.item_id,
+      _id: item.item_id,
+      stock_id: item.stock_id,
+      item_id: item.item_id,
+      sku: item.sku,
+      item_name: item.item_name,
+      item_image_url: item.item_image_url || null,
+      batch_code: item.batch_code,
+      retail_price: item.unit_price,
+      stock_price: item.unit_price,
+      customer_quantity: item.quantity,
+      customer_discount: item.discount || 0,
+      quantity: item.quantity,
+      uom: { symbol: '', unit_name: '' },
+      category: { brand: '', type: '' },
+    }));
+
+    setSelectedItems(restoredItems);
+
+    // Restore member if not guest
+    if (heldOrder.member && !heldOrder.member.is_guest) {
+      setSelectedMember(heldOrder.member);
+    }
+
+    setHeldOrder(null);
+    setStatusModal({ open: true, type: 'success', description: "Held sale restored to cart" });
+    focusSearch();
   };
 
   // Store checkout data for bill generation
@@ -972,14 +1032,24 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
                 <Trash2 className="w-4 h-4" />
                 Clear
               </button>
-              <button
-                onClick={handleHoldSale}
-                disabled={selectedItems.length === 0}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-amber-200 text-amber-600 rounded-xl font-semibold hover:bg-amber-50 hover:border-amber-300 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Pause className="w-4 h-4" />
-                Hold
-              </button>
+              {heldOrder ? (
+                <button
+                  onClick={handleReleaseSale}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-amber-500 border-2 border-amber-500 text-white rounded-xl font-semibold hover:bg-amber-600 hover:border-amber-600 transition-all text-sm"
+                >
+                  <Play className="w-4 h-4" />
+                  Release
+                </button>
+              ) : (
+                <button
+                  onClick={handleHoldSale}
+                  disabled={selectedItems.length === 0}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-amber-200 text-amber-600 rounded-xl font-semibold hover:bg-amber-50 hover:border-amber-300 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Pause className="w-4 h-4" />
+                  Hold
+                </button>
+              )}
             </div>
 
             {/* Proceed Button */}
@@ -1024,6 +1094,14 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
         selectedMember={selectedMember}
         stockTotal={stockTotal}
         onConfirmSale={handleConfirmSale}
+      />
+
+      <StatusModal
+        isOpen={statusModal.open}
+        closeModal={() => setStatusModal({ open: false, type: null, description: "" })}
+        type={statusModal.type}
+        description={statusModal.description}
+        context="sale"
       />
     </div>
   );

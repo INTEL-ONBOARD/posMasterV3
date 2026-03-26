@@ -1,12 +1,10 @@
-import React, { useEffect, useContext, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, Search, Users, Building2, Trash2, Plus, RefreshCw } from "lucide-react";
 import { supplierApi } from '../../api/localApi';
-import ToastContext from '../toasts/ToastService';
 import { useReactiveData, TABLES } from '../../store';
 import StatusModal from '../../components/StatusModal.jsx';
 
 function SupplierReg() {
-  const toast = useContext(ToastContext);
   //left section form block controls
   const [openSupplier, setOpenSupplier] = useState(true);
 
@@ -212,7 +210,7 @@ function SupplierReg() {
       if (!isRequestDataValid(requestData)) {
         //console.log('Validation failed: One or more fields are empty');
         //toast.open("Please enter all fields", "Missing fields");
-        toast.open("Please enter all fields", 4000, 'Missing fields', 'error');
+        setStatusModal({ open: true, type: 'failed', description: "Please enter all required fields" });
         setFormStatus("form");
         return; // Cancel API call
       }
@@ -231,7 +229,6 @@ function SupplierReg() {
       console.error("Create supplier error:", err);
       setFormStatus("form");
       setStatusModal({ open: true, type: 'failed', description: err.message || 'Create supplier operation failed' });
-      toast.open("Create Supplier operation failed", 4000, 'Supplier creation Failed', 'error');
     }
     finally {
       refetchSuppliers();
@@ -267,7 +264,7 @@ function SupplierReg() {
       if (!isRequestDataValid(requestData)) {
         //console.log('Validation failed: One or more fields are empty');
         //toast.open("Please enter all fields", "Missing fields");
-        toast.open("Please enter all fields", 4000, 'Missing fields', 'error');
+        setStatusModal({ open: true, type: 'failed', description: "Please enter all required fields" });
         setFormStatus("form");
         return; // Cancel API call
       }
@@ -288,7 +285,6 @@ function SupplierReg() {
       console.error("Update supplier error:", err.message);
       setFormStatus("form");
       setStatusModal({ open: true, type: 'failed', description: err.message || 'Update supplier operation failed' });
-      toast.open("Update supplier operation failed", 4000, 'Supplier update Failed', 'error');
     }
     finally {
       refetchSuppliers();
@@ -312,7 +308,6 @@ function SupplierReg() {
       console.error("Delete supplier error:", err);
       setFormStatus("form");
       setStatusModal({ open: true, type: 'failed', description: err.message || 'Delete supplier operation failed' });
-      toast.open("Delete supplier operation failed", 4000, 'Supplier deletion Failed', 'error');
     }
     finally {
       refetchSuppliers();

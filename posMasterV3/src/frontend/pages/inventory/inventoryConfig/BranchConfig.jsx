@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useContext, useMemo } from "react";
 import { Search, X, Check, MapPin, Plus } from "lucide-react";
 import { branchApi } from "../../../api/localApi";
-import ToastContext from "../../toasts/ToastService";
 import { useReactiveData, TABLES } from "../../../store";
+import StatusModal from "../../../components/StatusModal.jsx";
 
 function BranchConfig() {
-  const toast = useContext(ToastContext);
+  const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
 
   // Use reactive data hook for branches
   const { data: allBranches, refetch: refetchBranches } = useReactiveData(TABLES.BRANCHES);
@@ -54,7 +54,7 @@ function BranchConfig() {
       if (response.status === "success") {
         refetchBranches();
         handleClear();
-        toast?.open(editingId ? "Branch updated successfully" : "Branch added successfully", 3000, 'Success', 'success');
+        setStatusModal({ open: true, type: 'success', description: editingId ? "Branch updated successfully" : "Branch added successfully" });
       } else {
         setError(response.message || "Operation failed");
       }
@@ -74,7 +74,7 @@ function BranchConfig() {
       if (response.status === "success") {
         refetchBranches();
         if (editingId === id) handleClear();
-        toast?.open("Branch deleted successfully", 3000, 'Success', 'success');
+        setStatusModal({ open: true, type: 'success', description: "Branch deleted successfully" });
       }
     } catch (error) {
       setError(error.message || 'Delete failed');
@@ -266,6 +266,14 @@ function BranchConfig() {
           Showing {branches.length} of {(allBranches || []).length} branches
         </div>
       </div>
+
+      <StatusModal
+        isOpen={statusModal.open}
+        closeModal={() => setStatusModal({ open: false, type: null, description: "" })}
+        type={statusModal.type}
+        description={statusModal.description}
+        context="default"
+      />
     </div>
   );
 }
