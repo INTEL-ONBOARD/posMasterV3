@@ -403,7 +403,7 @@ class RestockRepository extends BaseRepository {
             `);
 
             const decreaseStockStmt = this.db.prepare(`
-                UPDATE stock SET quantity = MAX(0, quantity - ?), updated_at = ?
+                UPDATE stock SET quantity = MAX(0, quantity - ?), updated_at = ?, sync_status = 'pending'
                 WHERE item_id = ? AND batch_code = ?
             `);
 

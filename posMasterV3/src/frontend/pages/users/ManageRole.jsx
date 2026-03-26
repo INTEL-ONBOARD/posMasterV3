@@ -857,12 +857,18 @@ function ManageRole() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex-1">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Users by Role</p>
           <div className="space-y-2">
-            {Object.entries(userStats.roleBreakdown).map(([role, count]) => (
-              <div key={role} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-600 capitalize font-medium">{role}</span>
-                <span className="text-sm font-bold text-gray-800 tabular-nums">{count}</span>
-              </div>
-            ))}
+            {Object.entries(userStats.roleBreakdown).map(([role, count]) => {
+              // Find friendly name from predefined roles or custom roles list
+              const predefined = predefinedRoles.find(r => r.id === role);
+              const custom = rolesList.find(r => r.id === role);
+              const friendlyName = predefined?.name || custom?.name || role;
+              return (
+                <div key={role} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-600 font-medium">{friendlyName}</span>
+                  <span className="text-sm font-bold text-gray-800 tabular-nums">{count}</span>
+                </div>
+              );
+            })}
             {Object.keys(userStats.roleBreakdown).length === 0 && (
               <div className="text-center py-8">
                 <p className="text-sm text-gray-400">No data available</p>

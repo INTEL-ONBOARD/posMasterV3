@@ -1,8 +1,8 @@
-import React, { useEffect, useContext, useRef, useState } from "react";
+import React, { useEffect, useContext, useRef, useState, useCallback } from "react";
 import { X, ChevronDown, ChevronUp, Upload, RefreshCw } from "lucide-react";
 import { userApi, authApi, branchApi, settingsApi } from "../../api/localApi";
 import ToastContext from "../toasts/ToastService";
-import { useReactiveData, TABLES, dataStore } from "../../store";
+import { useReactiveData, TABLES } from "../../store";
 import StatusModal from "../../components/StatusModal.jsx";
 
 function ManageUser() {
@@ -23,7 +23,7 @@ function ManageUser() {
 
   // Search loading state
   const [searchLoading, setSearchLoading] = useState(false);
-  const [rolesList] = useState([
+  const [rolesList, setRolesList] = useState([
     { value: "admin", label: "Admin" },
     { value: "manager", label: "Manager" },
     { value: "cashier", label: "Cashier" },
@@ -81,6 +81,7 @@ function ManageUser() {
   const [showDirtyWarning, setShowDirtyWarning] = useState(false);
   const [pendingSelectUser, setPendingSelectUser] = useState(null);
   const timerRef = useRef(null);
+  const originalFormDataRef = useRef(null);
 
   const closeStatusModal = () => {
     setStatusModal({ open: false, type: null, description: "" });
@@ -226,29 +227,51 @@ function ManageUser() {
   // Role permissions state (can be modified by admin in ManageRole)
   const [rolePermissions, setRolePermissions] = useState(defaultRolePermissions);
 
-  // Load role permissions from app_settings
+  // Load role permissions and custom roles from app_settings
   const loadRolePermissions = async () => {
     try {
       const response = await settingsApi.getAppSettings();
-      if (response.status === "success" && response.data?.system_role_permissions) {
-        const savedPerms = response.data.system_role_permissions;
-        // Merge saved permissions with defaults
-        const mergedPerms = { ...defaultRolePermissions };
-        Object.keys(savedPerms).forEach(roleId => {
-          mergedPerms[roleId] = savedPerms[roleId];
-        });
-        setRolePermissions(mergedPerms);
-        console.log("[ManageUser] Loaded saved role permissions");
+      if (response.status === "success" && response.data) {
+        // Merge saved system role permissions with defaults
+        if (response.data.system_role_permissions) {
+          const savedPerms = response.data.system_role_permissions;
+          const mergedPerms = { ...defaultRolePermissions };
+          Object.keys(savedPerms).forEach(roleId => {
+            mergedPerms[roleId] = savedPerms[roleId];
+          });
+          setRolePermissions(mergedPerms);
+        }
+
+        // Append custom roles to the roles dropdown
+        const customRoles = response.data.custom_roles || [];
+        if (customRoles.length > 0) {
+          setRolesList(prev => {
+            const systemIds = new Set(prev.map(r => r.value));
+            const newCustom = customRoles
+              .filter(r => !systemIds.has(r.id))
+              .map(r => ({ value: r.id, label: r.name }));
+            return newCustom.length > 0 ? [...prev, ...newCustom] : prev;
+          });
+        }
+        console.log("[ManageUser] Loaded saved role permissions and custom roles");
       }
     } catch (error) {
       console.log("[ManageUser] Using default role permissions");
     }
   };
 
-  // Check if form has unsaved changes (any non-empty editable field differs from blank state)
+  // Check if form has unsaved changes compared to originally loaded user data
   const isFormDirty = () => {
     if (!isUserEditing) return false;
+    const orig = originalFormDataRef.current;
+    if (!orig) return false;
     return !!(
+      formData.full_name !== orig.full_name ||
+      formData.username !== orig.username ||
+      formData.email !== orig.email ||
+      JSON.stringify(formData.roles) !== JSON.stringify(orig.roles) ||
+      String(formData.branch_id) !== String(orig.branch_id) ||
+      formData.is_active !== orig.is_active ||
       formData.password ||
       formData.confirm_password
     );
@@ -306,8 +329,8 @@ function ManageUser() {
           if (hasNewSaleKeys && hasNewInventoryKeys) {
             // New structure - merge with defaults to fill any missing keys
             setPermissions({
-              SaleAccess: { ...defaultPermissions.SaleAccess, ...loadedPerms.SaleAccess },
-              InventoryAccess: { ...defaultPermissions.InventoryAccess, ...loadedPerms.InventoryAccess },
+              SaleAccess: { ...defaultPermissions.SaleAccess, ...(loadedPerms.SaleAccess || {}) },
+              InventoryAccess: { ...defaultPermissions.InventoryAccess, ...(loadedPerms.InventoryAccess || {}) },
               UserAccess: { ...defaultPermissions.UserAccess, ...(loadedPerms.UserAccess || {}) },
             });
           } else {
@@ -335,7 +358,7 @@ function ManageUser() {
     const parsedRoles = parseUserRoles(user.roles);
     const finalRoles = parsedRoles.length > 0 ? parsedRoles : ["cashier"];
 
-    setFormData({
+    const loadedFormData = {
       id: user.id,
       username: user.username || "",
       email: user.email || "",
@@ -346,7 +369,17 @@ function ManageUser() {
       is_active: user.is_active !== undefined ? user.is_active : true,
       branch_id: user.branch_id || "",
       profile_image: profileImg,
-    });
+    };
+    setFormData(loadedFormData);
+    // Snapshot original values for dirty tracking
+    originalFormDataRef.current = {
+      full_name: loadedFormData.full_name,
+      username: loadedFormData.username,
+      email: loadedFormData.email,
+      roles: [...loadedFormData.roles],
+      branch_id: loadedFormData.branch_id,
+      is_active: loadedFormData.is_active,
+    };
 
     console.log("[ManageUser] FormData updated with profile_image:", profileImg ? "YES" : "NO");
     console.log("[ManageUser] User roles:", user.roles, "-> Parsed:", finalRoles);
@@ -366,8 +399,12 @@ function ManageUser() {
       branch_id: "",
       profile_image: "",
     });
+    originalFormDataRef.current = null;
     setPermissions(defaultPermissions);
     setIsUserEditing(false);
+    // Reset file input
+    const fileInput = document.getElementById("profileImageUpload");
+    if (fileInput) fileInput.value = "";
   };
 
   // Handle input changes
@@ -378,10 +415,13 @@ function ManageUser() {
       setFormData((prev) => ({ ...prev, [name]: e.target.checked }));
     } else if (name === "roles") {
       setFormData((prev) => ({ ...prev, roles: [value] }));
-      // Apply role-based default permissions when role changes
-      const selectedRolePerms = rolePermissions[value];
-      if (selectedRolePerms) {
-        setPermissions(selectedRolePerms);
+      // Only apply role-based defaults on new user creation, not when editing
+      // to avoid overwriting existing custom permissions
+      if (!isUserEditing) {
+        const selectedRolePerms = rolePermissions[value];
+        if (selectedRolePerms) {
+          setPermissions(selectedRolePerms);
+        }
       }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
@@ -521,8 +561,8 @@ function ManageUser() {
         toast.open("Please enter password", 4000, "Validation Error", "error");
         return false;
       }
-      if (formData.password.length < 8) {
-        toast.open("Password must be at least 8 characters", 4000, "Validation Error", "error");
+      if (formData.password.length < 6) {
+        toast.open("Password must be at least 6 characters", 4000, "Validation Error", "error");
         return false;
       }
       if (!/[0-9]/.test(formData.password)) {
@@ -537,8 +577,8 @@ function ManageUser() {
 
     // For editing, only validate password if provided
     if (isUserEditing && formData.password) {
-      if (formData.password.length < 8) {
-        toast.open("Password must be at least 8 characters", 4000, "Validation Error", "error");
+      if (formData.password.length < 6) {
+        toast.open("Password must be at least 6 characters", 4000, "Validation Error", "error");
         return false;
       }
       if (!/[0-9]/.test(formData.password)) {
@@ -646,7 +686,12 @@ function ManageUser() {
         }
 
         // Update user permissions
-        await settingsApi.updateUserPermissions(formData.id, permissions);
+        try {
+          await settingsApi.updateUserPermissions(formData.id, permissions);
+        } catch (permErr) {
+          console.error("[ManageUser] Failed to save permissions on update:", permErr);
+          toast.open("User updated but permissions could not be saved — please edit the user to set permissions", 6000, "Warning", "warning");
+        }
 
         setStatusModal({ open: true, type: 'success', description: `User "${formData.full_name}" updated successfully` });
         clearUserInput();
@@ -679,12 +724,12 @@ function ManageUser() {
       const response = await userApi.delete(formData.id, true);
 
       if (response.status === "success") {
-        setStatusModal({ open: true, type: 'success', description: 'User deleted successfully' });
-        // Immediately remove from cache so UI updates without waiting for refetch
-        dataStore.optimisticUpdate(TABLES.USERS, 'DELETE', {}, formData.id);
+        const description = response.message?.includes('deactivated')
+          ? 'User deactivated (has transaction history)'
+          : 'User deleted successfully';
+        setStatusModal({ open: true, type: 'success', description });
         clearUserInput();
-        // Refetch to confirm final state from DB
-        refetchUsers();
+        await refetchUsers();
         setFormStatus("form");
       } else {
         setFormStatus("form");

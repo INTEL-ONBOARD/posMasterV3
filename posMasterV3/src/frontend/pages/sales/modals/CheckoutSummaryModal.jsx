@@ -24,6 +24,15 @@ function SuccessAnimation({ saleData, onClose, formatCurrency }) {
     };
   }, [onClose]);
 
+  // Press Enter to close the success screen
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-2xl overflow-hidden">
       {/* Animated background circles */}
@@ -568,6 +577,13 @@ function CheckoutSummaryModal({
                         className="w-full pl-12 pr-4 py-3 text-xl font-bold text-gray-800 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none tabular-nums disabled:opacity-50"
                         placeholder="0.00"
                         autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const canConfirm = !isProcessing && totalAmount > 0 && !creditWarning && selectedPaymentMethod &&
+                              !(selectedPaymentMethod?.type === 'cash' && cashReceivedNum < totalAmount && cashReceivedNum > 0);
+                            if (canConfirm) handleConfirm();
+                          }
+                        }}
                       />
                     </div>
                     {/* Quick amount buttons */}

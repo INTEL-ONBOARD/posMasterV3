@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X, Package, Minus, Plus, Tag, Layers } from "lucide-react";
 import barcodeImg from "../../../assets/barcode.png";
 import placeholderImg from "../../../assets/card_placeholder_img.png";
 import { restockApi } from "../../../api/localApi";
 import { extractDateOnly } from "../../../util/common/date";
 
-function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove }) {
+function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClose }) {
   const [quantity, setQuantity] = useState(1);
   const [discount, setDiscount] = useState(0);
   const [stockEntries, setStockEntries] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [isLoadingBatches, setIsLoadingBatches] = useState(false);
+  const quantityInputRef = useRef(null);
+  const updateBtnRef = useRef(null);
+  const maxQuantityRef = useRef(999);
 
   // Fetch stock entries when item changes
   useEffect(() => {
@@ -26,6 +29,31 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove }) {
       setDiscount(item.customer_discount || 0);
     }
   }, [item]);
+
+  // Auto-focus quantity input when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => quantityInputRef.current?.focus(), 80);
+    }
+  }, [isOpen]);
+
+  // Keyboard +/- to adjust quantity while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      // Don't intercept when user is typing in the discount input
+      if (e.target === quantityInputRef.current) return;
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        setQuantity(q => Math.min(maxQuantityRef.current, q + 1));
+      } else if (e.key === '-') {
+        e.preventDefault();
+        setQuantity(q => Math.max(1, q - 1));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
 
   // Set selected batch when stock entries are loaded
   useEffect(() => {
@@ -71,6 +99,7 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove }) {
 
   const unitPrice = selectedBatch?.retail_price || item.retail_price || 0;
   const maxQuantity = selectedBatch?.qty || item.quantity || 999;
+  maxQuantityRef.current = maxQuantity;
   const lineTotal = (unitPrice - discount) * quantity;
   const hasMultipleBatches = stockEntries.length > 1;
 
@@ -100,11 +129,13 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove }) {
       customer_discount: discount
     });
     closeModal();
+    onClose?.();
   };
 
   const handleRemove = () => {
     onRemove(item.id);
     closeModal();
+    onClose?.();
   };
 
   const imageSrc = item.item_image_url || placeholderImg;
@@ -266,11 +297,18 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove }) {
                 </button>
 
                 <input
+                  ref={quantityInputRef}
                   type="number"
                   value={quantity}
                   onChange={(e) => {
                     const val = parseInt(e.target.value) || 1;
                     setQuantity(Math.max(1, Math.min(maxQuantity, val)));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === 'Tab') {
+                      e.preventDefault();
+                      updateBtnRef.current?.focus();
+                    }
                   }}
                   className="w-24 h-12 text-center text-2xl font-bold text-gray-800 bg-white border-2 border-[#1A318C] rounded-xl focus:outline-none"
                 />
@@ -339,7 +377,9 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove }) {
               Cancel
             </button>
             <button
+              ref={updateBtnRef}
               onClick={handleUpdate}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleUpdate(); }}
               className="flex-1 py-3 bg-[#1A318C] text-white rounded-xl font-semibold hover:bg-[#152870] transition-colors text-sm"
             >
               Update Item

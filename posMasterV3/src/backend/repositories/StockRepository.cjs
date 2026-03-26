@@ -16,6 +16,75 @@ class StockRepository extends BaseRepository {
     }
 
     /**
+     * Suppress base class raw broadcasts — we broadcast the JOINed record
+     * so DataStore cache entries stay in the shape getAllWithItems() returns.
+     */
+    shouldBroadcast() {
+        return false;
+    }
+
+    /**
+     * Fetch a single stock record with JOINed item/category/uom fields.
+     * Matches the shape returned by getAllWithItems().
+     */
+    getWithItemById(id) {
+        const stmt = this.db.prepare(`
+            SELECT
+                s.*,
+                i.sku,
+                i.item_code,
+                i.item_name,
+                i.item_image_url,
+                i.maximum_capacity,
+                i.category_id,
+                i.uom_id,
+                c.brand as category_brand,
+                c.type as category_type,
+                u.symbol as uom_symbol,
+                u.unit_name as uom_unit_name
+            FROM stock s
+            JOIN items i ON s.item_id = i.id
+            LEFT JOIN categories c ON i.category_id = c.id
+            LEFT JOIN units_of_measurement u ON i.uom_id = u.id
+            WHERE s.id = ?
+        `);
+        return stmt.get(id) || null;
+    }
+
+    /**
+     * Override create to broadcast JOINed record.
+     */
+    create(data) {
+        const raw = super.create(data);
+        if (raw) {
+            const joined = this.getWithItemById(raw.id);
+            broadcastDataChange(this.tableName, 'INSERT', raw.id, joined || raw);
+        }
+        return raw;
+    }
+
+    /**
+     * Override update to broadcast JOINed record.
+     */
+    update(id, data) {
+        const raw = super.update(id, data);
+        if (raw) {
+            const joined = this.getWithItemById(id);
+            broadcastDataChange(this.tableName, 'UPDATE', id, joined || raw);
+        }
+        return raw;
+    }
+
+    /**
+     * Override delete to broadcast deletion to UI.
+     */
+    delete(id) {
+        const result = super.delete(id);
+        broadcastDataChange(this.tableName, 'DELETE', id, {});
+        return result;
+    }
+
+    /**
      * Find all stock with optional branch filter
      * @param {Object} options - Query options including branchId
      * @returns {Array}
@@ -303,10 +372,11 @@ class StockRepository extends BaseRepository {
 
         const updatedStock = this.findById(id);
 
-        // Notify CloudSync and broadcast to UI
+        // Notify CloudSync and broadcast JOINed record to UI
         if (updatedStock) {
             notifyDataChange(this.tableName, 'UPDATE', updatedStock, id);
-            broadcastDataChange(this.tableName, 'UPDATE', id, updatedStock);
+            const joined = this.getWithItemById(id);
+            broadcastDataChange(this.tableName, 'UPDATE', id, joined || updatedStock);
         }
 
         return updatedStock;
@@ -342,10 +412,11 @@ class StockRepository extends BaseRepository {
 
         const updatedStock = this.findById(id);
 
-        // Notify CloudSync and broadcast to UI
+        // Notify CloudSync and broadcast JOINed record to UI
         if (updatedStock) {
             notifyDataChange(this.tableName, 'UPDATE', updatedStock, id);
-            broadcastDataChange(this.tableName, 'UPDATE', id, updatedStock);
+            const joined = this.getWithItemById(id);
+            broadcastDataChange(this.tableName, 'UPDATE', id, joined || updatedStock);
         }
 
         return updatedStock;

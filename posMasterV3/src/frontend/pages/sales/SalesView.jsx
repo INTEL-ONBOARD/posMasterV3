@@ -102,7 +102,13 @@ function useBarcodeScanner(onScan, enabled = true) {
 
 export default function SalesView({ isActive }) {
   const billRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const proceedBtnRef = useRef(null);
   const toast = useContext(ToastContext);
+
+  const focusSearch = () => {
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  };
 
   // Use reactive data hooks for stock items, categories, and users
   const { data: stockItemsRaw, loading: isLoading, refetch: refetchItems } = useReactiveData(
@@ -192,6 +198,7 @@ export default function SalesView({ isActive }) {
   const handleSelectMember = (member) => {
     setSelectedMember(member);
     closeModal();
+    focusSearch();
   };
 
   // Current user state
@@ -214,7 +221,24 @@ export default function SalesView({ isActive }) {
 
     if (isActive) {
       fetchCurrentUser();
+      focusSearch();
     }
+  }, [isActive]);
+
+  // Shift+Space opens the member selection modal
+  useEffect(() => {
+    if (!isActive) return;
+    const handleKeyDown = (e) => {
+      if (e.key === ' ' && e.shiftKey) {
+        // Don't trigger if user is typing in an input/textarea
+        const tag = document.activeElement?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        e.preventDefault();
+        setModal(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isActive]);
 
   const [rightActiveSection, setRightActiveSection] = useState("items");
@@ -297,13 +321,49 @@ export default function SalesView({ isActive }) {
     setCartItemModal(true);
   };
 
-  // Handle cart item update from modal
+  // Open modal when clicking an item card in the right panel
+  const handleItemCardClick = (item) => {
+    // Build the cart-shaped item (same as loadItemtoList but open modal instead)
+    const cartItem = {
+      sku: item.sku,
+      _id: item._id,
+      id: item.id,
+      stock_id: item.stock_id || item.id,
+      stock_trace: item.stock_trace,
+      item_name: item.item_name,
+      item_image_url: item.item_image_url,
+      maximum_capacity: item.maximum_capacity,
+      uom_id: item.uom_id,
+      category_id: item.category_id,
+      inventory_id: item.inventory_id,
+      batch_code: item.batch_code,
+      quantity: parseFloat(item.quantity) || 0,
+      threshold_limit: parseFloat(item.threshold_limit) || 0,
+      stock_price: parseFloat(item.stock_price) || 0,
+      retail_price: parseFloat(item.retail_price) || 0,
+      discount_price: parseFloat(item.discount_price) || 0,
+      expired_datetime: item.exp_date,
+      availability: item.stock_availability,
+      uom: { symbol: item.uom?.symbol || "", unit_name: item.uom?.unit_name || "" },
+      category: { brand: item.category?.brand || "", type: item.category?.type || "" },
+      customer_discount: 0,
+      customer_quantity: 1,
+      uom_symbol: item.uom?.symbol
+    };
+    setSelectedCartItem(cartItem);
+    setCartItemModal(true);
+  };
+
+  // Handle cart item update from modal (also handles adding new items via the card modal)
   const handleCartItemUpdate = (updatedItem) => {
-    setSelectedItems(prev =>
-      prev.map(item =>
-        item.id === updatedItem.id ? updatedItem : item
-      )
-    );
+    setSelectedItems(prev => {
+      const exists = prev.some(item => item.id === updatedItem.id);
+      if (exists) {
+        return prev.map(item => item.id === updatedItem.id ? updatedItem : item);
+      }
+      // New item added via item card modal
+      return [...prev, updatedItem];
+    });
   };
 
   const [searchLoading, setSearchLoading] = useState(false);
@@ -377,6 +437,7 @@ export default function SalesView({ isActive }) {
     setSelectedItems([]);
     setSelectedMember(GUEST_USER);
     generateNewInvoice();
+    focusSearch();
   };
 
   // Handle checkout from summary modal
@@ -695,33 +756,9 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
             {/* Prepared By Card */}
             <div className="bg-slate-50 rounded-xl px-5 py-3 border border-slate-100 shrink-0">
               <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">Prepared By</p>
-              <select
-                value={preparedBy}
-                onChange={(e) => setPreparedBy(e.target.value)}
-                className="text-slate-800 font-bold text-lg bg-transparent border-none p-0 focus:outline-none focus:ring-0 cursor-pointer appearance-none"
-              >
-                <option value="">Select</option>
-                {/* Show current user first if logged in and not in employees list */}
-                {currentUser && !(employees || []).some(emp =>
-                  (emp.username || emp.name) === (currentUser.username || currentUser.name)
-                ) && (
-                  <option
-                    key={currentUser.id || currentUser._id}
-                    value={currentUser.username || currentUser.name}
-                  >
-                    {currentUser.username || currentUser.name} (You)
-                  </option>
-                )}
-                {(employees || []).map(emp => {
-                  const empName = emp.username || emp.name;
-                  const isCurrentUser = currentUser && empName === (currentUser.username || currentUser.name);
-                  return (
-                    <option key={emp.id || emp._id} value={empName}>
-                      {empName}{isCurrentUser ? ' (You)' : ''}
-                    </option>
-                  );
-                })}
-              </select>
+              <p className="text-slate-800 font-bold text-lg">
+                {preparedBy ? `${preparedBy} (You)` : "—"}
+              </p>
             </div>
 
             {/* Invoice Card */}
@@ -851,11 +888,21 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
             <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
               <div className="mb-3">
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={search}
                   onChange={handleSearch}
                   placeholder="Search by name, SKU, or code..."
                   className="w-full pl-4 pr-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition-all"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab' && !e.shiftKey && selectedItems.length > 0) {
+                      e.preventDefault();
+                      proceedBtnRef.current?.focus();
+                    } else if (e.key === 'Tab' && e.shiftKey && selectedItems.length > 0) {
+                      e.preventDefault();
+                      handleProceedClick();
+                    }
+                  }}
                 />
               </div>
               <select
@@ -888,7 +935,7 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
               ) : (
                 <div className="space-y-3">
                   {filteredItems.map((item) => (
-                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={() => loadItemtoList(item)} />
+                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={() => handleItemCardClick(item)} />
                   ))}
                 </div>
               )}
@@ -937,9 +984,13 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
 
             {/* Proceed Button */}
             <button
+              ref={proceedBtnRef}
               onClick={handleProceedClick}
               disabled={selectedItems.length === 0}
               className="w-full flex items-center justify-center px-4 py-3.5 bg-gradient-to-r from-[#1A318C] to-[#2541B2] text-white rounded-xl font-bold hover:from-[#162970] hover:to-[#1E3699] transition-all text-base disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed shadow-lg shadow-[#1A318C]/30 disabled:shadow-none"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleProceedClick();
+              }}
             >
               Proceed
             </button>
@@ -962,6 +1013,7 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
         item={selectedCartItem}
         onUpdate={handleCartItemUpdate}
         onRemove={removeItemFromList}
+        onClose={focusSearch}
       />
 
       {/* Checkout Summary Modal */}

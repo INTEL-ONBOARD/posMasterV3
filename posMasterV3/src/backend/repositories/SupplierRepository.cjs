@@ -6,6 +6,7 @@
 
 const BaseRepository = require('./BaseRepository.cjs');
 const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
+const { notifyDataChange } = require('../services/CloudSyncService.cjs');
 
 class SupplierRepository extends BaseRepository {
     constructor() {
@@ -32,14 +33,26 @@ class SupplierRepository extends BaseRepository {
     }
 
     /**
-     * Override create to broadcast formatted (nested) record.
+     * Override create to broadcast formatted (nested) record and notify cloud sync.
+     * (shouldBroadcast=false skips both in BaseRepository.create, so we do both here)
      */
     create(data) {
         const raw = super.create(data);
         if (raw) {
-            broadcastDataChange(this.tableName, 'INSERT', raw.id, this.formatForFrontend(raw));
+            const formatted = this.formatForFrontend(raw);
+            notifyDataChange(this.tableName, 'INSERT', raw, raw.id);
+            broadcastDataChange(this.tableName, 'INSERT', raw.id, formatted);
         }
         return raw;
+    }
+
+    /**
+     * Override delete to broadcast deletion to UI.
+     */
+    delete(id) {
+        const result = super.delete(id);
+        broadcastDataChange(this.tableName, 'DELETE', id, {});
+        return result;
     }
 
     /**

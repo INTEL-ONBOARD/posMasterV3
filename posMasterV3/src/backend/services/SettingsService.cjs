@@ -142,17 +142,9 @@ class SettingsService {
             // Get user settings
             let settings = this.userSettingsRepo.findByUserId(userId);
 
-            // Create default settings if none exist
+            // Create default settings if none exist (empty permissions — caller applies role-based defaults)
             if (!settings) {
-                settings = this.userSettingsRepo.upsert(userId, {
-                    permissions: {
-                        SaleAccess: true,
-                        InventoryAccess: false,
-                        ReportAccess: false,
-                        UserManagerAccess: false,
-                        DtAccess: false
-                    }
-                });
+                settings = this.userSettingsRepo.upsert(userId, { permissions: {} });
             }
 
             return {

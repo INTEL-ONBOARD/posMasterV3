@@ -144,7 +144,7 @@ function validateSessionFast(token) {
             username: user.username,
             email: user.email,
             full_name: user.full_name,
-            roles: user.roles ? JSON.parse(user.roles) : [],
+            roles: (() => { try { return user.roles ? JSON.parse(user.roles) : []; } catch { return user.roles ? [user.roles] : []; } })(),
             branch_id: user.branch_id,
             is_active: !!user.is_active
         };

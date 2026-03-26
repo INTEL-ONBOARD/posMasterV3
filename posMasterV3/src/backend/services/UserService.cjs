@@ -423,7 +423,7 @@ class UserService {
     getUsersByRole(role) {
         try {
             // Validate role against allowed values to prevent SQL injection
-            const allowedRoles = ['admin', 'manager', 'cashier', 'accountant', 'inventory_manager', 'viewer'];
+            const allowedRoles = ['admin', 'manager', 'cashier', 'assistant', 'user'];
             if (!role || typeof role !== 'string') {
                 return {
                     success: false,

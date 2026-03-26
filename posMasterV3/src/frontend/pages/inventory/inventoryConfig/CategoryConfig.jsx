@@ -35,7 +35,8 @@ function CategoryConfig() {
   // Filter categories based on search and category type
   const filteredCategories = (categories || []).filter((category) => {
     const matchesSearch = category.brand.toLowerCase().includes(search.toLowerCase()) ||
-      category.type.toLowerCase().includes(search.toLowerCase());
+      category.type.toLowerCase().includes(search.toLowerCase()) ||
+      String(category.id).includes(search);
     const matchesCategory = searchCategory === "All" || category.type === searchCategory;
     return matchesSearch && matchesCategory;
   });

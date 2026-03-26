@@ -5,10 +5,53 @@
  */
 
 const BaseRepository = require('./BaseRepository.cjs');
+const { broadcastDataChange } = require('../utils/eventBroadcaster.cjs');
 
 class ItemRepository extends BaseRepository {
     constructor() {
         super('items');
+    }
+
+    /**
+     * Suppress base class raw broadcasts — we broadcast the formatted (nested) record
+     * so DataStore cache entries stay in the shape getAllExtended() returns.
+     */
+    shouldBroadcast() {
+        return false;
+    }
+
+    /**
+     * Override create to broadcast formatted (nested) record.
+     */
+    create(data) {
+        const raw = super.create(data);
+        if (raw) {
+            // getExtendedById re-runs the JOIN to get the full formatted shape
+            const formatted = this.getExtendedById(raw.id);
+            broadcastDataChange(this.tableName, 'INSERT', raw.id, formatted || raw);
+        }
+        return raw;
+    }
+
+    /**
+     * Override update to broadcast formatted (nested) record.
+     */
+    update(id, data) {
+        const raw = super.update(id, data);
+        if (raw) {
+            const formatted = this.getExtendedById(id);
+            broadcastDataChange(this.tableName, 'UPDATE', id, formatted || raw);
+        }
+        return raw;
+    }
+
+    /**
+     * Override delete to broadcast deletion to UI.
+     */
+    delete(id) {
+        const result = super.delete(id);
+        broadcastDataChange(this.tableName, 'DELETE', id, {});
+        return result;
     }
 
     /**

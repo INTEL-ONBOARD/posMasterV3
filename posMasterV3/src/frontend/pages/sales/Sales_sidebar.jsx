@@ -55,7 +55,7 @@ function SalesSidebar({
   const hasPermission = (permKey) => {
     // Admin users have all permissions
     if (isAdmin) return true;
-    if (!permissions) return true; // Show all until permissions load
+    if (!permissions) return false; // Hide until permissions load to prevent flash
     return permissions[permKey] === true;
   };
 
