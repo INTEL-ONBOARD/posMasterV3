@@ -217,7 +217,7 @@ export default function SalesView({ isActive }) {
     }
   }, [isActive]);
 
-  const [rightActiveSection, setRightActiveSection] = useState("buttons");
+  const [rightActiveSection, setRightActiveSection] = useState("items");
   const [selectedItems, setSelectedItems] = useState([]);
   const [lastScannedCode, setLastScannedCode] = useState("");
 
