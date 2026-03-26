@@ -323,18 +323,30 @@ export default function SalesView({ isActive }) {
 
   // Generate invoice number
   const [invoiceNo, setInvoiceNo] = useState("");
-  const generateNewInvoice = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = 'INV';
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+  const generateNewInvoice = useCallback(async () => {
+    try {
+      const result = await window.electronAPI.sales.generateInvoiceNo();
+      if (result?.data?.invoice_no) {
+        setInvoiceNo(result.data.invoice_no);
+      } else if (typeof result?.data === 'string') {
+        setInvoiceNo(result.data);
+      } else if (typeof result === 'string') {
+        setInvoiceNo(result);
+      }
+    } catch {
+      // Fallback: generate locally if IPC fails
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let fallback = 'INV';
+      for (let i = 0; i < 8; i++) {
+        fallback += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      setInvoiceNo(fallback);
     }
-    setInvoiceNo(result);
-  };
+  }, []);
 
   useEffect(() => {
     generateNewInvoice();
-  }, []);
+  }, [generateNewInvoice]);
 
   const interpretAvailability = (item) => {
     const a = item?.availability;

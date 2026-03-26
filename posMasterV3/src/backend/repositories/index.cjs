@@ -57,7 +57,7 @@ function getSyncQueueRepository() {
  */
 function getLoginHistoryRepository() {
     if (!loginHistoryRepository) {
-        loginHistoryRepository = LoginHistoryRepository;
+        loginHistoryRepository = new LoginHistoryRepository();
     }
     return loginHistoryRepository;
 }

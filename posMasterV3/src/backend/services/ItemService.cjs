@@ -189,6 +189,7 @@ class ItemService {
             const itemData = {
                 sku: sku,
                 item_name: data.item_name,
+                item_code: data.item_code || null,
                 item_image_url: data.item_image_url || null,
                 item_image_blob: data.item_image_blob || null,
                 maximum_capacity: data.maximum_capacity || 0,
@@ -324,6 +325,7 @@ class ItemService {
             id: item.id,
             _id: item.cloud_id || item.id.toString(),
             sku: item.sku,
+            item_code: item.item_code || null,
             item_name: item.item_name,
             item_image_url: item.item_image_url,
             item_image_blob: item.item_image_blob,

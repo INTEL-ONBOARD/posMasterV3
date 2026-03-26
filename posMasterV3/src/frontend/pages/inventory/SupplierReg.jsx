@@ -167,10 +167,14 @@ function SupplierReg() {
       !basic_info.contact?.trim() ||
       !basic_info.type?.trim() ||
       !basic_info.supplier_address?.trim()
-      //||
-      //!basic_info.status?.trim()
     ) {
       console.log("basic info missing");
+      return false;
+    }
+
+    // Validate contact is digits only (7–15 digits)
+    const contactDigits = basic_info.contact.trim().replace(/\s+/g, '');
+    if (!/^\d{7,15}$/.test(contactDigits)) {
       return false;
     }
 
@@ -401,11 +405,16 @@ function SupplierReg() {
                           Contact
                         </label>
                         <input
-                          type="text"
+                          type="tel"
                           name="contact"
                           value={formData.contact}
-                          onChange={handleInputChange}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (/^\d*$/.test(val)) handleInputChange(e);
+                          }}
                           placeholder="Phone number"
+                          maxLength={15}
+                          inputMode="numeric"
                           className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                         />
                       </div>

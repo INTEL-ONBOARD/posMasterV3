@@ -166,8 +166,8 @@ async function shutdownBackend() {
 
             if (logoutOnClose) {
                 console.log('[Backend] Logout on close is enabled, logging out all active sessions...');
-                const loginHistoryRepo = require('./repositories/LoginHistoryRepository.cjs');
-                const { getActiveSessionRepository } = require('./repositories/index.cjs');
+                const { getLoginHistoryRepository, getActiveSessionRepository } = require('./repositories/index.cjs');
+                const loginHistoryRepo = getLoginHistoryRepository();
                 const activeSessionRepo = getActiveSessionRepository();
 
                 // Get all active sessions
@@ -288,7 +288,8 @@ function startupSessionCleanup() {
 
     // Step A: Close orphaned login_history records (drives the green dot in UI)
     try {
-        const loginHistoryRepo = require('./repositories/LoginHistoryRepository.cjs');
+        const { getLoginHistoryRepository } = require('./repositories/index.cjs');
+        const loginHistoryRepo = getLoginHistoryRepository();
         const closed = loginHistoryRepo.closeAllActiveSessions();
         if (closed > 0) {
             console.log(`[Backend] Startup cleanup: closed ${closed} orphaned login_history record(s) (status → 'app_crashed')`);
@@ -311,8 +312,8 @@ function startupSessionCleanup() {
 
     // Step C: Deactivate this device's active_sessions record (cloud-synced)
     try {
-        const SettingsService = require('./services/SettingsService.cjs');
-        const deviceId = new SettingsService().getDeviceId();
+        const { getSettingsService } = require('./services/SettingsService.cjs');
+        const deviceId = getSettingsService().getDeviceId();
         const result = db.prepare(`
             UPDATE active_sessions
             SET is_active = 0, updated_at = ?, sync_status = 'pending'

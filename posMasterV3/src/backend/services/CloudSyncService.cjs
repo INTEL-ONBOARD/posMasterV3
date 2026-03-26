@@ -21,7 +21,7 @@ const {
 } = require('../database/mysql-connection.cjs');
 const dns = require('dns');
 const { nowISO } = require('../utils/helpers.cjs');
-const SyncQueueRepository = require('../repositories/SyncQueueRepository.cjs');
+const { getSyncQueueRepository } = require('../repositories/index.cjs');
 const {
     broadcastDataChange,
     broadcastSyncStatus,
@@ -166,8 +166,30 @@ class CloudSyncService {
         this._syncLock = false;
         this._syncLockQueue = [];
 
-        // Persistent queue repository - initialized in initialize() after DB is ready
-        this.syncQueueRepo = null;
+        // Persistent queue repository - lazily initialized on first use after DB is ready
+        this._syncQueueRepo = null;
+    }
+
+    /**
+     * Get the sync queue repository, lazily initializing if DB is ready.
+     * Returns null if DB is not yet available (changes are held in memory).
+     */
+    get syncQueueRepo() {
+        if (!this._syncQueueRepo) {
+            try {
+                const db = getDatabase();
+                if (db) {
+                    this._syncQueueRepo = getSyncQueueRepository();
+                }
+            } catch (e) {
+                // DB not ready yet
+            }
+        }
+        return this._syncQueueRepo;
+    }
+
+    set syncQueueRepo(value) {
+        this._syncQueueRepo = value;
     }
 
     /**
@@ -456,8 +478,8 @@ class CloudSyncService {
         // Start incremental pull loop (replaces RealTimeSyncService's parallel flood)
         this.startIncrementalPullLoop();
 
-        // Initialize the persistent queue repository now that DB is ready
-        this.syncQueueRepo = new SyncQueueRepository();
+        // syncQueueRepo is lazily initialized via getter — force resolution now that DB is ready
+        void this.syncQueueRepo;
 
         // Recover any pending changes that survived a crash/restart FIRST
         this.recoverPendingFromDB();
@@ -964,6 +986,7 @@ class CloudSyncService {
             });
         };
 
+        try {
         // Step 1: Pull-first tables (users, user_settings) - Pull from cloud FIRST, then push local
         console.log('[CloudSync] Step 1: Syncing pull-first tables (pull from cloud first, then push local)...');
         for (const tableName of PULL_FIRST_TABLES) {
@@ -1012,13 +1035,14 @@ class CloudSyncService {
             }
         }
 
+        } finally {
+            this.isSyncing = false;
+            this._releaseSyncLock();
+        }
+
         const duration = Date.now() - startTime;
         this.lastSyncTime = nowISO();
         this.syncStatus = 'completed';
-        this.isSyncing = false;
-
-        // Release lock
-        this._releaseSyncLock();
 
         console.log(`[CloudSync] Bidirectional sync completed in ${duration}ms. Pushed: ${results.uploaded}, Pulled: ${results.downloaded}, Conflicts: ${results.conflicts}`);
 
@@ -1088,19 +1112,38 @@ class CloudSyncService {
             // This is safe because we sync tables in dependency order
             db.pragma('foreign_keys = OFF');
 
-            // Get local records
-            const localRecords = db.prepare(`SELECT * FROM ${tableName}`).all();
+            // Get table info upfront for column filtering
+            const tableInfo = db.prepare(`PRAGMA table_info(${tableName})`).all();
+            const localColumnsInfo = tableInfo.map(col => col.name);
+            const hasSyncStatus = localColumnsInfo.includes('sync_status');
+            const hasUpdatedAt = localColumnsInfo.includes('updated_at');
+
+            // Only fetch local records that need pushing (pending) to avoid loading entire table
+            const localQuery = hasSyncStatus
+                ? `SELECT * FROM ${tableName} WHERE sync_status = 'pending' OR sync_status IS NULL`
+                : `SELECT * FROM ${tableName}`;
+            const localRecords = db.prepare(localQuery).all();
             const localMap = new Map();
             for (const record of localRecords) {
                 localMap.set(String(record[primaryKey]), record);
             }
-            console.log(`[CloudSync] ${tableName}: Found ${localRecords.length} local records`);
+            console.log(`[CloudSync] ${tableName}: Found ${localRecords.length} local pending records`);
 
-            // Get cloud records
+            // Only fetch cloud records changed since last sync to avoid loading entire table
+            const lastPull = hasUpdatedAt ? this._getLastPullAt(tableName) : null;
+            const sinceTs = (hasUpdatedAt && lastPull)
+                ? new Date(new Date(lastPull + 'Z').getTime() - INCREMENTAL_SYNC_SKEW_MS)
+                    .toISOString().replace('T', ' ').replace(/\.\d+Z$/, '')
+                : null;
+
             let cloudRecords = [];
             try {
-                cloudRecords = await executeQuery(`SELECT * FROM ${tableName}`) || [];
-                console.log(`[CloudSync] ${tableName}: Found ${cloudRecords.length} cloud records`);
+                const cloudQuery = sinceTs
+                    ? `SELECT * FROM ${tableName} WHERE updated_at > ?`
+                    : `SELECT * FROM ${tableName}`;
+                const cloudParams = sinceTs ? [sinceTs] : [];
+                cloudRecords = await executeQuery(cloudQuery, cloudParams) || [];
+                console.log(`[CloudSync] ${tableName}: Found ${cloudRecords.length} cloud records${sinceTs ? ` since ${sinceTs}` : ''}`);
             } catch (error) {
                 // Table might not exist in cloud yet
                 console.log(`[CloudSync] Cloud table ${tableName} may not exist, pushing all local records. Error: ${error.message}`);
@@ -1111,11 +1154,9 @@ class CloudSyncService {
                 cloudMap.set(String(record[primaryKey]), record);
             }
 
-            // Get table info for column validation
-            const tableInfo = db.prepare(`PRAGMA table_info(${tableName})`).all();
-            const localColumns = tableInfo.map(col => col.name);
-            const hasUpdatedAt = localColumns.includes('updated_at');
-            const hasCreatedAt = localColumns.includes('created_at');
+            // Use column info already gathered above
+            const localColumns = localColumnsInfo;
+            const hasCreatedAt = localColumnsInfo.includes('created_at');
 
             // Process all unique IDs from both local and cloud
             const allIds = new Set([...localMap.keys(), ...cloudMap.keys()]);
@@ -1706,6 +1747,17 @@ class CloudSyncService {
                     const existingRecord = db.prepare(`SELECT * FROM ${tableName} WHERE ${primaryKey} = ?`).get(record[primaryKey]);
                     let recordChanged = !existingRecord; // New record = changed
 
+                    // For users table: if local record doesn't exist, it was intentionally deleted locally.
+                    // Don't re-insert from cloud — the pending DELETE will clean cloud on next sync.
+                    if (tableName === 'users' && !existingRecord) {
+                        const pendingDelete = this._isChangePending('users', 'DELETE', record[primaryKey]);
+                        if (pendingDelete) {
+                            console.log(`[CloudSync] Skipping cloud re-insert for locally deleted user: ${record[primaryKey]}`);
+                            result.downloaded++;
+                            continue;
+                        }
+                    }
+
                     // For users table, handle roles carefully:
                     // 1. If cloud roles is NULL/empty and local has valid roles -> preserve local
                     // 2. If cloud roles is valid and local has valid roles -> prefer local (local is truth)
@@ -2210,6 +2262,7 @@ class CloudSyncService {
                     retail_price DECIMAL(15,2) NOT NULL,
                     expiry_date DATETIME,
                     sync_status VARCHAR(50) DEFAULT 'pending',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_restock (restock_id),
                     INDEX idx_item (item_id),
@@ -2294,6 +2347,7 @@ class CloudSyncService {
                     discount DECIMAL(15,2) DEFAULT 0,
                     total_price DECIMAL(15,2) NOT NULL,
                     sync_status VARCHAR(50) DEFAULT 'pending',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_sale (sale_id),
                     INDEX idx_item (item_id),
@@ -2313,6 +2367,7 @@ class CloudSyncService {
                     disposed_by VARCHAR(255),
                     disposed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     sync_status VARCHAR(50) DEFAULT 'pending',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_item (item_id),
                     INDEX idx_stock (stock_id),
@@ -2614,11 +2669,15 @@ class CloudSyncService {
             // sales_items sync columns (needed for proper sync tracking)
             { table: 'sales_items', column: 'cloud_id',    definition: 'VARCHAR(255) DEFAULT NULL',                                       after: 'id' },
             { table: 'sales_items', column: 'sync_status', definition: "VARCHAR(50) DEFAULT 'pending'",                                   after: 'total_price' },
-            { table: 'sales_items', column: 'updated_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',  after: 'sync_status' },
+            { table: 'sales_items', column: 'created_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP',                              after: 'sync_status' },
+            { table: 'sales_items', column: 'updated_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',  after: 'created_at' },
             // restock_items sync columns (needed for proper sync tracking)
             { table: 'restock_items', column: 'cloud_id',    definition: 'VARCHAR(255) DEFAULT NULL',                                      after: 'id' },
             { table: 'restock_items', column: 'sync_status', definition: "VARCHAR(50) DEFAULT 'pending'",                                  after: 'expiry_date' },
-            { table: 'restock_items', column: 'updated_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', after: 'sync_status' },
+            { table: 'restock_items', column: 'created_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP',                             after: 'sync_status' },
+            { table: 'restock_items', column: 'updated_at',  definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', after: 'created_at' },
+            // disposed_items created_at (was missing from original cloud schema)
+            { table: 'disposed_items', column: 'created_at', definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP', after: 'sync_status' },
             // offers_discounts updated_at (needed for incremental sync — was missing)
             { table: 'offers_discounts', column: 'updated_at', definition: 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', after: 'created_at' },
             // login_history sync columns
@@ -2932,9 +2991,9 @@ class CloudSyncService {
             } catch (error) {
                 console.log('[CloudSync] Active sessions poll failed:', error.message);
             }
-        }, 5000); // 5 seconds — fast enough for single-device enforcement
+        }, 1000); // 1 second — near real-time single-device enforcement
 
-        console.log('[CloudSync] Active sessions polling started (every 5s)');
+        console.log('[CloudSync] Active sessions polling started (every 1s)');
     }
 
     /**
@@ -2950,7 +3009,7 @@ class CloudSyncService {
 
         // All tables except active_sessions (managed by dedicated poll above)
         const PULL_TABLES = TABLES_TO_SYNC.filter(t => t !== 'active_sessions');
-        const BATCH_SIZE = 4;
+        const BATCH_SIZE = 6;
 
         this.incrementalPullInterval = setInterval(async () => {
             if (!this.isOnline || !this.mysqlInitialized || this.isSyncing) return;
@@ -2963,19 +3022,24 @@ class CloudSyncService {
             const batch = PULL_TABLES.slice(start, start + BATCH_SIZE);
             this._pullTableIndex = (start + BATCH_SIZE) % PULL_TABLES.length;
 
-            db.pragma('foreign_keys = OFF');
-            try {
-                await Promise.all(batch.map(table =>
-                    this.pullFromCloud(table, { skipFkPragma: true }).catch(err => {
-                        console.log(`[CloudSync] Incremental pull error for ${table}:`, err.message);
-                    })
-                ));
-            } finally {
-                db.pragma('foreign_keys = ON');
+            // Run pulls sequentially rather than in parallel.
+            // This keeps the foreign_keys = OFF window as narrow as possible:
+            // each pull disables FK checks only for its own duration, then re-enables
+            // before the next pull starts. Parallel Promise.all would hold FK off
+            // for the entire batch while MySQL round-trips complete.
+            for (const table of batch) {
+                db.pragma('foreign_keys = OFF');
+                try {
+                    await this.pullFromCloud(table, { skipFkPragma: true });
+                } catch (err) {
+                    console.log(`[CloudSync] Incremental pull error for ${table}:`, err.message);
+                } finally {
+                    db.pragma('foreign_keys = ON');
+                }
             }
-        }, 7000); // 7 seconds — max 4 connections at a time, well within server limits
+        }, 2000); // 2 seconds — full table cycle in ~7s with batch size 6
 
-        console.log('[CloudSync] Incremental pull loop started (batch of 4 every 7s)');
+        console.log('[CloudSync] Incremental pull loop started (batch of 6 every 2s)');
     }
 
     /**

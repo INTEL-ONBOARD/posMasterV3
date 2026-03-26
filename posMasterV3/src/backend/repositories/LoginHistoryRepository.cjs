@@ -365,4 +365,4 @@ class LoginHistoryRepository extends BaseRepository {
     }
 }
 
-module.exports = new LoginHistoryRepository();
+module.exports = LoginHistoryRepository;

@@ -23,17 +23,16 @@ class UserService {
      */
     getAllUsers(options = {}) {
         try {
-            const users = this.userRepo.findAll(options);
+            const users = this.userRepo.findAllActive();
             const sanitizedUsers = users.map(u => {
-                const parsed = this.userRepo._parseUser(u);
-                return UserRepository.sanitize(parsed);
+                return UserRepository.sanitize(u);
             });
 
             return {
                 success: true,
                 status: 'success',
                 data: sanitizedUsers,
-                total: this.userRepo.count()
+                total: sanitizedUsers.length
             };
 
         } catch (error) {
@@ -263,24 +262,19 @@ class UserService {
             }
 
             if (hardDelete) {
-                // Permanent delete
+                // Permanent delete from local DB
                 this.userRepo.delete(userId);
 
-                // Queue deletion for cloud sync
-                this.syncQueueRepo.enqueue({
-                    entity_type: 'user',
-                    entity_id: userId,
-                    operation: 'delete',
-                    payload: {
-                        cloud_id: user.cloud_id
-                    },
-                    priority: 5
-                });
-
-                // Immediately delete from MySQL cloud
+                // Delete from cloud — immediate if online, queued if offline
                 try {
-                    const { notifyDataChange } = require('./CloudSyncService.cjs');
-                    notifyDataChange('users', 'DELETE', {}, userId);
+                    const { getCloudSyncService } = require('./CloudSyncService.cjs');
+                    const cloudSync = getCloudSyncService();
+                    if (cloudSync) {
+                        // queueChange handles both: immediate sync when online, queued when offline
+                        cloudSync.queueChange('users', 'DELETE', {}, userId).catch(err => {
+                            console.error('[UserService] Cloud delete failed:', err.message);
+                        });
+                    }
                 } catch (syncError) {
                     console.error('[UserService] Cloud delete sync error (non-fatal):', syncError.message);
                 }

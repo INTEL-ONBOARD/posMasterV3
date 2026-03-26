@@ -218,10 +218,30 @@ class SalesRepository extends BaseRepository {
      */
     createWithItems(data, items = []) {
         const transaction = this.db.transaction(() => {
+            // Validate FK references — null them out if they don't exist locally
+            // to prevent FOREIGN KEY constraint failures (e.g. cloud-synced IDs)
+            let safeMemberId = data.member_id || null;
+            if (safeMemberId) {
+                const memberExists = this.db.prepare('SELECT id FROM members WHERE id = ?').get(safeMemberId);
+                if (!memberExists) safeMemberId = null;
+            }
+
+            let safeCreatedBy = data.created_by || null;
+            if (safeCreatedBy) {
+                const userExists = this.db.prepare('SELECT id FROM users WHERE id = ?').get(safeCreatedBy);
+                if (!userExists) safeCreatedBy = null;
+            }
+
+            let safeBranchId = data.branch_id || null;
+            if (safeBranchId) {
+                const branchExists = this.db.prepare('SELECT id FROM branches WHERE id = ?').get(safeBranchId);
+                if (!branchExists) safeBranchId = null;
+            }
+
             // Create main transaction
             const saleData = {
                 invoice_no: data.invoice_no,
-                member_id: data.member_id,
+                member_id: safeMemberId,
                 cashier_id: data.cashier_id,
                 payment_method: data.payment_method || 'cash',
                 credit_duration: data.credit_duration,
@@ -236,8 +256,8 @@ class SalesRepository extends BaseRepository {
                 updated_at: nowISO(),
                 sync_status: 'pending',
                 // Branch and audit fields
-                branch_id: data.branch_id || null,
-                created_by: data.created_by || null
+                branch_id: safeBranchId,
+                created_by: safeCreatedBy
             };
 
             const saleStmt = this.db.prepare(`
@@ -270,6 +290,13 @@ class SalesRepository extends BaseRepository {
                     throw new Error(`Invalid quantity ${item.quantity} for item_id=${item.item_id}`);
                 }
 
+                // Validate item FK references exist locally
+                const itemExists = this.db.prepare('SELECT id FROM items WHERE id = ?').get(item.item_id);
+                if (!itemExists) throw new Error(`Item not found locally: item_id=${item.item_id}`);
+
+                const stockExists = this.db.prepare('SELECT id FROM stock WHERE id = ?').get(item.stock_id);
+                if (!stockExists) throw new Error(`Stock not found locally: stock_id=${item.stock_id}`);
+
                 addItemStmt.run(
                     saleId,
                     item.item_id,
@@ -293,7 +320,7 @@ class SalesRepository extends BaseRepository {
             }
 
             // Update member income if applicable
-            if (data.member_id && !data.is_held) {
+            if (safeMemberId && !data.is_held) {
                 const updateMemberStmt = this.db.prepare(`
                     UPDATE members SET
                         total_income = total_income + ?,
@@ -301,7 +328,7 @@ class SalesRepository extends BaseRepository {
                         sync_status = 'pending'
                     WHERE id = ?
                 `);
-                updateMemberStmt.run(data.total_amount, nowISO(), data.member_id);
+                updateMemberStmt.run(data.total_amount, nowISO(), safeMemberId);
 
                 // Handle credit payments
                 if (data.payment_method === 'credit') {
@@ -312,7 +339,7 @@ class SalesRepository extends BaseRepository {
                             sync_status = 'pending'
                         WHERE id = ?
                     `);
-                    updateCreditsStmt.run(data.total_amount, nowISO(), data.member_id);
+                    updateCreditsStmt.run(data.total_amount, nowISO(), safeMemberId);
                 }
             }
 

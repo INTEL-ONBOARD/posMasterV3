@@ -226,15 +226,14 @@ function AddItem({ isActive }) {
       );
       const requestData = {
         item_name: formData.item_name,
+        item_code: formData.item_code || null,
         item_image_blob: formData.item_image_blob || null,
-        item_code: formData.item_code,
+        item_image_url: formData.item_image_url || null,
         sku: formData.sku,
         maximum_capacity: Number(formData.maximum_capacity),
         uom_id: formUOMData,
         category_id: selectedCategory?.id ?? null, // look up id
-        inventory_id: 1, // Fixed value
         availability: formData.availability,
-        stock_trace: [101] // Fixed value
       };
       const response = await registerItemService.registerItem(requestData);
       if (response.status === "success") {
@@ -273,15 +272,14 @@ function AddItem({ isActive }) {
       );
       const requestData = {
         item_name: formData.item_name,
+        item_code: formData.item_code || null,
         item_image_blob: formData.item_image_blob || null,
-        item_code: formData.item_code,
+        item_image_url: formData.item_image_url || null,
         sku: formData.sku,
         maximum_capacity: Number(formData.maximum_capacity),
         uom_id: formUOMData,
         category_id: selectedCategory?.id ?? null, // look up id
-        inventory_id: 1, // Fixed value
         availability: formData.availability,
-        stock_trace: [101], // Fixed value
       };
 
       const response = await registerItemService.updateItem(formData.id, requestData);

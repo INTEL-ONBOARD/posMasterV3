@@ -467,4 +467,13 @@ class SettingsService {
     }
 }
 
+let _settingsServiceInstance = null;
+function getSettingsService() {
+    if (!_settingsServiceInstance) {
+        _settingsServiceInstance = new SettingsService();
+    }
+    return _settingsServiceInstance;
+}
+
 module.exports = SettingsService;
+module.exports.getSettingsService = getSettingsService;

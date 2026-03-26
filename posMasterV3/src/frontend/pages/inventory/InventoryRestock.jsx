@@ -74,6 +74,12 @@ function InventoryRestock({ isActive }) {
     { enabled: isActive }
   );
 
+  const { data: stockItems } = useReactiveData(
+    TABLES.STOCK,
+    null,
+    { enabled: isActive }
+  );
+
   const { data: itemCategories } = useReactiveData(
     TABLES.CATEGORIES,
     null,
@@ -177,6 +183,23 @@ function InventoryRestock({ isActive }) {
       return matchesCategory && matchesAvailability && matchesSearch;
     });
   }, [inventoryItems, searchCategory, searchAvailability, search]);
+
+  // Stock batches with actual quantity > 0, for dispose mode
+  const filteredDisposeItems = useMemo(() => {
+    if (!stockItems || stockItems.length === 0) return [];
+    const searchTerm = (search || "").toLowerCase();
+    return stockItems.filter((stock) => {
+      if ((stock.quantity ?? 0) <= 0) return false;
+      const matchesCategory =
+        searchCategory === "All" ||
+        (stock.item?.category?.type === searchCategory);
+      const matchesSearch =
+        (stock.item?.item_name || "").toLowerCase().includes(searchTerm) ||
+        (stock.batch_code || "").toLowerCase().includes(searchTerm) ||
+        (stock.item?.sku || "").toLowerCase().includes(searchTerm);
+      return matchesCategory && matchesSearch;
+    });
+  }, [stockItems, searchCategory, search]);
 
 
   // left section controls
@@ -2069,7 +2092,7 @@ function InventoryRestock({ isActive }) {
                     }`}></div>
                     <p className="text-gray-500">Loading items...</p>
                   </div>
-                ) : filteredItems.length === 0 ? (
+                ) : (rightActiveSection === "dispose" ? filteredDisposeItems : filteredItems).length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20">
                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${
                       rightActiveSection === "add"
@@ -2083,8 +2106,17 @@ function InventoryRestock({ isActive }) {
                       {rightActiveSection === "return" && <RotateCcw className="w-8 h-8 text-red-400" />}
                     </div>
                     <h3 className="text-lg font-semibold text-gray-800">No items found</h3>
-                    <p className="text-sm text-gray-500 mt-1">Try adjusting your search</p>
+                    <p className="text-sm text-gray-500 mt-1">{rightActiveSection === "dispose" ? "No stock available to dispose" : "Try adjusting your search"}</p>
                   </div>
+                ) : rightActiveSection === "dispose" ? (
+                  filteredDisposeItems.map((stock) => (
+                    <SalesItemCard
+                      key={stock.id}
+                      item={{ ...stock.item, quantity: stock.quantity, batch_code: stock.batch_code, stock_id: stock.id }}
+                      onOpen={() => loadItemtoList({ ...stock.item, quantity: stock.quantity, batch_code: stock.batch_code, stock_id: stock.id })}
+                      label="Dispose"
+                    />
+                  ))
                 ) : (
                   filteredItems.map((item) => (
                     <SalesItemCard key={item.id ?? item._id} item={item} onOpen={() => loadItemtoList(item)} label="Add Item" />
@@ -2132,7 +2164,7 @@ function InventoryRestock({ isActive }) {
                     ? "bg-amber-500 text-white"
                     : "bg-red-500 text-white"
               }`}>
-                {filteredItems.length} items
+                {rightActiveSection === "dispose" ? filteredDisposeItems.length : filteredItems.length} items
               </span>
             </div>
           </div>

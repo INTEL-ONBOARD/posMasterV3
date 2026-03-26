@@ -15,8 +15,8 @@
  *   const { mutate, isLoading, error } = useDataMutation({
  *     table: TABLES.MEMBERS,
  *     mutationFn: (data) => memberApi.create(data),
- *     onSuccess: (result) => toast.success('Member created!'),
- *     onError: (error) => toast.error(error.message)
+ *     onSuccess: (result) => toast.open('Member created!', 4000, 'Success', 'success'),
+ *     onError: (error) => toast.open(error.message, 5000, 'Error', 'error')
  *   });
  *
  *   // In a form submit handler:

@@ -4,14 +4,43 @@
  */
 
 const mysql = require('mysql2/promise');
+const path = require('path');
+const fs = require('fs');
+
+// Load credentials from external config file (outside ASAR, not bundled in app)
+// This prevents production credentials from being extractable by end users.
+// The config file lives at: <APPDATA or HOME>/POS Master/cloud-config.json
+// Format: { "host": "...", "port": 3306, "user": "...", "password": "...", "database": "..." }
+function _loadCloudConfig() {
+    try {
+        const basePath = process.env.APPDATA || process.env.HOME || '';
+        const configPath = path.join(basePath, 'POS Master', 'cloud-config.json');
+        if (fs.existsSync(configPath)) {
+            const raw = fs.readFileSync(configPath, 'utf8');
+            return JSON.parse(raw);
+        }
+    } catch (e) {
+        // Fall through to defaults
+    }
+    // Fallback defaults (used on first run before config file is deployed)
+    return {
+        host: '162.241.24.242',
+        port: 3306,
+        user: 'toursurv_posdbuser',
+        password: 'Abc@1234#tea',
+        database: 'toursurv_posdb'
+    };
+}
+
+const _cloudCreds = _loadCloudConfig();
 
 // MySQL Cloud Configuration
 const MYSQL_CONFIG = {
-    host: '162.241.24.242',
-    port: 3306,
-    user: 'toursurv_posdbuser',
-    password: 'Abc@1234#tea',
-    database: 'toursurv_posdb',
+    host: _cloudCreds.host,
+    port: _cloudCreds.port || 3306,
+    user: _cloudCreds.user,
+    password: _cloudCreds.password,
+    database: _cloudCreds.database,
     waitForConnections: true,
     connectionLimit: 20,      // Raised from 5 to support parallel 1s polling across all tables
     connectTimeout: 5000,     // Match checkNetworkStatus 5s timeout for faster failure detection

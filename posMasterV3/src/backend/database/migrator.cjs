@@ -3,6 +3,13 @@
  *
  * Handles running and tracking database migrations.
  * Migrations are run in order and tracked in a migrations table.
+ *
+ * MIGRATION VERSION HISTORY NOTE:
+ * Versions 016-019 are intentionally absent. These were exploratory migrations
+ * created during development that were reverted before shipping and removed
+ * to avoid breaking devices that never received them. The migrator safely
+ * handles gaps in version numbers — it skips missing files and only runs
+ * migrations not yet recorded in the migrations table.
  */
 
 const fs = require('fs');

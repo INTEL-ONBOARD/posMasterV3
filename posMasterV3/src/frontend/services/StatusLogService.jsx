@@ -33,7 +33,7 @@ export function StatusLogProvider({ children }) {
   // Listen for IPC events from backend
   useEffect(() => {
     if (window.electronAPI?.onStatusUpdate) {
-      const unsubscribe = window.electronAPI.onStatusUpdate((event, data) => {
+      const unsubscribe = window.electronAPI.onStatusUpdate((data) => {
         log(data.message, data.type || StatusType.INFO, data.isLoading);
       });
       return () => unsubscribe?.();

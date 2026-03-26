@@ -1,13 +1,16 @@
 /**
  * Migration: Fix sales_items sync columns (safety net)
- * Version: 044
+ * Version: 047
  *
  * Migration 039 was recorded as applied but sales_items is missing
  * sync_status, cloud_id, and updated_at columns. This migration
  * re-applies them idempotently.
+ *
+ * Previously numbered 044, which conflicted with 044_fix_missing_sync_columns.
+ * Renumbered to 047 so it actually runs on affected devices.
  */
 
-const MIGRATION_VERSION = 44;
+const MIGRATION_VERSION = 47;
 const MIGRATION_NAME = 'fix_sales_items_sync_columns';
 
 function up(db) {

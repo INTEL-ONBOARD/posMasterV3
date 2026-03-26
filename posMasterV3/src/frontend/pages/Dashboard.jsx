@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import ToastContext from "./toasts/ToastService.jsx";
 import { Outlet, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar.jsx";
@@ -109,6 +109,11 @@ function Dashboard() {
   // Use the fetched initial value first; real-time updates from useRealTimeSync take over once received
   const displayOnline = isOnline ?? statusIsOnline;
   const [showKickedModal, setShowKickedModal] = useState(false);
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   // Track user activity for idle auto-logout
   useActivityTracker({ enabled: true });
@@ -169,6 +174,7 @@ function Dashboard() {
   useEffect(() => {
     // Subscribe to session events (kicked, invalid) from SessionGuard
     const unsubscribe = onSessionEvent((event) => {
+      if (!isMountedRef.current) return;
       console.log('[Dashboard] Session event:', event);
 
       if (event.type === 'kicked') {
@@ -185,6 +191,7 @@ function Dashboard() {
     let unsubscribeKicked = null;
     if (window.electronAPI?.onSessionKicked) {
       unsubscribeKicked = window.electronAPI.onSessionKicked((data) => {
+        if (!isMountedRef.current) return;
         console.log('[Dashboard] Direct session kicked broadcast:', data);
         setShowKickedModal(true);
       });

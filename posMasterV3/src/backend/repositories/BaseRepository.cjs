@@ -9,6 +9,7 @@
 
 const { getDatabase } = require('../database/connection.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
+const crypto = require('crypto');
 
 // Lazy imports to avoid requiring Electron modules (like BrowserWindow) before app is ready
 let _notifyDataChange = null;
@@ -42,7 +43,8 @@ function getBroadcastDataChange() {
 
 // Tables that should NOT trigger UI broadcasts (local-only settings)
 // These tables are device-specific and don't need reactive UI updates
-const NO_BROADCAST_TABLES = ['app_settings', 'sessions', 'sync_queue', 'migrations'];
+// Tables that should NOT trigger UI broadcasts or cloud sync notifications (local-only data)
+const NO_BROADCAST_TABLES = ['app_settings', 'sessions', 'sync_queue', 'migrations', 'price_change_history', 'sync_metadata', 'audit_log'];
 
 // Valid column names for ORDER BY (whitelist to prevent SQL injection)
 const VALID_ORDER_COLUMNS = [
@@ -200,8 +202,16 @@ class BaseRepository {
      * @returns {Object} The created record
      */
     create(data) {
-        const keys = Object.keys(data);
-        const values = Object.values(data);
+        // Auto-inject cloud_id (UUID) if the table has the column and caller didn't provide one.
+        // This ensures every new record has a globally unique cross-device identifier for sync.
+        const tableColumns = this.db.prepare(`PRAGMA table_info(${this.tableName})`).all().map(c => c.name);
+        const dataWithCloudId = { ...data };
+        if (tableColumns.includes('cloud_id') && !dataWithCloudId.cloud_id) {
+            dataWithCloudId.cloud_id = crypto.randomUUID();
+        }
+
+        const keys = Object.keys(dataWithCloudId);
+        const values = Object.values(dataWithCloudId);
         const placeholders = keys.map(() => '?').join(', ');
 
         const stmt = this.db.prepare(`
@@ -213,8 +223,8 @@ class BaseRepository {
 
         // Get the created record
         let createdRecord;
-        if (data.id) {
-            createdRecord = this.findById(data.id);
+        if (dataWithCloudId.id) {
+            createdRecord = this.findById(dataWithCloudId.id);
         } else {
             // For auto-increment IDs
             createdRecord = this.findById(result.lastInsertRowid);
@@ -223,9 +233,9 @@ class BaseRepository {
         // Notify CloudSync of the change and broadcast to UI
         if (createdRecord) {
             const recordId = createdRecord.id || result.lastInsertRowid;
-            getNotifyDataChange()(this.tableName, 'INSERT', createdRecord, recordId);
-            // Broadcast to update UI immediately (skip for local-only tables)
+            // Skip sync notification for local-only tables (CloudSync would drop it anyway)
             if (this.shouldBroadcast()) {
+                getNotifyDataChange()(this.tableName, 'INSERT', createdRecord, recordId);
                 getBroadcastDataChange()(this.tableName, 'INSERT', recordId, createdRecord);
             }
         }

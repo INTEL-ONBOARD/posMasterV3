@@ -1,7 +1,7 @@
 {
   "name": "posmasterv3",
   "private": true,
-  "version": "1.2.1",
+  "version": "1.2.2",
   "main": "electron.cjs",
   "type": "module",
   "scripts": {
@@ -38,10 +38,11 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "assets/icon.ico"
+      "icon": "src/frontend/assets/icon.ico"
     },
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "src/frontend/assets/app_logo/app_logo.png"
     },
     "extraResources": [
       {

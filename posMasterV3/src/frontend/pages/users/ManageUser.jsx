@@ -278,8 +278,8 @@ function ManageUser() {
           const loadedPerms = settings.permissions;
 
           // Check if permissions use new structure by checking for new keys
-          const hasNewSaleKeys = loadedPerms.SaleAccess && 'sale_process' in loadedPerms.SaleAccess;
-          const hasNewInventoryKeys = loadedPerms.InventoryAccess && 'inventory_view' in loadedPerms.InventoryAccess;
+          const hasNewSaleKeys = loadedPerms.SaleAccess && typeof loadedPerms.SaleAccess === 'object' && 'sale_process' in loadedPerms.SaleAccess;
+          const hasNewInventoryKeys = loadedPerms.InventoryAccess && typeof loadedPerms.InventoryAccess === 'object' && 'inventory_view' in loadedPerms.InventoryAccess;
 
           if (hasNewSaleKeys && hasNewInventoryKeys) {
             // New structure - merge with defaults to fill any missing keys
@@ -608,7 +608,7 @@ function ManageUser() {
     setFormStatus("loading");
 
     try {
-      const response = await userApi.delete(formData.id);
+      const response = await userApi.delete(formData.id, true);
 
       if (response.status === "success") {
         setStatusModal({ open: true, type: 'success', description: 'User deleted successfully' });

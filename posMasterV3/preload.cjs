@@ -454,7 +454,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
             ipcRenderer.invoke("appSettings:applyAll"),
         // Check if cloud sync is enabled
         isCloudSyncEnabled: () =>
-            ipcRenderer.invoke("appSettings:isCloudSyncEnabled")
+            ipcRenderer.invoke("appSettings:isCloudSyncEnabled"),
+        // Listen for backend-initiated auto-logout (e.g. admin force-logout)
+        // Returns an unsubscribe function
+        onAutoLogout: (callback) => {
+            const handler = (event, data) => callback(data);
+            ipcRenderer.on("appSettings:auto-logout", handler);
+            return () => ipcRenderer.removeListener("appSettings:auto-logout", handler);
+        }
     },
 
     // ============================================
@@ -592,6 +599,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
     },
 
     /**
+     * Listen for backend status log updates
+     * The callback will be called with: { message, type, isLoading }
+     * Returns an unsubscribe function
+     */
+    onStatusUpdate: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on("status:update", handler);
+        return () => ipcRenderer.removeListener("status:update", handler);
+    },
+
+    /**
      * Listen for connection status changes
      * Called when network connectivity changes
      * The callback will be called with: { isOnline, quality, timestamp }
@@ -666,6 +684,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
         ipcRenderer.on("sync:table-progress", handler);
         return () => ipcRenderer.removeListener("sync:table-progress", handler);
     },
+
+    // Read config DTOs from the POS Master folder (temp.json + config.json)
+    readConfigDtos: (folderPath) =>
+        ipcRenderer.invoke("read-config-dtos", { folderPath }),
 
     // ============================================
     // BRANCH CONTEXT API

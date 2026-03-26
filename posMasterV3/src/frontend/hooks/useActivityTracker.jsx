@@ -83,9 +83,10 @@ export function useActivityTracker({ enabled = true, idleTimeoutMs = DEFAULT_IDL
             document.addEventListener(event, resetIdle, { passive: true });
         });
 
-        // Listen for auto-logout event from backend (if implemented in future)
+        // Listen for auto-logout event from backend (admin force-logout)
+        let unsubscribeAutoLogout = null;
         if (window.electronAPI?.appSettings?.onAutoLogout) {
-            window.electronAPI.appSettings.onAutoLogout(handleAutoLogout);
+            unsubscribeAutoLogout = window.electronAPI.appSettings.onAutoLogout(handleAutoLogout);
         }
 
         // Start the idle timer immediately on mount
@@ -98,6 +99,7 @@ export function useActivityTracker({ enabled = true, idleTimeoutMs = DEFAULT_IDL
             if (idleTimerRef.current) {
                 clearTimeout(idleTimerRef.current);
             }
+            unsubscribeAutoLogout?.();
         };
     }, [enabled, resetIdle, handleAutoLogout, idleTimeoutMs]);
 
