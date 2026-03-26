@@ -845,84 +845,55 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
       <div className="w-[320px] bg-gradient-to-b from-slate-100 to-slate-50 h-full p-4 flex flex-col gap-3 shrink-0 border-l border-slate-200">
         {/* Main Content Area - Scrollable */}
         <div className="flex-1 overflow-y-auto">
-          {rightActiveSection === "buttons" ? (
-            <div className="flex flex-col gap-3">
-              {/* Add Items Card */}
-              <button
-                onClick={() => {
-                  setRightActiveSection("items");
-                  refetchItems(); // Refresh items when opening the panel
-                }}
-                className="bg-white rounded-2xl p-5 flex flex-col items-center justify-center hover:shadow-xl transition-all border border-slate-100 hover:border-teal-300 group relative overflow-hidden"
+          {/* Items List View */}
+          <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+            {/* Search Header */}
+            <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+              <div className="mb-3">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={handleSearch}
+                  placeholder="Search by name, SKU, or code..."
+                  className="w-full pl-4 pr-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition-all"
+                />
+              </div>
+              <select
+                value={searchCategory}
+                onChange={(e) => setSearchCategory(e.target.value)}
+                className="w-full px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition-all"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg shadow-teal-500/30">
-                  <ShoppingCart className="w-8 h-8 text-white" />
-                </div>
-                <span className="relative text-base font-bold text-slate-800">Add Items</span>
-                <span className="relative text-xs text-slate-500 mt-1">Add registered items to sale</span>
-              </button>
-
+                <option value="All">All Categories</option>
+                {uniqueCategoryTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
             </div>
-          ) : (
-            /* Items List View */
-            <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
-              {/* Search Header */}
-              <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-                <div className="flex items-center gap-3 mb-3">
-                  <button
-                    onClick={() => setRightActiveSection("buttons")}
-                    className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-all hover:scale-105"
-                  >
-                    <BackIcon />
-                  </button>
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      value={search}
-                      onChange={handleSearch}
-                      placeholder="Search by name, SKU, or code..."
-                      className="w-full pl-4 pr-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition-all"
-                    />
-                  </div>
+
+            {/* Items List */}
+            <div className="flex-1 overflow-y-auto p-3">
+              {(isLoading || searchLoading) ? (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <div className="w-12 h-12 border-4 border-slate-200 border-t-teal-500 rounded-full animate-spin mb-4"></div>
+                  <span className="text-slate-500 text-sm font-medium">Loading items...</span>
                 </div>
-                <select
-                  value={searchCategory}
-                  onChange={(e) => setSearchCategory(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition-all"
-                >
-                  <option value="All">All Categories</option>
-                  {uniqueCategoryTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
+              ) : filteredItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 py-12">
+                  <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                    <Package className="w-8 h-8 text-slate-300" />
+                  </div>
+                  <span className="text-sm font-semibold text-slate-500">No items found</span>
+                  <span className="text-xs text-slate-400 mt-1">Try a different search</span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredItems.map((item) => (
+                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={() => loadItemtoList(item)} />
                   ))}
-                </select>
-              </div>
-
-              {/* Items List */}
-              <div className="flex-1 overflow-y-auto p-3">
-                {(isLoading || searchLoading) ? (
-                  <div className="flex flex-col items-center justify-center h-full">
-                    <div className="w-12 h-12 border-4 border-slate-200 border-t-teal-500 rounded-full animate-spin mb-4"></div>
-                    <span className="text-slate-500 text-sm font-medium">Loading items...</span>
-                  </div>
-                ) : filteredItems.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-slate-400 py-12">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                      <Package className="w-8 h-8 text-slate-300" />
-                    </div>
-                    <span className="text-sm font-semibold text-slate-500">No items found</span>
-                    <span className="text-xs text-slate-400 mt-1">Try a different search</span>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {filteredItems.map((item) => (
-                      <SalesItemCard key={item.id ?? item._id} item={item} onOpen={() => loadItemtoList(item)} />
-                    ))}
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Sticky Footer - Action Bar */}
