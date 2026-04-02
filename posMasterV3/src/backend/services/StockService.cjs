@@ -250,7 +250,7 @@ class StockService {
                 discount_price: data.discount_price || 0,
                 expiry_date: data.expiry_date || data.exp_date || null,
                 threshold_limit: data.threshold_limit || 0,
-                availability: data.availability !== undefined ? data.availability : 1,
+                availability: data.availability !== undefined ? (data.availability === 'false' || data.availability === false || data.availability === 0 || data.availability === '0' ? 0 : 1) : 1,
                 // Branch assignment
                 branch_id: branchContext.branchId
             };

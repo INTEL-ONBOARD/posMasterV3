@@ -206,8 +206,20 @@ class BaseRepository {
         // This ensures every new record has a globally unique cross-device identifier for sync.
         const tableColumns = this.db.prepare(`PRAGMA table_info(${this.tableName})`).all().map(c => c.name);
         const dataWithCloudId = { ...data };
-        if (tableColumns.includes('cloud_id') && !dataWithCloudId.cloud_id) {
-            dataWithCloudId.cloud_id = crypto.randomUUID();
+        if (tableColumns.includes('cloud_id')) {
+            if (!dataWithCloudId.cloud_id) {
+                dataWithCloudId.cloud_id = crypto.randomUUID();
+            }
+
+            // To prevent primary key conflicts across offline branches before full UUID sync is supported, 
+            // inject a randomized ID. SQLite AUTOINCREMENT will naturally resume from this high integer.
+            // By giving every new insert a random sparse ID across machines, collision probability becomes virtually zero.
+            if (!dataWithCloudId.id && tableColumns.includes('id')) {
+                // Generate a random integer between 10,000,000 and 2,000,000,000
+                const min = 10000000;
+                const max = 2000000000;
+                dataWithCloudId.id = Math.floor(Math.random() * (max - min + 1)) + min;
+            }
         }
 
         const keys = Object.keys(dataWithCloudId);

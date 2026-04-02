@@ -334,7 +334,11 @@ class SalesService {
                 return { status: 'error', message: 'No items specified for return' };
             }
 
-            // Validate quantities don't exceed what was originally sold
+            // Validate quantities don't exceed what was originally sold, factoring in previous returns
+            const ReturnRepository = require('../repositories/ReturnRepository.cjs');
+            const returnRepo = new ReturnRepository();
+            const existingReturns = returnRepo.findBySaleId(saleId) || [];
+
             for (const returnItem of items) {
                 const originalItem = sale.items.find(
                     si => si.stock_id === returnItem.stock_id && si.item_id === returnItem.item_id
@@ -345,10 +349,16 @@ class SalesService {
                 if (returnItem.quantity <= 0) {
                     return { status: 'error', message: 'Return quantity must be greater than 0' };
                 }
-                if (returnItem.quantity > originalItem.quantity) {
+
+                // Calculate already returned quantities
+                const alreadyReturned = existingReturns
+                    .filter(r => r.stock_id === returnItem.stock_id && r.item_id === returnItem.item_id && r.sync_status !== 'cancelled')
+                    .reduce((sum, r) => sum + r.quantity, 0);
+
+                if (alreadyReturned + returnItem.quantity > originalItem.quantity) {
                     return {
                         status: 'error',
-                        message: `Cannot return ${returnItem.quantity} units — only ${originalItem.quantity} were sold`
+                        message: `Cannot return ${returnItem.quantity} units. Only ${originalItem.quantity - alreadyReturned} units practically available to return.`
                     };
                 }
             }

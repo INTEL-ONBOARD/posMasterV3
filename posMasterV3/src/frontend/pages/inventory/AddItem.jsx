@@ -156,7 +156,7 @@ function AddItem({ isActive }) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Image upload handler - converts file to base64 blob
+  // Image upload handler - converts file to base64 blob and compresses it 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -167,21 +167,38 @@ function AddItem({ isActive }) {
       return;
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      setStatusModal({ open: true, type: 'failed', description: "Image size must be less than 5MB" });
-      return;
-    }
-
     const reader = new FileReader();
     reader.onloadend = () => {
-      const base64String = reader.result;
-      setFormData(prev => ({
-        ...prev,
-        item_image_blob: base64String
-      }));
-      setStatusModal({ open: true, type: 'success', description: "Image uploaded successfully" });
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL("image/webp", 0.7);
+        setFormData(prev => ({ ...prev, item_image_blob: dataUrl }));
+        setStatusModal({ open: true, type: 'success', description: "Image uploaded successfully" });
+      };
+      img.src = reader.result;
     };
     reader.onerror = () => {
       setStatusModal({ open: true, type: 'failed', description: "Failed to read image file" });
@@ -217,20 +234,47 @@ function AddItem({ isActive }) {
       setFormStatus("form");
       return;
     }
+    
+    if (!formData.item_name || !formData.item_name.trim()) {
+      setStatusModal({ open: true, type: 'failed', description: 'Item name is required' });
+      setFormStatus("form");
+      return;
+    }
+
+    const capacity = Number(formData.maximum_capacity);
+    if (isNaN(capacity) || capacity <= 0) {
+      setStatusModal({ open: true, type: 'failed', description: 'Enter a valid maximum capacity > 0' });
+      setFormStatus("form");
+      return;
+    }
+
+    if (!formUOMData) {
+      setStatusModal({ open: true, type: 'failed', description: 'Unit of measurement is required' });
+      setFormStatus("form");
+      return;
+    }
+
+    const selectedCategory = (itemCategories || []).find(c =>
+      c.type === formCategoryData.categoryType &&
+      c.brand === formCategoryData.brand
+    );
+
+    if (!selectedCategory?.id) {
+      setStatusModal({ open: true, type: 'failed', description: 'Category is required' });
+      setFormStatus("form");
+      return;
+    }
+
     try {
-      const selectedCategory = (itemCategories || []).find(c =>
-        c.type === formCategoryData.categoryType &&
-        c.brand === formCategoryData.brand
-      );
       const requestData = {
         item_name: formData.item_name,
         item_code: formData.item_code || null,
         item_image_blob: formData.item_image_blob || null,
         item_image_url: formData.item_image_url || null,
         sku: formData.sku,
-        maximum_capacity: Number(formData.maximum_capacity),
+        maximum_capacity: capacity,
         uom_id: formUOMData,
-        category_id: selectedCategory?.id ?? null, // look up id
+        category_id: selectedCategory.id, // look up id
         availability: formData.availability,
       };
       const response = await registerItemService.registerItem(requestData);
@@ -262,20 +306,52 @@ function AddItem({ isActive }) {
     setFormStatus("loading");
     statusLog.database("Updating item...", true);
     e.preventDefault();
+    if (!formData.sku || !formData.sku.trim()) {
+      setStatusModal({ open: true, type: 'failed', description: 'SKU is required' });
+      setFormStatus("form");
+      return;
+    }
+    
+    if (!formData.item_name || !formData.item_name.trim()) {
+      setStatusModal({ open: true, type: 'failed', description: 'Item name is required' });
+      setFormStatus("form");
+      return;
+    }
+
+    const capacity = Number(formData.maximum_capacity);
+    if (isNaN(capacity) || capacity <= 0) {
+      setStatusModal({ open: true, type: 'failed', description: 'Enter a valid maximum capacity > 0' });
+      setFormStatus("form");
+      return;
+    }
+
+    if (!formUOMData) {
+      setStatusModal({ open: true, type: 'failed', description: 'Unit of measurement is required' });
+      setFormStatus("form");
+      return;
+    }
+
+    const selectedCategory = (itemCategories || []).find(c =>
+      c.type === formCategoryData.categoryType &&
+      c.brand === formCategoryData.brand
+    );
+
+    if (!selectedCategory?.id) {
+      setStatusModal({ open: true, type: 'failed', description: 'Category is required' });
+      setFormStatus("form");
+      return;
+    }
+
     try {
-      const selectedCategory = (itemCategories || []).find(c =>
-        c.type === formCategoryData.categoryType &&
-        c.brand === formCategoryData.brand
-      );
       const requestData = {
         item_name: formData.item_name,
         item_code: formData.item_code || null,
         item_image_blob: formData.item_image_blob || null,
         item_image_url: formData.item_image_url || null,
         sku: formData.sku,
-        maximum_capacity: Number(formData.maximum_capacity),
+        maximum_capacity: capacity,
         uom_id: formUOMData,
-        category_id: selectedCategory?.id ?? null, // look up id
+        category_id: selectedCategory.id, // look up id
         availability: formData.availability,
       };
 

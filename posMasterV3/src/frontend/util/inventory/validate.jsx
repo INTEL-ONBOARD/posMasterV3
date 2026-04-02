@@ -42,8 +42,12 @@ export function validateStockForm(formDataStock = {}) {
   //}
 
   const discount = parseFloat(formDataStock.discount);
-  if (!Number.isNaN(discount) && discount < 0) {
-    formErrors.discount = "Discount cannot be negative.";
+  if (!Number.isNaN(discount)) {
+    if (discount < 0) {
+      formErrors.discount = "Discount cannot be negative.";
+    } else if (!Number.isNaN(stockPrice) && discount > stockPrice) {
+      formErrors.discount = "Discount cannot be greater than stock price.";
+    }
   }
 
   if (formDataStock.availability === "" || formDataStock.availability === undefined) {

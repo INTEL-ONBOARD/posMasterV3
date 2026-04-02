@@ -194,7 +194,7 @@ function CheckoutSummaryModal({
   const formatCurrency = (amount) => `Rs. ${(parseFloat(amount) || 0).toFixed(2)}`;
 
   const handleConfirm = async () => {
-    if (totalAmount <= 0) return;
+    if (totalAmount < 0) return;
     if (creditWarning) return;
     if (!selectedPaymentMethod) return;
 
@@ -396,7 +396,10 @@ function CheckoutSummaryModal({
                       <input
                         type="number"
                         value={finalDiscount}
-                        onChange={(e) => setFinalDiscount(e.target.value)}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setFinalDiscount(Math.max(0, Math.min(stockTotal, val)));
+                        }}
                         disabled={isProcessing}
                         className="w-full pl-10 pr-3 py-2 bg-white/10 border border-amber-500/30 rounded-lg font-bold text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500/30 tabular-nums text-lg disabled:opacity-50"
                         placeholder="0"
@@ -653,7 +656,7 @@ function CheckoutSummaryModal({
             </button>
             <button
               onClick={handleConfirm}
-              disabled={isProcessing || totalAmount <= 0 || creditWarning || !selectedPaymentMethod || (selectedPaymentMethod?.type === 'cash' && cashReceivedNum < totalAmount && cashReceivedNum > 0)}
+              disabled={isProcessing || totalAmount < 0 || creditWarning || !selectedPaymentMethod || (selectedPaymentMethod?.type === 'cash' && cashReceivedNum < totalAmount && cashReceivedNum > 0)}
               className="flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:from-emerald-600 hover:to-emerald-700 transition-all disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/30 disabled:shadow-none flex items-center justify-center gap-3"
             >
               {isProcessing ? (

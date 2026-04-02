@@ -722,7 +722,7 @@ function InventoryRestock({ isActive }) {
         stock_id: formDataDisposeItem.stock_id,
         quantity: qty,
         reason: formDataDisposeItem.reason.trim(),
-        disposed_by: null,
+        disposed_by: transactionData.prep_id,
       });
 
       if (response.status === "success") {

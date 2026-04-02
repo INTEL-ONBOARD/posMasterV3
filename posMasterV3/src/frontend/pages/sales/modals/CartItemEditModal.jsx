@@ -336,7 +336,10 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
                   <input
                     type="number"
                     value={discount}
-                    onChange={(e) => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setDiscount(Math.max(0, Math.min(unitPrice, val)));
+                    }}
                     className="w-full pl-10 pr-4 py-3 bg-white border-2 border-orange-200 rounded-xl text-lg font-semibold text-orange-600 focus:outline-none focus:border-orange-400"
                     placeholder="0.00"
                   />

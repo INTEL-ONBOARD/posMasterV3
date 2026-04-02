@@ -245,8 +245,8 @@ class SalesRepository extends BaseRepository {
                 cashier_id: data.cashier_id,
                 payment_method: data.payment_method || 'cash',
                 credit_duration: data.credit_duration,
-                subtotal: data.subtotal || 0,
-                discount: data.discount || 0,
+                subtotal: Math.max(0, data.subtotal || 0),
+                discount: Math.max(0, data.discount || 0),
                 total_amount: data.total_amount || 0,
                 cash_received: data.cash_received || 0,
                 change_amount: data.change_amount || 0,
@@ -259,6 +259,10 @@ class SalesRepository extends BaseRepository {
                 branch_id: safeBranchId,
                 created_by: safeCreatedBy
             };
+
+            if (saleData.total_amount < 0) {
+                throw new Error("Total amount cannot be negative");
+            }
 
             const saleStmt = this.db.prepare(`
                 INSERT INTO sales_transactions
@@ -288,6 +292,12 @@ class SalesRepository extends BaseRepository {
                 // Validate quantity before any DB operation
                 if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
                     throw new Error(`Invalid quantity ${item.quantity} for item_id=${item.item_id}`);
+                }
+                if (item.discount > item.unit_price) {
+                    throw new Error(`Discount cannot exceed unit price for item_id=${item.item_id}`);
+                }
+                if (item.total_price < 0) {
+                    throw new Error(`Total price cannot be negative for item_id=${item.item_id}`);
                 }
 
                 // Validate item FK references exist locally
@@ -638,6 +648,37 @@ class SalesRepository extends BaseRepository {
 
             // Broadcast stock update to UI
             broadcastBatchChange('stock', itemsToReturn.length, 'SALE_RETURN');
+
+            // Reverse member income and credits for the newly generated returns natively
+            if (sale && sale.member_id && !sale.is_held) {
+                const totalRefundAmount = insertedReturns.reduce((sum, r) => sum + (r.unit_price * r.quantity), 0);
+
+                const reverseMemberStmt = this.db.prepare(`
+                    UPDATE members SET
+                        total_income = total_income - ?,
+                        updated_at = ?,
+                        sync_status = 'pending'
+                    WHERE id = ?
+                `);
+                reverseMemberStmt.run(totalRefundAmount, nowISO(), sale.member_id);
+
+                if (sale.payment_method === 'credit') {
+                    const reverseCreditsStmt = this.db.prepare(`
+                        UPDATE members SET
+                            total_credits = total_credits - ?,
+                            updated_at = ?,
+                            sync_status = 'pending'
+                        WHERE id = ?
+                    `);
+                    reverseCreditsStmt.run(totalRefundAmount, nowISO(), sale.member_id);
+                }
+
+                const updatedMember = this.db.prepare('SELECT * FROM members WHERE id = ?').get(sale.member_id);
+                if (updatedMember) {
+                    notifyDataChange('members', 'UPDATE', updatedMember, sale.member_id);
+                    broadcastDataChange('members', 'UPDATE', sale.member_id, updatedMember);
+                }
+            }
         });
 
         transaction();

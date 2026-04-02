@@ -130,7 +130,7 @@ const TABLE_SPECIFIC_EXCLUSIONS = {
 // NOTE: active_sessions is intentionally excluded here — RealTimeSyncService owns its
 // polling exclusively (every 3 s) to avoid two services pulling the same table
 // concurrently and producing unpredictable merge results.
-const PULL_FIRST_TABLES = ['users', 'user_settings'];
+const PULL_FIRST_TABLES = ['users', 'user_settings', 'items', 'stock'];
 
 // Maximum retry attempts for failed sync operations
 const MAX_RETRY_ATTEMPTS = 3;
@@ -196,13 +196,10 @@ class CloudSyncService {
      * Clear all pending changes (call on user logout to prevent data leaks)
      */
     clearPendingChanges() {
-        this.pendingChanges = [];
-        this._pendingChangeKeys.clear();
-        this._pendingChangeRecords.clear();
-        console.log('[CloudSyncService] Pending changes cleared on logout');
+        console.log('[CloudSyncService] Skipping memory wipe on logout ensuring offline queues endure device lifecycle blocks.');
         if (this.syncQueueRepo) {
             try {
-                // Delete all completed records immediately (on logout, we want a clean slate)
+                // Delete all completed records immediately
                 this.syncQueueRepo.clearCompleted();
             } catch (err) {
                 console.warn('[CloudSync] Failed to clean up completed DB queue records:', err.message);
@@ -640,14 +637,30 @@ class CloudSyncService {
 
         // Deduplication: if same table+operation+record is already pending, update
         // its record data with the latest snapshot so the most recent state is pushed.
-        if (this._isChangePending(tableName, operation, recordId)) {
-            const key = this._getChangeKey(tableName, operation, recordId);
-            this._pendingChangeRecords.set(key, record);
+        // Identify ONLY by table and recordId, allowing INSERT and UPDATE offline jumps to merge seamlessly.
+        const pendingKeyInsert = this._getChangeKey(tableName, 'INSERT', recordId);
+        const pendingKeyUpdate = this._getChangeKey(tableName, 'UPDATE', recordId);
+        
+        let existingKey = null;
+        if (this._pendingChangeKeys.has(pendingKeyInsert)) existingKey = pendingKeyInsert;
+        else if (this._pendingChangeKeys.has(pendingKeyUpdate)) existingKey = pendingKeyUpdate;
+        else if (this._pendingChangeKeys.has(this._getChangeKey(tableName, operation, recordId))) existingKey = this._getChangeKey(tableName, operation, recordId);
+
+        if (existingKey) {
+            this._pendingChangeRecords.set(existingKey, record);
+            const keyParts = existingKey.split(':');
+            const origOp = keyParts[1];
             const existing = this.pendingChanges.find(
-                c => c.tableName === tableName && c.operation === operation && c.recordId === recordId
+                c => c.tableName === tableName && c.operation === origOp && String(c.recordId) === String(recordId)
             );
             if (existing) existing.record = record;
-            console.log(`[CloudSync] Updated pending record data: ${operation} on ${tableName} (ID: ${recordId})`);
+            console.log(`[CloudSync] Updated pending record data: ${operation} merged into ${origOp} on ${tableName} (ID: ${recordId})`);
+            // Update queue DB if applicable
+            try {
+                if (existing && existing.queueId && this.syncQueueRepo) {
+                    this.syncQueueRepo.updatePayload(existing.queueId, record);
+                }
+            } catch (err) {}
             return;
         }
 
@@ -772,10 +785,37 @@ class CloudSyncService {
                 if (typeof val === 'boolean') return val ? 1 : 0;
                 // For roles and other JSON fields, stringify arrays
                 if (Array.isArray(val)) return JSON.stringify(val);
+                // Serialize explicitly constructed Date objects from cache memory
+                if (val instanceof Date) return val.toISOString();
                 // Skip other objects (not arrays) - these are embedded data, not actual columns
                 if (typeof val === 'object' && val !== null) return null;
                 return val;
             });
+
+            // Prevent strict blind overwrites of newer cloud records
+            // Verify if cloud possesses a newer chronological timestamp.
+            try {
+                const cloudExisting = await executeQuery(`SELECT updated_at, created_at FROM ${tableName} WHERE ${primaryKey} = ?`, [recordId]);
+                if (cloudExisting && cloudExisting.length > 0) {
+                    const cloudRecord = cloudExisting[0];
+                    const cloudTime = new Date(cloudRecord.updated_at || cloudRecord.created_at || 0).getTime();
+                    const localTime = new Date(record.updated_at || record.created_at || 0).getTime();
+                    
+                    if (cloudTime > localTime && localTime > 0) {
+                        console.warn(`[CloudSync] Sync pushed aborted: Cloud record for ${tableName}:${recordId} is newer. Discarding offline payload.`);
+                        this._logConflict({
+                            tableName,
+                            recordId,
+                            winner: cloudRecord,
+                            loser: record,
+                            winnerSource: 'cloud'
+                        });
+                        // Automatically flag success to dequeue local state, allow native pulls to override it later
+                        this.updateLocalSyncStatus(tableName, recordId, 'synced');
+                        return;
+                    }
+                }
+            } catch (err) {}
 
             const placeholders = columns.map(() => '?').join(', ');
 
@@ -1107,10 +1147,9 @@ class CloudSyncService {
         const primaryKey = this.getPrimaryKeyColumn(tableName);
 
         try {
-            // Disable foreign key checks during sync to avoid FK constraint failures
-            // when syncing child records before parent records exist
-            // This is safe because we sync tables in dependency order
-            db.pragma('foreign_keys = OFF');
+            // Note: Foreign keys are NO LONGER disabled globally across this async function.
+            // Synchronous foreign key checks are managed intimately inside pullRecordToLocal
+            // ensuring other offline interactions don't accidentally bypass restrictions!
 
             // Get table info upfront for column filtering
             const tableInfo = db.prepare(`PRAGMA table_info(${tableName})`).all();
@@ -1252,9 +1291,6 @@ class CloudSyncService {
         } catch (error) {
             console.error(`[CloudSync] Failed bidirectional sync for ${tableName}:`, error.message);
             throw error;
-        } finally {
-            // Always re-enable foreign key checks after sync
-            db.pragma('foreign_keys = ON');
         }
     }
 
@@ -1562,7 +1598,15 @@ class CloudSyncService {
             `;
         }
 
-        db.prepare(query).run(...values);
+        // Toggle SQLite Connection level foreign keys specifically around the synchronous execution context
+        // This natively prevents 'ON DELETE CASCADE' wiping histories during network pulls.
+        const wasFkOn = db.pragma('foreign_keys', { simple: true });
+        if (wasFkOn) db.pragma('foreign_keys = OFF');
+        try {
+            db.prepare(query).run(...values);
+        } finally {
+            if (wasFkOn) db.pragma('foreign_keys = ON');
+        }
 
         // Broadcast data change to update UI immediately (unless caller is batching broadcasts)
         if (!skipBroadcast) {
@@ -1582,9 +1626,6 @@ class CloudSyncService {
         const primaryKey = this.getPrimaryKeyColumn(tableName);
 
         try {
-            // Disable foreign key checks during sync
-            db.pragma('foreign_keys = OFF');
-
             // Get the specific record from cloud
             const cloudRecords = await executeQuery(
                 `SELECT * FROM ${tableName} WHERE ${primaryKey} = ?`,
@@ -1608,9 +1649,6 @@ class CloudSyncService {
         } catch (error) {
             // If table doesn't exist in cloud or other error, just log and continue
             console.log(`[CloudSync] Could not pull ${tableName} record ${recordId} from cloud:`, error.message);
-        } finally {
-            // Always re-enable foreign key checks
-            db.pragma('foreign_keys = ON');
         }
     }
 
@@ -1625,13 +1663,7 @@ class CloudSyncService {
         const result = { downloaded: 0, actuallyChanged: 0 };
 
         try {
-            // Disable foreign key checks during sync to avoid FK constraint failures
-            // when syncing child records before parent records exist.
-            // skipFkPragma=true when the caller (e.g. performFastSync) manages FK globally
-            // to prevent concurrent ON/OFF races across parallel Promise.all() calls.
-            if (!skipFkPragma) {
-                db.pragma('foreign_keys = OFF');
-            }
+            // Foreign keys are locally managed via pullRecordToLocal now.
 
             // Check local table schema upfront (needed for incremental logic and column filtering)
             const tableInfo = db.prepare(`PRAGMA table_info(${tableName})`).all();
@@ -1747,20 +1779,37 @@ class CloudSyncService {
                     const existingRecord = db.prepare(`SELECT * FROM ${tableName} WHERE ${primaryKey} = ?`).get(record[primaryKey]);
                     let recordChanged = !existingRecord; // New record = changed
 
-                    // If local record has pending unsent changes, skip cloud overwrite.
-                    // The push phase (syncTable / bidirectionalSyncTable) will push local first,
-                    // then the next pull cycle will receive the authoritative merged result.
+                    // If local record has pending unsent changes, verify if the cloud change natively overrides it through timestamps.
                     if (existingRecord && existingRecord.sync_status === 'pending') {
-                        result.downloaded++;
-                        continue;
+                        const cloudTime = new Date(record.updated_at || record.created_at || 0).getTime();
+                        const localTime = new Date(existingRecord.updated_at || existingRecord.created_at || 0).getTime();
+
+                        if (cloudTime > localTime && cloudTime > 0) {
+                            console.log(`[CloudSync] Conflict resolved: Cloud record ${record[primaryKey]} in ${tableName} is newer. Overwriting local pending change.`);
+                            this._logConflict({
+                                tableName,
+                                recordId: record[primaryKey],
+                                winner: record,
+                                loser: existingRecord,
+                                winnerSource: 'cloud'
+                            });
+                            // Cancel matching native push queries
+                            this._removePendingKey(tableName, 'UPDATE', record[primaryKey]);
+                            this._removePendingKey(tableName, 'INSERT', record[primaryKey]);
+                            recordChanged = true;
+                        } else {
+                            // Local remains newer, skip download overlap
+                            result.downloaded++;
+                            continue;
+                        }
                     }
 
-                    // For users table: if local record doesn't exist, it was intentionally deleted locally.
-                    // Don't re-insert from cloud — the pending DELETE will clean cloud on next sync.
-                    if (tableName === 'users' && !existingRecord) {
-                        const pendingDelete = this._isChangePending('users', 'DELETE', record[primaryKey]);
+                    // If local record doesn't exist, it might have been intentionally deleted locally offline.
+                    // Don't re-insert from cloud — the pending DELETE will clean cloud on the next sync phase.
+                    if (!existingRecord) {
+                        const pendingDelete = this._isChangePending(tableName, 'DELETE', record[primaryKey]);
                         if (pendingDelete) {
-                            console.log(`[CloudSync] Skipping cloud re-insert for locally deleted user: ${record[primaryKey]}`);
+                            console.log(`[CloudSync] Skipping cloud re-insert for locally deleted entity: ${tableName} / ${record[primaryKey]}`);
                             result.downloaded++;
                             continue;
                         }
@@ -1977,11 +2026,6 @@ class CloudSyncService {
         } catch (error) {
             console.error(`[CloudSync] Failed to pull from cloud ${tableName}:`, error.message);
             throw error;
-        } finally {
-            // Re-enable foreign key checks after sync (unless caller manages it globally)
-            if (!skipFkPragma) {
-                db.pragma('foreign_keys = ON');
-            }
         }
     }
 
@@ -2977,9 +3021,7 @@ class CloudSyncService {
                 const db = getDatabase();
                 if (!db) return;
 
-                db.pragma('foreign_keys = OFF');
                 const pullResult = await this.pullFromCloud('active_sessions', { skipFkPragma: true });
-                db.pragma('foreign_keys = ON');
 
                 // Clear session cache to force revalidation
                 const { clearCache, validateSessionFast } = require('./SessionValidator.cjs');
@@ -3030,19 +3072,11 @@ class CloudSyncService {
             const batch = PULL_TABLES.slice(start, start + BATCH_SIZE);
             this._pullTableIndex = (start + BATCH_SIZE) % PULL_TABLES.length;
 
-            // Run pulls sequentially rather than in parallel.
-            // This keeps the foreign_keys = OFF window as narrow as possible:
-            // each pull disables FK checks only for its own duration, then re-enables
-            // before the next pull starts. Parallel Promise.all would hold FK off
-            // for the entire batch while MySQL round-trips complete.
             for (const table of batch) {
-                db.pragma('foreign_keys = OFF');
                 try {
                     await this.pullFromCloud(table, { skipFkPragma: true });
                 } catch (err) {
                     console.log(`[CloudSync] Incremental pull error for ${table}:`, err.message);
-                } finally {
-                    db.pragma('foreign_keys = ON');
                 }
             }
         }, 2000); // 2 seconds — full table cycle in ~7s with batch size 6
