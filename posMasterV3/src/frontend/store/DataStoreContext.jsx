@@ -31,17 +31,40 @@ import { dataStore } from './DataStore';
 // Context for sync status and connection info
 const DataStoreContext = createContext(null);
 
+const DEFAULT_SYNC_STATUS = {
+    isOnline: false,
+    connectionQuality: 'unknown',
+    syncStatus: 'idle',
+    lastSyncTime: null,
+    pendingCount: 0,
+    isSyncing: false
+};
+
+function normalizeSyncStatus(status = {}) {
+    const pendingCount = status.pendingCount ?? status.pendingChangesCount ?? DEFAULT_SYNC_STATUS.pendingCount;
+    const syncStatus = status.syncStatus ?? status.status ?? DEFAULT_SYNC_STATUS.syncStatus;
+
+    return {
+        isOnline: status.isOnline ?? DEFAULT_SYNC_STATUS.isOnline,
+        connectionQuality: status.connectionQuality ?? DEFAULT_SYNC_STATUS.connectionQuality,
+        syncStatus,
+        lastSyncTime: status.lastSyncTime ?? DEFAULT_SYNC_STATUS.lastSyncTime,
+        pendingCount,
+        isSyncing: status.isSyncing ?? DEFAULT_SYNC_STATUS.isSyncing
+    };
+}
+
 /**
  * DataStore Provider Component
  */
 export function DataStoreProvider({ children }) {
     // Sync and connection status
-    const [isOnline, setIsOnline] = useState(true);
-    const [connectionQuality, setConnectionQuality] = useState('unknown');
-    const [syncStatus, setSyncStatus] = useState('idle');
-    const [lastSyncTime, setLastSyncTime] = useState(null);
-    const [pendingCount, setPendingCount] = useState(0);
-    const [isSyncing, setIsSyncing] = useState(false);
+    const [isOnline, setIsOnline] = useState(DEFAULT_SYNC_STATUS.isOnline);
+    const [connectionQuality, setConnectionQuality] = useState(DEFAULT_SYNC_STATUS.connectionQuality);
+    const [syncStatus, setSyncStatus] = useState(DEFAULT_SYNC_STATUS.syncStatus);
+    const [lastSyncTime, setLastSyncTime] = useState(DEFAULT_SYNC_STATUS.lastSyncTime);
+    const [pendingCount, setPendingCount] = useState(DEFAULT_SYNC_STATUS.pendingCount);
+    const [isSyncing, setIsSyncing] = useState(DEFAULT_SYNC_STATUS.isSyncing);
 
     // Setup event listeners
     useEffect(() => {
@@ -53,13 +76,13 @@ export function DataStoreProvider({ children }) {
         // Listen for sync status changes
         const unsubscribeSyncStatus = window.electronAPI.onSyncStatusChange?.((status) => {
             console.log('[DataStoreProvider] Sync status update:', status);
-
-            if (status.isOnline !== undefined) setIsOnline(status.isOnline);
-            if (status.connectionQuality) setConnectionQuality(status.connectionQuality);
-            if (status.syncStatus) setSyncStatus(status.syncStatus);
-            if (status.lastSyncTime) setLastSyncTime(status.lastSyncTime);
-            if (status.pendingCount !== undefined) setPendingCount(status.pendingCount);
-            if (status.isSyncing !== undefined) setIsSyncing(status.isSyncing);
+            const nextStatus = normalizeSyncStatus(status);
+            setIsOnline(nextStatus.isOnline);
+            setConnectionQuality(nextStatus.connectionQuality);
+            setSyncStatus(nextStatus.syncStatus);
+            setLastSyncTime(nextStatus.lastSyncTime);
+            setPendingCount(nextStatus.pendingCount);
+            setIsSyncing(nextStatus.isSyncing);
         });
 
         // Listen for connection status changes
@@ -73,12 +96,13 @@ export function DataStoreProvider({ children }) {
         // Get initial sync status
         window.electronAPI.cloudSync?.getStatus?.().then((result) => {
             if (result?.data) {
-                const status = result.data;
-                setIsOnline(status.isOnline ?? true);
-                setSyncStatus(status.syncStatus ?? 'idle');
+                const status = normalizeSyncStatus(result.data);
+                setIsOnline(status.isOnline);
+                setConnectionQuality(status.connectionQuality);
+                setSyncStatus(status.syncStatus);
                 setLastSyncTime(status.lastSyncTime);
-                setPendingCount(status.pendingChangesCount ?? 0);
-                setIsSyncing(status.isSyncing ?? false);
+                setPendingCount(status.pendingCount);
+                setIsSyncing(status.isSyncing);
             }
         }).catch(err => {
             console.warn('[DataStoreProvider] Failed to get initial sync status:', err);
@@ -185,15 +209,10 @@ export function useDataStoreContext() {
         console.warn('[useDataStoreContext] Used outside of DataStoreProvider');
         // Return default values to avoid crashes
         return {
-            isOnline: true,
-            connectionQuality: 'unknown',
-            syncStatus: 'idle',
-            lastSyncTime: null,
-            pendingCount: 0,
-            isSyncing: false,
+            ...DEFAULT_SYNC_STATUS,
             syncNow: async () => null,
             forceFullSync: async () => null,
-            checkNetwork: async () => ({ isOnline: true }),
+            checkNetwork: async () => ({ isOnline: false }),
             invalidateAll: () => {},
             getStoreStats: () => ({}),
             dataStore: null

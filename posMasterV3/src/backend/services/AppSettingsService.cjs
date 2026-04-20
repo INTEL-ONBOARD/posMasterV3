@@ -88,7 +88,7 @@ class AppSettingsService {
         return {
             logout_on_close: true,
             notifications: true,
-            cloud_sync: true,
+            cloud_sync: false,
             temp_system: true,
             run_on_startup: true,
             maximize_window: true,

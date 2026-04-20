@@ -270,6 +270,22 @@ class RestockRepository extends BaseRepository {
      */
     createWithItems(data, addedItems = [], returnItems = []) {
         const transaction = this.db.transaction(() => {
+            const insertPreparedRecord = (tableName, recordData) => {
+                const preparedData = this.prepareCreateData(recordData, tableName);
+                const columns = Object.keys(preparedData);
+                const values = columns.map(col => `@${col}`).join(', ');
+                const stmt = this.db.prepare(`
+                    INSERT INTO ${tableName} (${columns.join(', ')})
+                    VALUES (${values})
+                `);
+                const insertResult = stmt.run(preparedData);
+                return {
+                    preparedData,
+                    result: insertResult,
+                    recordId: preparedData.id ?? insertResult.lastInsertRowid
+                };
+            };
+
             // Create main transaction
             const now = nowISO();
 
@@ -330,39 +346,35 @@ class RestockRepository extends BaseRepository {
             };
 
             console.log('[RestockRepository] Inserting restock transaction:', restockData);
-
-            const restockStmt = this.db.prepare(`
-                INSERT INTO restock_transactions
-                (invoice_no, bill_no, supplier_id, prepared_by, authorized_by, payment_method,
-                discount, expenses, total_amount, cash_amount, change_amount, execution_level,
-                status, created_at, updated_at, sync_status, branch_id, created_by)
-                VALUES (@invoice_no, @bill_no, @supplier_id, @prepared_by, @authorized_by, @payment_method,
-                @discount, @expenses, @total_amount, @cash_amount, @change_amount, @execution_level,
-                @status, @created_at, @updated_at, @sync_status, @branch_id, @created_by)
-            `);
-
-            const result = restockStmt.run(restockData);
-            console.log('[RestockRepository] Restock transaction inserted, id:', result.lastInsertRowid);
-            const restockId = result.lastInsertRowid;
-
-            // Insert added items and update stock
-            const addItemStmt = this.db.prepare(`
-                INSERT INTO restock_items (restock_id, item_id, batch_code, quantity, stock_price, retail_price, expiry_date, sync_status, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-            `);
+            const { recordId: restockId } = insertPreparedRecord('restock_transactions', restockData);
+            console.log('[RestockRepository] Restock transaction inserted, id:', restockId);
 
             const findItemStmt = this.db.prepare(`SELECT id FROM items WHERE sku = ?`);
             const branchId = data.branch_id || null;
-            const upsertStockStmt = this.db.prepare(`
-                INSERT INTO stock (item_id, batch_code, quantity, stock_price, retail_price, expiry_date, availability, branch_id, created_at, updated_at, sync_status)
-                VALUES (@item_id, @batch_code, @quantity, @stock_price, @retail_price, @expiry_date, 1, @branch_id, @created_at, @updated_at, 'pending')
+            const stockInsertTemplate = this.prepareCreateData({
+                item_id: 0,
+                batch_code: '',
+                quantity: 0,
+                stock_price: 0,
+                retail_price: 0,
+                expiry_date: null,
+                availability: 1,
+                branch_id: null,
+                created_at: now,
+                updated_at: now,
+                sync_status: 'pending'
+            }, 'stock');
+            const stockInsertColumns = Object.keys(stockInsertTemplate);
+            const stockUpsertStmt = this.db.prepare(`
+                INSERT INTO stock (${stockInsertColumns.join(', ')})
+                VALUES (${stockInsertColumns.map(col => `@${col}`).join(', ')})
                 ON CONFLICT(item_id, batch_code) DO UPDATE SET
-                    quantity = quantity + @quantity,
-                    stock_price = @stock_price,
-                    retail_price = @retail_price,
-                    expiry_date = COALESCE(@expiry_date, expiry_date),
-                    branch_id = COALESCE(@branch_id, branch_id),
-                    updated_at = @updated_at,
+                    quantity = quantity + excluded.quantity,
+                    stock_price = excluded.stock_price,
+                    retail_price = excluded.retail_price,
+                    expiry_date = COALESCE(excluded.expiry_date, expiry_date),
+                    branch_id = COALESCE(excluded.branch_id, branch_id),
+                    updated_at = excluded.updated_at,
                     sync_status = 'pending'
             `);
 
@@ -370,38 +382,38 @@ class RestockRepository extends BaseRepository {
                 const itemRecord = findItemStmt.get(item.sku);
                 if (!itemRecord) continue;
 
-                addItemStmt.run(
-                    restockId,
-                    itemRecord.id,
-                    item.batch_code,
-                    item.qty,
-                    item.stock_price,
-                    item.retail_price,
-                    item.exp_date,
-                    nowISO()
-                );
-
-                // Update stock with branch_id
-                const now = nowISO();
-                upsertStockStmt.run({
+                insertPreparedRecord('restock_items', {
+                    restock_id: restockId,
                     item_id: itemRecord.id,
                     batch_code: item.batch_code,
                     quantity: item.qty,
                     stock_price: item.stock_price,
                     retail_price: item.retail_price,
                     expiry_date: item.exp_date,
-                    branch_id: branchId,
-                    created_at: now,
-                    updated_at: now
+                    sync_status: 'pending',
+                    created_at: nowISO(),
+                    updated_at: nowISO()
                 });
+
+                // Update stock with branch_id
+                const stockNow = nowISO();
+                const stockData = this.prepareCreateData({
+                    item_id: itemRecord.id,
+                    batch_code: item.batch_code,
+                    quantity: item.qty,
+                    stock_price: item.stock_price,
+                    retail_price: item.retail_price,
+                    expiry_date: item.exp_date,
+                    availability: 1,
+                    branch_id: branchId,
+                    created_at: stockNow,
+                    updated_at: stockNow,
+                    sync_status: 'pending'
+                }, 'stock');
+                stockUpsertStmt.run(stockData);
             }
 
             // Insert return items and update stock (decrease quantity)
-            const returnItemStmt = this.db.prepare(`
-                INSERT INTO return_items (restock_id, item_id, batch_code, quantity, description, sync_status, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
-            `);
-
             const decreaseStockStmt = this.db.prepare(`
                 UPDATE stock SET quantity = MAX(0, quantity - ?), updated_at = ?, sync_status = 'pending'
                 WHERE item_id = ? AND batch_code = ?
@@ -412,15 +424,16 @@ class RestockRepository extends BaseRepository {
                 if (!itemRecord) continue;
 
                 const returnNow = nowISO();
-                returnItemStmt.run(
-                    restockId,
-                    itemRecord.id,
-                    item.batch_code,
-                    item.qty,
-                    item.description,
-                    returnNow,
-                    returnNow
-                );
+                insertPreparedRecord('return_items', {
+                    restock_id: restockId,
+                    item_id: itemRecord.id,
+                    batch_code: item.batch_code,
+                    quantity: item.qty,
+                    description: item.description,
+                    sync_status: 'pending',
+                    created_at: returnNow,
+                    updated_at: returnNow
+                });
 
                 // Decrease stock
                 decreaseStockStmt.run(

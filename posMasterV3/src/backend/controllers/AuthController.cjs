@@ -244,23 +244,8 @@ function registerAuthHandlers() {
         ipcMain.handle('auth:check-session-with-sync', wrapIpcHandler(async (event, payload) => {
             try {
                 const { token } = payload;
-
-                // First, try to sync active_sessions from cloud
-                try {
-                    const { getCloudSyncService } = require('../services/CloudSyncService.cjs');
-                    const cloudSync = getCloudSyncService();
-
-                    if (cloudSync.isOnline && cloudSync.mysqlInitialized) {
-                        // Pull active_sessions from cloud to get latest session state
-                        await cloudSync.pullFromCloud('active_sessions');
-                        console.log('[AuthController] Synced active_sessions from cloud for session check');
-                    }
-                } catch (syncError) {
-                    console.log('[AuthController] Cloud sync skipped:', syncError.message);
-                }
-
-                // Now validate the session (this will check against the synced active_sessions)
-                const result = authService.validateSession(token);
+                const { validateSessionStrict } = require('../services/SessionValidator.cjs');
+                const result = await validateSessionStrict(token);
 
                 if (!result.valid && result.forcedLogout) {
                     console.log('[AuthController] Session was kicked by another device');

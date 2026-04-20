@@ -36,7 +36,14 @@ class CloudSyncController {
             try {
                 const service = getCloudSyncService();
 
-                // Auto-initialize if not yet online (e.g., cloud sync disabled on startup)
+                if (!service.autoSyncEnabled) {
+                    return {
+                        status: 'error',
+                        message: 'Cloud sync is disabled. Enable it in app settings first.'
+                    };
+                }
+
+                // Auto-initialize if not yet online after cloud sync was enabled
                 if (!service.isOnline || !service.mysqlInitialized) {
                     console.log('[CloudSyncController] Service not initialized, initializing before sync...');
                     await service.initialize();
@@ -195,22 +202,18 @@ class CloudSyncController {
             try {
                 const service = getCloudSyncService();
                 console.log('[CloudSyncController] Syncing active_sessions immediately');
-
-                // Pull active_sessions from cloud first
-                const pullResult = await service.pullFromCloud('active_sessions');
-
-                // Then push local active_sessions to cloud
-                const pushResult = await service.syncTable('active_sessions');
-
-                // Clear session cache to force revalidation
-                const { clearCache } = require('../services/SessionValidator.cjs');
-                clearCache();
+                const result = await service.syncActiveSessions({
+                    pullFirst: true,
+                    pushLocal: true,
+                    clearCache: true
+                });
 
                 return {
-                    status: 'success',
+                    status: result.status === 'success' ? 'success' : 'error',
                     data: {
-                        pulled: pullResult.downloaded || 0,
-                        pushed: pushResult.uploaded || 0
+                        pulled: result.pulled || 0,
+                        pushed: result.pushed || 0,
+                        changed: result.changed || 0
                     }
                 };
             } catch (error) {
@@ -222,11 +225,9 @@ class CloudSyncController {
         // Get real-time sync status
         ipcMain.handle('cloudSync:getRealTimeStatus', wrapIpcHandler(async () => {
             try {
-                const { getRealTimeSyncService } = require('../services/RealTimeSyncService.cjs');
-                const realTimeSync = getRealTimeSyncService();
                 return {
                     status: 'success',
-                    data: realTimeSync.getStatus()
+                    data: getCloudSyncService().getStatus()
                 };
             } catch (error) {
                 console.error('[CloudSyncController] Get real-time status error:', error);

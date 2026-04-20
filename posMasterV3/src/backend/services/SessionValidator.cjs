@@ -167,17 +167,44 @@ function validateSessionFast(token) {
 /**
  * Trigger background cloud sync for active_sessions
  *
- * NOTE: This is intentionally a no-op. RealTimeSyncService owns active_sessions
- * polling at 1-second intervals via checkActiveSessionsFromCloud(). Running a
- * second concurrent pull from SessionValidator would:
- *   1. Toggle foreign_keys ON/OFF concurrently with the batch sync (FK pragma race)
- *   2. Clear sessionCache during the middle of validation loops
- *   3. Double the pull frequency with no benefit
+ * Runs at most once per CLOUD_SYNC_INTERVAL and only when cloud sync is ready.
  *
- * If you need to force an immediate re-validation, call clearCache() directly.
+ * This keeps normal validation fast while preventing session state from staying
+ * stale indefinitely on devices that are online and cloud-synced.
  */
 async function triggerCloudSync() {
-    // Delegated to RealTimeSyncService — no-op here to avoid concurrent pull races
+    if (cloudSyncInProgress) {
+        return;
+    }
+
+    if (Date.now() - lastCloudSyncTime < CLOUD_SYNC_INTERVAL) {
+        return;
+    }
+
+    cloudSyncInProgress = true;
+
+    try {
+        const { getCloudSyncService } = require('./CloudSyncService.cjs');
+        const cloudSync = getCloudSyncService();
+
+        if (!cloudSync.autoSyncEnabled || !cloudSync.isOnline || !cloudSync.mysqlInitialized) {
+            return;
+        }
+
+        const result = await cloudSync.syncActiveSessions({
+            pullFirst: true,
+            pushLocal: false,
+            clearCache: true
+        });
+
+        if (result?.status === 'success') {
+            lastCloudSyncTime = Date.now();
+        }
+    } catch (error) {
+        console.log('[SessionValidator] Background sync error:', error.message);
+    } finally {
+        cloudSyncInProgress = false;
+    }
 }
 
 /**
@@ -193,8 +220,8 @@ async function validateSessionWithSync(token) {
         return localResult;
     }
 
-    // Trigger background cloud sync (non-blocking)
-    triggerCloudSync();
+    // Trigger bounded background cloud sync (non-blocking)
+    void triggerCloudSync();
 
     return localResult;
 }
@@ -208,10 +235,13 @@ async function validateSessionStrict(token) {
         const { getCloudSyncService } = require('./CloudSyncService.cjs');
         const cloudSync = getCloudSyncService();
 
-        if (cloudSync.isOnline && cloudSync.mysqlInitialized) {
-            // Force sync active_sessions (skipFkPragma to avoid concurrent FK toggle race)
-            await cloudSync.pullFromCloud('active_sessions', { skipFkPragma: true });
-            sessionCache.clear();
+        if (cloudSync.autoSyncEnabled && cloudSync.isOnline && cloudSync.mysqlInitialized) {
+            await cloudSync.syncActiveSessions({
+                pullFirst: true,
+                pushLocal: false,
+                clearCache: true
+            });
+            lastCloudSyncTime = Date.now();
         }
     } catch (error) {
         console.log('[SessionValidator] Strict sync error:', error.message);

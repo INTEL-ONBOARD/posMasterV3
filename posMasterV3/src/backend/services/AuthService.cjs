@@ -201,8 +201,12 @@ class AuthService {
                         try {
                             const { getCloudSyncService } = require('./CloudSyncService.cjs');
                             const cloudSync = getCloudSyncService();
-                            if (cloudSync.isOnline && cloudSync.mysqlInitialized) {
-                                await cloudSync.syncTable('active_sessions');
+                            if (cloudSync.autoSyncEnabled && cloudSync.isOnline && cloudSync.mysqlInitialized) {
+                                await cloudSync.syncActiveSessions({
+                                    pullFirst: false,
+                                    pushLocal: true,
+                                    clearCache: true
+                                });
                                 console.log('[AuthService] Synced active_sessions to cloud after login');
                             }
                         } catch (syncError) {
@@ -381,8 +385,12 @@ class AuthService {
                         try {
                             const { getCloudSyncService } = require('./CloudSyncService.cjs');
                             const cloudSync = getCloudSyncService();
-                            if (cloudSync.isOnline && cloudSync.mysqlInitialized) {
-                                await cloudSync.syncTable('active_sessions');
+                            if (cloudSync.autoSyncEnabled && cloudSync.isOnline && cloudSync.mysqlInitialized) {
+                                await cloudSync.syncActiveSessions({
+                                    pullFirst: false,
+                                    pushLocal: true,
+                                    clearCache: true
+                                });
                                 console.log('[AuthService] Synced active_sessions to cloud after logout');
                             }
                         } catch (syncError) {

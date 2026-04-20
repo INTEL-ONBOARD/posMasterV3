@@ -12,6 +12,7 @@ const MIGRATION_NAME = 'add_sync_columns_to_sales_items';
 function up(db) {
     const tableInfo = db.prepare('PRAGMA table_info(sales_items)').all();
     const cols = tableInfo.map(c => c.name);
+    const hasCreatedAt = cols.includes('created_at');
 
     if (!cols.includes('sync_status')) {
         db.exec(`ALTER TABLE sales_items ADD COLUMN sync_status TEXT DEFAULT 'pending';`);
@@ -24,7 +25,11 @@ function up(db) {
 
     if (!cols.includes('updated_at')) {
         db.exec(`ALTER TABLE sales_items ADD COLUMN updated_at TEXT;`);
-        db.exec(`UPDATE sales_items SET updated_at = COALESCE(created_at, datetime('now')) WHERE updated_at IS NULL;`);
+        if (hasCreatedAt) {
+            db.exec(`UPDATE sales_items SET updated_at = COALESCE(created_at, datetime('now')) WHERE updated_at IS NULL;`);
+        } else {
+            db.exec(`UPDATE sales_items SET updated_at = datetime('now') WHERE updated_at IS NULL;`);
+        }
     }
 
     db.exec(`

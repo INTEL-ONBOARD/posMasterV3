@@ -108,8 +108,8 @@ class AppSettingsController {
                 if (enabled) {
                     // Enable cloud sync - initialize and start auto-sync
                     console.log('[AppSettingsController] Enabling cloud sync...');
-                    await cloudSync.initialize();
                     cloudSync.setAutoSync(true);
+                    await cloudSync.initialize();
                     console.log('[AppSettingsController] Cloud sync enabled and started');
                 } else {
                     // Disable cloud sync - stop auto-sync (but don't cleanup, so pending changes are preserved)

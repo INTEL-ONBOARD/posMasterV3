@@ -16,7 +16,6 @@ module.exports = {
         const settingsToEnable = [
             'auto_logout',
             'notifications',
-            'cloud_sync',
             'temp_system',
             'run_on_startup',
             'maximize_window'

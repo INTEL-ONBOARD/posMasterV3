@@ -66,6 +66,31 @@ class BaseRepository {
         this.tableName = tableName;
     }
 
+    getTableColumns(tableName = this.tableName) {
+        return this.db.prepare(`PRAGMA table_info(${tableName})`).all().map(c => c.name);
+    }
+
+    generateSparseNumericId() {
+        return crypto.randomInt(10000000, 2000000001);
+    }
+
+    prepareCreateData(data, tableName = this.tableName) {
+        const tableColumns = this.getTableColumns(tableName);
+        const preparedData = { ...data };
+
+        if (tableColumns.includes('cloud_id') && !preparedData.cloud_id) {
+            preparedData.cloud_id = crypto.randomUUID();
+        }
+
+        if (tableColumns.includes('id') && preparedData.id == null && tableColumns.includes('cloud_id')) {
+            preparedData.id = this.generateSparseNumericId();
+        }
+
+        return Object.fromEntries(
+            Object.entries(preparedData).filter(([key]) => tableColumns.includes(key))
+        );
+    }
+
     /**
      * Sanitize ORDER BY column to prevent SQL injection
      * @param {string} column - The column name
@@ -202,25 +227,7 @@ class BaseRepository {
      * @returns {Object} The created record
      */
     create(data) {
-        // Auto-inject cloud_id (UUID) if the table has the column and caller didn't provide one.
-        // This ensures every new record has a globally unique cross-device identifier for sync.
-        const tableColumns = this.db.prepare(`PRAGMA table_info(${this.tableName})`).all().map(c => c.name);
-        const dataWithCloudId = { ...data };
-        if (tableColumns.includes('cloud_id')) {
-            if (!dataWithCloudId.cloud_id) {
-                dataWithCloudId.cloud_id = crypto.randomUUID();
-            }
-
-            // To prevent primary key conflicts across offline branches before full UUID sync is supported, 
-            // inject a randomized ID. SQLite AUTOINCREMENT will naturally resume from this high integer.
-            // By giving every new insert a random sparse ID across machines, collision probability becomes virtually zero.
-            if (!dataWithCloudId.id && tableColumns.includes('id')) {
-                // Generate a random integer between 10,000,000 and 2,000,000,000
-                const min = 10000000;
-                const max = 2000000000;
-                dataWithCloudId.id = Math.floor(Math.random() * (max - min + 1)) + min;
-            }
-        }
+        const dataWithCloudId = this.prepareCreateData(data);
 
         const keys = Object.keys(dataWithCloudId);
         const values = Object.values(dataWithCloudId);

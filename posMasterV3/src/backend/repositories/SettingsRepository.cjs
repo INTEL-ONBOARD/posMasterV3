@@ -214,7 +214,7 @@ class AppSettingsRepository extends BaseRepository {
             auto_logout: true,
             auto_logout_minutes: 15,
             notifications: true,
-            cloud_sync: true,
+            cloud_sync: false,
             temp_system: true,
             run_on_startup: true,
             maximize_window: true,

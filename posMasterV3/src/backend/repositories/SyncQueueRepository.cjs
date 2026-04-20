@@ -217,6 +217,19 @@ class SyncQueueRepository extends BaseRepository {
     }
 
     /**
+     * Update payload for an already queued item after in-memory deduplication
+     * merges multiple local changes into one pending queue entry.
+     * @param {string} id - Queue item ID
+     * @param {Object|string} payload - Updated payload
+     * @returns {Object|null}
+     */
+    updatePayload(id, payload) {
+        return this.update(id, {
+            payload: typeof payload === 'string' ? payload : JSON.stringify(payload)
+        });
+    }
+
+    /**
      * Parse queue item (deserialize payload)
      * @param {Object} item - Raw item from DB
      * @returns {Object}

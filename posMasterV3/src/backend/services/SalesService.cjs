@@ -158,7 +158,9 @@ class SalesService {
     getHeldOrders() {
         try {
             const branchId = this.getCurrentBranchId();
-            const heldOrders = salesRepository.findHeldOrders(branchId);
+            const branchContext = this.getBranchContext();
+            const cashierId = branchContext.userId;
+            const heldOrders = salesRepository.findHeldOrders(branchId, cashierId);
             return {
                 status: 'success',
                 data: heldOrders.map(order => salesRepository.getFullDetails(order.id))

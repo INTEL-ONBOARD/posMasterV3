@@ -14,8 +14,7 @@
  */
 
 const {
-    broadcastSyncStatus,
-    broadcastEvent
+    broadcastSyncStatus
 } = require('../utils/eventBroadcaster.cjs');
 const EventEmitter = require('events');
 
@@ -30,6 +29,7 @@ class RealTimeSyncService extends EventEmitter {
         this.lastSyncTime = null;
         this.syncStatus = 'idle';
         this.connectionQuality = 'unknown'; // 'excellent', 'good', 'poor', 'offline'
+        this.pendingCount = 0;
 
         // Network check interval (reads CloudSync.isOnline — no direct MySQL)
         this.networkCheckInterval = null;
@@ -58,11 +58,9 @@ class RealTimeSyncService extends EventEmitter {
     async initialize() {
         console.log('[RealTimeSync] Initializing (status bridge mode)...');
 
-        const cloudSync = this.getCloudSync();
-        this.isOnline = cloudSync.isOnline && cloudSync.mysqlInitialized;
+        this._syncFromCloudStatus();
 
         this.startNetworkMonitoring();
-        this.broadcastStatus();
 
         console.log('[RealTimeSync] Initialized');
         console.log(`[RealTimeSync] Status: ${this.isOnline ? 'ONLINE' : 'OFFLINE'}`);
@@ -80,23 +78,30 @@ class RealTimeSyncService extends EventEmitter {
         }
 
         this.networkCheckInterval = setInterval(async () => {
-            const wasOnline = this.isOnline;
-            const cloudSync = this.getCloudSync();
-
-            this.isOnline = cloudSync.isOnline && cloudSync.mysqlInitialized;
+            const previousStatus = this.getStatus();
+            this._syncFromCloudStatus();
 
             // Connection restored — flush any in-memory pending changes
-            if (!wasOnline && this.isOnline) {
+            if (!previousStatus.isOnline && this.isOnline) {
                 console.log('[RealTimeSync] Connection restored — flushing pending changes...');
-                this.connectionQuality = 'good';
-                this.broadcastStatus();
-                await this.syncPendingChanges();
+                if (this.pendingChanges.length > 0) {
+                    await this.syncPendingChanges();
+                }
             }
 
             // Connection lost
-            if (wasOnline && !this.isOnline) {
+            if (previousStatus.isOnline && !this.isOnline) {
                 console.log('[RealTimeSync] Connection lost. Changes will be queued.');
-                this.connectionQuality = 'offline';
+            }
+
+            if (
+                previousStatus.isOnline !== this.isOnline ||
+                previousStatus.isSyncing !== this.isSyncing ||
+                previousStatus.syncStatus !== this.syncStatus ||
+                previousStatus.pendingCount !== this.pendingCount ||
+                previousStatus.lastSyncTime !== this.lastSyncTime ||
+                previousStatus.connectionQuality !== this.connectionQuality
+            ) {
                 this.broadcastStatus();
             }
         }, NETWORK_CHECK_INTERVAL_MS);
@@ -140,60 +145,44 @@ class RealTimeSyncService extends EventEmitter {
         }
 
         const cloudSync = this.getCloudSync();
-        return cloudSync.syncPendingChanges ? cloudSync.syncPendingChanges() : { synced: 0 };
+        const result = cloudSync.syncPendingChanges ? await cloudSync.syncPendingChanges() : { synced: 0 };
+        this._syncFromCloudStatus();
+        return result;
     }
 
     /**
      * Broadcast current sync status to UI
      */
     broadcastStatus() {
-        broadcastSyncStatus({
-            status: this.syncStatus,
-            isOnline: this.isOnline,
-            connectionQuality: this.connectionQuality,
-            pendingCount: this.pendingChanges.length,
-            lastSyncTime: this.lastSyncTime
-        });
+        const snapshot = this._syncFromCloudStatus();
+        broadcastSyncStatus(snapshot);
     }
 
     /**
      * Get current sync status
      */
     getStatus() {
-        return {
-            isOnline: this.isOnline,
-            isSyncing: this.isSyncing,
-            syncStatus: this.syncStatus,
-            connectionQuality: this.connectionQuality,
-            pendingCount: this.pendingChanges.length,
-            lastSyncTime: this.lastSyncTime
-        };
+        return this._syncFromCloudStatus();
     }
 
     /**
      * Force an immediate full sync via CloudSyncService
      */
     async forceFullSync() {
-        if (!this.isOnline) {
+        const currentStatus = this.getStatus();
+        if (!currentStatus.isOnline) {
             return { success: false, reason: 'offline' };
         }
 
         console.log('[RealTimeSync] Forcing full sync...');
-        this.syncStatus = 'full_sync';
-        this.broadcastStatus();
 
         try {
             const cloudSync = this.getCloudSync();
             const result = await cloudSync.performFullSync();
-
-            this.syncStatus = 'completed';
-            this.lastSyncTime = new Date().toISOString();
-            this.broadcastStatus();
-
+            this._syncFromCloudStatus();
             return { success: true, ...result };
         } catch (error) {
-            this.syncStatus = 'error';
-            this.broadcastStatus();
+            this._syncFromCloudStatus();
             return { success: false, error: error.message };
         }
     }
@@ -207,6 +196,28 @@ class RealTimeSyncService extends EventEmitter {
             this.networkCheckInterval = null;
         }
         console.log('[RealTimeSync] Stopped');
+    }
+
+    _syncFromCloudStatus(snapshot = null) {
+        const cloudStatus = snapshot || this.getCloudSync().getStatus();
+        const pendingCount = cloudStatus.pendingCount ?? cloudStatus.pendingChangesCount ?? 0;
+        const syncStatus = cloudStatus.syncStatus ?? cloudStatus.status ?? 'idle';
+
+        this.isOnline = !!cloudStatus.isOnline;
+        this.isSyncing = !!cloudStatus.isSyncing;
+        this.lastSyncTime = cloudStatus.lastSyncTime ?? null;
+        this.syncStatus = syncStatus;
+        this.connectionQuality = cloudStatus.connectionQuality ?? (this.isOnline ? 'good' : 'offline');
+        this.pendingCount = pendingCount;
+
+        return {
+            ...cloudStatus,
+            syncStatus,
+            status: syncStatus,
+            pendingCount,
+            pendingChangesCount: pendingCount,
+            connectionQuality: this.connectionQuality
+        };
     }
 }
 

@@ -105,19 +105,33 @@ class SalesRepository extends BaseRepository {
     }
 
     /**
-     * Find held orders with optional branch filter
+     * Find held orders with optional branch and cashier filter
      * @param {number|null} branchId - Optional branch ID filter
+     * @param {string|null} cashierId - Optional cashier ID filter (current session user)
      * @returns {Array}
      */
-    findHeldOrders(branchId = null) {
+    findHeldOrders(branchId = null, cashierId = null) {
+        const conditions = ['is_held = 1'];
+        const params = [];
+
         if (branchId) {
-            const stmt = this.db.prepare(`
-                SELECT * FROM ${this.tableName}
-                WHERE is_held = 1 AND branch_id = ?
-            `);
-            return stmt.all(branchId);
+            conditions.push('branch_id = ?');
+            params.push(branchId);
         }
-        return this.findWhere({ is_held: 1 });
+        if (cashierId) {
+            conditions.push('cashier_id = ?');
+            params.push(cashierId);
+        }
+
+        // Only show held orders from today
+        conditions.push("DATE(created_at) = DATE('now', 'localtime')");
+
+        const stmt = this.db.prepare(`
+            SELECT * FROM ${this.tableName}
+            WHERE ${conditions.join(' AND ')}
+            ORDER BY created_at DESC
+        `);
+        return stmt.all(...params);
     }
 
     /**
@@ -218,6 +232,22 @@ class SalesRepository extends BaseRepository {
      */
     createWithItems(data, items = []) {
         const transaction = this.db.transaction(() => {
+            const insertPreparedRecord = (tableName, recordData) => {
+                const preparedData = this.prepareCreateData(recordData, tableName);
+                const columns = Object.keys(preparedData);
+                const values = columns.map(col => `@${col}`).join(', ');
+                const stmt = this.db.prepare(`
+                    INSERT INTO ${tableName} (${columns.join(', ')})
+                    VALUES (${values})
+                `);
+                const insertResult = stmt.run(preparedData);
+                return {
+                    preparedData,
+                    result: insertResult,
+                    recordId: preparedData.id ?? insertResult.lastInsertRowid
+                };
+            };
+
             // Validate FK references — null them out if they don't exist locally
             // to prevent FOREIGN KEY constraint failures (e.g. cloud-synced IDs)
             let safeMemberId = data.member_id || null;
@@ -264,24 +294,7 @@ class SalesRepository extends BaseRepository {
                 throw new Error("Total amount cannot be negative");
             }
 
-            const saleStmt = this.db.prepare(`
-                INSERT INTO sales_transactions
-                (invoice_no, member_id, cashier_id, payment_method, credit_duration,
-                subtotal, discount, total_amount, cash_received, change_amount,
-                status, is_held, created_at, updated_at, sync_status, branch_id, created_by)
-                VALUES (@invoice_no, @member_id, @cashier_id, @payment_method, @credit_duration,
-                @subtotal, @discount, @total_amount, @cash_received, @change_amount,
-                @status, @is_held, @created_at, @updated_at, @sync_status, @branch_id, @created_by)
-            `);
-
-            const result = saleStmt.run(saleData);
-            const saleId = result.lastInsertRowid;
-
-            // Insert sale items and update stock
-            const addItemStmt = this.db.prepare(`
-                INSERT INTO sales_items (sale_id, item_id, stock_id, batch_code, quantity, unit_price, discount, total_price, sync_status, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-            `);
+            const { recordId: saleId } = insertPreparedRecord('sales_transactions', saleData);
 
             const decreaseStockStmt = this.db.prepare(`
                 UPDATE stock SET quantity = MAX(0, quantity - ?), updated_at = ?, sync_status = 'pending'
@@ -307,17 +320,19 @@ class SalesRepository extends BaseRepository {
                 const stockExists = this.db.prepare('SELECT id FROM stock WHERE id = ?').get(item.stock_id);
                 if (!stockExists) throw new Error(`Stock not found locally: stock_id=${item.stock_id}`);
 
-                addItemStmt.run(
-                    saleId,
-                    item.item_id,
-                    item.stock_id,
-                    item.batch_code,
-                    item.quantity,
-                    item.unit_price,
-                    item.discount || 0,
-                    item.total_price,
-                    nowISO()
-                );
+                insertPreparedRecord('sales_items', {
+                    sale_id: saleId,
+                    item_id: item.item_id,
+                    stock_id: item.stock_id,
+                    batch_code: item.batch_code,
+                    quantity: item.quantity,
+                    unit_price: item.unit_price,
+                    discount: item.discount || 0,
+                    total_price: item.total_price,
+                    sync_status: 'pending',
+                    created_at: nowISO(),
+                    updated_at: nowISO()
+                });
 
                 // Decrease stock if not a held order
                 if (!data.is_held) {
@@ -409,14 +424,68 @@ class SalesRepository extends BaseRepository {
             const sale = this.findById(id);
             if (!sale || !sale.is_held) return null;
 
+            const { items: updatedItems, ...saleUpdates } = updateData;
+
+            const insertPreparedRecord = (tableName, recordData) => {
+                const preparedData = this.prepareCreateData(recordData, tableName);
+                const columns = Object.keys(preparedData);
+                const values = columns.map(col => `@${col}`).join(', ');
+                const stmt = this.db.prepare(`
+                    INSERT INTO ${tableName} (${columns.join(', ')})
+                    VALUES (${values})
+                `);
+                const insertResult = stmt.run(preparedData);
+                return {
+                    preparedData,
+                    result: insertResult,
+                    recordId: preparedData.id ?? insertResult.lastInsertRowid
+                };
+            };
+
             // Update sale
             this.update(id, {
-                ...updateData,
+                ...saleUpdates,
                 is_held: 0,
                 status: 'completed'
             });
 
-            // Decrease stock for all items
+            if (Array.isArray(updatedItems) && updatedItems.length > 0) {
+                this.db.prepare(`DELETE FROM sales_items WHERE sale_id = ?`).run(id);
+
+                for (const item of updatedItems) {
+                    if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
+                        throw new Error(`Invalid quantity ${item.quantity} for item_id=${item.item_id}`);
+                    }
+                    if (item.discount > item.unit_price) {
+                        throw new Error(`Discount cannot exceed unit price for item_id=${item.item_id}`);
+                    }
+                    if (item.total_price < 0) {
+                        throw new Error(`Total price cannot be negative for item_id=${item.item_id}`);
+                    }
+
+                    const itemExists = this.db.prepare('SELECT id FROM items WHERE id = ?').get(item.item_id);
+                    if (!itemExists) throw new Error(`Item not found locally: item_id=${item.item_id}`);
+
+                    const stockExists = this.db.prepare('SELECT id FROM stock WHERE id = ?').get(item.stock_id);
+                    if (!stockExists) throw new Error(`Stock not found locally: stock_id=${item.stock_id}`);
+
+                    insertPreparedRecord('sales_items', {
+                        sale_id: id,
+                        item_id: item.item_id,
+                        stock_id: item.stock_id,
+                        batch_code: item.batch_code,
+                        quantity: item.quantity,
+                        unit_price: item.unit_price,
+                        discount: item.discount || 0,
+                        total_price: item.total_price,
+                        sync_status: 'pending',
+                        created_at: nowISO(),
+                        updated_at: nowISO()
+                    });
+                }
+            }
+
+            // Decrease stock for the current held-order items
             const items = this.db.prepare(`
                 SELECT * FROM sales_items WHERE sale_id = ?
             `).all(id);
@@ -588,6 +657,22 @@ class SalesRepository extends BaseRepository {
         const insertedReturns = [];
 
         const transaction = this.db.transaction(() => {
+            const insertPreparedRecord = (tableName, recordData) => {
+                const preparedData = this.prepareCreateData(recordData, tableName);
+                const columns = Object.keys(preparedData);
+                const values = columns.map(col => `@${col}`).join(', ');
+                const stmt = this.db.prepare(`
+                    INSERT INTO ${tableName} (${columns.join(', ')})
+                    VALUES (${values})
+                `);
+                const insertResult = stmt.run(preparedData);
+                return {
+                    preparedData,
+                    result: insertResult,
+                    recordId: preparedData.id ?? insertResult.lastInsertRowid
+                };
+            };
+
             const restoreStockStmt = this.db.prepare(`
                 UPDATE stock SET quantity = quantity + ?, updated_at = ?, sync_status = 'pending'
                 WHERE id = ?
@@ -598,25 +683,22 @@ class SalesRepository extends BaseRepository {
                 restoreStockStmt.run(item.quantity, returnedAt, item.stock_id);
 
                 // Insert return record with explicit timestamps for incremental cloud sync
-                const result = this.db.prepare(`
-                    INSERT INTO returned_items
-                        (sale_id, item_id, stock_id, batch_code, quantity, unit_price, reason, returned_by, returned_at, sync_status, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-                `).run(
-                    saleId,
-                    item.item_id,
-                    item.stock_id,
-                    item.batch_code,
-                    item.quantity,
-                    item.unit_price || 0,
-                    reason || null,
-                    returnedBy || null,
-                    returnedAt,
-                    returnedAt,
-                    returnedAt
-                );
+                const { recordId: returnId } = insertPreparedRecord('returned_items', {
+                    sale_id: saleId,
+                    item_id: item.item_id,
+                    stock_id: item.stock_id,
+                    batch_code: item.batch_code,
+                    quantity: item.quantity,
+                    unit_price: item.unit_price || 0,
+                    reason: reason || null,
+                    returned_by: returnedBy || null,
+                    returned_at: returnedAt,
+                    sync_status: 'pending',
+                    created_at: returnedAt,
+                    updated_at: returnedAt
+                });
 
-                const inserted = returnRepo.findById(result.lastInsertRowid);
+                const inserted = returnRepo.findById(returnId);
                 insertedReturns.push(inserted);
 
                 // Notify CloudSync and broadcast to UI for the new return record

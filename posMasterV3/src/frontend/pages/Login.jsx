@@ -1,11 +1,62 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, Cloud, CloudOff, RefreshCw } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import { localAuth } from "../api/services/localAuth";
 import { useStatusLog } from "../services/StatusLogService.jsx";
 import { appSettingsApi, cloudSyncApi } from "../api/localApi";
 import StatusModal from "../components/StatusModal.jsx";
+
+function resolveSyncStatus(status = {}) {
+  if (!status.autoSyncEnabled && !status.syncEnabled) {
+    return 'disabled';
+  }
+  return status.syncStatus || status.status || (status.isOnline ? 'synced' : 'offline');
+}
+
+function getSyncBadge(syncStatus) {
+  switch (syncStatus) {
+    case 'completed':
+    case 'synced':
+    case 'idle':
+      return {
+        label: 'Cloud ready',
+        icon: Cloud,
+        textClass: 'text-emerald-600',
+        bgClass: 'bg-emerald-50 border-emerald-100'
+      };
+    case 'syncing':
+    case 'reconnecting':
+      return {
+        label: 'Syncing cloud',
+        icon: RefreshCw,
+        textClass: 'text-sky-600',
+        bgClass: 'bg-sky-50 border-sky-100',
+        spin: true
+      };
+    case 'offline':
+      return {
+        label: 'Cloud offline',
+        icon: CloudOff,
+        textClass: 'text-amber-600',
+        bgClass: 'bg-amber-50 border-amber-100'
+      };
+    case 'disabled':
+      return {
+        label: 'Cloud sync off',
+        icon: CloudOff,
+        textClass: 'text-slate-500',
+        bgClass: 'bg-slate-50 border-slate-200'
+      };
+    default:
+      return {
+        label: 'Cloud issue',
+        icon: CloudOff,
+        textClass: 'text-rose-600',
+        bgClass: 'bg-rose-50 border-rose-100'
+      };
+  }
+}
 
 // Staggered children animation
 const container = {
@@ -49,14 +100,10 @@ function Login() {
           const statusResult = await cloudSyncApi.getStatus();
           if (statusResult?.status === 'success') {
             const data = statusResult.data;
-            if (data.isOnline && data.mysqlInitialized) {
-              setSyncStatus('synced');
-            } else if (!data.isOnline) {
-              setSyncStatus('offline');
-            } else {
-              setSyncStatus('error');
-            }
+            setSyncStatus(resolveSyncStatus(data));
           }
+        } else {
+          setSyncStatus('disabled');
         }
       } catch (error) {
         console.error('Failed to check cloud sync status:', error);
@@ -70,16 +117,20 @@ function Login() {
     setSyncStatus('syncing');
     if (!silent) statusLog.loading("Syncing with cloud...");
     try {
-      const pullResult = await cloudSyncApi.pullUsers();
-      if (pullResult?.status === 'success') {
-        setSyncStatus('synced');
+      const syncResult = await cloudSyncApi.syncNow();
+      if (syncResult?.status === 'success') {
+        setSyncStatus('completed');
         if (!silent) {
           statusLog.success("Cloud sync complete");
-          setStatusModal({ open: true, type: 'success', description: 'User data synced from cloud.' });
+          setStatusModal({ open: true, type: 'success', description: 'Cloud sync completed successfully.' });
         }
       } else {
         setSyncStatus('error');
-        if (!silent) statusLog.error("Sync failed");
+        if (!silent) {
+          const message = syncResult?.message || 'Cloud sync failed';
+          statusLog.error(message);
+          setStatusModal({ open: true, type: 'failed', description: message });
+        }
       }
     } catch (error) {
       console.error('Sync failed:', error);
@@ -94,6 +145,9 @@ function Login() {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
+  const syncBadge = getSyncBadge(syncStatus);
+  const SyncBadgeIcon = syncBadge.icon;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -148,7 +202,7 @@ function Login() {
 
   return (
     <>
-    <motion.div
+    <Motion.div
       className="fixed inset-0 flex items-center justify-center overflow-hidden p-4"
       style={{ background: "#ffffff" }}
       initial={{ opacity: 0 }}
@@ -157,7 +211,7 @@ function Login() {
     >
 
       {/* Card */}
-      <motion.div
+      <Motion.div
         className="relative w-full max-w-[380px] z-10"
         initial={{ opacity: 0, y: 24, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -169,14 +223,14 @@ function Login() {
             background: "#ffffff",
           }}
         >
-          <motion.div
+          <Motion.div
             className="flex flex-col items-center"
             variants={container}
             initial="hidden"
             animate="visible"
           >
             {/* Logo */}
-            <motion.div className="mb-5" variants={item}>
+            <Motion.div className="mb-5" variants={item}>
               <div
                 className="w-[60px] h-[60px] rounded-[18px] flex items-center justify-center"
                 style={{
@@ -188,28 +242,47 @@ function Login() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
-            </motion.div>
+            </Motion.div>
 
             {/* Title */}
-            <motion.h1
+            <Motion.h1
               className="text-[26px] font-bold tracking-tight mb-1"
               variants={item}
             >
               <span style={{ color: "#1A318C" }}>POS</span>
               <span className="text-slate-800"> MASTER</span>
               <span className="text-slate-400 font-normal text-lg">.3</span>
-            </motion.h1>
+            </Motion.h1>
 
             {/* Subtitle */}
-            <motion.p
+            <Motion.p
               className="text-[13px] text-slate-400 mb-7 text-center leading-relaxed"
               variants={item}
             >
               Welcome back! Enter your credentials to continue.
-            </motion.p>
+            </Motion.p>
+
+            {cloudSyncEnabled && (
+              <Motion.div className="w-full mb-5" variants={item}>
+                <div className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 ${syncBadge.bgClass}`}>
+                  <div className={`flex items-center gap-2 text-[12px] font-medium ${syncBadge.textClass}`}>
+                    <SyncBadgeIcon className={`h-4 w-4 ${syncBadge.spin ? 'animate-spin' : ''}`} />
+                    <span>{syncBadge.label}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSyncNow(false)}
+                    disabled={isSyncing}
+                    className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isSyncing ? 'Please wait' : 'Sync now'}
+                  </button>
+                </div>
+              </Motion.div>
+            )}
 
             {/* Email field */}
-            <motion.div className="w-full mb-3" variants={item}>
+            <Motion.div className="w-full mb-3" variants={item}>
               <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">
                 Email or Username
               </label>
@@ -242,10 +315,10 @@ function Login() {
                   required
                 />
               </div>
-            </motion.div>
+            </Motion.div>
 
             {/* Password field */}
-            <motion.div className="w-full mb-5" variants={item}>
+            <Motion.div className="w-full mb-5" variants={item}>
               <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">
                 Password
               </label>
@@ -283,7 +356,7 @@ function Login() {
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   <AnimatePresence mode="wait">
-                    <motion.span
+                    <Motion.span
                       key={showPassword ? "off" : "on"}
                       initial={{ opacity: 0, scale: 0.7 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -291,15 +364,15 @@ function Login() {
                       transition={{ duration: 0.15 }}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </motion.span>
+                    </Motion.span>
                   </AnimatePresence>
                 </button>
               </div>
-            </motion.div>
+            </Motion.div>
 
             {/* Sign in button */}
-            <motion.div className="w-full" variants={item}>
-              <motion.button
+            <Motion.div className="w-full" variants={item}>
+              <Motion.button
                 type="button"
                 onClick={handleSubmit}
                 disabled={isLoading}
@@ -314,7 +387,7 @@ function Login() {
               >
                 <AnimatePresence mode="wait">
                   {isLoading ? (
-                    <motion.div
+                    <Motion.div
                       key="loading"
                       className="flex items-center gap-2"
                       initial={{ opacity: 0 }}
@@ -322,15 +395,15 @@ function Login() {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.15 }}
                     >
-                      <motion.div
+                      <Motion.div
                         className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white"
                         animate={{ rotate: 360 }}
                         transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
                       />
                       <span>Signing in...</span>
-                    </motion.div>
+                    </Motion.div>
                   ) : (
-                    <motion.div
+                    <Motion.div
                       key="idle"
                       className="flex items-center gap-2"
                       initial={{ opacity: 0 }}
@@ -339,7 +412,7 @@ function Login() {
                       transition={{ duration: 0.15 }}
                     >
                       <span>Sign In</span>
-                      <motion.svg
+                      <Motion.svg
                         className="w-4 h-4"
                         fill="none"
                         stroke="currentColor"
@@ -349,34 +422,34 @@ function Login() {
                         transition={{ type: "spring", stiffness: 400 }}
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </motion.svg>
-                    </motion.div>
+                      </Motion.svg>
+                    </Motion.div>
                   )}
                 </AnimatePresence>
-              </motion.button>
-            </motion.div>
+              </Motion.button>
+            </Motion.div>
 
             {/* Support */}
-            <motion.div className="mt-6 text-center" variants={item}>
+            <Motion.div className="mt-6 text-center" variants={item}>
               <p className="text-[12px] text-slate-400">Need help?</p>
               <button className="text-[12px] font-medium mt-0.5 transition-colors" style={{ color: "#1A318C" }}>
                 Contact Support
               </button>
-            </motion.div>
-          </motion.div>
+            </Motion.div>
+          </Motion.div>
         </div>
-      </motion.div>
+      </Motion.div>
 
       {/* Footer */}
-      <motion.p
+      <Motion.p
         className="absolute bottom-5 text-[11px] text-slate-400 tracking-wide"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7, duration: 0.6 }}
       >
         © 2025 SLTC ® · v{import.meta.env.VITE_VERSION_NUMBER}
-      </motion.p>
-    </motion.div>
+      </Motion.p>
+    </Motion.div>
     <StatusModal
       isOpen={statusModal.open}
       closeModal={() => setStatusModal({ open: false, type: null, description: "" })}

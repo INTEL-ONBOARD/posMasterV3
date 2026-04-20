@@ -175,6 +175,7 @@ export default function SalesView({ isActive }) {
 
   // Held sale state
   const [heldOrder, setHeldOrder] = useState(null); // the most recent held order
+  const [releasedHeldOrder, setReleasedHeldOrder] = useState(null); // held order currently restored into cart
 
   // Cart item edit modal state
   const [cartItemModal, setCartItemModal] = useState(false);
@@ -234,8 +235,7 @@ export default function SalesView({ isActive }) {
     try {
       const response = await salesApi.getHeldOrders();
       if (response?.status === 'success' && response.data?.length > 0) {
-        // Use the most recently held order
-        setHeldOrder(response.data[response.data.length - 1]);
+        setHeldOrder(response.data[0]);
       } else {
         setHeldOrder(null);
       }
@@ -453,9 +453,50 @@ export default function SalesView({ isActive }) {
     return matchesCategory && matchesAvailability && matchesSearch;
   });
 
+  const getSelectedMemberId = () => (
+    selectedMember?.is_guest ? null : (selectedMember?.id || selectedMember?._id || null)
+  );
+
+  const buildSaleItemsPayload = () => selectedItems.map(item => ({
+    item_id: item.item_id || item.id,
+    stock_id: item.stock_id || item.id,
+    batch_code: item.batch_code,
+    item_name: item.item_name,
+    sku: item.sku,
+    quantity: item.customer_quantity,
+    unit_price: item.retail_price,
+    discount: item.customer_discount || 0,
+    total_price: (item.retail_price - (item.customer_discount || 0)) * item.customer_quantity
+  }));
+
+  const buildSalePayload = ({
+    paymentMethod = "cash",
+    creditMonths = 0,
+    totalAmount = stockTotal,
+    finalDiscount = 0,
+    cashAmount = 0,
+    changeAmount = 0
+  } = {}) => ({
+    invoice_no: invoiceNo,
+    member_id: getSelectedMemberId(),
+    cashier_id: currentUser?.id || null,
+    payment_method: paymentMethod,
+    credit_duration: creditMonths ? `${creditMonths} months` : null,
+    subtotal: stockTotal,
+    discount: finalDiscount,
+    total_amount: totalAmount,
+    cash_received: cashAmount,
+    change_amount: changeAmount,
+    items: buildSaleItemsPayload()
+  });
+
   const clearForm = () => {
     setSelectedItems([]);
     setSelectedMember(GUEST_USER);
+    if (releasedHeldOrder) {
+      setHeldOrder(releasedHeldOrder);
+      setReleasedHeldOrder(null);
+    }
     generateNewInvoice();
     focusSearch();
   };
@@ -463,7 +504,7 @@ export default function SalesView({ isActive }) {
   // Handle checkout from summary modal
   // Returns a promise that resolves when sale is complete (for success animation)
   const handleConfirmSale = async (checkoutData) => {
-    const { finalDiscount, paymentMethod, paymentMethodId, paymentMethodName, creditMonths, cashAmount, totalAmount, changeAmount } = checkoutData;
+    const { finalDiscount, paymentMethod, creditMonths, cashAmount, totalAmount, changeAmount } = checkoutData;
 
     try {
       // Validate cart items before sending to backend
@@ -481,34 +522,29 @@ export default function SalesView({ isActive }) {
           }
       }
 
-      // Prepare sale data
-      const saleData = {
-        invoice_no: invoiceNo,
-        member_id: selectedMember?.is_guest ? null : (selectedMember?.id || selectedMember?._id),
-        member_name: selectedMember?.full_name || "Guest",
-        payment_method: paymentMethod,
-        payment_method_id: paymentMethodId || null,
-        payment_method_name: paymentMethodName || null,
-        credit_duration: creditMonths ? `${creditMonths} months` : null,
-        total_amount: totalAmount,
-        discount_amount: finalDiscount,
-        cash_amount: cashAmount,
-        change_amount: changeAmount,
-        cashier_name: preparedBy,
-        items: selectedItems.map(item => ({
-          item_id: item.item_id || item.id,
-          stock_id: item.stock_id || item.id,
-          batch_code: item.batch_code,
-          item_name: item.item_name,
-          sku: item.sku,
-          quantity: item.customer_quantity,
-          unit_price: item.retail_price,
-          discount: item.customer_discount || 0,
-          total_price: (item.retail_price - (item.customer_discount || 0)) * item.customer_quantity
-        }))
-      };
+      const saleData = buildSalePayload({
+        paymentMethod,
+        creditMonths,
+        totalAmount,
+        finalDiscount,
+        cashAmount,
+        changeAmount
+      });
 
-      const response = await salesApi.create(saleData);
+      const response = releasedHeldOrder
+        ? await salesApi.completeHeld(releasedHeldOrder.id, {
+            member_id: saleData.member_id,
+            cashier_id: saleData.cashier_id,
+            payment_method: saleData.payment_method,
+            credit_duration: saleData.credit_duration,
+            subtotal: saleData.subtotal,
+            discount: saleData.discount,
+            total_amount: saleData.total_amount,
+            cash_received: saleData.cash_received,
+            change_amount: saleData.change_amount,
+            items: saleData.items
+          })
+        : await salesApi.create(saleData);
 
       if (response.status === "success") {
         // Generate and print bill
@@ -518,6 +554,8 @@ export default function SalesView({ isActive }) {
             console.error('[SalesView] Bill generation failed:', printError);
             setStatusModal({ open: true, type: 'failed', description: 'Sale saved but bill printing failed' });
         }
+        setReleasedHeldOrder(null);
+        await fetchHeldOrder();
         // Mark sale as completed - clearForm will be called when modal closes
         setSaleCompleted(true);
         // Return success for the modal to show animation
@@ -549,28 +587,7 @@ export default function SalesView({ isActive }) {
       return;
     }
 
-    const saleData = {
-      invoice_no: invoiceNo,
-      member_id: selectedMember?.is_guest ? null : (selectedMember?.id || selectedMember?._id),
-      member_name: selectedMember?.full_name || "Guest",
-      payment_method: "cash",
-      total_amount: stockTotal,
-      discount_amount: 0,
-      cash_amount: 0,
-      change_amount: 0,
-      cashier_name: preparedBy,
-      items: selectedItems.map(item => ({
-        item_id: item.item_id || item.id,
-        stock_id: item.stock_id || item.id,
-        batch_code: item.batch_code,
-        item_name: item.item_name,
-        sku: item.sku,
-        quantity: item.customer_quantity,
-        unit_price: item.retail_price,
-        discount: item.customer_discount || 0,
-        total_price: (item.retail_price - (item.customer_discount || 0)) * item.customer_quantity
-      }))
-    };
+    const saleData = buildSalePayload();
 
     try {
       const response = await salesApi.hold(saleData);
@@ -615,10 +632,14 @@ export default function SalesView({ isActive }) {
     }));
 
     setSelectedItems(restoredItems);
+    setReleasedHeldOrder(heldOrder);
+    setInvoiceNo(heldOrder.invoice_no || invoiceNo);
 
     // Restore member if not guest
     if (heldOrder.member && !heldOrder.member.is_guest) {
       setSelectedMember(heldOrder.member);
+    } else {
+      setSelectedMember(GUEST_USER);
     }
 
     setHeldOrder(null);
@@ -1043,11 +1064,11 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
               ) : (
                 <button
                   onClick={handleHoldSale}
-                  disabled={selectedItems.length === 0}
+                  disabled={selectedItems.length === 0 || Boolean(releasedHeldOrder)}
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-amber-200 text-amber-600 rounded-xl font-semibold hover:bg-amber-50 hover:border-amber-300 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Pause className="w-4 h-4" />
-                  Hold
+                  {releasedHeldOrder ? "Held" : "Hold"}
                 </button>
               )}
             </div>

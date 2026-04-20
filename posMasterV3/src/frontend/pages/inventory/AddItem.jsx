@@ -149,10 +149,23 @@ function AddItem({ isActive }) {
     setTimeout(() => setSearchLoading(false), 600);
   };
 
+  const handleClearSearch = () => {
+    setSearch("");
+    setSearchLoading(false);
+  };
+
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     console.log(name + ": " + value);
+
+    if (name === "sku") {
+      const digitsOnly = value.replace(/\D/g, "");
+      const nextSku = digitsOnly.length > 12 ? "" : digitsOnly;
+      setFormData(prev => ({ ...prev, sku: nextSku }));
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -229,8 +242,15 @@ function AddItem({ isActive }) {
     setFormStatus("loading");
     statusLog.database("Registering new item...", true);
     e.preventDefault();
-    if (!formData.sku || !formData.sku.trim()) {
+    const skuValue = (formData.sku ?? "").trim();
+    if (!skuValue) {
       setStatusModal({ open: true, type: 'failed', description: 'SKU is required' });
+      setFormStatus("form");
+      return;
+    }
+
+    if (!/^\d{1,12}$/.test(skuValue)) {
+      setStatusModal({ open: true, type: 'failed', description: 'SKU must be numeric and up to 12 digits' });
       setFormStatus("form");
       return;
     }
@@ -271,7 +291,7 @@ function AddItem({ isActive }) {
         item_code: formData.item_code || null,
         item_image_blob: formData.item_image_blob || null,
         item_image_url: formData.item_image_url || null,
-        sku: formData.sku,
+        sku: skuValue,
         maximum_capacity: capacity,
         uom_id: formUOMData,
         category_id: selectedCategory.id, // look up id
@@ -306,8 +326,15 @@ function AddItem({ isActive }) {
     setFormStatus("loading");
     statusLog.database("Updating item...", true);
     e.preventDefault();
-    if (!formData.sku || !formData.sku.trim()) {
+    const skuValue = (formData.sku ?? "").trim();
+    if (!skuValue) {
       setStatusModal({ open: true, type: 'failed', description: 'SKU is required' });
+      setFormStatus("form");
+      return;
+    }
+
+    if (!/^\d{1,12}$/.test(skuValue)) {
+      setStatusModal({ open: true, type: 'failed', description: 'SKU must be numeric and up to 12 digits' });
       setFormStatus("form");
       return;
     }
@@ -348,7 +375,7 @@ function AddItem({ isActive }) {
         item_code: formData.item_code || null,
         item_image_blob: formData.item_image_blob || null,
         item_image_url: formData.item_image_url || null,
-        sku: formData.sku,
+        sku: skuValue,
         maximum_capacity: capacity,
         uom_id: formUOMData,
         category_id: selectedCategory.id, // look up id
@@ -668,6 +695,7 @@ function AddItem({ isActive }) {
                       </label>
                       <input
                         type="text"
+                        inputMode="numeric"
                         name="sku"
                         value={formData.sku ?? ""}
                         onChange={handleInputChange}
@@ -802,6 +830,15 @@ function AddItem({ isActive }) {
               <button className="h-12 px-6 bg-[#1A318C] text-white rounded-xl font-medium hover:bg-[#152870] transition-all duration-200 shadow-md shadow-blue-900/20 flex items-center gap-2">
                 <Search className="w-4 h-4" />
                 Search
+              </button>
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                disabled={!search}
+                className="h-12 px-6 bg-white text-gray-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <X className="w-4 h-4" />
+                Clear
               </button>
             </div>
             {/* Results count */}

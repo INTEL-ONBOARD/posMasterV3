@@ -21,10 +21,11 @@ const {
 } = require('../database/mysql-connection.cjs');
 const dns = require('dns');
 const { nowISO } = require('../utils/helpers.cjs');
-const { getSyncQueueRepository } = require('../repositories/index.cjs');
+const SyncQueueRepository = require('../repositories/SyncQueueRepository.cjs');
 const {
     broadcastDataChange,
     broadcastSyncStatus,
+    broadcastConnectionStatus,
     broadcastSyncComplete,
     broadcastBatchChange,
     broadcastMultiTableChange,
@@ -35,14 +36,12 @@ const {
 const NETWORK_CHECK_INTERVAL_MS = 2000; // Check network every 2 seconds
 const PENDING_SYNC_INTERVAL_MS = 1000;  // Flush pending (offline) changes every 1 second
 
-// WARNING: cloud_id column exists in all synced tables but is NEVER populated by any
-// code path. The local SQLite `id` is used directly as the cloud MySQL primary key.
-// This means cloud_id is always NULL in both local and cloud DBs.
-// RISK: If the local `id` sequence on two different offline devices ever produces the
-// same integer for different records in the same table, those records will silently
-// overwrite each other on the next sync (last-writer-wins UPSERT). Until cloud_id is
-// wired up as a proper UUID-based PK, avoid running two branches offline simultaneously
-// with the same SQLite auto-increment state for any shared table.
+// Sync identity model:
+// - `id` remains the primary key replicated to MySQL so existing foreign-key links keep working.
+// - `cloud_id` is populated locally for cross-device identity and future migrations away from
+//   integer-only PK replication.
+// - BaseRepository also allocates sparse random integer IDs for synced tables to reduce
+//   collision risk when multiple devices create records offline before a sync occurs.
 const TABLES_TO_SYNC = [
     'users',
     'categories',
@@ -127,9 +126,6 @@ const TABLE_SPECIFIC_EXCLUSIONS = {
 // Tables that use "pull-first-then-push" strategy
 // For these tables: Pull cloud updates to local FIRST, then push local changes to cloud
 // This ensures we have the latest cloud data before pushing local changes.
-// NOTE: active_sessions is intentionally excluded here — RealTimeSyncService owns its
-// polling exclusively (every 3 s) to avoid two services pulling the same table
-// concurrently and producing unpredictable merge results.
 const PULL_FIRST_TABLES = ['users', 'user_settings', 'items', 'stock'];
 
 // Maximum retry attempts for failed sync operations
@@ -150,10 +146,11 @@ class CloudSyncService {
         this.lastSyncTime = null;
         this.syncStatus = 'idle';
         this.syncError = null;
-        this.autoSyncEnabled = true;
+        this.autoSyncEnabled = false;
         this.pendingChanges = []; // Queue of changes to sync when online
         this.mysqlInitialized = false;
         this.wasOffline = false; // Track if we were offline before
+        this.initialized = false;
 
         // Track pending changes by key to prevent duplicates; Map allows updating stale record data
         this._pendingChangeKeys = new Set();
@@ -179,7 +176,7 @@ class CloudSyncService {
             try {
                 const db = getDatabase();
                 if (db) {
-                    this._syncQueueRepo = getSyncQueueRepository();
+                    this._syncQueueRepo = new SyncQueueRepository();
                 }
             } catch (e) {
                 // DB not ready yet
@@ -349,6 +346,47 @@ class CloudSyncService {
         this._retryCountMap.delete(key);
     }
 
+    _getPendingCount() {
+        return this.pendingChanges.length;
+    }
+
+    _getConnectionQuality() {
+        if (!this.autoSyncEnabled) return 'disabled';
+        if (!this.isOnline) return 'offline';
+        if (!this.mysqlInitialized) return 'degraded';
+        if (this.isSyncing) return 'syncing';
+        return 'good';
+    }
+
+    _getStatusSnapshot() {
+        const pendingCount = this._getPendingCount();
+        return {
+            isOnline: this.isOnline && this.mysqlInitialized,
+            isSyncing: this.isSyncing,
+            lastSyncTime: this.lastSyncTime,
+            syncStatus: this.syncStatus,
+            status: this.syncStatus,
+            syncError: this.syncError,
+            autoSyncEnabled: this.autoSyncEnabled,
+            syncEnabled: this.autoSyncEnabled,
+            pendingCount,
+            pendingChangesCount: pendingCount,
+            mysqlInitialized: this.mysqlInitialized,
+            connectionQuality: this._getConnectionQuality()
+        };
+    }
+
+    _broadcastStatus() {
+        const snapshot = this._getStatusSnapshot();
+        broadcastSyncStatus(snapshot);
+        broadcastConnectionStatus({
+            isOnline: snapshot.isOnline,
+            quality: snapshot.connectionQuality,
+            mysqlInitialized: snapshot.mysqlInitialized,
+            lastCheck: nowISO()
+        });
+    }
+
     /**
      * Get the last pull timestamp for a table from sync_metadata
      * @param {string} tableName - The table name
@@ -452,6 +490,18 @@ class CloudSyncService {
      * Initialize the cloud sync service
      */
     async initialize() {
+        if (this.initialized && this.autoSyncEnabled) {
+            this._broadcastStatus();
+            return this;
+        }
+
+        if (!this.autoSyncEnabled) {
+            this.syncStatus = 'disabled';
+            this._broadcastStatus();
+            this.initialized = true;
+            return this;
+        }
+
         console.log('[CloudSync] Initializing real-time sync service...');
 
         // Check initial network status
@@ -488,6 +538,10 @@ class CloudSyncService {
             );
         }
 
+        this.syncStatus = this.isOnline && this.mysqlInitialized ? 'idle' : 'offline';
+        this.initialized = true;
+        this._broadcastStatus();
+
         return this;
     }
 
@@ -513,6 +567,9 @@ class CloudSyncService {
                 await this.createMySQLSchema();
                 await this.cleanupGhostPendingRecords();
                 this.mysqlInitialized = true;
+                this.syncError = null;
+                this.syncStatus = this.isSyncing ? this.syncStatus : 'idle';
+                this._broadcastStatus();
                 console.log('[CloudSync] MySQL initialized successfully');
                 return true;
             } else {
@@ -522,6 +579,10 @@ class CloudSyncService {
             console.error('[CloudSync] Failed to initialize MySQL:', error.message);
             console.error('[CloudSync] Full error:', error);
         }
+        this.mysqlInitialized = false;
+        this.syncError = 'MySQL initialization failed';
+        this.syncStatus = this.autoSyncEnabled ? 'offline' : 'disabled';
+        this._broadcastStatus();
         return false;
     }
 
@@ -541,9 +602,13 @@ class CloudSyncService {
 
             await this.createMySQLSchema();
             this.mysqlInitialized = true;
+            this.syncError = null;
+            this._broadcastStatus();
             return { success: true, message: 'MySQL schema created/verified successfully' };
         } catch (error) {
             console.error('[CloudSync] Failed to ensure MySQL schema:', error.message);
+            this.syncError = error.message;
+            this._broadcastStatus();
             return { success: false, message: error.message };
         }
     }
@@ -580,6 +645,9 @@ class CloudSyncService {
             if (!wasOnline && this.isOnline) {
                 console.log('[CloudSync] Internet connection restored!');
                 this.wasOffline = true;
+                this.syncStatus = 'reconnecting';
+                this.syncError = null;
+                this._broadcastStatus();
 
                 // Initialize MySQL if not done
                 if (!this.mysqlInitialized) {
@@ -596,6 +664,7 @@ class CloudSyncService {
             if (wasOnline && !this.isOnline) {
                 console.log('[CloudSync] Internet connection lost. Changes will be queued.');
                 this.syncStatus = 'offline';
+                this._broadcastStatus();
             }
         }, NETWORK_CHECK_INTERVAL_MS);
 
@@ -690,6 +759,7 @@ class CloudSyncService {
                 this._resetRetryCount(tableName, recordId); // Reset retry count on success
                 this._removePendingKey(tableName, operation, recordId); // Clear pending key on success
                 console.log(`[CloudSync] Real-time sync: ${operation} on ${tableName} (ID: ${recordId})`);
+                this._broadcastStatus();
             } catch (error) {
                 console.error(`[CloudSync] Real-time sync failed, queuing:`, error.message);
                 // Key stays in _pendingChangeKeys; push change to queue for retry
@@ -708,6 +778,7 @@ class CloudSyncService {
                     this.pendingChanges.push(change);
                 }
                 this.updateLocalSyncStatus(tableName, recordId, 'pending');
+                this._broadcastStatus();
             }
         } else {
             // Offline - queue the change (with deduplication tracking)
@@ -728,6 +799,7 @@ class CloudSyncService {
             }
             this.updateLocalSyncStatus(tableName, recordId, 'pending');
             console.log(`[CloudSync] Queued change: ${operation} on ${tableName} (ID: ${recordId}). Queue size: ${this.pendingChanges.length}`);
+            this._broadcastStatus();
         }
     }
 
@@ -883,6 +955,8 @@ class CloudSyncService {
 
         this.isSyncing = true;
         this.syncStatus = 'syncing';
+        this.syncError = null;
+        this._broadcastStatus();
         console.log(`[CloudSync] Syncing ${this.pendingChanges.length} pending changes...`);
 
         let synced = 0;
@@ -895,6 +969,8 @@ class CloudSyncService {
             if (!await testConnection()) {
                 this.isSyncing = false;
                 this.syncStatus = 'connection_failed';
+                this.syncError = 'Cloud database connection failed';
+                this._broadcastStatus();
                 this._releaseSyncLock();
                 return { status: 'failed', reason: 'connection_failed' };
             }
@@ -956,6 +1032,8 @@ class CloudSyncService {
 
             this.lastSyncTime = nowISO();
             this.syncStatus = failed > 0 ? 'partial' : 'completed';
+            this.syncError = failed > 0 ? `${failed} change(s) failed to sync` : null;
+            this._broadcastStatus();
 
             console.log(`[CloudSync] Pending sync complete. Synced: ${synced}, Failed: ${failed}, Dropped: ${dropped}`);
 
@@ -970,6 +1048,7 @@ class CloudSyncService {
             return { synced, failed, dropped };
         } finally {
             this.isSyncing = false;
+            this._broadcastStatus();
             this._releaseSyncLock();
         }
     }
@@ -1005,6 +1084,8 @@ class CloudSyncService {
 
         this.isSyncing = true;
         this.syncStatus = 'full_sync';
+        this.syncError = null;
+        this._broadcastStatus();
         console.log('[CloudSync] Starting version-based bidirectional sync...');
 
         const startTime = Date.now();
@@ -1077,12 +1158,15 @@ class CloudSyncService {
 
         } finally {
             this.isSyncing = false;
+            this._broadcastStatus();
             this._releaseSyncLock();
         }
 
         const duration = Date.now() - startTime;
         this.lastSyncTime = nowISO();
         this.syncStatus = 'completed';
+        this.syncError = results.errors.length > 0 ? `${results.errors.length} table(s) failed to sync` : null;
+        this._broadcastStatus();
 
         console.log(`[CloudSync] Bidirectional sync completed in ${duration}ms. Pushed: ${results.uploaded}, Pulled: ${results.downloaded}, Conflicts: ${results.conflicts}`);
 
@@ -2962,16 +3046,7 @@ class CloudSyncService {
      * Get current sync status
      */
     getStatus() {
-        return {
-            isOnline: this.isOnline,
-            isSyncing: this.isSyncing,
-            lastSyncTime: this.lastSyncTime,
-            syncStatus: this.syncStatus,
-            syncError: this.syncError,
-            autoSyncEnabled: this.autoSyncEnabled,
-            pendingChangesCount: this.pendingChanges.length,
-            mysqlInitialized: this.mysqlInitialized
-        };
+        return this._getStatusSnapshot();
     }
 
     /**
@@ -2996,12 +3071,16 @@ class CloudSyncService {
                 clearInterval(this.incrementalPullInterval);
                 this.incrementalPullInterval = null;
             }
+            this.isSyncing = false;
+            this.syncStatus = 'disabled';
         } else {
             this.startNetworkMonitoring();
             this.startPendingSyncInterval();
             this.startActiveSessionsPolling();
             this.startIncrementalPullLoop();
+            this.syncStatus = this.isOnline && this.mysqlInitialized ? 'idle' : 'offline';
         }
+        this._broadcastStatus();
     }
 
     /**
@@ -3015,19 +3094,20 @@ class CloudSyncService {
         }
 
         this.activeSessionsPollInterval = setInterval(async () => {
-            if (!this.isOnline || !this.mysqlInitialized) return;
+            if (!this.autoSyncEnabled || !this.isOnline || !this.mysqlInitialized) return;
 
             try {
                 const db = getDatabase();
                 if (!db) return;
 
-                const pullResult = await this.pullFromCloud('active_sessions', { skipFkPragma: true });
+                const pullResult = await this.syncActiveSessions({
+                    pullFirst: true,
+                    pushLocal: false,
+                    clearCache: true
+                });
+                const { validateSessionFast } = require('./SessionValidator.cjs');
 
-                // Clear session cache to force revalidation
-                const { clearCache, validateSessionFast } = require('./SessionValidator.cjs');
-                clearCache();
-
-                if (pullResult.actuallyChanged > 0) {
+                if ((pullResult.changed || 0) > 0) {
                     console.log('[CloudSync] Active sessions changed, validating current session...');
                     const sessions = db.prepare('SELECT token FROM sessions WHERE is_active = 1').all();
                     for (const session of sessions) {
@@ -3044,6 +3124,40 @@ class CloudSyncService {
         }, 1000); // 1 second — near real-time single-device enforcement
 
         console.log('[CloudSync] Active sessions polling started (every 1s)');
+    }
+
+    async syncActiveSessions(options = {}) {
+        const {
+            pullFirst = true,
+            pushLocal = true,
+            clearCache = true
+        } = options;
+
+        if (!this.autoSyncEnabled || !this.isOnline || !this.mysqlInitialized) {
+            return { status: 'skipped', reason: 'offline', pulled: 0, pushed: 0, changed: 0 };
+        }
+
+        let pulled = 0;
+        let pushed = 0;
+        let changed = 0;
+
+        if (pullFirst) {
+            const pullResult = await this.pullFromCloud('active_sessions', { skipFkPragma: true });
+            pulled = pullResult.downloaded || 0;
+            changed += pullResult.actuallyChanged || 0;
+        }
+
+        if (clearCache) {
+            const { clearCache } = require('./SessionValidator.cjs');
+            clearCache();
+        }
+
+        if (pushLocal) {
+            const pushResult = await this.syncTable('active_sessions');
+            pushed = pushResult.uploaded || 0;
+        }
+
+        return { status: 'success', pulled, pushed, changed };
     }
 
     /**
@@ -3105,6 +3219,11 @@ class CloudSyncService {
             this.incrementalPullInterval = null;
         }
         await closeMySQLPool();
+        this.isOnline = false;
+        this.mysqlInitialized = false;
+        this.isSyncing = false;
+        this.syncStatus = this.autoSyncEnabled ? 'offline' : 'disabled';
+        this._broadcastStatus();
         console.log('[CloudSync] Service cleaned up');
     }
 }
@@ -3127,6 +3246,7 @@ function getCloudSyncService() {
  */
 async function initializeCloudSync() {
     const service = getCloudSyncService();
+    service.setAutoSync(true);
     await service.initialize();
     return service;
 }

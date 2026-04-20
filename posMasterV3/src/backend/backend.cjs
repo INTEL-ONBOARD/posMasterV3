@@ -115,17 +115,7 @@ function initializeBackend(configPath) {
                 console.log('[Backend] Cloud sync is disabled in settings, skipping initialization');
             }
         } catch (err) {
-            console.log('[Backend] Could not check cloud sync setting, initializing by default:', err.message);
-            const { initializeCloudSync } = require('./services/CloudSyncService.cjs');
-            initializeCloudSync().catch(err => {
-                console.error('[Backend] Cloud sync initialization error:', err.message);
-            });
-
-            // Also initialize real-time sync
-            const { initializeRealTimeSync } = require('./services/RealTimeSyncService.cjs');
-            initializeRealTimeSync().catch(err => {
-                console.error('[Backend] Real-time sync initialization error:', err.message);
-            });
+            console.log('[Backend] Could not check cloud sync setting, leaving cloud sync disabled:', err.message);
         }
 
         isInitialized = true;

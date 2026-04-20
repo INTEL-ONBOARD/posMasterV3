@@ -291,12 +291,16 @@
  * @property {boolean} isOnline - Whether internet is available
  * @property {boolean} isSyncing - Whether sync is in progress
  * @property {string|null} lastSyncTime - Last successful sync time
- * @property {string} syncStatus - Current status ('idle'|'syncing'|'completed'|'failed'|'offline')
+ * @property {string} syncStatus - Current status ('idle'|'syncing'|'completed'|'failed'|'offline'|'disabled')
+ * @property {string} status - Alias of syncStatus
  * @property {string|null} syncError - Last error message
  * @property {boolean} autoSyncEnabled - Whether auto-sync is enabled
+ * @property {boolean} syncEnabled - Alias of autoSyncEnabled
+ * @property {number} pendingCount - Number of changes waiting to sync
  * @property {number} pendingChangesCount - Number of changes waiting to sync
  * @property {boolean} mysqlInitialized - Whether MySQL connection is ready
- */
+ * @property {string} connectionQuality - Current connection quality
+*/
 
 // ============================================
 // HELPER FUNCTIONS
@@ -320,39 +324,6 @@ const getElectronAPI = () => {
         return null;
     }
     return window.electronAPI;
-};
-
-/**
- * Wrap an API call with error handling
- * @param {Function} apiCall - The API call function
- * @param {string} [operationName] - Name of the operation for logging
- * @returns {Promise<ApiResponse>}
- */
-const wrapApiCall = async (apiCall, operationName = 'API call') => {
-    try {
-        const result = await apiCall();
-        return result;
-    } catch (error) {
-        console.error(`[LocalAPI] ${operationName} failed:`, error);
-        return {
-            status: 'error',
-            message: error?.message || 'An unexpected error occurred'
-        };
-    }
-};
-
-/**
- * Create a safe API method that wraps the call with error handling
- * @param {Function} method - The original API method
- * @param {string} name - Name of the method for logging
- * @returns {Function} Wrapped method
- */
-const safeApiMethod = (method, name) => {
-    return async (...args) => {
-        const api = getElectronAPI();
-        if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return wrapApiCall(() => method(api, ...args), name);
-    };
 };
 
 // ============================================

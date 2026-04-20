@@ -21,14 +21,37 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-// Global state for sync status
-let globalSyncStatus = {
-    isOnline: true,
+const DEFAULT_SYNC_STATUS = {
+    isOnline: false,
     isSyncing: false,
+    syncStatus: 'idle',
+    status: 'idle',
     connectionQuality: 'unknown',
     pendingCount: 0,
+    pendingChangesCount: 0,
     lastSyncTime: null
 };
+
+function normalizeSyncStatus(status = {}) {
+    const pendingCount = status.pendingCount ?? status.pendingChangesCount ?? 0;
+    const syncStatus = status.syncStatus ?? status.status ?? DEFAULT_SYNC_STATUS.syncStatus;
+
+    return {
+        ...DEFAULT_SYNC_STATUS,
+        ...status,
+        isOnline: status.isOnline ?? DEFAULT_SYNC_STATUS.isOnline,
+        isSyncing: status.isSyncing ?? DEFAULT_SYNC_STATUS.isSyncing,
+        syncStatus,
+        status: syncStatus,
+        connectionQuality: status.connectionQuality ?? DEFAULT_SYNC_STATUS.connectionQuality,
+        pendingCount,
+        pendingChangesCount: pendingCount,
+        lastSyncTime: status.lastSyncTime ?? DEFAULT_SYNC_STATUS.lastSyncTime
+    };
+}
+
+// Global state for sync status
+let globalSyncStatus = { ...DEFAULT_SYNC_STATUS };
 
 // Subscribers map: table -> Set<callback>
 const tableSubscribers = new Map();
@@ -52,11 +75,11 @@ let electronUnsubscribeStatus = null;
 export function resetSyncModuleState() {
     // Detach IPC listeners
     if (electronUnsubscribeData) {
-        try { electronUnsubscribeData(); } catch (e) { /* ignore */ }
+        try { electronUnsubscribeData(); } catch { /* ignore */ }
         electronUnsubscribeData = null;
     }
     if (electronUnsubscribeStatus) {
-        try { electronUnsubscribeStatus(); } catch (e) { /* ignore */ }
+        try { electronUnsubscribeStatus(); } catch { /* ignore */ }
         electronUnsubscribeStatus = null;
     }
     electronListenersAttached = false;
@@ -66,19 +89,13 @@ export function resetSyncModuleState() {
     statusSubscribers.clear();
 
     // Reset sync status to defaults
-    globalSyncStatus = {
-        isOnline: true,
-        isSyncing: false,
-        connectionQuality: 'unknown',
-        pendingCount: 0,
-        lastSyncTime: null
-    };
+    globalSyncStatus = { ...DEFAULT_SYNC_STATUS };
 }
 
 /**
  * Hook for real-time sync status and data change subscriptions
  */
-export function useRealTimeSync(options = {}) {
+export function useRealTimeSync() {
     const [syncStatus, setSyncStatus] = useState(globalSyncStatus);
 
     // Attach Electron IPC listeners once at module level (not per-component-instance).
@@ -88,6 +105,21 @@ export function useRealTimeSync(options = {}) {
         if (!window.electronAPI) return;
 
         electronListenersAttached = true;
+
+        window.electronAPI.cloudSync?.getStatus?.().then((result) => {
+            if (result?.data) {
+                globalSyncStatus = normalizeSyncStatus(result.data);
+                statusSubscribers.forEach(callback => {
+                    try {
+                        callback(globalSyncStatus);
+                    } catch (e) {
+                        console.error('[useRealTimeSync] Initial status subscriber error:', e);
+                    }
+                });
+            }
+        }).catch((error) => {
+            console.warn('[useRealTimeSync] Failed to load initial sync status:', error);
+        });
 
         // Listen for data changes
         electronUnsubscribeData = window.electronAPI.onDataChange?.((data) => {
@@ -120,13 +152,10 @@ export function useRealTimeSync(options = {}) {
 
         // Listen for sync status changes
         electronUnsubscribeStatus = window.electronAPI.onSyncStatusChange?.((status) => {
-            globalSyncStatus = {
-                isOnline: status.isOnline ?? globalSyncStatus.isOnline,
-                isSyncing: status.isSyncing ?? false,
-                connectionQuality: status.connectionQuality ?? globalSyncStatus.connectionQuality,
-                pendingCount: status.pendingCount ?? globalSyncStatus.pendingCount,
-                lastSyncTime: status.lastSyncTime ?? globalSyncStatus.lastSyncTime
-            };
+            globalSyncStatus = normalizeSyncStatus({
+                ...globalSyncStatus,
+                ...status
+            });
 
             // Notify all status subscribers
             statusSubscribers.forEach(callback => {
@@ -195,6 +224,7 @@ export function useRealTimeSync(options = {}) {
     return {
         isOnline: syncStatus.isOnline,
         isSyncing: syncStatus.isSyncing,
+        syncStatus: syncStatus.syncStatus,
         connectionQuality: syncStatus.connectionQuality,
         pendingCount: syncStatus.pendingCount,
         lastSyncTime: syncStatus.lastSyncTime,
