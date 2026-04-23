@@ -655,13 +655,18 @@ export default function SalesView({ isActive }) {
   const checkoutDataRef = useRef(null);
 
 
-// newly added fix for printing receipt
-const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
+// Thermal roll print settings. 80mm is the standard POS receipt width; change
+// THERMAL_ROLL_WIDTH_MM to 58 for 58mm rolls if that is what the store uses.
+const THERMAL_ROLL_WIDTH_MM = 80;
+const THERMAL_PAGE_HEIGHT_MM = 297; // virtual page height used for slicing long bills
+const THERMAL_SIDE_MARGIN_PT = 4;
+const MM_TO_PT = 2.83465;
+
+const generateBillPdf = async (checkoutData) => {
   try {
     if (!billRef.current) return;
     checkoutDataRef.current = checkoutData;
 
-    // Choose html2canvas scale for good image quality (2 is fine)
     const html2canvasScale = 2;
 
     const canvas = await html2canvas(billRef.current, {
@@ -670,63 +675,37 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
       backgroundColor: "#ffffff"
     });
 
-    // Create A4 PDF in points
+    // Build a PDF page that matches the thermal roll width directly, so the
+    // printer driver prints 1:1 instead of downscaling a half-A4 image.
+    const rollWidthPt = THERMAL_ROLL_WIDTH_MM * MM_TO_PT;
+    const rollPageHeightPt = THERMAL_PAGE_HEIGHT_MM * MM_TO_PT;
+
     const doc = new jsPDF({
       orientation: "p",
       unit: "pt",
-      format: "a4"
+      format: [rollWidthPt, rollPageHeightPt]
     });
 
-    const marginLeft = 0;
-    const marginTop = 0;
-    const marginRight = 0;
-    
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    // const printableWidth = pageWidth - marginLeft - marginRight;
-    const printableWidth = pageWidth - marginLeft - marginRight;
-    // We want the content to occupy ONLY the LEFT HALF of the A4 printable area
-    const targetWidthPt = printableWidth / 2;
+    const printableWidth = pageWidth - THERMAL_SIDE_MARGIN_PT * 2;
+    const printableHeight = pageHeight;
 
-    const printableHeight = pageHeight - marginTop * 2;
-
-    // Convert canvas pixels -> PDF points.
-    // 1 CSS px ~= 0.75 pt. But canvas.width = cssWidth * html2canvasScale,
-    // so factor = 0.75 / html2canvasScale
+    // Canvas px -> PDF pt.
     const pxToPt = 0.75 / html2canvasScale;
-
-    // Full image size in PDF points (preserves visual size)
     const imgWidthPt = canvas.width * pxToPt;
-    const imgHeightPt = canvas.height * pxToPt;
+    const scaleToRoll = printableWidth / imgWidthPt;
 
-    // scale so it fits ONLY the left half
-    const scaleToHalf = targetWidthPt / imgWidthPt;
-
-    let finalImgWidthPt = imgWidthPt * scaleToHalf;
-    let finalImgHeightPt = imgHeightPt * scaleToHalf;
-
-    let finalScaleForPdfImage = 1; // used only if fitToPage true
-    if (fitToPage && imgWidthPt > printableWidth) {
-      finalScaleForPdfImage = printableWidth / imgWidthPt;
-      finalImgWidthPt = imgWidthPt * finalScaleForPdfImage;
-      finalImgHeightPt = imgHeightPt * finalScaleForPdfImage;
-    }
-
-    // When slicing, slice heights are in canvas pixels.
-    // A slice of H_px corresponds to H_px * pxToPt points in the PDF,
-    // or H_px * pxToPt * finalScaleForPdfImage if scaling to fit.
     let positionYpx = 0;
     let pageNumber = 0;
 
     while (positionYpx < canvas.height) {
       const maxSliceHeightPx = Math.floor(
-        printableHeight / pxToPt / scaleToHalf
+        printableHeight / pxToPt / scaleToRoll
       );
-
 
       const sliceHeightPx = Math.min(canvas.height - positionYpx, maxSliceHeightPx);
 
-      // create slice canvas
       const sliceCanvas = document.createElement("canvas");
       sliceCanvas.width = canvas.width;
       sliceCanvas.height = sliceHeightPx;
@@ -734,8 +713,6 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
       const ctx = sliceCanvas.getContext("2d");
       if (!ctx) throw new Error("Failed to create 2D context for slice canvas");
 
-      // draw the slice from big canvas to sliceCanvas
-      // drawImage(source, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
       ctx.drawImage(
         canvas,
         0,
@@ -749,18 +726,15 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
       );
 
       const sliceData = sliceCanvas.toDataURL("image/png");
-
-      const sliceHeightPt = sliceHeightPx * pxToPt * scaleToHalf;
-
+      const sliceHeightPt = sliceHeightPx * pxToPt * scaleToRoll;
 
       if (pageNumber > 0) doc.addPage();
-      // x = left margin (left aligned). y = marginTop
       doc.addImage(
         sliceData,
         "PNG",
-        marginLeft,
-        marginTop,
-        finalImgWidthPt,
+        THERMAL_SIDE_MARGIN_PT,
+        0,
+        printableWidth,
         sliceHeightPt
       );
 
@@ -768,7 +742,6 @@ const generateBillPdf = async (checkoutData, { fitToPage = false } = {}) => {
       pageNumber++;
     }
 
-    // send to your electron printing API (unchanged)
     const arrayBuffer = doc.output("arraybuffer");
     window.electronAPI.sendPrintSilent(arrayBuffer);
   } catch (error) {
