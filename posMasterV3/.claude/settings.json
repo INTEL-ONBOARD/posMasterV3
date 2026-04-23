@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -i \"sku\\\\|\\\\\\\\\\\\\\\\d{1,\")",
+      "Bash(grep -rn '\\\\\\\\\\\\\\\\d{1,12}\\\\|up to 12 digits\\\\|length.*>.*12\\\\|SKU.*12\\\\|\\\\.test.*sku\\\\|sku.*length' --include=\"*.js\" --include=\"*.jsx\" --include=\"*.cjs\" /Users/kkwenuja/development/Revo-infosurv/posMasterV3/posMasterV3/src/)"
+    ]
+  }
+}
