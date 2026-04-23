@@ -174,12 +174,14 @@ function registerUserHandlers() {
         console.log('[UserController] Update user request received');
 
         const caller = _getSessionUser();
-        if (!_hasPermission(caller, 'user_manage')) {
+        const { userId, data } = payload;
+
+        // Allow users to update their own profile; user_manage required for others
+        if (String(userId) !== String(caller?.id) && !_hasPermission(caller, 'user_manage')) {
             return _permissionDenied('update users');
         }
 
         try {
-            const { userId, data } = payload;
             return userService.updateUser(userId, data);
 
         } catch (error) {
@@ -336,12 +338,14 @@ function registerUserHandlers() {
      */
     ipcMain.handle('users:reset-password', wrapIpcHandler(async (event, payload) => {
         const caller = _getSessionUser();
-        if (!_hasPermission(caller, 'user_manage')) {
+        const { userId, newPassword } = payload;
+
+        // Allow users to reset their own password; user_manage required for others
+        if (String(userId) !== String(caller?.id) && !_hasPermission(caller, 'user_manage')) {
             return _permissionDenied('reset user passwords');
         }
 
         try {
-            const { userId, newPassword } = payload;
             return userService.resetPassword(userId, newPassword);
         } catch (error) {
             console.error('[UserController] Reset password error:', error.message);

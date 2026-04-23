@@ -68,8 +68,31 @@ function Sidebar() {
           if (response.status === "success" && response.data?.settings?.permissions) {
             setPermissions(response.data.settings.permissions);
           } else {
-            // No permissions saved, set default based on role
-            setPermissions(null);
+            // No permissions saved — fall back to role-based defaults
+            const roleDefaults = {
+              manager: {
+                SaleAccess: { sale_process: true, sale_history: true, sale_view_inventory: true, sale_reports: true, sale_configurations: true, sale_discounts: true },
+                InventoryAccess: { inventory_view: true, inventory_register_item: true, inventory_restock: true, inventory_suppliers: true, inventory_discount: true, inventory_price_change: true, inventory_history: true, inventory_configurations: false, inventory_reports: true },
+                UserAccess: { user_manage: true, user_role_manage: false },
+              },
+              cashier: {
+                SaleAccess: { sale_process: true, sale_history: true, sale_view_inventory: true, sale_reports: false, sale_configurations: false, sale_discounts: true },
+                InventoryAccess: { inventory_view: true, inventory_register_item: false, inventory_restock: false, inventory_suppliers: false, inventory_discount: false, inventory_price_change: false, inventory_history: false, inventory_configurations: false, inventory_reports: false },
+                UserAccess: { user_manage: false, user_role_manage: false },
+              },
+              assistant: {
+                SaleAccess: { sale_process: true, sale_history: false, sale_view_inventory: true, sale_reports: false, sale_configurations: false, sale_discounts: false },
+                InventoryAccess: { inventory_view: true, inventory_register_item: false, inventory_restock: false, inventory_suppliers: false, inventory_discount: false, inventory_price_change: false, inventory_history: false, inventory_configurations: false, inventory_reports: false },
+                UserAccess: { user_manage: false, user_role_manage: false },
+              },
+              user: {
+                SaleAccess: { sale_process: true, sale_history: false, sale_view_inventory: true, sale_reports: false, sale_configurations: false, sale_discounts: false },
+                InventoryAccess: { inventory_view: true, inventory_register_item: false, inventory_restock: false, inventory_suppliers: false, inventory_discount: false, inventory_price_change: false, inventory_history: false, inventory_configurations: false, inventory_reports: false },
+                UserAccess: { user_manage: false, user_role_manage: false },
+              },
+            };
+            const primaryRole = (userRoles[0] || "user").toLowerCase();
+            setPermissions(roleDefaults[primaryRole] || roleDefaults.user);
           }
         }
       } catch (error) {
