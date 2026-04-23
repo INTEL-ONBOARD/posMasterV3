@@ -161,7 +161,7 @@ function AddItem({ isActive }) {
     if (e.key !== "Enter") return;
     e.preventDefault();
 
-    const currentValue = search;
+    const currentValue = e.currentTarget.value;
     const lastValue = searchScanRef.current.valueAtLastEnter;
 
     // Isolate chars typed in this scan: if the field grew from the previous
