@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(grep -i \"sku\\\\|\\\\\\\\\\\\\\\\d{1,\")",
-      "Bash(grep -rn '\\\\\\\\\\\\\\\\d{1,12}\\\\|up to 12 digits\\\\|length.*>.*12\\\\|SKU.*12\\\\|\\\\.test.*sku\\\\|sku.*length' --include=\"*.js\" --include=\"*.jsx\" --include=\"*.cjs\" /Users/kkwenuja/development/Revo-infosurv/posMasterV3/posMasterV3/src/)"
+      "Bash(grep -rn '\\\\\\\\\\\\\\\\d{1,12}\\\\|up to 12 digits\\\\|length.*>.*12\\\\|SKU.*12\\\\|\\\\.test.*sku\\\\|sku.*length' --include=\"*.js\" --include=\"*.jsx\" --include=\"*.cjs\" /Users/kkwenuja/development/Revo-infosurv/posMasterV3/posMasterV3/src/)",
+      "Bash(file /Users/kkwenuja/development/Revo-infosurv/posMasterV3/posMasterV3/src/frontend/assets/app_logo/*.png)",
+      "Bash(sips -z 1024 1024 /Users/kkwenuja/development/Revo-infosurv/posMasterV3/posMasterV3/src/frontend/assets/app_logo/app_logo.png --out /Users/kkwenuja/development/Revo-infosurv/posMasterV3/posMasterV3/src/frontend/assets/app_logo/app_logo.png)"
     ]
   }
 }
