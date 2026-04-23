@@ -276,8 +276,13 @@ class BaseRepository {
             return this.findById(id);
         }
 
-        // Auto-inject updated_at so incremental cloud sync can detect this change
-        if (!keys.includes('updated_at')) {
+        // Tables that have no updated_at column and no sync_status column.
+        const localOnlyTables = ['sessions', 'sync_queue', 'migrations', 'app_settings', 'sync_metadata', 'price_change_history', 'audit_log'];
+        const isLocalOnly = localOnlyTables.includes(this.tableName);
+
+        // Auto-inject updated_at so incremental cloud sync can detect this change.
+        // Skip local-only tables that were created without this column (e.g. sync_queue).
+        if (!keys.includes('updated_at') && !isLocalOnly) {
             keys.push('updated_at');
             values.push(nowISO());
         }
@@ -285,8 +290,7 @@ class BaseRepository {
         // Auto-inject sync_status = 'pending' so CloudSync picks up this change.
         // Skip tables that are local-only (no cloud sync) and skip if the caller
         // is explicitly setting sync_status themselves (e.g. to 'synced').
-        const localOnlyTables = ['sessions', 'sync_queue', 'migrations', 'app_settings', 'sync_metadata', 'price_change_history', 'audit_log'];
-        if (!keys.includes('sync_status') && !localOnlyTables.includes(this.tableName)) {
+        if (!keys.includes('sync_status') && !isLocalOnly) {
             keys.push('sync_status');
             values.push('pending');
         }

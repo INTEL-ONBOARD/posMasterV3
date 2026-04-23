@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import ItemCard from "../../components/ItemCard.jsx";
 import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Package, Grid3X3, List, CheckCircle, AlertTriangle, Tag } from "lucide-react";
 import ViewItemModal from "./modals/ViewItemModal.jsx";
@@ -97,12 +97,32 @@ function ViewSaleInventory({ isActive }) {
   // Combined loading state
   const isLoading = isLoadingStock || isLoadingCategories;
 
+  const searchScanRef = useRef({ valueAtLastEnter: "" });
+
   const handleSearch = (e) => {
-    const value = e.target.value;
-    const digitsOnly = value.replace(/\D/g, "");
-    const isAllDigits = value.length > 0 && digitsOnly.length === value.length;
-    const nextSearch = isAllDigits && digitsOnly.length > 13 ? "" : value;
+    setSearch(e.target.value);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const currentValue = search;
+    const lastValue = searchScanRef.current.valueAtLastEnter;
+    let newChars = (lastValue && currentValue.startsWith(lastValue))
+      ? currentValue.slice(lastValue.length)
+      : currentValue;
+    const digitsOnly = newChars.replace(/\D/g, "");
+    const isAllDigits = newChars.length > 0 && digitsOnly.length === newChars.length;
+    let nextSearch;
+    if (isAllDigits && digitsOnly.length >= 1 && digitsOnly.length <= 13) {
+      nextSearch = digitsOnly;
+    } else if (isAllDigits && digitsOnly.length > 13) {
+      nextSearch = "";
+    } else {
+      nextSearch = currentValue;
+    }
     setSearch(nextSearch);
+    searchScanRef.current.valueAtLastEnter = nextSearch;
   };
 
   const filteredItems = inventoryItems
@@ -157,6 +177,7 @@ function ViewSaleInventory({ isActive }) {
                   type="text"
                   value={search}
                   onChange={handleSearch}
+                  onKeyDown={handleSearchKeyDown}
                   placeholder="Search items by name or SKU..."
                   className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                 />

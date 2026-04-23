@@ -391,14 +391,34 @@ export default function SalesView({ isActive }) {
   const [searchCategory, setSearchCategory] = useState("All");
   const [searchAvailability] = useState("All");
 
+  const searchScanRef = useRef({ valueAtLastEnter: "" });
+
   const handleSearch = (e) => {
-    const value = e.target.value;
-    const digitsOnly = value.replace(/\D/g, "");
-    const isAllDigits = value.length > 0 && digitsOnly.length === value.length;
-    const nextSearch = isAllDigits && digitsOnly.length > 13 ? "" : value;
+    setSearch(e.target.value);
     setSearchLoading(true);
-    setSearch(nextSearch);
     setTimeout(() => setSearchLoading(false), 600);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const currentValue = search;
+    const lastValue = searchScanRef.current.valueAtLastEnter;
+    let newChars = (lastValue && currentValue.startsWith(lastValue))
+      ? currentValue.slice(lastValue.length)
+      : currentValue;
+    const digitsOnly = newChars.replace(/\D/g, "");
+    const isAllDigits = newChars.length > 0 && digitsOnly.length === newChars.length;
+    let nextSearch;
+    if (isAllDigits && digitsOnly.length >= 1 && digitsOnly.length <= 13) {
+      nextSearch = digitsOnly;
+    } else if (isAllDigits && digitsOnly.length > 13) {
+      nextSearch = "";
+    } else {
+      nextSearch = currentValue;
+    }
+    setSearch(nextSearch);
+    searchScanRef.current.valueAtLastEnter = nextSearch;
   };
 
   // Date formatting
@@ -959,6 +979,8 @@ const generateBillPdf = async (checkoutData) => {
                     } else if (e.key === 'Tab' && e.shiftKey && selectedItems.length > 0) {
                       e.preventDefault();
                       handleProceedClick();
+                    } else {
+                      handleSearchKeyDown(e);
                     }
                   }}
                 />

@@ -101,49 +101,36 @@ function InventoryRestock({ isActive }) {
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
   const [searchAvailability, setSearchAvailability] = useState("All");
-  // Track last scanned value to suppress duplicate barcode injections
-  const searchScanRef = useRef({ value: "", time: 0 });
+  const searchScanRef = useRef({ valueAtLastEnter: "" });
   const searchLoadingTimer = useRef(null);
 
-
-  // Search handler
   const handleSearch = (e) => {
-    const nextValue = e.target.value;
-    const now = Date.now();
-
-    // Some barcode scanners emit the same code twice very quickly
-    const prevValue = searchScanRef.current.value;
-    const looksLikeDoubleScan =
-      prevValue &&
-      nextValue.length === prevValue.length * 2 &&
-      nextValue.startsWith(prevValue) &&
-      nextValue.endsWith(prevValue) &&
-      (now - searchScanRef.current.time) < 800;
-
-    const isImmediateDuplicate =
-      nextValue === prevValue && (now - searchScanRef.current.time) < 400;
-
-    if (looksLikeDoubleScan || isImmediateDuplicate) {
-      // Keep only one copy of the scanned barcode
-      setSearch(prevValue);
-      setSearchLoading(false);
-      e.target.value = prevValue;
-      return;
-    }
-
-    searchScanRef.current = { value: nextValue, time: now };
-
-    const digitsOnly = nextValue.replace(/\D/g, "");
-    const isAllDigits = nextValue.length > 0 && digitsOnly.length === nextValue.length;
-    const searchValue = isAllDigits && digitsOnly.length > 13 ? "" : nextValue;
-
+    setSearch(e.target.value);
     setSearchLoading(true);
-    setSearch(searchValue);
-
-    if (searchLoadingTimer.current) {
-      clearTimeout(searchLoadingTimer.current);
-    }
+    if (searchLoadingTimer.current) clearTimeout(searchLoadingTimer.current);
     searchLoadingTimer.current = setTimeout(() => setSearchLoading(false), 600);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const currentValue = search;
+    const lastValue = searchScanRef.current.valueAtLastEnter;
+    let newChars = (lastValue && currentValue.startsWith(lastValue))
+      ? currentValue.slice(lastValue.length)
+      : currentValue;
+    const digitsOnly = newChars.replace(/\D/g, "");
+    const isAllDigits = newChars.length > 0 && digitsOnly.length === newChars.length;
+    let nextSearch;
+    if (isAllDigits && digitsOnly.length >= 1 && digitsOnly.length <= 13) {
+      nextSearch = digitsOnly;
+    } else if (isAllDigits && digitsOnly.length > 13) {
+      nextSearch = "";
+    } else {
+      nextSearch = currentValue;
+    }
+    setSearch(nextSearch);
+    searchScanRef.current.valueAtLastEnter = nextSearch;
   };
 
   // Clear pending timers on unmount to avoid state updates after unmount
@@ -2244,6 +2231,7 @@ function InventoryRestock({ isActive }) {
                     type="text"
                     value={search}
                     onChange={handleSearch}
+                    onKeyDown={handleSearchKeyDown}
                     placeholder="Search items by name, SKU..."
                     className={`w-full h-10 pl-10 pr-4 bg-gray-50 border rounded-lg text-sm focus:outline-none focus:ring-2 transition-all ${
                       rightActiveSection === "add"

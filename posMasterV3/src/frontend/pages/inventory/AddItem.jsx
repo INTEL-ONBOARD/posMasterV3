@@ -143,19 +143,56 @@ function AddItem({ isActive }) {
 
   //filteriings
   // Search handler
+  // Tracks the search value at the time of the last scanner Enter so we can
+  // isolate exactly which chars belong to the current scan.
+  const searchScanRef = useRef({ valueAtLastEnter: "" });
+
   const handleSearch = (e) => {
-    const value = e.target.value;
-    const digitsOnly = value.replace(/\D/g, "");
-    const isAllDigits = value.length > 0 && digitsOnly.length === value.length;
-    const nextSearch = isAllDigits && digitsOnly.length > 13 ? "" : value;
+    // Let all input through — Enter key handles barcode validation and cleanup.
+    setSearch(e.target.value);
     setSearchLoading(true);
-    setSearch(nextSearch);
     setTimeout(() => setSearchLoading(false), 600);
+  };
+
+  // Barcode scanners emit Enter after finishing a barcode.
+  // On Enter: compute chars typed since the last scan, extract the barcode,
+  // and set it as the search value. Items stay visible until the next scan.
+  const handleSearchKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    const currentValue = search;
+    const lastValue = searchScanRef.current.valueAtLastEnter;
+
+    // Isolate chars typed in this scan: if the field grew from the previous
+    // scan's value, the new chars are everything appended after it.
+    let newChars;
+    if (lastValue && currentValue.startsWith(lastValue)) {
+      newChars = currentValue.slice(lastValue.length);
+    } else {
+      newChars = currentValue;
+    }
+
+    const digitsOnly = newChars.replace(/\D/g, "");
+    const isAllDigits = newChars.length > 0 && digitsOnly.length === newChars.length;
+
+    let nextSearch;
+    if (isAllDigits && digitsOnly.length >= 1 && digitsOnly.length <= 13) {
+      nextSearch = digitsOnly;           // valid barcode — show results, stay
+    } else if (isAllDigits && digitsOnly.length > 13) {
+      nextSearch = "";                   // over-length scan — invalid, clear
+    } else {
+      nextSearch = currentValue;         // manual text search — leave as-is
+    }
+
+    setSearch(nextSearch);
+    searchScanRef.current.valueAtLastEnter = nextSearch;
   };
 
   const handleClearSearch = () => {
     setSearch("");
     setSearchLoading(false);
+    searchScanRef.current.valueAtLastEnter = "";
   };
 
 
@@ -827,6 +864,7 @@ function AddItem({ isActive }) {
                   type="text"
                   value={search}
                   onChange={handleSearch}
+                  onKeyDown={handleSearchKeyDown}
                   placeholder="Search items by name, SKU, or product code..."
                   className="w-full h-12 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                 />
