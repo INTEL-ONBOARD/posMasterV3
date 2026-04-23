@@ -99,7 +99,11 @@ function InventoryView({ isActive }) {
 
   // search handler
   const handleSearch = (e) => {
-    setSearch(e.target.value);
+    const value = e.target.value;
+    const digitsOnly = value.replace(/\D/g, "");
+    const isAllDigits = value.length > 0 && digitsOnly.length === value.length;
+    const nextSearch = isAllDigits && digitsOnly.length > 13 ? "" : value;
+    setSearch(nextSearch);
   };
 
   //helper method for item availability filtering

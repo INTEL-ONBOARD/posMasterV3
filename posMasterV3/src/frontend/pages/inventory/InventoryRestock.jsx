@@ -133,8 +133,12 @@ function InventoryRestock({ isActive }) {
 
     searchScanRef.current = { value: nextValue, time: now };
 
+    const digitsOnly = nextValue.replace(/\D/g, "");
+    const isAllDigits = nextValue.length > 0 && digitsOnly.length === nextValue.length;
+    const searchValue = isAllDigits && digitsOnly.length > 13 ? "" : nextValue;
+
     setSearchLoading(true);
-    setSearch(nextValue);
+    setSearch(searchValue);
 
     if (searchLoadingTimer.current) {
       clearTimeout(searchLoadingTimer.current);

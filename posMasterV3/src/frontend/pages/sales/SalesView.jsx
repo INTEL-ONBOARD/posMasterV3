@@ -392,8 +392,12 @@ export default function SalesView({ isActive }) {
   const [searchAvailability] = useState("All");
 
   const handleSearch = (e) => {
+    const value = e.target.value;
+    const digitsOnly = value.replace(/\D/g, "");
+    const isAllDigits = value.length > 0 && digitsOnly.length === value.length;
+    const nextSearch = isAllDigits && digitsOnly.length > 13 ? "" : value;
     setSearchLoading(true);
-    setSearch(e.target.value);
+    setSearch(nextSearch);
     setTimeout(() => setSearchLoading(false), 600);
   };
 

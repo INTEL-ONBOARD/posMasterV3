@@ -144,8 +144,12 @@ function AddItem({ isActive }) {
   //filteriings
   // Search handler
   const handleSearch = (e) => {
+    const value = e.target.value;
+    const digitsOnly = value.replace(/\D/g, "");
+    const isAllDigits = value.length > 0 && digitsOnly.length === value.length;
+    const nextSearch = isAllDigits && digitsOnly.length > 13 ? "" : value;
     setSearchLoading(true);
-    setSearch(e.target.value);
+    setSearch(nextSearch);
     setTimeout(() => setSearchLoading(false), 600);
   };
 
@@ -161,7 +165,7 @@ function AddItem({ isActive }) {
 
     if (name === "sku") {
       const digitsOnly = value.replace(/\D/g, "");
-      const nextSku = digitsOnly.length > 12 ? "" : digitsOnly;
+      const nextSku = digitsOnly.length > 13 ? "" : digitsOnly;
       setFormData(prev => ({ ...prev, sku: nextSku }));
       return;
     }
@@ -249,8 +253,8 @@ function AddItem({ isActive }) {
       return;
     }
 
-    if (!/^\d{1,12}$/.test(skuValue)) {
-      setStatusModal({ open: true, type: 'failed', description: 'SKU must be numeric and up to 12 digits' });
+    if (!/^\d{1,13}$/.test(skuValue)) {
+      setStatusModal({ open: true, type: 'failed', description: 'SKU must be numeric and up to 13 digits' });
       setFormStatus("form");
       return;
     }
@@ -333,8 +337,8 @@ function AddItem({ isActive }) {
       return;
     }
 
-    if (!/^\d{1,12}$/.test(skuValue)) {
-      setStatusModal({ open: true, type: 'failed', description: 'SKU must be numeric and up to 12 digits' });
+    if (!/^\d{1,13}$/.test(skuValue)) {
+      setStatusModal({ open: true, type: 'failed', description: 'SKU must be numeric and up to 13 digits' });
       setFormStatus("form");
       return;
     }
