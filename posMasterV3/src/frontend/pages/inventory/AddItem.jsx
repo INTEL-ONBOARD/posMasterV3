@@ -100,6 +100,10 @@ function AddItem({ isActive }) {
 
   // Barcode generation
   const barcodeValue = formData.sku || "-";
+  const normalizeSkuValue = (value) => {
+    const digitsOnly = String(value ?? "").replace(/\D/g, "");
+    return digitsOnly.length > 13 ? "" : digitsOnly;
+  };
 
   const generateBarcode = () => {
     return new Promise((resolve) => {
@@ -147,6 +151,15 @@ function AddItem({ isActive }) {
     setSearch,
     setSearchLoading
   });
+  const {
+    handleSearch: handleSkuScanChange,
+    handleSearchKeyDown: handleSkuScanKeyDown,
+    setStableValue: setStableSkuValue
+  } = useScannerSearch({
+    setSearch: (value) => setFormData(prev => ({ ...prev, sku: value })),
+    normalizeValue: normalizeSkuValue,
+    preservePreviousOnPartialScan: true
+  });
 
   const handleClearSearch = () => {
     clearScannerSearch();
@@ -158,9 +171,7 @@ function AddItem({ isActive }) {
     console.log(name + ": " + value);
 
     if (name === "sku") {
-      const digitsOnly = value.replace(/\D/g, "");
-      const nextSku = digitsOnly.length > 13 ? "" : digitsOnly;
-      setFormData(prev => ({ ...prev, sku: nextSku }));
+      handleSkuScanChange(e);
       return;
     }
 
@@ -697,6 +708,8 @@ function AddItem({ isActive }) {
                         name="sku"
                         value={formData.sku ?? ""}
                         onChange={handleInputChange}
+                        onFocus={() => setStableSkuValue(formData.sku ?? "")}
+                        onKeyDown={handleSkuScanKeyDown}
                         placeholder="Enter SKU"
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       />

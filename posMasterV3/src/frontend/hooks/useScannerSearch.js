@@ -28,7 +28,13 @@ const normalizeScannerEnterValue = (currentValue, lastValue) => {
   return currentValue;
 };
 
-export function useScannerSearch({ setSearch, setSearchLoading, loadingDelay = SEARCH_LOADING_DELAY_MS }) {
+export function useScannerSearch({
+  setSearch,
+  setSearchLoading,
+  loadingDelay = SEARCH_LOADING_DELAY_MS,
+  normalizeValue = (value) => value,
+  preservePreviousOnPartialScan = false
+}) {
   const scanStateRef = useRef({
     stableValue: "",
     valueAtLastEnter: "",
@@ -48,8 +54,9 @@ export function useScannerSearch({ setSearch, setSearchLoading, loadingDelay = S
   }, []);
 
   const setStableValue = (value) => {
-    scanStateRef.current.stableValue = value.trim();
-    scanStateRef.current.valueAtLastEnter = value;
+    const normalizedValue = normalizeValue(value);
+    scanStateRef.current.stableValue = normalizedValue.trim();
+    scanStateRef.current.valueAtLastEnter = normalizedValue;
   };
 
   const clearSearch = () => {
@@ -76,23 +83,31 @@ export function useScannerSearch({ setSearch, setSearchLoading, loadingDelay = S
     const appendedValue = previousStableValue && rawValue.startsWith(previousStableValue)
       ? rawValue.slice(previousStableValue.length)
       : "";
-    const shouldReplacePreviousScan =
-      appendedValue.length >= SCAN_MIN_LENGTH &&
+    const possibleAppendedScan =
       timeSinceLastChange > 0 &&
       timeSinceLastChange <= SCAN_KEY_INTERVAL_MS &&
       isScanCandidate(previousStableValue) &&
+      SCAN_PATTERN.test(appendedValue);
+    const shouldReplacePreviousScan =
+      possibleAppendedScan &&
+      appendedValue.length >= SCAN_MIN_LENGTH &&
       isScanCandidate(appendedValue);
-    const nextSearch = shouldReplacePreviousScan ? appendedValue : rawValue;
+    const nextSearch = shouldReplacePreviousScan
+      ? appendedValue
+      : preservePreviousOnPartialScan && possibleAppendedScan
+        ? previousStableValue
+        : rawValue;
+    const normalizedNextSearch = normalizeValue(nextSearch);
 
     scanState.lastChangeAt = now;
     setSearchLoading?.(true);
-    setSearch(nextSearch);
+    setSearch(normalizedNextSearch);
 
     if (scanState.stableTimer) {
       clearTimeout(scanState.stableTimer);
     }
     scanState.stableTimer = setTimeout(() => {
-      scanStateRef.current.stableValue = nextSearch.trim();
+      scanStateRef.current.stableValue = normalizedNextSearch.trim();
     }, SCAN_STABLE_DELAY_MS);
 
     if (setSearchLoading) {
@@ -111,8 +126,10 @@ export function useScannerSearch({ setSearch, setSearchLoading, loadingDelay = S
       scanStateRef.current.valueAtLastEnter
     );
 
-    setSearch(nextSearch);
-    setStableValue(nextSearch);
+    const normalizedNextSearch = normalizeValue(nextSearch);
+
+    setSearch(normalizedNextSearch);
+    setStableValue(normalizedNextSearch);
   };
 
   return {
