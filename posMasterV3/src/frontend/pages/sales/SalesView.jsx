@@ -27,6 +27,18 @@ const GUEST_USER = {
   is_guest: true
 };
 
+const SEARCH_SCAN_MIN_LENGTH = 3;
+const SEARCH_SCAN_KEY_INTERVAL_MS = 90;
+const SEARCH_SCAN_STABLE_DELAY_MS = 140;
+const SEARCH_LOADING_DELAY_MS = 600;
+const SEARCH_SCAN_PATTERN = /^[a-zA-Z0-9\-_]+$/;
+
+const isSearchScanCandidate = (value) => (
+  typeof value === "string" &&
+  value.length >= SEARCH_SCAN_MIN_LENGTH &&
+  SEARCH_SCAN_PATTERN.test(value)
+);
+
 /**
  * Custom hook for barcode scanner input
  * Barcode scanners typically send characters rapidly followed by Enter key
@@ -391,12 +403,55 @@ export default function SalesView({ isActive }) {
   const [searchCategory, setSearchCategory] = useState("All");
   const [searchAvailability] = useState("All");
 
-  const searchScanRef = useRef({ valueAtLastEnter: "" });
+  const searchScanRef = useRef({
+    stableValue: "",
+    valueAtLastEnter: "",
+    lastChangeAt: 0,
+    stableTimer: null,
+    loadingTimer: null
+  });
+
+  useEffect(() => () => {
+    if (searchScanRef.current.stableTimer) {
+      clearTimeout(searchScanRef.current.stableTimer);
+    }
+    if (searchScanRef.current.loadingTimer) {
+      clearTimeout(searchScanRef.current.loadingTimer);
+    }
+  }, []);
 
   const handleSearch = (e) => {
-    setSearch(e.target.value);
+    const rawValue = e.target.value;
+    const now = Date.now();
+    const scanState = searchScanRef.current;
+    const previousStableValue = scanState.stableValue;
+    const timeSinceLastChange = now - scanState.lastChangeAt;
+    const appendedValue = previousStableValue && rawValue.startsWith(previousStableValue)
+      ? rawValue.slice(previousStableValue.length)
+      : "";
+    const shouldReplacePreviousScan =
+      appendedValue.length >= SEARCH_SCAN_MIN_LENGTH &&
+      timeSinceLastChange > 0 &&
+      timeSinceLastChange <= SEARCH_SCAN_KEY_INTERVAL_MS &&
+      isSearchScanCandidate(previousStableValue) &&
+      isSearchScanCandidate(appendedValue);
+    const nextSearch = shouldReplacePreviousScan ? appendedValue : rawValue;
+
+    scanState.lastChangeAt = now;
     setSearchLoading(true);
-    setTimeout(() => setSearchLoading(false), 600);
+    setSearch(nextSearch);
+
+    if (scanState.stableTimer) {
+      clearTimeout(scanState.stableTimer);
+    }
+    scanState.stableTimer = setTimeout(() => {
+      searchScanRef.current.stableValue = nextSearch.trim();
+    }, SEARCH_SCAN_STABLE_DELAY_MS);
+
+    if (scanState.loadingTimer) {
+      clearTimeout(scanState.loadingTimer);
+    }
+    scanState.loadingTimer = setTimeout(() => setSearchLoading(false), SEARCH_LOADING_DELAY_MS);
   };
 
   const handleSearchKeyDown = (e) => {
@@ -419,6 +474,7 @@ export default function SalesView({ isActive }) {
     }
     setSearch(nextSearch);
     searchScanRef.current.valueAtLastEnter = nextSearch;
+    searchScanRef.current.stableValue = nextSearch.trim();
   };
 
   // Date formatting
