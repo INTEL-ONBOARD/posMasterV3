@@ -14,6 +14,7 @@ import BackIcon from "../../assets/back-icon/back_icon.jsx";
 import MemEvaluationModal from "./modals/MemEvaluationModal.jsx";
 import CartItemEditModal from "./modals/CartItemEditModal.jsx";
 import CheckoutSummaryModal from "./modals/CheckoutSummaryModal.jsx";
+import { useScannerSearch } from "../../hooks/useScannerSearch";
 
 // Default guest user
 const GUEST_USER = {
@@ -26,18 +27,6 @@ const GUEST_USER = {
   credit_limit: 0,
   is_guest: true
 };
-
-const SEARCH_SCAN_MIN_LENGTH = 3;
-const SEARCH_SCAN_KEY_INTERVAL_MS = 90;
-const SEARCH_SCAN_STABLE_DELAY_MS = 140;
-const SEARCH_LOADING_DELAY_MS = 600;
-const SEARCH_SCAN_PATTERN = /^[a-zA-Z0-9\-_]+$/;
-
-const isSearchScanCandidate = (value) => (
-  typeof value === "string" &&
-  value.length >= SEARCH_SCAN_MIN_LENGTH &&
-  SEARCH_SCAN_PATTERN.test(value)
-);
 
 /**
  * Custom hook for barcode scanner input
@@ -403,79 +392,10 @@ export default function SalesView({ isActive }) {
   const [searchCategory, setSearchCategory] = useState("All");
   const [searchAvailability] = useState("All");
 
-  const searchScanRef = useRef({
-    stableValue: "",
-    valueAtLastEnter: "",
-    lastChangeAt: 0,
-    stableTimer: null,
-    loadingTimer: null
+  const { handleSearch, handleSearchKeyDown } = useScannerSearch({
+    setSearch,
+    setSearchLoading
   });
-
-  useEffect(() => () => {
-    if (searchScanRef.current.stableTimer) {
-      clearTimeout(searchScanRef.current.stableTimer);
-    }
-    if (searchScanRef.current.loadingTimer) {
-      clearTimeout(searchScanRef.current.loadingTimer);
-    }
-  }, []);
-
-  const handleSearch = (e) => {
-    const rawValue = e.target.value;
-    const now = Date.now();
-    const scanState = searchScanRef.current;
-    const previousStableValue = scanState.stableValue;
-    const timeSinceLastChange = now - scanState.lastChangeAt;
-    const appendedValue = previousStableValue && rawValue.startsWith(previousStableValue)
-      ? rawValue.slice(previousStableValue.length)
-      : "";
-    const shouldReplacePreviousScan =
-      appendedValue.length >= SEARCH_SCAN_MIN_LENGTH &&
-      timeSinceLastChange > 0 &&
-      timeSinceLastChange <= SEARCH_SCAN_KEY_INTERVAL_MS &&
-      isSearchScanCandidate(previousStableValue) &&
-      isSearchScanCandidate(appendedValue);
-    const nextSearch = shouldReplacePreviousScan ? appendedValue : rawValue;
-
-    scanState.lastChangeAt = now;
-    setSearchLoading(true);
-    setSearch(nextSearch);
-
-    if (scanState.stableTimer) {
-      clearTimeout(scanState.stableTimer);
-    }
-    scanState.stableTimer = setTimeout(() => {
-      searchScanRef.current.stableValue = nextSearch.trim();
-    }, SEARCH_SCAN_STABLE_DELAY_MS);
-
-    if (scanState.loadingTimer) {
-      clearTimeout(scanState.loadingTimer);
-    }
-    scanState.loadingTimer = setTimeout(() => setSearchLoading(false), SEARCH_LOADING_DELAY_MS);
-  };
-
-  const handleSearchKeyDown = (e) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-    const currentValue = e.currentTarget.value;
-    const lastValue = searchScanRef.current.valueAtLastEnter;
-    let newChars = (lastValue && currentValue.startsWith(lastValue))
-      ? currentValue.slice(lastValue.length)
-      : currentValue;
-    const digitsOnly = newChars.replace(/\D/g, "");
-    const isAllDigits = newChars.length > 0 && digitsOnly.length === newChars.length;
-    let nextSearch;
-    if (isAllDigits && digitsOnly.length >= 1 && digitsOnly.length <= 13) {
-      nextSearch = digitsOnly;
-    } else if (isAllDigits && digitsOnly.length > 13) {
-      nextSearch = "";
-    } else {
-      nextSearch = currentValue;
-    }
-    setSearch(nextSearch);
-    searchScanRef.current.valueAtLastEnter = nextSearch;
-    searchScanRef.current.stableValue = nextSearch.trim();
-  };
 
   // Date formatting
   const today = new Date();

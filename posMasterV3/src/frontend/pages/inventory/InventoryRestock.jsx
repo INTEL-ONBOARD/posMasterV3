@@ -6,6 +6,7 @@ import barcodeImg from "../../assets/barcode.png";
 import SalesItemCard from "../../components/SalesItemCard";
 import { generateUniqueString, generateBillNo } from "../../util/common/generate";
 import { useReactiveData, TABLES } from "../../store";
+import { useScannerSearch } from "../../hooks/useScannerSearch";
 
 //date conversions
 import { appendCurrentTimeToDate, extractDateOnly, getCurrentDate, getCurrentDateTime } from "../../util/common/date";
@@ -101,46 +102,10 @@ function InventoryRestock({ isActive }) {
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
   const [searchAvailability, setSearchAvailability] = useState("All");
-  const searchScanRef = useRef({ valueAtLastEnter: "" });
-  const searchLoadingTimer = useRef(null);
-
-  const handleSearch = (e) => {
-    setSearch(e.target.value);
-    setSearchLoading(true);
-    if (searchLoadingTimer.current) clearTimeout(searchLoadingTimer.current);
-    searchLoadingTimer.current = setTimeout(() => setSearchLoading(false), 600);
-  };
-
-  const handleSearchKeyDown = (e) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-    const currentValue = e.currentTarget.value;
-    const lastValue = searchScanRef.current.valueAtLastEnter;
-    let newChars = (lastValue && currentValue.startsWith(lastValue))
-      ? currentValue.slice(lastValue.length)
-      : currentValue;
-    const digitsOnly = newChars.replace(/\D/g, "");
-    const isAllDigits = newChars.length > 0 && digitsOnly.length === newChars.length;
-    let nextSearch;
-    if (isAllDigits && digitsOnly.length >= 1 && digitsOnly.length <= 13) {
-      nextSearch = digitsOnly;
-    } else if (isAllDigits && digitsOnly.length > 13) {
-      nextSearch = "";
-    } else {
-      nextSearch = currentValue;
-    }
-    setSearch(nextSearch);
-    searchScanRef.current.valueAtLastEnter = nextSearch;
-  };
-
-  // Clear pending timers on unmount to avoid state updates after unmount
-  useEffect(() => {
-    return () => {
-      if (searchLoadingTimer.current) {
-        clearTimeout(searchLoadingTimer.current);
-      }
-    };
-  }, []);
+  const { handleSearch, handleSearchKeyDown } = useScannerSearch({
+    setSearch,
+    setSearchLoading
+  });
 
   //helper method for item availability filtering
   const interpretAvailability = (item) => {

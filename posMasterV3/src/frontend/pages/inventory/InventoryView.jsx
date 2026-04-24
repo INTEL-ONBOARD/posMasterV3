@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo } from "react";
 import ItemCard from "../../components/ItemCard.jsx";
 import NotFoundImg from "../../assets/nonicons_not-found-16.png";
 import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Package, CheckCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import ViewItemModal from "./modals/ViewItemModal.jsx";
 import { useReactiveData, TABLES } from "../../store";
+import { useScannerSearch } from "../../hooks/useScannerSearch";
 
 function InventoryView({ isActive }) {
 
@@ -97,33 +98,7 @@ function InventoryView({ isActive }) {
   // Combined loading state
   const isLoading = isLoadingStock || isLoadingCategories;
 
-  const searchScanRef = useRef({ valueAtLastEnter: "" });
-
-  const handleSearch = (e) => {
-    setSearch(e.target.value);
-  };
-
-  const handleSearchKeyDown = (e) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-    const currentValue = e.currentTarget.value;
-    const lastValue = searchScanRef.current.valueAtLastEnter;
-    let newChars = (lastValue && currentValue.startsWith(lastValue))
-      ? currentValue.slice(lastValue.length)
-      : currentValue;
-    const digitsOnly = newChars.replace(/\D/g, "");
-    const isAllDigits = newChars.length > 0 && digitsOnly.length === newChars.length;
-    let nextSearch;
-    if (isAllDigits && digitsOnly.length >= 1 && digitsOnly.length <= 13) {
-      nextSearch = digitsOnly;
-    } else if (isAllDigits && digitsOnly.length > 13) {
-      nextSearch = "";
-    } else {
-      nextSearch = currentValue;
-    }
-    setSearch(nextSearch);
-    searchScanRef.current.valueAtLastEnter = nextSearch;
-  };
+  const { handleSearch, handleSearchKeyDown } = useScannerSearch({ setSearch });
 
   //helper method for item availability filtering
   const interpretAvailability = (item) => {

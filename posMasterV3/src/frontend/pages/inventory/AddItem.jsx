@@ -8,6 +8,7 @@ import StatusModal from "../../components/StatusModal.jsx";
 import barcodeImg from "../../assets/barcode.png";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
 import { useReactiveData, TABLES } from "../../store";
+import { useScannerSearch } from "../../hooks/useScannerSearch";
 
 import { pdf } from '@react-pdf/renderer';
 import SimpleDocument from './layout/BarcodeBulk.jsx';
@@ -142,57 +143,13 @@ function AddItem({ isActive }) {
   };
 
   //filteriings
-  // Search handler
-  // Tracks the search value at the time of the last scanner Enter so we can
-  // isolate exactly which chars belong to the current scan.
-  const searchScanRef = useRef({ valueAtLastEnter: "" });
-
-  const handleSearch = (e) => {
-    // Let all input through — Enter key handles barcode validation and cleanup.
-    setSearch(e.target.value);
-    setSearchLoading(true);
-    setTimeout(() => setSearchLoading(false), 600);
-  };
-
-  // Barcode scanners emit Enter after finishing a barcode.
-  // On Enter: compute chars typed since the last scan, extract the barcode,
-  // and set it as the search value. Items stay visible until the next scan.
-  const handleSearchKeyDown = (e) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-
-    const currentValue = e.currentTarget.value;
-    const lastValue = searchScanRef.current.valueAtLastEnter;
-
-    // Isolate chars typed in this scan: if the field grew from the previous
-    // scan's value, the new chars are everything appended after it.
-    let newChars;
-    if (lastValue && currentValue.startsWith(lastValue)) {
-      newChars = currentValue.slice(lastValue.length);
-    } else {
-      newChars = currentValue;
-    }
-
-    const digitsOnly = newChars.replace(/\D/g, "");
-    const isAllDigits = newChars.length > 0 && digitsOnly.length === newChars.length;
-
-    let nextSearch;
-    if (isAllDigits && digitsOnly.length >= 1 && digitsOnly.length <= 13) {
-      nextSearch = digitsOnly;           // valid barcode — show results, stay
-    } else if (isAllDigits && digitsOnly.length > 13) {
-      nextSearch = "";                   // over-length scan — invalid, clear
-    } else {
-      nextSearch = currentValue;         // manual text search — leave as-is
-    }
-
-    setSearch(nextSearch);
-    searchScanRef.current.valueAtLastEnter = nextSearch;
-  };
+  const { handleSearch, handleSearchKeyDown, clearSearch: clearScannerSearch } = useScannerSearch({
+    setSearch,
+    setSearchLoading
+  });
 
   const handleClearSearch = () => {
-    setSearch("");
-    setSearchLoading(false);
-    searchScanRef.current.valueAtLastEnter = "";
+    clearScannerSearch();
   };
 
 
