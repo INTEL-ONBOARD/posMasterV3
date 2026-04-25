@@ -70,6 +70,52 @@ contextBridge.exposeInMainWorld("electronAPI", {
         ipcRenderer.invoke("create-files", { folderPath, outlet }),
 
     // ============================================
+    // ONLINE-ONLY API
+    // ============================================
+
+    online: {
+        getConfig: () => ipcRenderer.invoke("online:get-config"),
+        health: () => ipcRenderer.invoke("online:health"),
+        ready: () => ipcRenderer.invoke("online:ready"),
+        login: (email, password, deviceInfo) =>
+            ipcRenderer.invoke("online:login", { email, password, deviceInfo }),
+        register: (userData) =>
+            ipcRenderer.invoke("online:register", userData),
+        logout: () => ipcRenderer.invoke("online:logout"),
+        validateSession: () => ipcRenderer.invoke("online:validate-session"),
+        getRealtimeStatus: () => ipcRenderer.invoke("online:realtime-status"),
+        list: (collection, query = {}) =>
+            ipcRenderer.invoke("online:list", { collection, query }),
+        get: (collection, id) =>
+            ipcRenderer.invoke("online:get", { collection, id }),
+        create: (collection, data) =>
+            ipcRenderer.invoke("online:create", { collection, data }),
+        update: (collection, id, data) =>
+            ipcRenderer.invoke("online:update", { collection, id, data }),
+        delete: (collection, id) =>
+            ipcRenderer.invoke("online:delete", { collection, id }),
+        createSale: (data) =>
+            ipcRenderer.invoke("online:sales:create", data),
+        generateInvoiceNo: (type = "SALE") =>
+            ipcRenderer.invoke("online:sales:invoice-no", { type }),
+        onRealtimeStatus: (callback) => {
+            const listener = (_event, payload) => callback(payload);
+            ipcRenderer.on("online:realtime-status", listener);
+            return () => ipcRenderer.removeListener("online:realtime-status", listener);
+        },
+        onDomainEvent: (callback) => {
+            const listener = (_event, payload) => callback(payload);
+            ipcRenderer.on("online:domain-event", listener);
+            return () => ipcRenderer.removeListener("online:domain-event", listener);
+        },
+        onEvent: (callback) => {
+            const listener = (_event, payload) => callback(payload);
+            ipcRenderer.on("online:event", listener);
+            return () => ipcRenderer.removeListener("online:event", listener);
+        }
+    },
+
+    // ============================================
     // AUTHENTICATION API
     // ============================================
 
@@ -88,7 +134,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
             ipcRenderer.invoke("auth:change-password", { userId, currentPassword, newPassword }),
         importFromCloud: (cloudUser, password) =>
             ipcRenderer.invoke("auth:import-from-cloud", { cloudUser, password }),
-        // Check session with cloud sync - used for single-device enforcement
+        // Check session with the online session authority for single-device enforcement
         checkSessionWithSync: (token) =>
             ipcRenderer.invoke("auth:check-session-with-sync", { token }),
         // Fast session validation - optimized for every API call
@@ -443,18 +489,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
         // Set notifications enabled
         setNotifications: (enabled) =>
             ipcRenderer.invoke("appSettings:setNotifications", enabled),
-        // Set cloud sync enabled
-        setCloudSync: (enabled) =>
-            ipcRenderer.invoke("appSettings:setCloudSync", enabled),
         // Send test notification
         testNotification: () =>
             ipcRenderer.invoke("appSettings:testNotification"),
         // Apply all settings (call after login)
         applyAll: () =>
             ipcRenderer.invoke("appSettings:applyAll"),
-        // Check if cloud sync is enabled
-        isCloudSyncEnabled: () =>
-            ipcRenderer.invoke("appSettings:isCloudSyncEnabled"),
         // Listen for backend-initiated auto-logout (e.g. admin force-logout)
         // Returns an unsubscribe function
         onAutoLogout: (callback) => {
@@ -479,45 +519,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
         update: (id, data) => ipcRenderer.invoke("payment-methods:update", id, data),
         toggleActive: (id) => ipcRenderer.invoke("payment-methods:toggle-active", id),
         delete: (id) => ipcRenderer.invoke("payment-methods:delete", id)
-    },
-
-    // ============================================
-    // CLOUD SYNC API
-    // ============================================
-
-    cloudSync: {
-        getStatus: () =>
-            ipcRenderer.invoke("cloudSync:getStatus"),
-        syncNow: () =>
-            ipcRenderer.invoke("cloudSync:syncNow"),
-        setAutoSync: (enabled) =>
-            ipcRenderer.invoke("cloudSync:setAutoSync", enabled),
-        checkNetwork: () =>
-            ipcRenderer.invoke("cloudSync:checkNetwork"),
-        // Pull users from cloud (cloud is primary source for users)
-        pullUsers: () =>
-            ipcRenderer.invoke("cloudSync:pullUsers"),
-        // Pull branches from cloud (safety net for branch selector on fresh install)
-        pullBranches: () =>
-            ipcRenderer.invoke("cloudSync:pullBranches"),
-        // Push a user to cloud
-        pushUser: (user) =>
-            ipcRenderer.invoke("cloudSync:pushUser", user),
-        // Force ensure MySQL schema (creates tables if missing)
-        ensureSchema: () =>
-            ipcRenderer.invoke("cloudSync:ensureSchema"),
-        // Initialize MySQL connection
-        initializeMySQL: () =>
-            ipcRenderer.invoke("cloudSync:initializeMySQL"),
-        // Force full sync immediately (real-time sync)
-        forceFullSync: () =>
-            ipcRenderer.invoke("cloudSync:forceFullSync"),
-        // Sync active_sessions immediately (for single-device enforcement)
-        syncActiveSessions: () =>
-            ipcRenderer.invoke("cloudSync:syncActiveSessions"),
-        // Get real-time sync status
-        getRealTimeStatus: () =>
-            ipcRenderer.invoke("cloudSync:getRealTimeStatus")
     },
 
     // ============================================
@@ -559,35 +560,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     // ============================================
 
     /**
-     * Listen for data changes from the backend
-     * The callback will be called with: { table, operation, recordId, record }
-     * - table: string (e.g., 'items', 'stock', 'sales_transactions')
-     * - operation: 'INSERT' | 'UPDATE' | 'DELETE'
-     * - recordId: string | number
-     * - record: object (the changed record data)
-     *
-     * Returns an unsubscribe function
-     */
-    onDataChange: (callback) => {
-        const handler = (event, data) => callback(data);
-        ipcRenderer.on("data:changed", handler);
-        // Return unsubscribe function
-        return () => ipcRenderer.removeListener("data:changed", handler);
-    },
-
-    /**
-     * Listen for sync status updates
-     * The callback will be called with: { status, message, isOnline, pendingCount }
-     *
-     * Returns an unsubscribe function
-     */
-    onSyncStatusChange: (callback) => {
-        const handler = (event, data) => callback(data);
-        ipcRenderer.on("sync:status-changed", handler);
-        return () => ipcRenderer.removeListener("sync:status-changed", handler);
-    },
-
-    /**
      * Listen for session kicked event (single-device enforcement)
      * Called when another device logs in with the same user
      * The callback will be called with: { userId, deviceName, message, timestamp }
@@ -607,82 +579,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
         const handler = (event, data) => callback(data);
         ipcRenderer.on("status:update", handler);
         return () => ipcRenderer.removeListener("status:update", handler);
-    },
-
-    /**
-     * Listen for connection status changes
-     * Called when network connectivity changes
-     * The callback will be called with: { isOnline, quality, timestamp }
-     */
-    onConnectionStatusChange: (callback) => {
-        const handler = (event, data) => callback(data);
-        ipcRenderer.on("connection:status-changed", handler);
-        return () => ipcRenderer.removeListener("connection:status-changed", handler);
-    },
-
-    /**
-     * Listen for data refresh notifications
-     * Called when data needs to be refetched (after sync)
-     * The callback will be called with: { table, reason, timestamp }
-     */
-    onRefreshNeeded: (callback) => {
-        const handler = (event, data) => callback(data);
-        ipcRenderer.on("data:refresh-needed", handler);
-        return () => ipcRenderer.removeListener("data:refresh-needed", handler);
-    },
-
-    /**
-     * Listen for active sessions updates (for session monitoring)
-     * Called after active_sessions are synced from cloud
-     */
-    onActiveSessionsUpdated: (callback) => {
-        const handler = (event, data) => callback(data);
-        ipcRenderer.on("sync:active-sessions-updated", handler);
-        return () => ipcRenderer.removeListener("sync:active-sessions-updated", handler);
-    },
-
-    /**
-     * Listen for sync completion events
-     * Called when a sync cycle completes (push or pull)
-     * The callback will be called with: { success, tablesAffected, recordsUpdated, timestamp }
-     */
-    onSyncCompleted: (callback) => {
-        const handler = (event, data) => callback(data);
-        ipcRenderer.on("sync:completed", handler);
-        return () => ipcRenderer.removeListener("sync:completed", handler);
-    },
-
-    /**
-     * Listen for multi-table sync changes
-     * Called when cloud sync updates multiple tables at once
-     * The callback will be called with: { changes: [{table, count}], totalRecords, tables, timestamp }
-     */
-    onMultiTableChanged: (callback) => {
-        const handler = (event, data) => callback(data);
-        ipcRenderer.on("sync:multi-table-changed", handler);
-        return () => ipcRenderer.removeListener("sync:multi-table-changed", handler);
-    },
-
-    /**
-     * Listen for sync drop alerts
-     * Called when a change is permanently dropped after max retry attempts.
-     * The callback will be called with: { tableName, operation, recordId, attempts, message }
-     */
-    onSyncDropAlert: (callback) => {
-        const handler = (event, data) => callback(data);
-        ipcRenderer.on("sync:drop-alert", handler);
-        return () => ipcRenderer.removeListener("sync:drop-alert", handler);
-    },
-
-    /**
-     * Listen for per-table sync progress during a full sync
-     * Called after each table completes syncing
-     * The callback will be called with: { table, downloaded, uploaded, hasError, index, total, totalDownloaded, totalUploaded }
-     */
-    onSyncTableProgress: (callback) => {
-        const handler = (event, data) => callback(data);
-        ipcRenderer.on("sync:table-progress", handler);
-        return () => ipcRenderer.removeListener("sync:table-progress", handler);
     },
 
     // Read config DTOs from the POS Master folder (temp.json + config.json)
@@ -804,14 +700,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
         refreshMember: (memberId) => ipcRenderer.invoke("teacoop:members:refresh", memberId),
 
         /**
-         * Get Tea Coop sync status
+         * Get Tea Coop service status
          * @returns {Promise<{status: string, data: object}>}
          */
         getStatus: () => ipcRenderer.invoke("teacoop:status"),
 
         /**
-         * Listen for Tea Coop sync events
-         * @param {function} callback - Called on sync events
+         * Listen for Tea Coop realtime events
+         * @param {function} callback - Called on service events
          * @returns {function} Unsubscribe function
          */
         onSyncEvent: (callback) => {

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Building2, MapPin, Phone, Check, AlertTriangle, Loader2 } from 'lucide-react';
-import { branchContextApi, cloudSyncApi } from '../api/localApi';
+import { branchContextApi } from '../api/localApi';
 
 /**
  * BranchSelectionModal
@@ -25,16 +25,14 @@ export default function BranchSelectionModal({
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
-    const [syncingFromCloud, setSyncingFromCloud] = useState(false);
-
     // Fetch available branches on mount
     useEffect(() => {
         if (isOpen) {
             fetchBranches();
         }
-    }, [isOpen]);
+    }, [isOpen, fetchBranches]);
 
-    const fetchBranches = async () => {
+    const fetchBranches = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -42,21 +40,15 @@ export default function BranchSelectionModal({
             if (response.status === 'success') {
                 let availableBranches = response.data || [];
 
-                // If empty, attempt a targeted pull from cloud before giving up.
-                // This handles the race condition where the user reaches the modal
-                // before the background full sync has pulled the branches table.
+                // If empty, retry once against the live branch API before giving up.
                 if (availableBranches.length === 0) {
-                    setSyncingFromCloud(true);
                     try {
-                        await cloudSyncApi.pullBranches();
                         const retryResponse = await branchContextApi.getAvailableBranches();
                         if (retryResponse.status === 'success') {
                             availableBranches = retryResponse.data || [];
                         }
                     } catch (pullErr) {
-                        console.warn('[BranchSelectionModal] Cloud pull failed:', pullErr.message);
-                    } finally {
-                        setSyncingFromCloud(false);
+                        console.warn('[BranchSelectionModal] Branch reload failed:', pullErr.message);
                     }
                 }
 
@@ -95,7 +87,7 @@ export default function BranchSelectionModal({
         } finally {
             setLoading(false);
         }
-    };
+    }, [onBranchSelected]);
 
     const handleSelectBranch = async () => {
         if (!selectedBranchId) return;
@@ -187,16 +179,8 @@ export default function BranchSelectionModal({
                         </div>
                     )}
 
-                    {/* Syncing from cloud state */}
-                    {!loading && syncingFromCloud && (
-                        <div className="flex flex-col items-center justify-center py-12">
-                            <Loader2 className="w-10 h-10 text-[#1A318C] animate-spin mb-4" />
-                            <p className="text-gray-500">Fetching branches from cloud...</p>
-                        </div>
-                    )}
-
                     {/* No branches available */}
-                    {!loading && !syncingFromCloud && !error && branches.length === 0 && (
+                    {!loading && !error && branches.length === 0 && (
                         <div className="text-center py-8">
                             <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                             <p className="text-gray-500">No branches available</p>
@@ -207,7 +191,7 @@ export default function BranchSelectionModal({
                     )}
 
                     {/* Branch list */}
-                    {!loading && !syncingFromCloud && !error && branches.length > 0 && (
+                    {!loading && !error && branches.length > 0 && (
                         <div className="space-y-3 max-h-[300px] overflow-y-auto">
                             {branches.map((branch) => (
                                 <button

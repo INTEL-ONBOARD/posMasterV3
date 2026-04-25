@@ -38,8 +38,8 @@ function broadcastDataChange(table, operation, recordId, record = null) {
 }
 
 /**
- * Broadcast a sync status change event to all renderer windows
- * @param {object} status - Sync status object
+ * Broadcast a realtime status change event to all renderer windows
+ * @param {object} status - Status object
  */
 function broadcastSyncStatus(status) {
     try {
@@ -55,7 +55,7 @@ function broadcastSyncStatus(status) {
             }
         }
     } catch (error) {
-        console.error('[EventBroadcaster] Failed to broadcast sync status:', error.message);
+        console.error('[EventBroadcaster] Failed to broadcast realtime status:', error.message);
     }
 }
 
@@ -129,7 +129,7 @@ function broadcastConnectionStatus(status) {
  * Broadcast immediate data refresh notification
  * Used to trigger UI refresh after critical operations
  * @param {string} table - The table that needs refresh
- * @param {string} reason - Reason for refresh (e.g., 'cloud_sync', 'local_update')
+ * @param {string} reason - Reason for refresh (e.g., 'online_refresh', 'local_update')
  */
 function broadcastRefreshNeeded(table, reason = 'update') {
     try {
@@ -153,9 +153,9 @@ function broadcastRefreshNeeded(table, reason = 'update') {
 }
 
 /**
- * Broadcast sync completion event
- * Called when a sync cycle completes (either push or pull)
- * @param {object} result - Sync result { success, tablesAffected, recordsUpdated, error }
+ * Broadcast refresh completion event
+ * Called when a refresh cycle completes
+ * @param {object} result - Refresh result { success, tablesAffected, recordsUpdated, error }
  */
 function broadcastSyncComplete(result) {
     try {
@@ -169,7 +169,7 @@ function broadcastSyncComplete(result) {
         for (const win of windows) {
             if (win && win.webContents && !win.isDestroyed()) {
                 win.webContents.send('sync:completed', payload);
-                // Also update sync status
+                // Also update realtime status
                 win.webContents.send('sync:status-changed', {
                     syncStatus: result.success ? 'completed' : 'failed',
                     lastSyncTime: payload.timestamp,
@@ -179,15 +179,15 @@ function broadcastSyncComplete(result) {
             }
         }
 
-        console.log(`[EventBroadcaster] Sync completed: ${result.success ? 'success' : 'failed'}, ${result.recordsUpdated || 0} records updated`);
+        console.log(`[EventBroadcaster] Refresh completed: ${result.success ? 'success' : 'failed'}, ${result.recordsUpdated || 0} records updated`);
     } catch (error) {
-        console.error('[EventBroadcaster] Failed to broadcast sync complete:', error.message);
+        console.error('[EventBroadcaster] Failed to broadcast refresh complete:', error.message);
     }
 }
 
 /**
  * Broadcast batch data change event
- * Used when multiple records change at once (e.g., after cloud sync pull)
+ * Used when multiple records change at once (e.g., after a bulk refresh)
  * @param {string} table - The table that changed
  * @param {number} count - Number of records affected
  * @param {string} operation - 'SYNC_PULL' | 'BULK_INSERT' | 'BULK_UPDATE' | 'BULK_DELETE'
@@ -224,7 +224,7 @@ function broadcastBatchChange(table, count, operation = 'SYNC_PULL') {
 
 /**
  * Broadcast multiple table changes at once
- * Used after full sync when multiple tables are updated
+ * Used after a bulk refresh when multiple tables are updated
  * @param {Array<{table: string, count: number}>} changes - Array of table changes
  */
 function broadcastMultiTableChange(changes) {

@@ -1,6 +1,4 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { uomApi, categoryApi, itemApi } from "../../api/localApi";
-import { useNavigate } from "react-router-dom";
 import { X, Printer, ChevronDown, ChevronUp, Search, Package, Filter, SortAsc, Upload, Image } from "lucide-react";
 import AddItemCard from "../../components/AddItemCard.jsx";
 import ConfirmDeleteModal from "../../components/ConfirmDeleteModal.jsx";

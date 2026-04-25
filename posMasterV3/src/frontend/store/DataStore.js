@@ -9,8 +9,8 @@
  * - Subscription-based reactive updates
  * - Automatic cache invalidation on data changes
  * - Optimistic updates for immediate UI feedback
- * - Works offline (uses local SQLite)
- * - Syncs with cloud when online
+ * - Uses the MongoDB-backed online API facade
+ * - Refreshes from real-time domain events
  *
  * Usage:
  *   import { dataStore } from './DataStore';
@@ -157,65 +157,15 @@ class DataStore {
         // Clear any existing cleanup functions
         this._eventCleanupFunctions = [];
 
-        // Listen for data changes from backend (local operations)
-        if (window.electronAPI.onDataChange) {
-            const cleanup = window.electronAPI.onDataChange((event) => {
-                console.log('[DataStore] Data changed:', event.table, event.operation);
-                this._handleDataChange(event);
-            });
-            if (typeof cleanup === 'function') {
-                this._eventCleanupFunctions.push(cleanup);
-            }
-        }
-
-        // Listen for sync status changes
-        if (window.electronAPI.onSyncStatusChange) {
-            const cleanup = window.electronAPI.onSyncStatusChange((status) => {
-                console.log('[DataStore] Sync status changed:', status);
-                this._handleSyncStatusChange(status);
-            });
-            if (typeof cleanup === 'function') {
-                this._eventCleanupFunctions.push(cleanup);
-            }
-        }
-
-        // Listen for refresh needed events (after cloud sync)
-        if (window.electronAPI.onRefreshNeeded) {
-            const cleanup = window.electronAPI.onRefreshNeeded((event) => {
-                console.log('[DataStore] Refresh needed for:', event.table);
-                this._handleRefreshNeeded(event);
-            });
-            if (typeof cleanup === 'function') {
-                this._eventCleanupFunctions.push(cleanup);
-            }
-        }
-
-        // Listen for connection status changes
-        if (window.electronAPI.onConnectionStatusChange) {
-            const cleanup = window.electronAPI.onConnectionStatusChange((status) => {
-                console.log('[DataStore] Connection status:', status.isOnline ? 'online' : 'offline');
-            });
-            if (typeof cleanup === 'function') {
-                this._eventCleanupFunctions.push(cleanup);
-            }
-        }
-
-        // Listen for sync completion events
-        if (window.electronAPI.onSyncCompleted) {
-            const cleanup = window.electronAPI.onSyncCompleted((result) => {
-                console.log('[DataStore] Sync completed:', result.success ? 'success' : 'failed');
-                this._handleSyncCompleted(result);
-            });
-            if (typeof cleanup === 'function') {
-                this._eventCleanupFunctions.push(cleanup);
-            }
-        }
-
-        // Listen for multi-table change events (after full cloud sync)
-        if (window.electronAPI.onMultiTableChanged) {
-            const cleanup = window.electronAPI.onMultiTableChanged((data) => {
-                console.log('[DataStore] Multi-table changed:', data.tables?.length, 'tables');
-                this._handleMultiTableChange(data);
+        // Online-only real-time events from the MongoDB-backed API.
+        // These events are the primary invalidation path for online-only screens.
+        if (window.electronAPI.online?.onDomainEvent) {
+            const cleanup = window.electronAPI.online.onDomainEvent((event) => {
+                console.log('[DataStore] Online domain event:', event.entity, event.operation);
+                this._handleRefreshNeeded({
+                    table: event.entity,
+                    count: 1
+                });
             });
             if (typeof cleanup === 'function') {
                 this._eventCleanupFunctions.push(cleanup);
@@ -286,127 +236,7 @@ class DataStore {
     }
 
     /**
-     * Handle data change events from backend
-     */
-    _handleDataChange(event) {
-        const { table, operation, recordId, record, isBatch, count } = event;
-
-        // Map backend table names to our table constants if needed
-        const normalizedTable = this._normalizeTableName(table);
-
-        // For batch sync operations, skip if no records changed or use debouncing
-        if (isBatch) {
-            if (count === 0) {
-                return; // No actual changes
-            }
-            // Debounce batch updates - skip if we recently handled this table
-            const lastRefresh = this._lastRefreshTime?.get(normalizedTable) || 0;
-            if (Date.now() - lastRefresh < 500) {
-                console.log(`[DataStore] Skipping batch change for ${normalizedTable} (debounced)`);
-                return;
-            }
-            // Set timestamp BEFORE refetch to prevent concurrent events from also refetching
-            if (!this._lastRefreshTime) this._lastRefreshTime = new Map();
-            this._lastRefreshTime.set(normalizedTable, Date.now());
-            // For batch operations, just invalidate and refetch if there are subscribers
-            this.invalidate(normalizedTable);
-            const subscribers = this.subscribers.get(normalizedTable);
-            if (subscribers && subscribers.size > 0) {
-                this.refetch(normalizedTable);
-            }
-            return;
-        }
-
-        if (!this.cache.has(normalizedTable)) {
-            // Table not in cache, nothing to update
-            return;
-        }
-
-        const currentData = this.cache.get(normalizedTable) || [];
-        let newData;
-
-        switch (operation) {
-            case 'INSERT': {
-                // For formatted tables, broadcast record is flat — refetch to get formatted shape
-                const FORMATTED_TABLES_INSERT = [
-                    TABLES.SUPPLIERS, TABLES.STOCK, TABLES.STOCK_ITEMS
-                ];
-                if (FORMATTED_TABLES_INSERT.includes(normalizedTable)) {
-                    this.invalidate(normalizedTable);
-                    const subscribers = this.subscribers.get(normalizedTable);
-                    if (subscribers && subscribers.size > 0) {
-                        this.refetch(normalizedTable);
-                    }
-                    return;
-                }
-                // Add new record to cache
-                newData = [...currentData, record];
-                break;
-            }
-
-            case 'UPDATE': {
-                // For tables that use a nested/formatted structure in the cache
-                // (suppliers, stock), the broadcast record is a flat raw DB row —
-                // merging it would corrupt nested fields like account_info, item{}.
-                // Detect this mismatch by checking if the cached item has nested objects
-                // that the incoming record does not, and refetch instead.
-                const FORMATTED_TABLES = [
-                    TABLES.SUPPLIERS, TABLES.STOCK, TABLES.STOCK_ITEMS
-                ];
-                if (FORMATTED_TABLES.includes(normalizedTable)) {
-                    // Don't merge — just invalidate and refetch
-                    this.invalidate(normalizedTable);
-                    const subscribers = this.subscribers.get(normalizedTable);
-                    if (subscribers && subscribers.size > 0) {
-                        this.refetch(normalizedTable);
-                    }
-                    return;
-                }
-                // Update existing record in cache
-                newData = currentData.map(item =>
-                    (item.id === recordId || item.id === record?.id)
-                        ? { ...item, ...record }
-                        : item
-                );
-                break;
-            }
-
-            case 'DELETE':
-                // Remove record from cache
-                newData = currentData.filter(item =>
-                    item.id !== recordId && item.id !== record?.id
-                );
-                break;
-
-            default:
-                console.warn('[DataStore] Unknown operation:', operation);
-                return;
-        }
-
-        // Update cache
-        this.cache.set(normalizedTable, newData);
-        this.lastFetch.set(normalizedTable, Date.now());
-
-        // Notify subscribers
-        this._notifySubscribers(normalizedTable);
-
-        // Also update related tables that might be affected
-        this._updateRelatedTables(normalizedTable, operation);
-    }
-
-    /**
-     * Handle sync status changes
-     */
-    _handleSyncStatusChange(status) {
-        // If sync completed, we might need to refresh data
-        if (status.syncStatus === 'completed' || status.status === 'completed') {
-            console.log('[DataStore] Sync completed, refreshing stale caches');
-            this._refreshStaleCaches();
-        }
-    }
-
-    /**
-     * Handle refresh needed events (triggered after cloud sync pulls data)
+     * Handle refresh needed events.
      */
     _handleRefreshNeeded(event) {
         const { table, count } = event;
@@ -439,98 +269,6 @@ class DataStore {
     }
 
     /**
-     * Handle sync completion events
-     * @param {Object} result - { success, tablesAffected, recordsUpdated, error }
-     */
-    _handleSyncCompleted(result) {
-        if (result.success) {
-            // Refresh all stale caches after successful sync
-            this._refreshStaleCaches();
-
-            // If specific tables were affected, refetch them for active subscribers
-            if (result.tablesAffected && Array.isArray(result.tablesAffected)) {
-                for (const table of result.tablesAffected) {
-                    const normalizedTable = this._normalizeTableName(table);
-                    const subscribers = this.subscribers.get(normalizedTable);
-                    if (subscribers && subscribers.size > 0) {
-                        this.invalidate(normalizedTable);
-                        this.refetch(normalizedTable);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Handle multi-table change events (after full cloud sync)
-     * @param {Object} data - { changes: [{table, count}], totalRecords, tables }
-     */
-    _handleMultiTableChange(data) {
-        const { changes, tables, totalRecords } = data;
-
-        // Skip if no actual records changed
-        if (!totalRecords || totalRecords === 0) {
-            return;
-        }
-
-        // Track which tables we've already processed
-        const processedTables = new Set();
-
-        // Process tables list
-        if (tables && Array.isArray(tables)) {
-            for (const table of tables) {
-                const normalizedTable = this._normalizeTableName(table);
-
-                // Debounce: Skip if we recently refreshed this table
-                const lastRefresh = this._lastRefreshTime?.get(normalizedTable) || 0;
-                if (Date.now() - lastRefresh < 500) {
-                    console.log(`[DataStore] Skipping multi-table refresh for ${normalizedTable} (debounced)`);
-                    continue;
-                }
-
-                this.invalidate(normalizedTable);
-                processedTables.add(normalizedTable);
-
-                // Refetch if there are active subscribers
-                const subscribers = this.subscribers.get(normalizedTable);
-                if (subscribers && subscribers.size > 0) {
-                    if (!this._lastRefreshTime) this._lastRefreshTime = new Map();
-                    this._lastRefreshTime.set(normalizedTable, Date.now());
-                    this.refetch(normalizedTable);
-                }
-            }
-        }
-
-        // Also process individual changes if provided (for tables not in the tables list)
-        if (changes && Array.isArray(changes)) {
-            for (const change of changes) {
-                if (change.count > 0) {
-                    const normalizedTable = this._normalizeTableName(change.table);
-
-                    // Skip if already processed
-                    if (processedTables.has(normalizedTable)) {
-                        continue;
-                    }
-
-                    // Debounce check
-                    const lastRefresh = this._lastRefreshTime?.get(normalizedTable) || 0;
-                    if (Date.now() - lastRefresh < 500) {
-                        continue;
-                    }
-
-                    this.invalidate(normalizedTable);
-                    const subscribers = this.subscribers.get(normalizedTable);
-                    if (subscribers && subscribers.size > 0) {
-                        if (!this._lastRefreshTime) this._lastRefreshTime = new Map();
-                        this._lastRefreshTime.set(normalizedTable, Date.now());
-                        this.refetch(normalizedTable);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
      * Normalize table name to match our constants
      */
     _normalizeTableName(table) {
@@ -547,6 +285,7 @@ class DataStore {
             'units_of_measurement': TABLES.UOM,
             // Stock
             'stock': TABLES.STOCK,
+            'stock_batches': TABLES.STOCK,
             'stock_with_items': TABLES.STOCK_ITEMS,
             'stock_items': TABLES.STOCK_ITEMS,
             // Items
@@ -573,7 +312,7 @@ class DataStore {
     /**
      * Update related tables when a table changes
      */
-    _updateRelatedTables(table, operation) {
+    _updateRelatedTables(table) {
         // Define relationships between tables
         const relationships = {
             [TABLES.ITEMS]: [TABLES.STOCK_ITEMS, TABLES.STOCK],
@@ -854,8 +593,8 @@ class DataStore {
     getStats() {
         return {
             cachedTables: this.cache.size,
-            activeSubscriptions: Array.from(this.subscribers.entries()).reduce(
-                (acc, [table, subs]) => acc + subs.size, 0
+            activeSubscriptions: Array.from(this.subscribers.values()).reduce(
+                (acc, subs) => acc + subs.size, 0
             ),
             pendingFetches: this.pendingFetches.size,
             tables: Array.from(this.cache.keys())

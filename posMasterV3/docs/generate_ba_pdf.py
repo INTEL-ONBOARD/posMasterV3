@@ -276,7 +276,7 @@ def summary_cards():
             [card("Primary Purpose", "Run branch-level POS and inventory operations in a controlled desktop environment.", "#fafdff"),
              card("Primary Users", "Cashiers, inventory staff, outlet managers, and administrators.", "#fafdff")],
             [card("Business Strengths", "Inventory control, sales execution, user governance, and sync-aware operations.", "#fafdff"),
-             card("Deployment Model", "Installed desktop application with local setup and optional cloud synchronization.", "#fafdff")],
+             card("Deployment Model", "Installed desktop application with online real-time synchronization.", "#fafdff")],
         ],
         colWidths=[86 * mm, 86 * mm],
     )
@@ -502,7 +502,7 @@ def build_pdf():
     story.append(PageBreak())
 
     story.append(heading("Executive Summary", 0, idx)); idx += 1
-    story.append(para_justify("POSMaster V3 is a desktop-based point-of-sale and inventory management system intended to support daily retail branch operations. The system combines branch setup, user access control, inventory master maintenance, stock replenishment, sales processing, supplier handling, member/customer support, settings, software update handling, and optional cloud synchronization."))
+    story.append(para_justify("POSMaster V3 is a desktop-based point-of-sale and inventory management system intended to support daily retail branch operations. The system combines branch setup, user access control, inventory master maintenance, stock replenishment, sales processing, supplier handling, member/customer support, settings, software update handling, and online real-time synchronization."))
     story.append(para_justify("From a business analysis perspective, the most important takeaway is that this is not just a checkout application. It is an outlet operations platform. The inventory and sales modules form the operational core, while users, settings, and session controls provide the governance layer required to run the business safely and consistently."))
     story.append(Spacer(1, 2 * mm))
     story.append(summary_cards())
@@ -580,7 +580,7 @@ def build_pdf():
     story.append(para_justify("For business analysis work, branch-specific visibility rules should be captured clearly. Key questions include whether users are tied to one branch, whether branch switching is allowed, and whether stock and transactions are isolated or consolidated across branches."))
 
     story.append(heading("Cloud Synchronization and Offline Operation", 0, idx)); idx += 1
-    story.append(para_justify("The application shows clear signs of a local-first operating model with cloud synchronization layered on top. Business-wise, this means staff can continue operating locally and later synchronize changes when connectivity is available."))
+    story.append(para_justify("The application now operates as an online-first system with real-time synchronization. Business-wise, this means the live service is the source of truth for operational activity."))
     story.append(bullets([
         "Useful in locations with unstable or intermittent internet connectivity.",
         "Reduces operational downtime during network issues.",
@@ -595,7 +595,7 @@ def build_pdf():
         "Role- and permission-driven visibility of modules and actions.",
         "Single active session behavior for user accounts.",
         "Controlled access to user administration features.",
-        "Visibility of sync status and operational messages.",
+        "Visibility of realtime status and operational messages.",
     ]))
 
     story.append(heading("Current Observations and BA Implications", 0, idx)); idx += 1

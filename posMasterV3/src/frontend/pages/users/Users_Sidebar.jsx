@@ -36,7 +36,7 @@ function UsersSidebar({
             setPermissions(response.data.settings.permissions.UserAccess);
           }
         }
-      } catch (error) {
+      } catch {
         // Silent fail - permissions will default to showing all
       }
     };

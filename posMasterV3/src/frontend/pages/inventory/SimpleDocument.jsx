@@ -36,7 +36,7 @@
 import { Document, Page, View, Image, Text, StyleSheet } from '@react-pdf/renderer';
 
 // Create styles
-const styles1 = StyleSheet.create({
+const _styles1 = StyleSheet.create({
   page: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
 });
 
 
-const SimpleDocument = ({ barcodeDataUrl, barcodeValue }) => {
+const SimpleDocument = ({ barcodeDataUrl }) => {
   // Create 12 barcodes (3x4 grid on A4 page)
   const barcodes = Array(55).fill(0);
   

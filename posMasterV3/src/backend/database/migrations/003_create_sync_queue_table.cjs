@@ -2,8 +2,8 @@
  * Migration: Create Sync Queue Table
  * Version: 003
  *
- * Creates the sync_queue table for managing offline operations
- * that need to be synced with the cloud when online.
+ * Creates the sync_queue table used by the legacy offline sync system.
+ * It is retained for historical compatibility only.
  */
 
 const MIGRATION_VERSION = 3;

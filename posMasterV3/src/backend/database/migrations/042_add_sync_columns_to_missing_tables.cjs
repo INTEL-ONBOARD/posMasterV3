@@ -55,7 +55,7 @@ function up(db) {
 
     if (!returnCols.includes('sync_status')) {
         db.exec(`ALTER TABLE return_items ADD COLUMN sync_status TEXT DEFAULT 'pending';`);
-        // Mark all existing records as pending so they get picked up by cloud sync
+        // Mark all existing records as pending so they get picked up by the refresh pipeline
         db.exec(`UPDATE return_items SET sync_status = 'pending' WHERE sync_status IS NULL;`);
         db.exec(`CREATE INDEX IF NOT EXISTS idx_return_items_sync_status ON return_items(sync_status);`);
         console.log(`[Migration] ${MIGRATION_NAME}: added sync_status to return_items`);

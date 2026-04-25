@@ -1,7 +1,7 @@
 /**
  * useRealTimeSync Hook
  *
- * Provides real-time data synchronization and UI updates.
+ * Provides realtime data refresh and UI updates.
  * Listens for data changes from the backend and triggers re-fetches.
  *
  * Usage:
@@ -20,6 +20,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { onlineStatusApi } from '../api/localApi';
 
 const DEFAULT_SYNC_STATUS = {
     isOnline: false,
@@ -50,7 +51,7 @@ function normalizeSyncStatus(status = {}) {
     };
 }
 
-// Global state for sync status
+// Global state for realtime status
 let globalSyncStatus = { ...DEFAULT_SYNC_STATUS };
 
 // Subscribers map: table -> Set<callback>
@@ -68,8 +69,8 @@ let electronUnsubscribeData = null;
 let electronUnsubscribeStatus = null;
 
 /**
- * Reset all module-level sync state.
- * MUST be called on user logout to prevent subscriber callbacks and sync
+ * Reset all module-level realtime state.
+ * MUST be called on user logout to prevent subscriber callbacks and status
  * status from leaking into the next user's session.
  */
 export function resetSyncModuleState() {
@@ -88,12 +89,12 @@ export function resetSyncModuleState() {
     tableSubscribers.clear();
     statusSubscribers.clear();
 
-    // Reset sync status to defaults
+    // Reset realtime status to defaults
     globalSyncStatus = { ...DEFAULT_SYNC_STATUS };
 }
 
 /**
- * Hook for real-time sync status and data change subscriptions
+ * Hook for realtime status and data change subscriptions
  */
 export function useRealTimeSync() {
     const [syncStatus, setSyncStatus] = useState(globalSyncStatus);
@@ -106,7 +107,7 @@ export function useRealTimeSync() {
 
         electronListenersAttached = true;
 
-        window.electronAPI.cloudSync?.getStatus?.().then((result) => {
+        onlineStatusApi.getStatus().then((result) => {
             if (result?.data) {
                 globalSyncStatus = normalizeSyncStatus(result.data);
                 statusSubscribers.forEach(callback => {
@@ -118,12 +119,15 @@ export function useRealTimeSync() {
                 });
             }
         }).catch((error) => {
-            console.warn('[useRealTimeSync] Failed to load initial sync status:', error);
+            console.warn('[useRealTimeSync] Failed to load initial realtime status:', error);
         });
 
-        // Listen for data changes
-        electronUnsubscribeData = window.electronAPI.onDataChange?.((data) => {
-            const { table, operation, recordId, record } = data;
+        // Listen for online domain events.
+        electronUnsubscribeData = window.electronAPI.online?.onDomainEvent?.((event) => {
+            const table = event.entity || event.table;
+            const operation = event.operation || event.type;
+            const recordId = event.entityId || event.recordId || event.id;
+            const record = event.record || event.payload || null;
 
             // Notify table subscribers
             const subscribers = tableSubscribers.get(table);
@@ -150,14 +154,14 @@ export function useRealTimeSync() {
             }
         });
 
-        // Listen for sync status changes
-        electronUnsubscribeStatus = window.electronAPI.onSyncStatusChange?.((status) => {
+        electronUnsubscribeStatus = window.electronAPI.online?.onRealtimeStatus?.((status) => {
             globalSyncStatus = normalizeSyncStatus({
                 ...globalSyncStatus,
-                ...status
+                ...(status?.data || {}),
+                isOnline: status?.data?.ready ?? status?.data?.isOnline ?? globalSyncStatus.isOnline,
+                syncStatus: status?.data?.ready ? 'connected' : (status?.data?.syncStatus ?? globalSyncStatus.syncStatus)
             });
 
-            // Notify all status subscribers
             statusSubscribers.forEach(callback => {
                 try {
                     callback(globalSyncStatus);
@@ -206,19 +210,17 @@ export function useRealTimeSync() {
     }, []);
 
     /**
-     * Force a sync now
+     * Refresh now
      */
     const syncNow = useCallback(async () => {
-        if (!window.electronAPI?.cloudSync?.syncNow) return null;
-        return window.electronAPI.cloudSync.syncNow();
+        return onlineStatusApi.refreshStatus();
     }, []);
 
     /**
      * Get current network status
      */
     const checkNetwork = useCallback(async () => {
-        if (!window.electronAPI?.cloudSync?.checkNetwork) return null;
-        return window.electronAPI.cloudSync.checkNetwork();
+        return onlineStatusApi.checkConnection();
     }, []);
 
     return {
@@ -258,6 +260,7 @@ export function useTableSubscription(tableName, onChangeCallback) {
 export function useAutoRefetch(tableName, fetchFn, deps = []) {
     const { subscribe } = useRealTimeSync();
     const fetchRef = useRef(fetchFn);
+    const depsSignature = JSON.stringify(deps);
 
     // Keep fetch function reference updated
     useEffect(() => {
@@ -273,7 +276,7 @@ export function useAutoRefetch(tableName, fetchFn, deps = []) {
         });
 
         return unsubscribe;
-    }, [tableName, subscribe, ...deps]);
+    }, [tableName, subscribe, depsSignature]);
 }
 
 export default useRealTimeSync;

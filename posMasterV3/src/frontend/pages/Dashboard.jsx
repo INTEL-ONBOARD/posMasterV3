@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import StatusModal from "../components/StatusModal.jsx";
 import Sidebar from "../components/Sidebar.jsx";
 import { useStatusLog, StatusType } from "../services/StatusLogService.jsx";
 import { useRealTimeSync } from "../hooks/useRealTimeSync";
-import { appSettingsApi, authApi } from "../api/localApi";
+import { appSettingsApi } from "../api/localApi";
+import { onlineApi } from "../api/onlineApi";
 import { onSessionEvent, startSessionMonitor } from "../services/SessionGuard";
 import { BranchProvider } from "../context/BranchContext.jsx";
 import { useActivityTracker } from "../hooks/useActivityTracker";
@@ -101,7 +102,7 @@ const formatTime = (date) => {
 };
 
 function Dashboard() {
-  const [activeSection, setActiveSection] = useState(null);
+  const [_activeSection, setActiveSection] = useState(null);
   const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
   const navigate = useNavigate();
   const { currentStatus, isOnline: statusIsOnline } = useStatusLog();
@@ -119,14 +120,11 @@ function Dashboard() {
   useActivityTracker({ enabled: true });
 
   // Force logout handler - clears session and navigates to login
-  const handleForcedLogout = async (message = 'You have been logged out') => {
+  const handleForcedLogout = useCallback(async (message = 'You have been logged out') => {
     console.log('[Dashboard] Forced logout:', message);
 
     try {
-      const token = sessionStorage.getItem('token');
-      if (token) {
-        await authApi.logout(token);
-      }
+      await onlineApi.logout();
     } catch (err) {
       console.error('[Dashboard] Logout error:', err);
     }
@@ -154,7 +152,7 @@ function Dashboard() {
 
     // Navigate to login
     navigate('/login', { replace: true, state: { message } });
-  };
+  }, [navigate]);
 
   // Apply settings on mount
   useEffect(() => {
@@ -197,15 +195,27 @@ function Dashboard() {
       });
     }
 
+    let unsubscribeOnlineSession = null;
+    if (window.electronAPI?.online?.onEvent) {
+      unsubscribeOnlineSession = window.electronAPI.online.onEvent(({ eventName, payload }) => {
+        if (!isMountedRef.current) return;
+        if (eventName === 'session.replaced') {
+          console.log('[Dashboard] Online session replaced:', payload);
+          setShowKickedModal(true);
+        }
+      });
+    }
+
     // Start real-time session monitoring (checks every 3 seconds + on visibility change)
     const stopMonitor = startSessionMonitor(3000);
 
     return () => {
       unsubscribe();
       unsubscribeKicked?.();
+      unsubscribeOnlineSession?.();
       stopMonitor();
     };
-  }, []);
+  }, [handleForcedLogout]);
 
   // Auto-enforce kicked modal: force logout after 8 seconds if user doesn't click OK
   useEffect(() => {
@@ -214,7 +224,7 @@ function Dashboard() {
       handleForcedLogout('Logged out - another device signed in');
     }, 8000);
     return () => clearTimeout(timer);
-  }, [showKickedModal]);
+  }, [showKickedModal, handleForcedLogout]);
 
   const style = getStatusStyle(currentStatus.type, currentStatus.isLoading);
 

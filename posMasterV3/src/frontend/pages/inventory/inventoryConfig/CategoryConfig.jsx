@@ -1,4 +1,4 @@
-import React, { useState, useContext, useMemo } from "react";
+import React, { useState } from "react";
 import { Search, X, Check, Tag, ChevronDown, RefreshCw } from "lucide-react";
 import { categoryApi } from "../../../api/localApi";
 import { useReactiveData, TABLES } from "../../../store";
@@ -8,7 +8,7 @@ function CategoryConfig() {
   const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
 
   // Use reactive data hook - automatically updates when categories change
-  const { data: categories, loading: isLoading, refetch } = useReactiveData(TABLES.CATEGORIES);
+  const { data: categories, loading: isLoading } = useReactiveData(TABLES.CATEGORIES);
 
   const [formData, setFormData] = useState({
     brand: "",

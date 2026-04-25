@@ -88,7 +88,7 @@ class AppSettingsService {
         return {
             logout_on_close: true,
             notifications: true,
-            cloud_sync: false,
+            cloud_sync: true,
             temp_system: true,
             run_on_startup: true,
             maximize_window: true,
@@ -187,26 +187,6 @@ class AppSettingsService {
      */
     setMaximizeOnStart(enabled) {
         this.appSettingsRepo.set('maximize_window', enabled, 'boolean');
-    }
-
-    // ============================================
-    // CLOUD SYNC TOGGLE
-    // ============================================
-
-    /**
-     * Get cloud sync enabled setting
-     * @returns {boolean}
-     */
-    isCloudSyncEnabled() {
-        return this.getSetting('cloud_sync') ?? false;
-    }
-
-    /**
-     * Set cloud sync enabled
-     * @param {boolean} enabled
-     */
-    setCloudSyncEnabled(enabled) {
-        this.appSettingsRepo.set('cloud_sync', enabled, 'boolean');
     }
 
     // ============================================

@@ -155,7 +155,7 @@ ipcMain.handle("create-files", async (event, { folderPath, outlet } = {}) => {
   const configContent = {
     automatic_logout: false,
     notifications: false,
-    cloud_sync: false,
+    cloud_sync: true,
     temp_system: false,
     run_on_startup: false,
     maximize_window: true,

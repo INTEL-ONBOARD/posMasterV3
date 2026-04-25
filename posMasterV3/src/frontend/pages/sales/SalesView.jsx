@@ -124,12 +124,6 @@ export default function SalesView({ isActive }) {
     { enabled: isActive }
   );
 
-  const { data: employees } = useReactiveData(
-    TABLES.USERS,
-    null,
-    { enabled: isActive }
-  );
-
   // Transform stock data for display (same as InventoryView.jsx)
   const inventoryItems = useMemo(() => {
     if (!stockItemsRaw || stockItemsRaw.length === 0) return [];
@@ -261,7 +255,6 @@ export default function SalesView({ isActive }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isActive]);
 
-  const [rightActiveSection, setRightActiveSection] = useState("items");
   const [selectedItems, setSelectedItems] = useState([]);
   const [lastScannedCode, setLastScannedCode] = useState("");
 
@@ -405,7 +398,7 @@ export default function SalesView({ isActive }) {
   const [invoiceNo, setInvoiceNo] = useState("");
   const generateNewInvoice = useCallback(async () => {
     try {
-      const result = await window.electronAPI.sales.generateInvoiceNo();
+      const result = await salesApi.generateInvoiceNo();
       if (result?.data?.invoice_no) {
         setInvoiceNo(result.data.invoice_no);
       } else if (typeof result?.data === 'string') {

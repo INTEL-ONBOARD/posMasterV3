@@ -3,7 +3,6 @@
  *
  * Abstract base class for all repositories providing common CRUD operations.
  * Repositories handle direct database interactions and data mapping.
- * Automatically notifies CloudSyncService on data changes for real-time sync.
  * Broadcasts data changes to update UI immediately.
  */
 
@@ -11,21 +10,10 @@ const { getDatabase } = require('../database/connection.cjs');
 const { nowISO } = require('../utils/helpers.cjs');
 const crypto = require('crypto');
 
-// Lazy imports to avoid requiring Electron modules (like BrowserWindow) before app is ready
-let _notifyDataChange = null;
 let _broadcastDataChange = null;
 
 function getNotifyDataChange() {
-    if (_notifyDataChange === null) {
-        try {
-            const { notifyDataChange } = require('../services/CloudSyncService.cjs');
-            _notifyDataChange = notifyDataChange;
-        } catch (e) {
-            console.warn('[BaseRepository] CloudSyncService not available:', e.message);
-            _notifyDataChange = () => {}; // No-op fallback
-        }
-    }
-    return _notifyDataChange;
+    return () => {};
 }
 
 function getBroadcastDataChange() {
@@ -43,7 +31,6 @@ function getBroadcastDataChange() {
 
 // Tables that should NOT trigger UI broadcasts (local-only settings)
 // These tables are device-specific and don't need reactive UI updates
-// Tables that should NOT trigger UI broadcasts or cloud sync notifications (local-only data)
 const NO_BROADCAST_TABLES = ['app_settings', 'sessions', 'sync_queue', 'migrations', 'price_change_history', 'sync_metadata', 'audit_log'];
 
 // Valid column names for ORDER BY (whitelist to prevent SQL injection)
@@ -280,16 +267,15 @@ class BaseRepository {
         const localOnlyTables = ['sessions', 'sync_queue', 'migrations', 'app_settings', 'sync_metadata', 'price_change_history', 'audit_log'];
         const isLocalOnly = localOnlyTables.includes(this.tableName);
 
-        // Auto-inject updated_at so incremental cloud sync can detect this change.
+        // Auto-inject updated_at so live refresh logic can detect this change.
         // Skip local-only tables that were created without this column (e.g. sync_queue).
         if (!keys.includes('updated_at') && !isLocalOnly) {
             keys.push('updated_at');
             values.push(nowISO());
         }
 
-        // Auto-inject sync_status = 'pending' so CloudSync picks up this change.
-        // Skip tables that are local-only (no cloud sync) and skip if the caller
-        // is explicitly setting sync_status themselves (e.g. to 'synced').
+        // Auto-inject sync_status = 'pending' for tables that still use sync metadata.
+        // Skip tables that are local-only and skip if the caller is explicitly setting sync_status.
         if (!keys.includes('sync_status') && !isLocalOnly) {
             keys.push('sync_status');
             values.push('pending');

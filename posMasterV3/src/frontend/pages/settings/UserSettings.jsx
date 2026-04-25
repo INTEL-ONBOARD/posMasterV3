@@ -215,7 +215,7 @@ function UserSettings() {
             setStatusModal({ open: true, type: 'success', description: 'Profile image updated' });
           }
         }
-      } catch (err) {
+      } catch {
         setStatusModal({ open: true, type: 'failed', description: 'Failed to upload image' });
       }
     }
@@ -281,8 +281,8 @@ function UserSettings() {
         await localAuth.logout();
         setTimeout(() => navigate('/'), 1500);
         return;
-      } catch (err) {
-        setStatusModal({ open: true, type: 'failed', description: 'Password change failed: ' + err.message });
+      } catch {
+        setStatusModal({ open: true, type: 'failed', description: 'Password change failed' });
         return;
       }
     }
@@ -313,8 +313,8 @@ function UserSettings() {
         confirmPassword: ''
       }));
 
-    } catch (err) {
-      setStatusModal({ open: true, type: 'failed', description: 'Failed to save settings: ' + err.message });
+    } catch {
+      setStatusModal({ open: true, type: 'failed', description: 'Failed to save settings' });
     } finally {
       setSaving(false);
     }

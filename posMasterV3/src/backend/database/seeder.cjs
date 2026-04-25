@@ -35,12 +35,12 @@ function seedDefaultAdmin() {
                 fixed = true;
             }
 
-            // Fix sync_status if it's 'local_only' - admin should sync to cloud
+            // Fix sync_status if it's 'local_only' - admin should be online-ready
             if (adminUser.sync_status === 'local_only') {
-                console.log('[Seeder] Admin user has local_only sync status, fixing to pending...');
+                console.log('[Seeder] Admin user has local_only status, fixing to pending...');
                 const stmt = db.prepare('UPDATE users SET sync_status = ?, updated_at = ? WHERE id = ?');
                 stmt.run('pending', nowISO(), adminUser.id);
-                console.log('[Seeder] Admin user sync_status fixed to pending');
+                console.log('[Seeder] Admin user status fixed to pending');
                 fixed = true;
             }
 
@@ -95,7 +95,7 @@ function seedDefaultAdmin() {
         roles: JSON.stringify(['admin']),
         branch_id: null, // Admin can select any branch
         is_active: 1,
-        sync_status: 'pending', // Should sync to cloud
+        sync_status: 'pending', // Should be ready for online reconciliation
         created_at: nowISO(),
         updated_at: nowISO()
     };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   HashRouter,
   Routes,
@@ -114,8 +114,6 @@ function PermissionRoute({ requiredPermissions = [], anyRole = [] }) {
 }
 
 function App() {
-  const [currentView, setCurrentView] = useState('desktop1');
-
   useEffect(() => {
     const handleBeforeUnload = () => {
       const username = localStorage.getItem("username");
@@ -204,4 +202,3 @@ function App() {
 }
 
 export default App;
-

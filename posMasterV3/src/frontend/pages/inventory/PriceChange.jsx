@@ -77,8 +77,6 @@ function PriceChange() {
   const [selectedItemForDetails, setSelectedItemForDetails] = useState(null);
 
   // Loading states
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [tableSearchLoading, setTableSearchLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
 
   // Success state
@@ -95,7 +93,7 @@ function PriceChange() {
   // Stock entries state
   const [stockEntries, setStockEntries] = useState([]);
   const [loadingStockEntries, setLoadingStockEntries] = useState(false);
-  const [stockEntriesError, setStockEntriesError] = useState(null);
+  const [_stockEntriesError, _setStockEntriesError] = useState(null);
 
   // Fetch stock entries when an item is selected
   const fetchStockEntriesForItem = useCallback(async (sku) => {
@@ -103,7 +101,7 @@ function PriceChange() {
 
     try {
       setLoadingStockEntries(true);
-      setStockEntriesError(null);
+      _setStockEntriesError(null);
 
       const response = await restockApi.getStockData(sku);
 
@@ -137,7 +135,7 @@ function PriceChange() {
       setStockEntries(batchEntries);
     } catch (error) {
       console.error("Failed to fetch stock entries:", error);
-      setStockEntriesError(error.message || "Failed to load batch codes");
+      _setStockEntriesError(error.message || "Failed to load batch codes");
       setStockEntries([]);
     } finally {
       setLoadingStockEntries(false);
@@ -241,14 +239,6 @@ function PriceChange() {
   }, [selectedItemForDetails]);
 
   // Event handlers
-  const handleStockInputChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setFormDataStock((prev) => ({ ...prev, [name]: value }));
-    if (formErrors[name]) {
-      setFormErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  }, [formErrors]);
-
   const handlePriceChangeInputChange = useCallback((e) => {
     const { name, value } = e.target;
     setFormDataPriceChange((prev) => ({ ...prev, [name]: value }));
@@ -259,15 +249,11 @@ function PriceChange() {
 
   // Search handlers
   const handleSearch = (e) => {
-    setSearchLoading(true);
     setSearchTerm(e.target.value);
-    setTimeout(() => setSearchLoading(false), 400);
   };
 
   const handleTableSearch = (e) => {
-    setTableSearchLoading(true);
     setTableSearchTerm(e.target.value);
-    setTimeout(() => setTableSearchLoading(false), 400);
   };
 
   // Form validation

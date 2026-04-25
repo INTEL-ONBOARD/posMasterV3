@@ -2,16 +2,12 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, Cloud, CloudOff, RefreshCw } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
-import { localAuth } from "../api/services/localAuth";
 import { useStatusLog } from "../services/StatusLogService.jsx";
-import { appSettingsApi, cloudSyncApi } from "../api/localApi";
+import { onlineApi } from "../api/onlineApi";
 import StatusModal from "../components/StatusModal.jsx";
 
 function resolveSyncStatus(status = {}) {
-  if (!status.autoSyncEnabled && !status.syncEnabled) {
-    return 'disabled';
-  }
-  return status.syncStatus || status.status || (status.isOnline ? 'synced' : 'offline');
+  return status.ready || status.online ? 'online' : 'unavailable';
 }
 
 function getSyncBadge(syncStatus) {
@@ -19,8 +15,9 @@ function getSyncBadge(syncStatus) {
     case 'completed':
     case 'synced':
     case 'idle':
+    case 'online':
       return {
-        label: 'Cloud ready',
+        label: 'Online server ready',
         icon: Cloud,
         textClass: 'text-emerald-600',
         bgClass: 'bg-emerald-50 border-emerald-100'
@@ -28,29 +25,29 @@ function getSyncBadge(syncStatus) {
     case 'syncing':
     case 'reconnecting':
       return {
-        label: 'Syncing cloud',
+        label: 'Checking online service',
         icon: RefreshCw,
         textClass: 'text-sky-600',
         bgClass: 'bg-sky-50 border-sky-100',
         spin: true
       };
-    case 'offline':
+    case 'unavailable':
       return {
-        label: 'Cloud offline',
+        label: 'Online server unavailable',
         icon: CloudOff,
         textClass: 'text-amber-600',
         bgClass: 'bg-amber-50 border-amber-100'
       };
     case 'disabled':
       return {
-        label: 'Cloud sync off',
+        label: 'Online mode unavailable',
         icon: CloudOff,
         textClass: 'text-slate-500',
         bgClass: 'bg-slate-50 border-slate-200'
       };
     default:
       return {
-        label: 'Cloud issue',
+        label: 'Online server issue',
         icon: CloudOff,
         textClass: 'text-rose-600',
         bgClass: 'bg-rose-50 border-rose-100'
@@ -84,58 +81,50 @@ function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
 
-  // Cloud sync state (kept for logic, banner removed from UI)
-  const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
-    const checkCloudSync = async () => {
+    const checkOnlineServer = async () => {
       try {
-        const enabledResult = await appSettingsApi.isCloudSyncEnabled();
-        const isEnabled = enabledResult?.status === 'success' && enabledResult?.data?.enabled;
-        setCloudSyncEnabled(isEnabled);
-
-        if (isEnabled) {
-          const statusResult = await cloudSyncApi.getStatus();
-          if (statusResult?.status === 'success') {
-            const data = statusResult.data;
-            setSyncStatus(resolveSyncStatus(data));
-          }
-        } else {
-          setSyncStatus('disabled');
+        const statusResult = await onlineApi.ready();
+        if (statusResult?.status === 'success') {
+          setSyncStatus(resolveSyncStatus(statusResult.data));
+          return;
         }
+        setSyncStatus('unavailable');
       } catch (error) {
-        console.error('Failed to check cloud sync status:', error);
+        console.error('Failed to check online server status:', error);
+        setSyncStatus('unavailable');
       }
     };
-    checkCloudSync();
+    checkOnlineServer();
   }, []);
 
   const handleSyncNow = async (silent = false) => {
     setIsSyncing(true);
     setSyncStatus('syncing');
-    if (!silent) statusLog.loading("Syncing with cloud...");
+    if (!silent) statusLog.loading("Checking online server...");
     try {
-      const syncResult = await cloudSyncApi.syncNow();
-      if (syncResult?.status === 'success') {
-        setSyncStatus('completed');
+      const result = await onlineApi.ready();
+      if (result?.status === 'success' && result?.data?.ready) {
+        setSyncStatus('online');
         if (!silent) {
-          statusLog.success("Cloud sync complete");
-          setStatusModal({ open: true, type: 'success', description: 'Cloud sync completed successfully.' });
+          statusLog.success("Online server is ready");
+          setStatusModal({ open: true, type: 'success', description: 'Online server is ready.' });
         }
       } else {
-        setSyncStatus('error');
+        setSyncStatus('unavailable');
         if (!silent) {
-          const message = syncResult?.message || 'Cloud sync failed';
+          const message = result?.message || 'Online server is unavailable';
           statusLog.error(message);
           setStatusModal({ open: true, type: 'failed', description: message });
         }
       }
     } catch (error) {
-      console.error('Sync failed:', error);
-      setSyncStatus('error');
-      if (!silent) statusLog.error("Sync failed");
+      console.error('Online server check failed:', error);
+      setSyncStatus('unavailable');
+      if (!silent) statusLog.error("Online server check failed");
     } finally {
       setIsSyncing(false);
     }
@@ -155,7 +144,7 @@ function Login() {
     statusLog.loading("Authenticating user...");
 
     try {
-      const result = await localAuth.login(formData.email, formData.password, null);
+      const result = await onlineApi.login(formData.email, formData.password, null);
 
       if (result.success) {
         const userData = result.data;
@@ -262,24 +251,22 @@ function Login() {
               Welcome back! Enter your credentials to continue.
             </Motion.p>
 
-            {cloudSyncEnabled && (
-              <Motion.div className="w-full mb-5" variants={item}>
-                <div className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 ${syncBadge.bgClass}`}>
-                  <div className={`flex items-center gap-2 text-[12px] font-medium ${syncBadge.textClass}`}>
-                    <SyncBadgeIcon className={`h-4 w-4 ${syncBadge.spin ? 'animate-spin' : ''}`} />
-                    <span>{syncBadge.label}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleSyncNow(false)}
-                    disabled={isSyncing}
-                    className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isSyncing ? 'Please wait' : 'Sync now'}
-                  </button>
+            <Motion.div className="w-full mb-5" variants={item}>
+              <div className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 ${syncBadge.bgClass}`}>
+                <div className={`flex items-center gap-2 text-[12px] font-medium ${syncBadge.textClass}`}>
+                  <SyncBadgeIcon className={`h-4 w-4 ${syncBadge.spin ? 'animate-spin' : ''}`} />
+                  <span>{syncBadge.label}</span>
                 </div>
-              </Motion.div>
-            )}
+                <button
+                  type="button"
+                  onClick={() => handleSyncNow(false)}
+                  disabled={isSyncing}
+                  className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSyncing ? 'Please wait' : 'Check'}
+                </button>
+              </div>
+            </Motion.div>
 
             {/* Email field */}
             <Motion.div className="w-full mb-3" variants={item}>

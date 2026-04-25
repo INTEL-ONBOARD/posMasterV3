@@ -2,7 +2,7 @@
 
 /**
  * Transforms API response data by flattening stockData objects into individual items
- * Supports both nested format (from cloud API) and flat format (from local SQLite)
+ * Supports both nested format and the legacy flat stock format.
  * @param {Object} apiResponse - The original API response object
  * @returns {Array} - Array of transformed objects
  */
@@ -18,11 +18,11 @@ export const transformStockData = (apiResponse) => {
 
   const data = apiResponse.data;
 
-  // Check if data is in flat format (from local SQLite) - has direct stock fields like batch_code, quantity
+  // Check if data is in flat format - has direct stock fields like batch_code, quantity.
   const isFlat = data.length > 0 && data[0].batch_code !== undefined && data[0].stockData === undefined;
 
   if (isFlat) {
-    // Transform flat data from local SQLite backend
+    // Transform flat stock data from the compatibility API shape.
     return data.map(item => ({
       // Item properties
       _id: item._id || item.cloud_id,

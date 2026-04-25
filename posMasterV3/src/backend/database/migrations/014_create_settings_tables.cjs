@@ -59,7 +59,7 @@ module.exports = {
             { key: 'auto_logout', value: 'true', type: 'boolean', description: 'Enable automatic logout' },
             { key: 'auto_logout_minutes', value: '15', type: 'number', description: 'Auto logout timeout in minutes' },
             { key: 'notifications', value: 'true', type: 'boolean', description: 'Enable Windows built-in notifications' },
-            { key: 'cloud_sync', value: 'false', type: 'boolean', description: 'Enable automatic cloud synchronization' },
+            { key: 'cloud_sync', value: 'true', type: 'boolean', description: 'Online-only mode is always enabled' },
             { key: 'temp_system', value: 'true', type: 'boolean', description: 'Enable application temp system' },
             { key: 'run_on_startup', value: 'true', type: 'boolean', description: 'Allow app to run on startup' },
             { key: 'maximize_window', value: 'true', type: 'boolean', description: 'Allow app to start maximized' },

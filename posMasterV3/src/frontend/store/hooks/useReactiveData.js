@@ -2,7 +2,7 @@
  * useReactiveData Hook
  *
  * A React hook that provides reactive data fetching with automatic updates.
- * When data changes in the backend (local or from cloud sync), the UI updates automatically.
+ * When data changes in the online backend, the UI updates automatically.
  *
  * Features:
  * - Automatic data fetching on mount
@@ -10,7 +10,7 @@
  * - Loading and error states
  * - Caching with TTL
  * - Deduplication of concurrent requests
- * - Works offline (uses local SQLite)
+ * - Uses the MongoDB-backed online API facade
  *
  * Usage:
  *   // Basic usage with table constant

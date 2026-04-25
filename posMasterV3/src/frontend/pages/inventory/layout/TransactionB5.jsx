@@ -11,7 +11,7 @@ import React from 'react';
  * Use: paste into a React app and render <SalesReportB5 />.
  */
 
-export default function TransactionB5Rep({ maxHeight = 'calc(100vh - 120px)' }) {
+export default function TransactionB5Rep() {
   // data rows; we keep textual values for clarity
   const rows = [
     { description: 'Cash today', totalSales: '25,380.00', bop: '40,114.76', memberCredit: '17,000.00', staffCredit: '', threeMonthMaure: '0.00', monthlyManure: '0.00', longTermCredit: '', creditTotal: '25,380.00' },

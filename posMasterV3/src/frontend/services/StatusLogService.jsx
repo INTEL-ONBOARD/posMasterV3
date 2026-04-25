@@ -44,10 +44,8 @@ export function StatusLogProvider({ children }) {
   useEffect(() => {
     const checkNetwork = async () => {
       try {
-        if (window.electronAPI?.cloudSync?.getStatus) {
-          const status = await window.electronAPI.cloudSync.getStatus();
-          setIsOnline(status?.data?.isOnline ?? status?.isOnline ?? true);
-        }
+        const status = await window.electronAPI?.online?.getRealtimeStatus?.();
+        setIsOnline(status?.data?.isOnline ?? status?.isOnline ?? true);
       } catch {
         // Ignore errors
       }
@@ -56,8 +54,8 @@ export function StatusLogProvider({ children }) {
     // Initial fetch on mount
     checkNetwork();
 
-    // Listen for IPC sync status change events instead of polling
-    const handler = window.electronAPI?.sync?.onStatusChange;
+    // Listen for online realtime status events instead of polling
+    const handler = window.electronAPI?.online?.onRealtimeStatus;
     if (handler) {
       const unsubscribe = handler((status) => {
         if (typeof status?.isOnline === 'boolean') {

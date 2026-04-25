@@ -6,7 +6,7 @@ Method: static code review, architecture tracing, `npm run build`, `npm run lint
 
 ## 1. System Understanding
 
-POSMaster V3 is an Electron desktop POS application with a React renderer and a local SQLite-first backend. The app is designed to work primarily offline on a machine or branch, then optionally synchronize to a cloud/MySQL layer.
+POSMaster V3 was originally an Electron desktop POS application with a React renderer and a local SQLite-first backend. This audit captures the pre-conversion state and is now historical reference only; the active runtime has since been converted to online-only with Mongo-backed realtime APIs.
 
 ### High-level architecture
 
@@ -185,11 +185,11 @@ Severity legend:
   - Developers cannot use lint reliably as a gate.
   - Real issues become harder to prioritize.
 
-#### 5. Backend enables cloud sync by default when settings lookup fails
+#### 5. Backend would have enabled sync services by default when settings lookup failed
 
 - File: `src/backend/backend.cjs:92-129`
 - Evidence:
-  - If settings resolution throws, the catch block logs `initializing by default` and starts both cloud sync and real-time sync.
+  - If settings resolution throws, the catch block logs `initializing by default` and starts the legacy sync services.
 - Why this is a bug:
   - Failure to read a setting should fail closed, not fail open into sync behavior.
   - For a POS app, accidental sync activation is the wrong operational default.

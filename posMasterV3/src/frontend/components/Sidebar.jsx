@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
 import { localAuth } from "../api/services/localAuth";
 import { settingsApi } from "../api/localApi";
 import Dashboard_inventory from "../assets/Dashboard_inventory.png";
@@ -9,30 +8,6 @@ import Dashboard_settings from "../assets/Dashboard_settings.png";
 import Dashboard_notification from "../assets/Dashboard_notification.png";
 import Dashboard_sales from "../assets/Dashboard_sales.png";
 import Dashboard_users from "../assets/Dashboard_users.png";
-
-// Animation variants
-const sidebarContainer = {
-  hidden: {},
-  show: {
-    transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.2,
-    },
-  },
-};
-
-const tileVariant = {
-  hidden: { opacity: 0, x: -40 },
-  show: {
-    opacity: 1,
-    x: 0,
-    transition: {
-      type: "spring",
-      stiffness: 100,
-      damping: 15,
-    },
-  },
-};
 
 function Sidebar() {
   const location = useLocation();
@@ -95,7 +70,7 @@ function Sidebar() {
             setPermissions(roleDefaults[primaryRole] || roleDefaults.user);
           }
         }
-      } catch (error) {
+      } catch {
         // On failure, deny access to protected sections rather than showing all
         setPermissions({});
       }
@@ -142,7 +117,7 @@ function Sidebar() {
 
     try {
       await localAuth.logout();
-    } catch (error) {
+    } catch {
       // Silent fail - still navigate to login
     } finally {
       setIsLoggingOut(false);
@@ -157,12 +132,7 @@ function Sidebar() {
       aria-label="Sidebar"
     >
       <div className="h-full overflow-hidden bg-white py-3 px-2">
-        <motion.ul
-          className="font-medium space-y-2"
-          variants={sidebarContainer}
-          initial="hidden"
-          animate="show"
-        >
+        <ul className="font-medium space-y-2">
           {/* Sidebar Tiles */}
           {[
             {
@@ -200,7 +170,7 @@ function Sidebar() {
             .map((item) => {
               const isActive = currentPath.startsWith(`/dashboard/${item.to}`);
               return (
-                <motion.li key={item.to} variants={tileVariant} className="relative group">
+                <li key={item.to} className="relative group">
                   <Link
                     to={item.to}
                     className={`relative w-28 h-28 flex flex-col items-center justify-center rounded-xl transition-all duration-300 ${
@@ -228,12 +198,12 @@ function Sidebar() {
                       {item.label}
                     </span>
                   </Link>
-                </motion.li>
+                </li>
               );
             })}
 
           {/* Logout */}
-          <motion.li variants={tileVariant} className="relative group">
+          <li className="relative group">
             <button
               onClick={() => setShowLogoutConfirm(true)}
               disabled={isLoggingOut}
@@ -252,8 +222,8 @@ function Sidebar() {
                 {isLoggingOut ? "Logging out..." : "Logout"}
               </span>
             </button>
-          </motion.li>
-        </motion.ul>
+          </li>
+        </ul>
       </div>
 
       {/* Logout Confirmation Modal */}

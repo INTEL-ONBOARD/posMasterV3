@@ -1,16 +1,15 @@
 /**
- * Migration: Create active_sessions table for cloud sync
+ * Migration: Create active_sessions table
  * Version: 025
  *
- * This table tracks the currently active session for each user across all devices.
- * Unlike the 'sessions' table (which is local-only), this table IS synced to cloud.
- * This enables cross-device session awareness and single-device enforcement.
+ * This table tracks the currently active session for each user across the app.
+ * It supports single-device enforcement and session visibility.
  *
  * When a user logs in:
- * 1. Local session is created in 'sessions' table (local-only)
- * 2. Active session record is created/updated in 'active_sessions' table (synced)
- * 3. Cloud sync pushes active session to cloud
- * 4. Other devices pull and detect if they've been logged out
+ * 1. Local session is created in 'sessions' table
+ * 2. Active session record is created/updated in 'active_sessions' table
+ * 3. The online service reflects the active session state
+ * 4. Other sessions can detect takeover on validation
  */
 
 const MIGRATION_VERSION = 25;

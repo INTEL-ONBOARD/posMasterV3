@@ -2,7 +2,7 @@
  * Migration: Add updated_at column to restock_transactions table
  * Version: 024
  *
- * This column is required for version-based conflict resolution during cloud sync.
+ * This column is used for version-based conflict resolution and change tracking.
  * Without updated_at, the sync system cannot compare timestamps to determine
  * which record (local or cloud) is newer.
  */

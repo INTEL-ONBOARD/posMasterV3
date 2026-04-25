@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { restockApi, disposedApi } from "../../api/localApi";
 import { ChevronDown, ChevronUp, Package, Layers, Building2, RotateCcw, Search, ArrowLeft, Plus, Trash2, Sparkles } from "lucide-react";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
@@ -9,7 +9,7 @@ import { useReactiveData, TABLES } from "../../store";
 import { useScannerSearch } from "../../hooks/useScannerSearch";
 
 //date conversions
-import { appendCurrentTimeToDate, extractDateOnly, getCurrentDate, getCurrentDateTime } from "../../util/common/date";
+import { appendCurrentTimeToDate, extractDateOnly, getCurrentDate } from "../../util/common/date";
 //form validations
 import { validateReturnForm, validateStockForm } from "../../util/inventory/validate";
 import StatusModal from "../../components/StatusModal.jsx";
@@ -72,7 +72,7 @@ function InventoryRestock({ isActive }) {
     { enabled: isActive }
   );
 
-  const { data: inventoryItems, loading: isLoading, refetch: refetchItems } = useReactiveData(
+  const { data: inventoryItems, loading: isLoading } = useReactiveData(
     TABLES.ITEMS,
     null,
     { enabled: isActive }
@@ -117,7 +117,7 @@ function InventoryRestock({ isActive }) {
   };
 
   // Filter items based on search item name, batch code, category and availability
-  const filteredItems = useMemo(() => {
+  const _filteredItems = useMemo(() => {
     if (!inventoryItems || inventoryItems.length === 0) return [];
     return inventoryItems.filter((item) => {
       // Category match: either "All" or item.category.type equals selected
@@ -298,11 +298,11 @@ function InventoryRestock({ isActive }) {
 
   //Just in case for wenuja
   // Calculate total discount amounts for display
-  const totalStockDiscount = selectedStockItemList.reduce((total, item) => {
+  const _totalStockDiscount = selectedStockItemList.reduce((total, item) => {
     return total + ((item.item_discount_amt || 0) * item.quantity);
   }, 0);
 
-  const totalReturnDiscount = selectedReturnItemList.reduce((total, item) => {
+  const _totalReturnDiscount = selectedReturnItemList.reduce((total, item) => {
     return total + ((item.item_discount_amt || 0) * item.quantity);
   }, 0);
 
@@ -817,7 +817,7 @@ function InventoryRestock({ isActive }) {
       }));
     }
   }
-  const setReturnBatchCodeFromEntry = (stock) => {
+  const _setReturnBatchCodeFromEntry = () => {
     // console.log(stock);
     // setFormDataReturnItem(prev => ({ ...prev, stock: stock }));
   }
@@ -1124,7 +1124,7 @@ function InventoryRestock({ isActive }) {
 
 
 
-  const registerTransaction = async (e) => {
+  const registerTransaction = async () => {
     // Validate transaction before proceeding
     if (!validateTransaction()) {
       statusLog.error("Please fix validation errors before submitting");
@@ -1657,7 +1657,7 @@ function InventoryRestock({ isActive }) {
                     ) : (
                       stockEntries.map((s, i) => (
                         <div key={s.batch_code + i} className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]"
-                        onClick={()=>setReturnBatchCodeFromEntry(s.batch_code)}>
+                        onClick={()=>_setReturnBatchCodeFromEntry(s.batch_code)}>
                           <div className="flex flex-col">
                             <span className="text-md font-bold">SKU:</span>
                             <span className="text-gray-600">{s.sku}</span>

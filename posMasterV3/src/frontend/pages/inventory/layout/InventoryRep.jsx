@@ -172,7 +172,6 @@ const InventoryRep = React.forwardRef(function InventoryRep(
     onRowClick,
     title = "Inventory Status Report",
     subTitle = "Current stock availability overview",
-    footerHeight = "80px",
   },
   ref
 ) {

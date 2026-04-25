@@ -1,10 +1,10 @@
 /**
  * Local API Bridge
  *
- * This module provides the same interface as the cloud API but uses
- * the local SQLite backend via Electron IPC instead.
+ * This module preserves the renderer API interface while routing screen data
+ * through the MongoDB-backed online API facade.
  *
- * Usage: Import this instead of apiClient/client for local operations.
+ * Usage: Import this instead of apiClient/client for application data operations.
  *
  * @module localApi
  */
@@ -287,17 +287,17 @@
  */
 
 /**
- * @typedef {Object} CloudSyncStatus
+ * @typedef {Object} OnlineBackendStatus
  * @property {boolean} isOnline - Whether internet is available
- * @property {boolean} isSyncing - Whether sync is in progress
- * @property {string|null} lastSyncTime - Last successful sync time
- * @property {string} syncStatus - Current status ('idle'|'syncing'|'completed'|'failed'|'offline'|'disabled')
+ * @property {boolean} isSyncing - Compatibility flag; always false in online-only mode
+ * @property {string|null} lastSyncTime - Last successful status update time
+ * @property {string} syncStatus - Current status ('idle'|'checking'|'connected'|'failed'|'unavailable'|'disabled')
  * @property {string} status - Alias of syncStatus
  * @property {string|null} syncError - Last error message
- * @property {boolean} autoSyncEnabled - Whether auto-sync is enabled
+ * @property {boolean} autoSyncEnabled - Compatibility flag; always false in online-only mode
  * @property {boolean} syncEnabled - Alias of autoSyncEnabled
- * @property {number} pendingCount - Number of changes waiting to sync
- * @property {number} pendingChangesCount - Number of changes waiting to sync
+ * @property {number} pendingCount - Compatibility count; always zero in online-only mode
+ * @property {number} pendingChangesCount - Compatibility count; always zero in online-only mode
  * @property {boolean} mysqlInitialized - Whether MySQL connection is ready
  * @property {string} connectionQuality - Current connection quality
 */
@@ -1431,8 +1431,8 @@ export const authApi = {
     },
 
     /**
-     * Check session with cloud sync (for single-device enforcement)
-     * This syncs active_sessions from cloud first, then validates the session locally.
+     * Check session with the online auth service (for single-device enforcement)
+     * This refreshes active session state before validating the token locally.
      * If another device has logged in, this will return forcedLogout: true
      * @param {string} token - Session token
      * @returns {Promise<{valid: boolean, forcedLogout?: boolean, message?: string}>}
@@ -1445,7 +1445,7 @@ export const authApi = {
 
     /**
      * Fast session validation (optimized for every API call)
-     * Uses caching and background sync for speed
+     * Uses caching and online refresh for speed
      * @param {string} token - Session token
      * @returns {Promise<{valid: boolean, forcedLogout?: boolean, message?: string}>}
      */
@@ -1728,17 +1728,6 @@ export const appSettingsApi = {
     },
 
     /**
-     * Set cloud sync enabled
-     * @param {boolean} enabled
-     * @returns {Promise<ApiResponse>}
-     */
-    setCloudSync: async (enabled) => {
-        const api = getElectronAPI();
-        if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.appSettings.setCloudSync(enabled);
-    },
-
-    /**
      * Send test notification
      * @returns {Promise<ApiResponse>}
      */
@@ -1758,16 +1747,6 @@ export const appSettingsApi = {
         return api.appSettings.applyAll();
     },
 
-    /**
-     * Check if cloud sync is enabled
-     * @returns {Promise<ApiResponse & {data: {enabled: boolean}}>}
-     */
-    isCloudSyncEnabled: async () => {
-        const api = getElectronAPI();
-        if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.appSettings.isCloudSyncEnabled();
-    },
-
     // Idle tracking is handled entirely in the frontend (useActivityTracker hook).
     // This stub exists so the API surface is complete and callers don't throw.
     resetActivity: () => Promise.resolve({ status: 'success' })
@@ -1778,114 +1757,46 @@ export const appSettingsApi = {
 // ============================================
 
 /**
- * Cloud Sync API - Manage cloud database synchronization
+ * Online Backend API - Manage the MongoDB-backed service status and actions
  * @namespace
  */
-export const cloudSyncApi = {
+export const onlineStatusApi = {
     /**
-     * Get current sync status
-     * @returns {Promise<ApiResponse & {data: CloudSyncStatus}>}
+     * Get current online backend status
+     * @returns {Promise<ApiResponse & {data: OnlineBackendStatus}>}
      */
     getStatus: async () => {
-        const api = getElectronAPI();
-        if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.cloudSync.getStatus();
+        return onlineCall(async (api) => {
+            const ready = await api.ready();
+            return {
+                status: 'success',
+                data: {
+                    isOnline: ready?.status === 'success',
+                    mysqlInitialized: false,
+                    mongoInitialized: ready?.status === 'success',
+                    autoSyncEnabled: false,
+                    syncStatus: 'online-only',
+                    pendingCount: 0
+                }
+            };
+        });
     },
 
     /**
-     * Trigger immediate sync to cloud
-     * @returns {Promise<ApiResponse & {data: {synced: number, failed: number}}>}
-     */
-    syncNow: async () => {
-        const api = getElectronAPI();
-        if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.cloudSync.syncNow();
-    },
-
-    /**
-     * Enable or disable auto-sync
-     * @param {boolean} enabled - Whether to enable auto-sync
-     * @returns {Promise<ApiResponse>}
-     */
-    setAutoSync: async (enabled) => {
-        const api = getElectronAPI();
-        if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.cloudSync.setAutoSync(enabled);
-    },
-
-    /**
-     * Check network connectivity
+     * Refresh online backend status
      * @returns {Promise<ApiResponse & {data: {isOnline: boolean}}>}
      */
-    checkNetwork: async () => {
-        const api = getElectronAPI();
-        if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.cloudSync.checkNetwork();
+    refreshStatus: async () => {
+        return { status: 'success', data: { synced: 0, skipped: true }, message: 'Online-only mode does not use local sync jobs' };
     },
 
     /**
-     * Pull users from cloud (cloud is the primary source for users)
-     * Use this to refresh local user data from the cloud database
-     * @returns {Promise<ApiResponse & {data: {status: string, users: number, userSettings: number}}>}
-     * @example
-     * const result = await cloudSyncApi.pullUsers();
-     * // { status: 'success', data: { status: 'success', users: 5, userSettings: 5 } }
+     * Check connection to the online backend
+     * @returns {Promise<ApiResponse & {data: {isOnline: boolean}}>}
      */
-    pullUsers: async () => {
-        const api = getElectronAPI();
-        if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.cloudSync.pullUsers();
+    checkConnection: async () => {
+        return onlineCall((api) => api.ready());
     },
-
-    /**
-     * Pull branches from cloud (safety net when branch selector shows empty on fresh install)
-     * @returns {Promise<ApiResponse>}
-     */
-    pullBranches: async () => {
-        const api = getElectronAPI();
-        if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.cloudSync.pullBranches();
-    },
-
-    /**
-     * Push a user to cloud
-     * Use this to sync a locally created/updated user to the cloud
-     * @param {User} user - The user object to push to cloud
-     * @returns {Promise<ApiResponse & {data: {status: string}}>}
-     * @example
-     * const result = await cloudSyncApi.pushUser(newUser);
-     * // { status: 'success', data: { status: 'success' } }
-     */
-    pushUser: async (user) => {
-        const api = getElectronAPI();
-        if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.cloudSync.pushUser(user);
-    },
-
-    /**
-     * Force ensure MySQL schema exists (creates tables if missing)
-     * Use this to fix sync issues when cloud tables are missing
-     * @returns {Promise<ApiResponse & {data: {success: boolean, message: string}}>}
-     * @example
-     * const result = await cloudSyncApi.ensureSchema();
-     * // { status: 'success', data: { success: true, message: 'MySQL schema created/verified successfully' } }
-     */
-    ensureSchema: async () => {
-        const api = getElectronAPI();
-        if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.cloudSync.ensureSchema();
-    },
-
-    /**
-     * Initialize MySQL connection manually
-     * Use this to reconnect to MySQL if connection was lost
-     * @returns {Promise<ApiResponse & {data: {initialized: boolean}}>}
-     */
-    initializeMySQL: async () => {
-        const api = getElectronAPI();
-        if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.cloudSync.initializeMySQL();
-    }
 };
 
 /**
@@ -2108,13 +2019,13 @@ export const loginHistoryApi = {
  * Subscribe to real-time data changes from the backend
  * @namespace
  */
-export const dataChangeApi = {
+export const onlineEventApi = {
     /**
      * Subscribe to data changes for specific tables
      * @param {Function} callback - Callback function receiving DataChangeEvent
      * @returns {Function} Unsubscribe function
      * @example
-     * const unsubscribe = dataChangeApi.onDataChange((event) => {
+     * const unsubscribe = onlineEventApi.onDataChange((event) => {
      *   console.log('Data changed:', event.table, event.operation);
      *   if (event.table === 'items') {
      *     refetchItems();
@@ -2124,25 +2035,25 @@ export const dataChangeApi = {
      */
     onDataChange: (callback) => {
         const api = getElectronAPI();
-        if (!api?.onDataChange) {
+        if (!api?.online?.onDomainEvent) {
             console.warn('onDataChange not available in this environment');
             return () => {};
         }
-        return api.onDataChange(callback);
+        return api.online.onDomainEvent(callback);
     },
 
     /**
-     * Subscribe to sync status changes
-     * @param {Function} callback - Callback function receiving sync status
+     * Subscribe to realtime status changes
+     * @param {Function} callback - Callback function receiving status
      * @returns {Function} Unsubscribe function
      */
     onSyncStatusChange: (callback) => {
         const api = getElectronAPI();
-        if (!api?.onSyncStatusChange) {
+        if (!api?.online?.onRealtimeStatus) {
             console.warn('onSyncStatusChange not available in this environment');
             return () => {};
         }
-        return api.onSyncStatusChange(callback);
+        return api.online.onRealtimeStatus(callback);
     }
 };
 
@@ -2280,7 +2191,7 @@ export const branchContextApi = {
  */
 export const teaCoopApi = {
     /**
-     * Initialize Tea Coop service (starts background sync)
+     * Initialize Tea Coop service (starts background refresh)
      * @returns {Promise<ApiResponse>}
      */
     initialize: async () => {
@@ -2290,7 +2201,7 @@ export const teaCoopApi = {
     },
 
     /**
-     * Get all Tea Coop members from local database
+     * Get all Tea Coop members from the online backend
      * @returns {Promise<ApiResponse & {data: TeaCoopMember[]}>}
      */
     getAllMembers: async () => {
@@ -2370,7 +2281,7 @@ export const teaCoopApi = {
     },
 
     /**
-     * Get Tea Coop sync status
+     * Get Tea Coop service status
      * @returns {Promise<ApiResponse & {data: {isSyncing: boolean, lastSyncTime: string}}>}
      */
     getStatus: async () => {
@@ -2454,6 +2365,289 @@ export const disposedApi = {
 };
 
 // ============================================
+// ONLINE-ONLY OVERRIDES
+// ============================================
+
+const onlineUnavailable = () => ({ status: 'error', message: 'Online API is not available' });
+
+const getOnlineAPI = () => {
+    const api = getElectronAPI();
+    return api?.online || null;
+};
+
+const onlineCall = async (operation) => {
+    const api = getOnlineAPI();
+    if (!api) return onlineUnavailable();
+    try {
+        return await operation(api);
+    } catch (error) {
+        return { status: 'error', message: error.message || 'Online request failed' };
+    }
+};
+
+const normalizeCollectionRecord = (record) => {
+    if (!record || typeof record !== 'object') return record;
+    const id = record.id ?? record._id;
+    return {
+        ...record,
+        id,
+        _id: record._id ?? id
+    };
+};
+
+const normalizeCollectionResponse = (response) => {
+    if (Array.isArray(response?.data)) {
+        return {
+            ...response,
+            data: response.data.map(normalizeCollectionRecord)
+        };
+    }
+    if (response?.data && typeof response.data === 'object') {
+        return {
+            ...response,
+            data: normalizeCollectionRecord(response.data)
+        };
+    }
+    return response;
+};
+
+const onlineCollectionApi = (collection, options = {}) => ({
+    getAll: async (query = {}) => normalizeCollectionResponse(
+        await onlineCall((api) => api.list(collection, query))
+    ),
+    getActive: async () => {
+        const response = normalizeCollectionResponse(await onlineCall((api) => api.list(collection, {})));
+        if (Array.isArray(response?.data)) {
+            response.data = response.data.filter((row) => row.is_active !== false && row.isActive !== false && row.status !== false);
+        }
+        return response;
+    },
+    getById: async (id) => normalizeCollectionResponse(
+        await onlineCall((api) => api.get(collection, id))
+    ),
+    search: async (searchTerm = '') => {
+        const response = normalizeCollectionResponse(await onlineCall((api) => api.list(collection, {})));
+        const term = String(searchTerm).toLowerCase();
+        if (Array.isArray(response?.data) && term) {
+            response.data = response.data.filter((row) =>
+                Object.values(row).some((value) =>
+                    typeof value === 'string' && value.toLowerCase().includes(term)
+                )
+            );
+        }
+        return response;
+    },
+    create: async (data) => normalizeCollectionResponse(
+        await onlineCall((api) => api.create(collection, options.toOnline ? options.toOnline(data) : data))
+    ),
+    update: async (id, data) => normalizeCollectionResponse(
+        await onlineCall((api) => api.update(collection, id, options.toOnline ? options.toOnline(data) : data))
+    ),
+    delete: async (id) => onlineCall((api) => api.delete(collection, id)),
+    toggleActive: async (id) => {
+        const current = normalizeCollectionResponse(await onlineCall((api) => api.get(collection, id)));
+        if (current.status !== 'success') return current;
+        const currentActive = current.data?.isActive ?? current.data?.is_active ?? current.data?.status ?? true;
+        return normalizeCollectionResponse(await onlineCall((api) => api.update(collection, id, { isActive: !currentActive, is_active: !currentActive, status: !currentActive })));
+    }
+});
+
+const installOnlineOnlyOverrides = () => {
+    Object.assign(categoryApi, onlineCollectionApi('categories'), {
+        getTypes: async () => {
+            const response = await categoryApi.getAll();
+            if (Array.isArray(response?.data)) {
+                return { status: 'success', data: [...new Set(response.data.map((row) => row.type).filter(Boolean))] };
+            }
+            return response;
+        }
+    });
+    Object.assign(uomApi, onlineCollectionApi('units_of_measurement'));
+    Object.assign(branchApi, onlineCollectionApi('branches'));
+    Object.assign(supplierApi, onlineCollectionApi('suppliers'), {
+        updateAmounts: async (id, currentAmount, previousAmount) =>
+            onlineCall((api) => api.update('suppliers', id, { current_amount: currentAmount, previous_amount: previousAmount }))
+    });
+    Object.assign(itemApi, onlineCollectionApi('items'), {
+        getAllExtended: async () => itemApi.getAll(),
+        getByIdExtended: async (id) => itemApi.getById(id),
+        getBySku: async (sku) => {
+            const response = await itemApi.getAll();
+            if (Array.isArray(response?.data)) {
+                return { status: 'success', data: response.data.find((row) => row.sku === sku) || null };
+            }
+            return response;
+        }
+    });
+    Object.assign(stockApi, onlineCollectionApi('stock_batches'), {
+        getAllWithItems: async () => stockApi.getAll(),
+        getBySku: async (sku) => stockApi.search(sku),
+        getLowStock: async () => {
+            const response = await stockApi.getAll();
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.filter((row) => Number(row.quantity || 0) <= Number(row.threshold_limit || row.thresholdLimit || 0));
+            }
+            return response;
+        },
+        getExpiring: async () => stockApi.getAll(),
+        getValue: async () => {
+            const response = await stockApi.getAll();
+            if (!Array.isArray(response?.data)) return response;
+            const totalValue = response.data.reduce((sum, row) => sum + (Number(row.quantity || 0) * Number(row.retailPrice || row.retail_price || 0)), 0);
+            return { status: 'success', data: { totalValue } };
+        },
+        upsert: async (data) => stockApi.create(data),
+        updateQuantity: async (id, quantity) => stockApi.update(id, { quantity }),
+        updatePrices: async (id, stockPrice, retailPrice, changedBy, reason) =>
+            stockApi.update(id, { stock_price: stockPrice, retail_price: retailPrice, stockPrice, retailPrice, changedBy, reason })
+    });
+    Object.assign(restockApi, onlineCollectionApi('restock_transactions'), {
+        getStockItems: async () => stockApi.getAllWithItems(),
+        getByInvoice: async (invoiceNo) => {
+            const response = await restockApi.getAll();
+            if (Array.isArray(response?.data)) {
+                return { status: 'success', data: response.data.find((row) => row.invoice_no === invoiceNo || row.invoiceNo === invoiceNo) || null };
+            }
+            return response;
+        },
+        create: async (data) => onlineCall((api) => api.create('restock_transactions', data))
+    });
+    Object.assign(memberApi, onlineCollectionApi('members'), {
+        getByMemberNo: async (memberNo) => {
+            const response = await memberApi.getAll();
+            if (Array.isArray(response?.data)) {
+                return { status: 'success', data: response.data.find((row) => row.member_no === memberNo || row.memberNo === memberNo) || null };
+            }
+            return response;
+        }
+    });
+    Object.assign(salesApi, onlineCollectionApi('sales'), {
+        generateInvoiceNo: async () => onlineCall((api) => api.generateInvoiceNo()),
+        create: async (data) => onlineCall((api) => api.createSale(data)),
+        hold: async (data) => onlineCall((api) => api.create('sales', { ...data, is_held: true, isHeld: true })),
+        getHeldOrders: async () => {
+            const response = await salesApi.getAll();
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.filter((row) => row.is_held || row.isHeld);
+            }
+            return response;
+        },
+        completeHeld: async (id, data = {}) => salesApi.update(id, { ...data, is_held: false, isHeld: false }),
+        cancelSale: async (id) => salesApi.update(id, { status: 'cancelled' }),
+        returnSaleItems: async (id, items, reason) => salesApi.update(id, { returned_items: items, returnReason: reason })
+    });
+    Object.assign(paymentMethodApi, onlineCollectionApi('payment_methods'));
+    Object.assign(userApi, onlineCollectionApi('users'), {
+        create: async (data) => onlineCall((api) => api.register(data)),
+        resetPassword: async () => ({ status: 'error', message: 'Password reset must use the online auth service endpoint' })
+    });
+    Object.assign(authApi, {
+        login: async (email, password, deviceInfo = '') => onlineCall((api) => api.login(email, password, deviceInfo)),
+        register: async (userData) => onlineCall((api) => api.register(userData)),
+        logout: async () => onlineCall((api) => api.logout()),
+        validateSession: async () => onlineCall((api) => api.validateSession()),
+        checkSessionWithSync: async () => onlineCall((api) => api.validateSession()),
+        validateSessionFast: async () => onlineCall((api) => api.validateSession()),
+        getCurrentUser: async () => {
+            const stored = sessionStorage.getItem('user') || localStorage.getItem('user');
+            return stored ? JSON.parse(stored) : null;
+        }
+    });
+    Object.assign(settingsApi, onlineCollectionApi('user_settings'), {
+        getUserSettings: async (userId) => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('user_settings', { userId })));
+            if (response?.status !== 'success' || !Array.isArray(response.data)) return response;
+            const settingsRecord = response.data[0] || {};
+            return {
+                ...response,
+                data: {
+                    ...settingsRecord,
+                    settings: settingsRecord.settings || settingsRecord
+                }
+            };
+        },
+        getCurrentUserWithSettings: async () => authApi.getCurrentUser(),
+        getAppSettings: async () => normalizeCollectionResponse(await onlineCall((api) => api.list('app_settings', {}))),
+        getAppSetting: async (key) => {
+            const response = await settingsApi.getAppSettings();
+            if (Array.isArray(response?.data)) {
+                return { status: 'success', data: response.data.find((row) => row.key === key) || null };
+            }
+            return response;
+        },
+        updateAppSettings: async (settings) => onlineCall((api) => api.create('app_settings', { settings })),
+        updateAppSetting: async (key, value) => onlineCall((api) => api.create('app_settings', { key, value }))
+    });
+    Object.assign(appSettingsApi, {
+        getAll: async () => ({ status: 'success', data: { online_only: true } })
+    });
+    Object.assign(onlineStatusApi, {
+        getStatus: async () => onlineCall(async (api) => {
+            const ready = await api.ready();
+            return {
+                status: 'success',
+                data: {
+                    isOnline: ready?.status === 'success',
+                    mysqlInitialized: false,
+                    mongoInitialized: ready?.status === 'success',
+                    autoSyncEnabled: false,
+                    syncStatus: 'online-only',
+                    pendingCount: 0
+                }
+            };
+        }),
+        refreshStatus: async () => ({ status: 'success', data: { synced: 0, skipped: true }, message: 'Online-only mode does not use local sync jobs' }),
+        checkConnection: async () => onlineCall((api) => api.ready())
+    });
+    Object.assign(loginHistoryApi, onlineCollectionApi('login_history'));
+    Object.assign(branchContextApi, {
+        getCurrentBranch: async () => {
+            const user = await authApi.getCurrentUser();
+            if (!user?.branchId && !user?.branch_id) return { status: 'success', data: null };
+            return branchApi.getById(user.branchId || user.branch_id);
+        },
+        setCurrentBranch: async (branchId) => {
+            localStorage.setItem('selectedBranchId', branchId);
+            return branchApi.getById(branchId);
+        },
+        clearCurrentBranch: async () => {
+            localStorage.removeItem('selectedBranchId');
+            return { status: 'success', data: null };
+        },
+        isRequired: async () => ({ status: 'success', data: { required: true } }),
+        getAvailableBranches: async () => branchApi.getActive(),
+        validateOperation: async () => ({ status: 'success', valid: true }),
+        onBranchChanged: () => () => {}
+    });
+    Object.assign(teaCoopApi, onlineCollectionApi('tea_coop_members'), {
+        getAllMembers: async () => teaCoopApi.getAll(),
+        getMemberById: async (memberId) => teaCoopApi.getById(memberId),
+        searchMembers: async (term) => teaCoopApi.search(term),
+        getPaymentHistory: async (memberId) => normalizeCollectionResponse(await onlineCall((api) => api.list('tea_coop_payments', { memberId }))),
+        syncMembers: async () => ({ status: 'error', message: 'Tea Coop sync must run in the online backend, not the desktop client' }),
+        syncPayments: async () => ({ status: 'error', message: 'Tea Coop sync must run in the online backend, not the desktop client' }),
+        refreshMember: async (memberId) => teaCoopApi.getMemberById(memberId),
+        getStatus: async () => ({ status: 'success', data: { isSyncing: false, onlineOnly: true } }),
+        onSyncEvent: () => () => {}
+    });
+    Object.assign(offersApi, onlineCollectionApi('offers'));
+    Object.assign(disposedApi, onlineCollectionApi('disposed_items'), {
+        getByDateRange: async (startDate, endDate) => {
+            const response = await disposedApi.getAll();
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.filter((row) => {
+                    const date = row.createdAt || row.created_at || row.date;
+                    return !date || (!startDate || date >= startDate) && (!endDate || date <= endDate);
+                });
+            }
+            return response;
+        }
+    });
+};
+
+installOnlineOnlyOverrides();
+
+// ============================================
 // DEFAULT EXPORT
 // ============================================
 
@@ -2474,10 +2668,10 @@ export default {
     auth: authApi,
     users: userApi,
     settings: settingsApi,
-    cloudSync: cloudSyncApi,
+    onlineStatus: onlineStatusApi,
     updates: updatesApi,
     loginHistory: loginHistoryApi,
-    dataChange: dataChangeApi,
+    onlineEvents: onlineEventApi,
     branchContext: branchContextApi,
     teaCoop: teaCoopApi,
     offers: offersApi,

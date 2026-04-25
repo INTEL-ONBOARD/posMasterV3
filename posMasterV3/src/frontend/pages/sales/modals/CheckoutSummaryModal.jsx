@@ -188,7 +188,6 @@ function CheckoutSummaryModal({
   // Credit validation — any non-guest member can use credit regardless of balance
   const availableCredit = selectedMember?.credit_balance || 0;
   const isCredit = selectedPaymentMethod?.type === 'credit';
-  const canUseCredit = !selectedMember?.is_guest;
   const creditWarning = false;
 
   const formatCurrency = (amount) => `Rs. ${(parseFloat(amount) || 0).toFixed(2)}`;
@@ -213,7 +212,7 @@ function CheckoutSummaryModal({
 
     try {
       // Call the parent's confirm handler which processes the sale
-      const result = await onConfirmSale(checkoutData);
+      await onConfirmSale(checkoutData);
 
       // Show success animation - keep isProcessing true during animation
       // to prevent user interaction, but it will be reset when modal closes
@@ -437,7 +436,7 @@ function CheckoutSummaryModal({
                         <div className="space-y-2">
                           {cashMethods.map((method) => {
                             const IconComponent = getMethodIcon(method.icon);
-                            const colors = colorClasses[method.color] || colorClasses.emerald;
+                            const _colors = colorClasses[method.color] || colorClasses.emerald;
                             const isSelected = selectedPaymentMethod?.id === method.id;
                             return (
                               <button

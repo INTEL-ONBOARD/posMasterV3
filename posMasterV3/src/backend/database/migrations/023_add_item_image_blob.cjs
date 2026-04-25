@@ -2,8 +2,8 @@
  * Migration: Add item_image_blob column to items table
  * Version: 023
  *
- * Adds a BLOB column to store item images directly in the database
- * as base64-encoded data for offline support.
+ * Adds a BLOB column to store item images directly in the database.
+ * This remains for compatibility with older data imports.
  */
 
 const MIGRATION_VERSION = 23;

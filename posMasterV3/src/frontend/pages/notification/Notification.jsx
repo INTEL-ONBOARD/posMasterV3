@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Bell, HelpCircle, Send, CheckCircle, XCircle, Trash2, BellRing,
   TrendingUp, Package, Users, AlertTriangle, DollarSign, ShoppingCart,
@@ -47,9 +47,9 @@ function Dashboard() {
   const { data: members, loading: loadingMembers, refetch: refetchMembers } = useReactiveData(TABLES.MEMBERS);
   const { data: suppliers, loading: loadingSuppliers, refetch: refetchSuppliers } = useReactiveData(TABLES.SUPPLIERS);
   const { data: users, loading: loadingUsers, refetch: refetchUsers } = useReactiveData(TABLES.USERS);
-  const { data: loginHistory, loading: loadingLoginHistory, refetch: refetchLoginHistory } = useReactiveData(TABLES.LOGIN_HISTORY);
+  const { loading: loadingLoginHistory, refetch: refetchLoginHistory } = useReactiveData(TABLES.LOGIN_HISTORY);
 
-  // Get sync status
+  // Get realtime status
   const { isOnline } = useSyncStatus();
 
   // Combined loading state

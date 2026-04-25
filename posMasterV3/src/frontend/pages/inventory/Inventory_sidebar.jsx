@@ -50,7 +50,7 @@ function InventorySidebar({
             setPermissions(response.data.settings.permissions.InventoryAccess);
           }
         }
-      } catch (error) {
+      } catch {
         // Silent fail - permissions will default to showing all
       }
     };

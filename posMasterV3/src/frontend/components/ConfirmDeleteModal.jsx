@@ -1,13 +1,10 @@
 import { X, AlertTriangle, Package } from "lucide-react";
 import { useState, useEffect } from "react";
-import ItemCard from "./ItemCard";
 import registerItemService from "../api/services/inventory/registerItemService";
 
 
 
 export default function ConfirmDeleteModal({ open, item, onCancel, onSuccess }) {
-  if (!open || !item) return null;
-
   const [status, setStatus] = useState(null); // 'success', 'fail', 'stock_error', or null
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -55,7 +52,7 @@ export default function ConfirmDeleteModal({ open, item, onCancel, onSuccess }) 
     }
   }, [status]);
 
-  return (
+  return open && item ? (
     <div className="fixed z-50 inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm" style={{ left: '12.5%' }}>
       <div className="bg-white shadow-2xl rounded-2xl p-6 w-[700px] max-w-full relative animate-in fade-in zoom-in duration-200">
         {/* Close Button */}
@@ -224,5 +221,5 @@ export default function ConfirmDeleteModal({ open, item, onCancel, onSuccess }) 
         )}
       </div>
     </div>
-  );
+  ) : null;
 }

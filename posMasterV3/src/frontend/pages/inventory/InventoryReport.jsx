@@ -16,11 +16,10 @@ export default function InventoryReport({ isActive }) {
   const [searchTermBasic, setSearchTermBasic] = useState("");
   const [searchLoadingBasic, setSearchLoadingBasic] = useState(false);
   const [isLoadingBasic, setIsLoadingBasic] = useState(true);
-  const [isLoadingRestock, setIsLoadingRestock] = useState(false);
-
-  const [sortOrder, setSortOrder] = useState("name_asc");
-  const [filterCategory, setFilterCategory] = useState("all");
-  const [filterStock, setFilterStock] = useState("all");
+  const [isLoadingRestock] = useState(false);
+  const [sortOrder, _setSortOrder] = useState("name_asc");
+  const [filterCategory, _setFilterCategory] = useState("all");
+  const [filterStock, _setFilterStock] = useState("all");
 
   const [inventoryItems, setInventoryItems] = useState([]);
   const inventoryReportRef = useRef(null); // single ref pointing to basic inventory printable container
@@ -28,7 +27,7 @@ export default function InventoryReport({ isActive }) {
   const [pdfGenerating, setPdfGenerating] = useState(false);
 
   // print basic report
-  const generateInventoryReportPdf2 = async () => {
+  const _generateInventoryReportPdf2 = async () => {
   if (pdfGenerating) return;
 
   try {
@@ -68,7 +67,7 @@ export default function InventoryReport({ isActive }) {
 };
 
 // Replace your pdf-generating function with this DOM-printing version
-const generateInventoryReportPdfOld = async () => {
+const _generateInventoryReportPdfOld = async () => {
   if (pdfGenerating) return;
 
   try {
@@ -344,7 +343,7 @@ const generateInventoryReportPdf = () => {
 
 
   // print restock report
-  const generateDailyReportPdfOld = async () => {
+  const _generateDailyReportPdfOld = async () => {
   if (pdfGenerating) return;
 
   try {
@@ -465,12 +464,32 @@ const generateDailyReportPdf = () => {
 
   // Calculate summary statistics
   const totalItems = inventoryItems.length;
-  const totalValue = inventoryItems.reduce((sum, item) => sum + (parseFloat(item.retail_price || 0) * (item.quantity || 0)), 0);
-  const lowStockItems = inventoryItems.filter(item => {
+  const _totalValue = inventoryItems.reduce((sum, item) => sum + (parseFloat(item.retail_price || 0) * (item.quantity || 0)), 0);
+  const _lowStockItems = inventoryItems.filter(item => {
     const percentFull = (item.quantity / item.maximum_capacity) * 100;
     return percentFull <= (item.threshold_limit || 30);
   }).length;
-  const categories = [...new Set(inventoryItems.map(item => item.category?.type).filter(Boolean))];
+  const _categories = [...new Set(inventoryItems.map(item => item.category?.type).filter(Boolean))];
+
+  const generatePettyCashReportPdf = () => {
+    const pages = document.querySelectorAll(".petty-cash-page");
+    if (!pages.length) {
+      alert("No petty cash pages found");
+      return;
+    }
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Popup blocked. Please allow popups to print.");
+      return;
+    }
+
+    const contentHtml = Array.from(pages).map((page) => page.outerHTML).join("");
+    printWindow.document.open();
+    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8" /><title>Petty Cash Report</title></head><body>${contentHtml}<script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</script></body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+  };
 
   // Search handler
   const handleSearch = (e) => {

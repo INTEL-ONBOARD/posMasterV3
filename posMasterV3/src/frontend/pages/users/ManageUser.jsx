@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { X, ChevronDown, ChevronUp, Upload, RefreshCw } from "lucide-react";
-import { userApi, authApi, branchApi, settingsApi } from "../../api/localApi";
+import { userApi, authApi, settingsApi } from "../../api/localApi";
 import { useReactiveData, TABLES } from "../../store";
 import StatusModal from "../../components/StatusModal.jsx";
 
@@ -129,7 +129,7 @@ function ManageUser() {
       try {
         const parsed = JSON.parse(roles);
         return Array.isArray(parsed) ? parsed : [parsed];
-      } catch (e) {
+      } catch {
         return [roles];
       }
     }
@@ -253,7 +253,7 @@ function ManageUser() {
         }
         console.log("[ManageUser] Loaded saved role permissions and custom roles");
       }
-    } catch (error) {
+    } catch {
       console.log("[ManageUser] Using default role permissions");
     }
   };
@@ -424,17 +424,6 @@ function ManageUser() {
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
-  };
-
-  // Handle permission toggle
-  const handlePermissionChange = (category, permission) => {
-    setPermissions((prev) => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        [permission]: !prev[category][permission],
-      },
-    }));
   };
 
   // Compress image to reduce storage size
@@ -667,7 +656,7 @@ function ManageUser() {
         full_name: formData.full_name.trim(),
         roles: formData.roles,
         branch_id: formData.branch_id || null,
-        is_active: formData.is_active ? 1 : 0, // Convert boolean to integer for SQLite
+        is_active: formData.is_active ? 1 : 0, // Preserve the existing numeric active flag contract
       };
 
       const response = await userApi.update(formData.id, updateData);

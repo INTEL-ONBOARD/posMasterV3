@@ -18,7 +18,7 @@ function SupplierReg() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [searchCategory, setSearchCategory] = useState("All");
-  const [searchAvailability, setSearchAvailability] = useState("All");
+  const [searchAvailability, _setSearchAvailability] = useState("All");
 
   // Search handler
   const handleSearch = (e) => {
@@ -157,7 +157,7 @@ function SupplierReg() {
 
   //request data validation
   const isRequestDataValid = (requestData) => {
-    const { basic_info, financial_info, account_info: payment_info } = requestData;
+    const { basic_info, financial_info: _financial_info, account_info: _payment_info } = requestData;
 
     // Check basic_info fields
     if (

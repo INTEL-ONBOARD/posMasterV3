@@ -7,17 +7,13 @@ import { extractDateOnly } from "../../../util/common/date";
 import { restockApi } from "../../../api/localApi";
 
 function ViewItemModal({ isOpen, closeModal, item }) {
-  if (!isOpen) return null;
-
   //to populate recent batch code changes
   const [stockEntries, setStockEntries] = useState([]);
 
-  useEffect (() => {
-    fetchStockEntries(item.sku)
-  }, [item.sku]);
-
-  //const imageSrc = item.image = null || placeholderImg;
-  const imageSrc = item.item_image_url || item.item_image_blob || placeholderImg;
+  useEffect(() => {
+    if (!isOpen || !item?.sku) return;
+    fetchStockEntries(item.sku);
+  }, [isOpen, item?.sku]);
 
   // fetch stock entries for a given SKU
   const fetchStockEntries = async (sku) => {
@@ -45,21 +41,24 @@ function ViewItemModal({ isOpen, closeModal, item }) {
     }
   };
 
+  //const imageSrc = item.image = null || placeholderImg;
+  const imageSrc = item?.item_image_url || item?.item_image_blob || placeholderImg;
+
   // Get the primary stock entry (first/oldest batch for FIFO, or use item data as fallback)
   const primaryStock = stockEntries.length > 0 ? stockEntries[0] : null;
 
   // Calculate totals across all batches
-  const totalQuantity = stockEntries.reduce((sum, s) => sum + (s.qty || 0), 0) || item.quantity || 0;
+  const totalQuantity = stockEntries.reduce((sum, s) => sum + (s.qty || 0), 0) || item?.quantity || 0;
 
   // Use primary stock data, falling back to item data
-  const displayBatchCode = primaryStock?.batch_code || item.batch_code || "N/A";
-  const displayStockPrice = primaryStock?.stock_price ?? item.stock_price ?? 0;
-  const displayRetailPrice = primaryStock?.retail_price ?? item.retail_price ?? 0;
-  const displayExpDate = primaryStock?.exp_date || item.expiry_date || item.exp_date;
-  const displayThreshold = primaryStock?.threshold_limit || item.threshold_limit || 10;
-  const maxCapacity = item.maximum_capacity || 100;
+  const displayBatchCode = primaryStock?.batch_code || item?.batch_code || "N/A";
+  const displayStockPrice = primaryStock?.stock_price ?? item?.stock_price ?? 0;
+  const displayRetailPrice = primaryStock?.retail_price ?? item?.retail_price ?? 0;
+  const displayExpDate = primaryStock?.exp_date || item?.expiry_date || item?.exp_date;
+  const displayThreshold = primaryStock?.threshold_limit || item?.threshold_limit || 10;
+  const maxCapacity = item?.maximum_capacity || 100;
 
-  return (
+  return isOpen ? (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
       role="dialog"
@@ -83,18 +82,18 @@ function ViewItemModal({ isOpen, closeModal, item }) {
               <div className="w-16 h-16 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden">
                 <img
                   src={imageSrc}
-                  alt={item.item_name}
+                  alt={item?.item_name}
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="text-left">
-                <h2 className="text-2xl font-bold text-white">{item.item_name}</h2>
+                <h2 className="text-2xl font-bold text-white">{item?.item_name}</h2>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs bg-white/10 px-2 py-1 rounded-lg text-slate-300">
-                    {item.category?.type || "Unknown"}
+                    {item?.category?.type || "Unknown"}
                   </span>
                   <span className="text-xs bg-[#1A318C]/80 px-2 py-1 rounded-lg text-white font-medium">
-                    {item.category?.brand || "Unknown"}
+                    {item?.category?.brand || "Unknown"}
                   </span>
                 </div>
               </div>
@@ -183,7 +182,7 @@ function ViewItemModal({ isOpen, closeModal, item }) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-1">SKU</p>
-                    <p className="text-lg font-bold text-white font-mono">{item.sku || "N/A"}</p>
+                    <p className="text-lg font-bold text-white font-mono">{item?.sku || "N/A"}</p>
                   </div>
                   <img
                     src={barcodeImg}
@@ -191,6 +190,12 @@ function ViewItemModal({ isOpen, closeModal, item }) {
                     className="w-20 object-contain brightness-0 invert opacity-50"
                   />
                 </div>
+              </div>
+
+              {/* Product Code Card */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                <p className="text-xs text-amber-600 uppercase tracking-wide font-medium mb-1">Product Code</p>
+                <p className="text-lg font-bold text-amber-800 font-mono">{item?.item_code || "N/A"}</p>
               </div>
 
               {/* Recent Batches */}
@@ -230,7 +235,7 @@ function ViewItemModal({ isOpen, closeModal, item }) {
         </div>
       </div>
     </div>
-  );
+  ) : null;
 }
 
 export default ViewItemModal;

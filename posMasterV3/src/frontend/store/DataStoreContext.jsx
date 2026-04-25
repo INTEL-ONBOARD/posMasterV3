@@ -1,7 +1,7 @@
 /**
  * DataStore Context Provider
  *
- * Provides the DataStore instance and sync status to the React component tree.
+ * Provides the DataStore instance and realtime status to the React component tree.
  * Also initializes event listeners and manages connection status.
  *
  * Usage:
@@ -27,8 +27,9 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { dataStore } from './DataStore';
+import { onlineStatusApi } from '../api/localApi';
 
-// Context for sync status and connection info
+// Context for realtime status and connection info
 const DataStoreContext = createContext(null);
 
 const DEFAULT_SYNC_STATUS = {
@@ -58,7 +59,7 @@ function normalizeSyncStatus(status = {}) {
  * DataStore Provider Component
  */
 export function DataStoreProvider({ children }) {
-    // Sync and connection status
+    // Realtime and connection status
     const [isOnline, setIsOnline] = useState(DEFAULT_SYNC_STATUS.isOnline);
     const [connectionQuality, setConnectionQuality] = useState(DEFAULT_SYNC_STATUS.connectionQuality);
     const [syncStatus, setSyncStatus] = useState(DEFAULT_SYNC_STATUS.syncStatus);
@@ -73,10 +74,12 @@ export function DataStoreProvider({ children }) {
             return;
         }
 
-        // Listen for sync status changes
-        const unsubscribeSyncStatus = window.electronAPI.onSyncStatusChange?.((status) => {
-            console.log('[DataStoreProvider] Sync status update:', status);
-            const nextStatus = normalizeSyncStatus(status);
+        const unsubscribeRealtime = window.electronAPI.online?.onRealtimeStatus?.((status) => {
+            console.log('[DataStoreProvider] Online realtime status:', status);
+            const nextStatus = normalizeSyncStatus({
+                ...status?.data,
+                isOnline: status?.data?.ready ?? status?.data?.isOnline
+            });
             setIsOnline(nextStatus.isOnline);
             setConnectionQuality(nextStatus.connectionQuality);
             setSyncStatus(nextStatus.syncStatus);
@@ -85,16 +88,8 @@ export function DataStoreProvider({ children }) {
             setIsSyncing(nextStatus.isSyncing);
         });
 
-        // Listen for connection status changes
-        const unsubscribeConnection = window.electronAPI.onConnectionStatusChange?.((status) => {
-            console.log('[DataStoreProvider] Connection update:', status);
-
-            setIsOnline(status.isOnline);
-            if (status.quality) setConnectionQuality(status.quality);
-        });
-
-        // Get initial sync status
-        window.electronAPI.cloudSync?.getStatus?.().then((result) => {
+        // Get initial realtime status
+        onlineStatusApi.getStatus().then((result) => {
             if (result?.data) {
                 const status = normalizeSyncStatus(result.data);
                 setIsOnline(status.isOnline);
@@ -105,42 +100,31 @@ export function DataStoreProvider({ children }) {
                 setIsSyncing(status.isSyncing);
             }
         }).catch(err => {
-            console.warn('[DataStoreProvider] Failed to get initial sync status:', err);
+            console.warn('[DataStoreProvider] Failed to get initial realtime status:', err);
         });
 
         return () => {
-            unsubscribeSyncStatus?.();
-            unsubscribeConnection?.();
+            unsubscribeRealtime?.();
         };
     }, []);
 
-    // Manual sync trigger
+    // Manual refresh trigger
     const syncNow = useCallback(async () => {
-        if (!window.electronAPI?.cloudSync?.syncNow) {
-            console.warn('[DataStoreProvider] syncNow not available');
-            return null;
-        }
-
         setIsSyncing(true);
         try {
-            const result = await window.electronAPI.cloudSync.syncNow();
+            const result = await onlineStatusApi.refreshStatus();
             return result;
         } finally {
             setIsSyncing(false);
         }
     }, []);
 
-    // Force full sync
+    // Force full refresh
     const forceFullSync = useCallback(async () => {
-        if (!window.electronAPI?.cloudSync?.forceFullSync) {
-            console.warn('[DataStoreProvider] forceFullSync not available');
-            return null;
-        }
-
         setIsSyncing(true);
         try {
-            const result = await window.electronAPI.cloudSync.forceFullSync();
-            // Invalidate all caches after full sync
+            const result = await onlineStatusApi.refreshStatus();
+        // Invalidate all caches after full refresh
             dataStore.invalidateAll();
             return result;
         } finally {
@@ -148,13 +132,9 @@ export function DataStoreProvider({ children }) {
         }
     }, []);
 
-    // Check network status
+    // Check online status
     const checkNetwork = useCallback(async () => {
-        if (!window.electronAPI?.cloudSync?.checkNetwork) {
-            return { isOnline: navigator.onLine };
-        }
-
-        const result = await window.electronAPI.cloudSync.checkNetwork();
+        const result = await onlineStatusApi.checkConnection();
         if (result?.data) {
             setIsOnline(result.data.isOnline);
         }
@@ -172,7 +152,7 @@ export function DataStoreProvider({ children }) {
     }, []);
 
     const contextValue = {
-        // Connection & sync status
+        // Connection & realtime status
         isOnline,
         connectionQuality,
         syncStatus,
@@ -223,7 +203,7 @@ export function useDataStoreContext() {
 }
 
 /**
- * Hook for sync status only (lighter alternative)
+ * Hook for realtime status only (lighter alternative)
  */
 export function useSyncStatus() {
     const { isOnline, syncStatus, lastSyncTime, pendingCount, isSyncing } = useDataStoreContext();

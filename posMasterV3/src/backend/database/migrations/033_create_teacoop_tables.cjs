@@ -2,7 +2,7 @@
  * Migration: Create Tea Coop Members and Payments Tables
  * Version: 033
  *
- * Stores data fetched from Tea Coop API for offline access and cloud sync
+ * Stores data fetched from Tea Coop API for online branch access
  */
 
 const MIGRATION_VERSION = 33;

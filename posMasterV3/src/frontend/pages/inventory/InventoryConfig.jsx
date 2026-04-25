@@ -4,7 +4,7 @@ import UnitOfMeassurement from "./inventoryConfig/UnitOfMeassurement";
 import CategoryConfig from "./inventoryConfig/CategoryConfig";
 import BranchConfig from "./inventoryConfig/BranchConfig";
 
-export default function InventoryConfig({ isActive }) {
+export default function InventoryConfig() {
   const [selectedSection, setSelectedSection] = useState("unit-of-meassurement");
 
   const sections = [

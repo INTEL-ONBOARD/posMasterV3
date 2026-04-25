@@ -191,7 +191,7 @@ export function BranchProvider({ children }) {
  * HOC to ensure a component has branch context
  * Use this for components that require branch selection
  */
-export function withBranchRequired(Component) {
+export function withBranchRequired(WrappedComponent) {
     return function BranchRequiredWrapper(props) {
         const { hasBranch, showBranchSelector, loading } = useBranchContext();
 
@@ -210,7 +210,7 @@ export function withBranchRequired(Component) {
             );
         }
 
-        return <Component {...props} />;
+        return React.createElement(WrappedComponent, props);
     };
 }
 

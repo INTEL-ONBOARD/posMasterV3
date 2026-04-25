@@ -1,17 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 //modal images
-import barcodeImg from "../../../assets/barcode.png";
-import placeholderImg from "../../../assets/card_placeholder_img.png";
 
-import { extractDateOnly, getCurrentDate } from "../../../util/common/date";
+import { getCurrentDate } from "../../../util/common/date";
 
-function MemEvaluationModal({ isOpen, closeModal, member }) {
+function MemEvaluationModal({ isOpen, closeModal }) {
   if (!isOpen) return null;
-
-  useEffect(() => {}, []);
-
-  //const imageSrc = item.image = null || placeholderImg;
-  const imageSrc = placeholderImg;
 
   return (
     <div

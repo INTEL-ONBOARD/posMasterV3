@@ -67,14 +67,11 @@ export async function validateSession() {
     lastValidationTime = now;
 
     try {
-        if (!window.electronAPI?.auth?.validateSessionFast) {
-            // Fallback to regular validation
-            const result = await window.electronAPI?.auth?.validateSession(token);
-            sessionValid = result?.valid ?? false;
-            return result || { valid: false };
-        }
-
-        const result = await window.electronAPI.auth.validateSessionFast(token);
+        const response = await window.electronAPI?.online?.validateSession?.();
+        const result = {
+            valid: response?.status === 'success' && response?.data?.valid !== false,
+            ...(response?.data || {})
+        };
         sessionValid = result.valid;
 
         if (!result.valid) {
@@ -178,15 +175,18 @@ export function startSessionMonitor(interval = 10000) {
         if (!token) return;
 
         try {
-            // Use the stricter check that forces cloud sync
-            if (window.electronAPI?.auth?.checkSessionWithSync) {
-                const result = await window.electronAPI.auth.checkSessionWithSync(token);
+            if (window.electronAPI?.online?.validateSession) {
+                const response = await window.electronAPI.online.validateSession();
+                const result = {
+                    valid: response?.status === 'success' && response?.data?.valid !== false,
+                    ...(response?.data || {})
+                };
 
-                if (!result.valid && result.forcedLogout) {
+                if (!result.valid) {
                     sessionValid = false;
                     emitSessionEvent({
-                        type: 'kicked',
-                        message: result.message || 'Logged in from another device'
+                        type: result.forcedLogout ? 'kicked' : 'invalid',
+                        message: result.message || 'Session invalid'
                     });
                 }
             }

@@ -3,7 +3,6 @@ import saleViewImg from "../../assets/sale_sidebar_view.png";
 import transactionHistoryImg from "../../assets/sale_sidebar_trans_history.png";
 import offersDiscountImg from "../../assets/sale_sidebar_discounts.png";
 import salesConfigImg from "../../assets/Inventory_settings.png";
-import inventoryReportImg from "../../assets/Inventory_report.png";
 import viewInventoryImg from "../../assets/sale_sidebar_view_inventory.png";
 import { localAuth } from "../../api/services/localAuth";
 import { settingsApi } from "../../api/localApi";
@@ -13,7 +12,6 @@ function SalesSidebar({
   onSaleViewClick,
   onTransactionHistoryClick,
   onInventoryViewClick,
-  onSalesReportClick,
   onOffersDiscountClick,
   onSalesConfigClick,
 }) {
@@ -44,7 +42,7 @@ function SalesSidebar({
             setPermissions(response.data.settings.permissions.SaleAccess);
           }
         }
-      } catch (error) {
+      } catch {
         // Silent fail - permissions will default to showing all
       }
     };

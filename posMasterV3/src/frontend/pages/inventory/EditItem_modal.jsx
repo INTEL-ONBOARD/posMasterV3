@@ -266,7 +266,7 @@ export default function EditItemModal({ isOpen, onClose, onUpdate, item }) {
 
 // Printable grid of N barcodes
 const PrintableGrid = forwardRef(({ value, count }, ref) => {
-  const slots = Array.from({ length: count }, (_, i) => `${value}`);
+  const slots = Array.from({ length: count }, () => `${value}`);
 
   return (
     <div

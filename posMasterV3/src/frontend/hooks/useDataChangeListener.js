@@ -1,7 +1,7 @@
 /**
  * useDataChangeListener Hook
  *
- * A React hook that listens for real-time data changes from the backend
+ * A React hook that listens for realtime data changes from the backend
  * and triggers a callback when relevant tables are updated.
  *
  * Usage:
@@ -37,22 +37,22 @@ export function useDataChangeListener(tables, onDataChange, options = {}) {
     useEffect(() => {
         if (!enabled) return;
 
-        // Check if electronAPI is available
-        if (!window.electronAPI?.onDataChange) {
-            console.warn('[useDataChangeListener] electronAPI.onDataChange not available');
+        // Check if online realtime API is available
+        if (!window.electronAPI?.online?.onDomainEvent) {
+            console.warn('[useDataChangeListener] electronAPI.online.onDomainEvent not available');
             return;
         }
 
         const handleDataChange = (data) => {
             // If tables is null, listen to all changes
             // Otherwise, only trigger callback for specified tables
-            if (tables === null || tables.includes(data.table)) {
+            if (tables === null || tables.includes(data.entity || data.table)) {
                 callbackRef.current(data);
             }
         };
 
-        // Subscribe to data changes
-        const unsubscribe = window.electronAPI.onDataChange(handleDataChange);
+        // Subscribe to online domain events
+        const unsubscribe = window.electronAPI.online.onDomainEvent(handleDataChange);
 
         // Cleanup on unmount
         return () => {
@@ -64,8 +64,8 @@ export function useDataChangeListener(tables, onDataChange, options = {}) {
 }
 
 /**
- * Hook to listen for sync status changes
- * @param {Function} onSyncStatusChange - Callback function when sync status changes
+ * Hook to listen for realtime status changes
+ * @param {Function} onSyncStatusChange - Callback function when status changes
  */
 export function useSyncStatusListener(onSyncStatusChange) {
     const callbackRef = useRef(onSyncStatusChange);
@@ -75,11 +75,11 @@ export function useSyncStatusListener(onSyncStatusChange) {
     }, [onSyncStatusChange]);
 
     useEffect(() => {
-        if (!window.electronAPI?.onSyncStatusChange) {
+        if (!window.electronAPI?.online?.onRealtimeStatus) {
             return;
         }
 
-        const unsubscribe = window.electronAPI.onSyncStatusChange((data) => {
+        const unsubscribe = window.electronAPI.online.onRealtimeStatus((data) => {
             callbackRef.current(data);
         });
 

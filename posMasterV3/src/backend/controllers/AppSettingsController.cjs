@@ -97,37 +97,6 @@ class AppSettingsController {
             }
         }));
 
-        // Set cloud sync enabled
-        ipcMain.handle('appSettings:setCloudSync', wrapIpcHandler(async (event, enabled) => {
-            try {
-                this.service.setCloudSyncEnabled(enabled);
-
-                const { getCloudSyncService, initializeCloudSync } = require('../services/CloudSyncService.cjs');
-                const cloudSync = getCloudSyncService();
-
-                if (enabled) {
-                    // Enable cloud sync - initialize and start auto-sync
-                    console.log('[AppSettingsController] Enabling cloud sync...');
-                    cloudSync.setAutoSync(true);
-                    await cloudSync.initialize();
-                    console.log('[AppSettingsController] Cloud sync enabled and started');
-                } else {
-                    // Disable cloud sync - stop auto-sync (but don't cleanup, so pending changes are preserved)
-                    console.log('[AppSettingsController] Disabling cloud sync...');
-                    cloudSync.setAutoSync(false);
-                    console.log('[AppSettingsController] Cloud sync disabled');
-                }
-
-                return {
-                    status: 'success',
-                    message: enabled ? 'Cloud sync enabled' : 'Cloud sync disabled'
-                };
-            } catch (error) {
-                console.error('[AppSettingsController] Set cloud sync error:', error);
-                return { status: 'error', message: error.message };
-            }
-        }));
-
         // Send test notification
         ipcMain.handle('appSettings:testNotification', wrapIpcHandler(async () => {
             try {
@@ -158,16 +127,6 @@ class AppSettingsController {
                 };
             } catch (error) {
                 console.error('[AppSettingsController] Apply all error:', error);
-                return { status: 'error', message: error.message };
-            }
-        }));
-
-        // Check if cloud sync should be enabled
-        ipcMain.handle('appSettings:isCloudSyncEnabled', wrapIpcHandler(async () => {
-            try {
-                const enabled = this.service.isCloudSyncEnabled();
-                return { status: 'success', data: { enabled } };
-            } catch (error) {
                 return { status: 'error', message: error.message };
             }
         }));

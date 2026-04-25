@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, RefreshCw, Database, Cloud, Wifi, WifiOff, Download, CheckCircle, XCircle } from 'lucide-react';
-import { settingsApi, cloudSyncApi, appSettingsApi, updatesApi } from '../../api/localApi';
+import { settingsApi, onlineStatusApi, appSettingsApi, updatesApi } from '../../api/localApi';
 import { useReactiveData, TABLES } from '../../store';
 import { useBranchContext } from '../../context/BranchContext';
 import StatusModal from '../../components/StatusModal.jsx';
@@ -12,7 +12,7 @@ function AppSettings() {
   // Section collapse states
   const [openGeneral, setOpenGeneral] = useState(true);
   const [openBranch, setOpenBranch] = useState(false);
-  const [openCloudSync, setOpenCloudSync] = useState(false);
+  const [openOnlineBackend, setOpenOnlineBackend] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -20,7 +20,7 @@ function AppSettings() {
   // Use reactive data for branches - auto-updates when branches change
   const { data: branches } = useReactiveData(TABLES.BRANCHES);
 
-  // Cloud sync state
+  // Online backend state
   const [syncStatus, setSyncStatus] = useState({ isOnline: false, isSyncing: false, lastSyncTime: null });
   const [syncingNow, setSyncingNow] = useState(false);
   const [ensuringSchema, setEnsuringSchema] = useState(false);
@@ -36,7 +36,6 @@ function AppSettings() {
   const [settings, setSettings] = useState({
     logout_on_close: true,
     notifications: true,
-    cloud_sync: false,
     temp_system: false,
     run_on_startup: true,
     maximize_window: true
@@ -60,7 +59,6 @@ function AppSettings() {
           setSettings({
             logout_on_close: data.logout_on_close ?? true,
             notifications: data.notifications ?? true,
-            cloud_sync: data.cloud_sync ?? false,
             temp_system: data.temp_system ?? false,
             run_on_startup: data.run_on_startup ?? true,
             maximize_window: data.maximize_window ?? true
@@ -71,8 +69,8 @@ function AppSettings() {
           });
         }
 
-        // Load cloud sync status
-        const syncResponse = await cloudSyncApi.getStatus();
+        // Load online backend status
+        const syncResponse = await onlineStatusApi.getStatus();
         if (syncResponse.status === 'success' && syncResponse.data) {
           setSyncStatus(syncResponse.data);
         }
@@ -85,15 +83,15 @@ function AppSettings() {
 
     loadSettings();
 
-    // Refresh sync status every 10 seconds
+    // Refresh online backend status every 10 seconds
     const interval = setInterval(async () => {
       try {
-        const syncResponse = await cloudSyncApi.getStatus();
+        const syncResponse = await onlineStatusApi.getStatus();
         if (syncResponse.status === 'success' && syncResponse.data) {
           setSyncStatus(syncResponse.data);
         }
       } catch (err) {
-        console.error('[AppSettings] Sync status refresh error:', err);
+        console.error('[AppSettings] Online status refresh error:', err);
       }
     }, 10000);
 
@@ -178,12 +176,6 @@ function AppSettings() {
             }
           }
           break;
-        case 'cloud_sync':
-          result = await appSettingsApi.setCloudSync(newValue);
-          if (result.status === 'success') {
-            setStatusModal({ open: true, type: 'success', description: newValue ? 'Cloud sync enabled' : 'Cloud sync disabled' });
-          }
-          break;
         case 'run_on_startup':
           result = await appSettingsApi.setRunOnStartup(newValue);
           if (result.status === 'success') {
@@ -224,7 +216,6 @@ function AppSettings() {
         setSettings({
           logout_on_close: data.logout_on_close ?? true,
           notifications: data.notifications ?? true,
-          cloud_sync: data.cloud_sync ?? false,
           temp_system: data.temp_system ?? false,
           run_on_startup: data.run_on_startup ?? true,
           maximize_window: data.maximize_window ?? true
@@ -287,27 +278,27 @@ function AppSettings() {
     }
   };
 
-  // Cloud Sync handlers
+  // Online backend handlers
   const handleSyncNow = async () => {
     try {
       setSyncingNow(true);
-      setStatusModal({ open: true, type: 'success', description: 'Starting sync...' });
+      setStatusModal({ open: true, type: 'success', description: 'Refreshing online status...' });
 
-      const result = await cloudSyncApi.syncNow();
+      const result = await onlineStatusApi.refreshStatus();
 
       if (result.status === 'success') {
-        setStatusModal({ open: true, type: 'success', description: 'Sync completed successfully!' });
+        setStatusModal({ open: true, type: 'success', description: 'Online status refreshed' });
         // Refresh status
-        const statusResult = await cloudSyncApi.getStatus();
+        const statusResult = await onlineStatusApi.getStatus();
         if (statusResult.status === 'success') {
           setSyncStatus(statusResult.data);
         }
       } else {
-        setStatusModal({ open: true, type: 'failed', description: result.message || 'Sync failed' });
+        setStatusModal({ open: true, type: 'failed', description: result.message || 'Online status refresh failed' });
       }
     } catch (err) {
-      console.error('[AppSettings] Sync error:', err);
-      setStatusModal({ open: true, type: 'failed', description: 'Sync failed: ' + err.message });
+      console.error('[AppSettings] Online status refresh error:', err);
+      setStatusModal({ open: true, type: 'failed', description: 'Online status refresh failed: ' + err.message });
     } finally {
       setSyncingNow(false);
     }
@@ -316,18 +307,18 @@ function AppSettings() {
   const handleEnsureSchema = async () => {
     try {
       setEnsuringSchema(true);
-      setStatusModal({ open: true, type: 'success', description: 'Creating cloud database tables...' });
+      setStatusModal({ open: true, type: 'success', description: 'Refreshing online status...' });
 
-      const result = await cloudSyncApi.ensureSchema();
+      const result = await onlineStatusApi.getStatus();
 
-      if (result.status === 'success' && result.data?.success) {
-        setStatusModal({ open: true, type: 'success', description: 'Database tables created successfully!' });
+      if (result.status === 'success' && result.data) {
+        setStatusModal({ open: true, type: 'success', description: 'Online backend status refreshed' });
       } else {
-        setStatusModal({ open: true, type: 'failed', description: result.data?.message || result.message || 'Failed to create tables' });
+        setStatusModal({ open: true, type: 'failed', description: result.data?.message || result.message || 'Failed to refresh online status' });
       }
     } catch (err) {
       console.error('[AppSettings] Ensure schema error:', err);
-      setStatusModal({ open: true, type: 'failed', description: 'Failed to create tables: ' + err.message });
+      setStatusModal({ open: true, type: 'failed', description: 'Failed to refresh online status: ' + err.message });
     } finally {
       setEnsuringSchema(false);
     }
@@ -335,10 +326,10 @@ function AppSettings() {
 
   const handleCheckNetwork = async () => {
     try {
-      const result = await cloudSyncApi.checkNetwork();
+      const result = await onlineStatusApi.checkConnection();
       if (result.status === 'success') {
         setSyncStatus(prev => ({ ...prev, isOnline: result.data.isOnline }));
-        setStatusModal({ open: true, type: result.data.isOnline ? 'success' : 'failed', description: result.data.isOnline ? 'Connected to network' : 'Network offline' });
+        setStatusModal({ open: true, type: result.data.isOnline ? 'success' : 'failed', description: result.data.isOnline ? 'Online backend reachable' : 'Online backend unavailable' });
       }
     } catch (err) {
       console.error('[AppSettings] Network check error:', err);
@@ -403,7 +394,6 @@ function AppSettings() {
   const toggleItems = [
     { label: 'Logout on Close', description: 'Log out user when app is closed', key: 'logout_on_close', icon: 'logout' },
     { label: 'System Notifications', description: 'Enable Windows built-in notifications', key: 'notifications', icon: 'bell' },
-    { label: 'Cloud Synchronization', description: 'Auto-sync data with cloud server', key: 'cloud_sync', icon: 'cloud' },
     { label: 'Temp File System', description: 'Enable temporary file storage', key: 'temp_system', icon: 'folder' },
     { label: 'Run on Startup', description: 'Launch app when Windows starts', key: 'run_on_startup', icon: 'power' },
     { label: 'Maximize on Start', description: 'Start app in maximized window', key: 'maximize_window', icon: 'maximize' }
@@ -559,12 +549,12 @@ function AppSettings() {
             )}
           </div>
 
-          {/* Cloud Sync Section */}
+          {/* Online Backend Section */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <button
               onClick={() => {
-                setOpenCloudSync(!openCloudSync);
-                if (!openCloudSync) {
+                setOpenOnlineBackend(!openOnlineBackend);
+                if (!openOnlineBackend) {
                   setOpenGeneral(false);
                   setOpenBranch(false);
                 }
@@ -575,7 +565,7 @@ function AppSettings() {
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
                   <Cloud className="w-5 h-5 text-blue-600" />
                 </div>
-                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Cloud Sync</span>
+                <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Online Backend</span>
               </div>
               <div className="flex items-center gap-2">
                 {syncStatus.isOnline ? (
@@ -583,16 +573,16 @@ function AppSettings() {
                 ) : (
                   <WifiOff className="w-4 h-4 text-red-400" />
                 )}
-                {openCloudSync ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+                {openOnlineBackend ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
               </div>
             </button>
-            {openCloudSync && (
+            {openOnlineBackend && (
               <div className="px-5 pb-5 border-t border-gray-100">
                 <p className="text-xs text-gray-400 italic py-3 flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Manage cloud database synchronization
+                  Monitor the MongoDB-backed online service
                 </p>
 
                 {/* Status Display */}
@@ -602,13 +592,13 @@ function AppSettings() {
                     <div className="flex items-center gap-2">
                       <div className={`w-2 h-2 rounded-full ${syncStatus.isOnline ? 'bg-emerald-500' : 'bg-red-400'}`}></div>
                       <span className={`text-xs font-semibold ${syncStatus.isOnline ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {syncStatus.isOnline ? 'Online' : 'Offline'}
+                        {syncStatus.isOnline ? 'Connected' : 'Unavailable'}
                       </span>
                     </div>
                   </div>
                   {syncStatus.lastSyncTime && (
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Last Sync</span>
+                      <span className="text-xs text-gray-500">Last Status Update</span>
                       <span className="text-xs text-gray-600">{new Date(syncStatus.lastSyncTime).toLocaleString()}</span>
                     </div>
                   )}
@@ -622,7 +612,7 @@ function AppSettings() {
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#1A318C] text-white rounded-lg text-sm font-medium hover:bg-[#152870] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <RefreshCw className={`w-4 h-4 ${syncingNow ? 'animate-spin' : ''}`} />
-                    {syncingNow ? 'Syncing...' : 'Sync Now'}
+                    {syncingNow ? 'Refreshing...' : 'Refresh Status'}
                   </button>
 
                   <button
@@ -631,7 +621,7 @@ function AppSettings() {
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Database className={`w-4 h-4 ${ensuringSchema ? 'animate-pulse' : ''}`} />
-                    {ensuringSchema ? 'Creating Tables...' : 'Create Cloud Tables'}
+                    {ensuringSchema ? 'Refreshing...' : 'Refresh Online Status'}
                   </button>
 
                   <button
@@ -646,10 +636,10 @@ function AppSettings() {
                 {/* Help Text */}
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
                   <p className="text-xs text-blue-700">
-                    <strong>Sync Now:</strong> Manually sync all data with cloud server.
+                    <strong>Refresh Status:</strong> Checks the online service without creating local sync work.
                   </p>
                   <p className="text-xs text-blue-700 mt-1">
-                    <strong>Create Cloud Tables:</strong> Use this if sync fails with "table doesn't exist" errors.
+                    <strong>Refresh Online Status:</strong> Confirms the backend is reachable.
                   </p>
                 </div>
               </div>
@@ -664,7 +654,7 @@ function AppSettings() {
                 if (!openUpdates) {
                   setOpenGeneral(false);
                   setOpenBranch(false);
-                  setOpenCloudSync(false);
+                  setOpenOnlineBackend(false);
                 }
               }}
               className="w-full flex justify-between items-center px-5 py-4 hover:bg-gray-50 transition-colors"
@@ -868,7 +858,7 @@ function AppSettings() {
             <div className="space-y-3">
               <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Quick Status</p>
 
-              {/* Cloud Sync */}
+              {/* Online Mode */}
               <div className="flex items-center justify-between py-3 px-4 bg-white rounded-xl border border-gray-200">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -876,10 +866,10 @@ function AppSettings() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                   </div>
-                  <span className="text-sm text-gray-600">Cloud Sync</span>
+                  <span className="text-sm text-gray-600">Online Backend</span>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${settings.cloud_sync ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {settings.cloud_sync ? 'On' : 'Off'}
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                  On
                 </span>
               </div>
 

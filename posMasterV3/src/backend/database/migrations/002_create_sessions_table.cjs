@@ -3,7 +3,7 @@
  * Version: 002
  *
  * Creates the sessions table for managing user authentication sessions.
- * Supports offline-first approach with local session management.
+ * Used for local session tracking and logout-on-close behavior.
  */
 
 const MIGRATION_VERSION = 2;

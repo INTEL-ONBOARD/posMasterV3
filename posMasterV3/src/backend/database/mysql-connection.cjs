@@ -1,6 +1,6 @@
 /**
- * MySQL Cloud Database Connection Manager
- * Handles MySQL connection pool for cloud synchronization
+ * MySQL Database Connection Manager
+ * Legacy connection helper retained for migration and compatibility tooling.
  */
 
 const mysql = require('mysql2/promise');

@@ -1,6 +1,3 @@
-import { useContext } from 'react';
-
-
 // validate restocking items in inventory restock form
 export function validateStockForm(formDataStock = {}) {
   const formErrors = {};

@@ -2,9 +2,8 @@
  * Migration: Add updated_at to offers_discounts and login_history
  * Version: 041
  *
- * Without updated_at, the cloud sync does a full SELECT * on every 1-second poll,
- * which is expensive. Adding updated_at enables incremental pulls (only fetch rows
- * changed since last pull) and also allows proper conflict resolution.
+ * Without updated_at, incremental change detection has to fall back to full table scans.
+ * Adding updated_at enables efficient refreshes and better change tracking.
  */
 
 const MIGRATION_VERSION = 41;

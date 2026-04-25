@@ -288,11 +288,11 @@ git commit -m "feat: expose updates namespace in preload.cjs IPC bridge"
 **Files:**
 - Modify: `src/frontend/api/localApi.js`
 
-**Context:** `cloudSyncApi` is defined at line 1807 and exported. The default export object at line 2429 includes `cloudSync: cloudSyncApi`. Add `updatesApi` after `cloudSyncApi`, and add it to the default export. `getElectronAPI()` is the existing helper that returns `window.electronAPI` or null.
+**Context:** `onlineStatusApi` is defined in the shared renderer API module and exported. The default export object includes `onlineStatus: onlineStatusApi`. Add `updatesApi` after `onlineStatusApi`, and add it to the default export. `getElectronAPI()` is the existing helper that returns `window.electronAPI` or null.
 
 **Step 1: Add updatesApi export**
 
-After the end of `cloudSyncApi` (find `export const cloudSyncApi = {` and find its closing `};`), add:
+After the end of `onlineStatusApi` (find `export const onlineStatusApi = {` and find its closing `};`), add:
 
 ```javascript
 /**
@@ -340,7 +340,7 @@ export const updatesApi = {
 
 **Step 2: Add to default export**
 
-In the default export object at the bottom of `localApi.js` (around line 2438), add after `cloudSync: cloudSyncApi,`:
+In the default export object at the bottom of `localApi.js`, add after `onlineStatus: onlineStatusApi,`:
 
 ```javascript
     updates: updatesApi,
@@ -377,11 +377,11 @@ import { ChevronDown, ChevronUp, RefreshCw, Database, Cloud, Wifi, WifiOff, Down
 
 Change line 3 from:
 ```javascript
-import { settingsApi, cloudSyncApi, appSettingsApi } from '../../api/localApi';
+import { settingsApi, onlineStatusApi, appSettingsApi } from '../../api/localApi';
 ```
 to:
 ```javascript
-import { settingsApi, cloudSyncApi, appSettingsApi, updatesApi } from '../../api/localApi';
+import { settingsApi, onlineStatusApi, appSettingsApi, updatesApi } from '../../api/localApi';
 ```
 
 **Step 3: Add state variables**

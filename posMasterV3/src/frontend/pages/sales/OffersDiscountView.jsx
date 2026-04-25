@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Tag, Package, DollarSign, Percent, CheckCircle, AlertTriangle, Plus, Trash2, ToggleLeft, ToggleRight, X } from "lucide-react";
 import { offersApi } from "../../api/localApi";
 
-export default function OffersDiscountView({ isActive }) {
+export default function OffersDiscountView() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
@@ -15,19 +15,15 @@ export default function OffersDiscountView({ isActive }) {
   const [createError, setCreateError] = useState("");
 
   const [discounts, setDiscounts] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadDiscounts(); }, []);
 
   const loadDiscounts = async () => {
-    setLoading(true);
     try {
       const res = await offersApi.getAll();
       if (res?.status === 'success') setDiscounts(res.data || []);
     } catch (e) {
       console.error('[OffersDiscountView] load error:', e);
-    } finally {
-      setLoading(false);
     }
   };
 

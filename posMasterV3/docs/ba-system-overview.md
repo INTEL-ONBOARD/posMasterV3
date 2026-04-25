@@ -23,7 +23,7 @@ At a business level, the system supports:
 - transaction history and operational reporting
 - user and role administration
 - application settings and update handling
-- optional cloud synchronization across locations/systems
+- online real-time synchronization across locations/systems
 
 ## 3. Business Objective
 
@@ -91,7 +91,7 @@ Sales and customer/member handling
    ->
 Transaction tracking and operational controls
    ->
-Optional cloud sync and software updates
+Online real-time sync and software updates
 ```
 
 ## 7. Module Overview
@@ -227,7 +227,7 @@ Business capabilities identified:
 - app settings
 - user settings
 - branch-related selection and configuration
-- cloud sync controls
+- online status controls
 - software update handling
 - run-on-startup and window behavior controls
 
@@ -393,7 +393,7 @@ There is also evidence of:
 
 - login/session history
 - status notifications
-- sync status visibility
+- realtime status visibility
 
 Business note:
 
@@ -415,19 +415,19 @@ This is important for BA work involving multi-branch requirements, data visibili
 
 ## 12. Cloud Synchronization and Offline Capability
 
-The codebase strongly suggests a local-first system with optional cloud synchronization.
+The codebase now reflects an online-only system with real-time synchronization.
 
 Business interpretation:
 
-- the application can continue operating using local data
-- when connectivity is available, data can be synchronized with a remote/cloud environment
-- the system appears to monitor online/offline status
-- pending changes may be queued until connectivity is restored
+- the application now runs online-first and uses the backend as the source of truth
+- realtime events keep renderer data in sync with the server
+- connection state is reported for availability and error handling, not offline operation
+- there is no local write queue in the runtime path
 
 Business value:
 
-- suitable for outlets with unstable internet
-- reduces business disruption during outages
+- suitable for environments that expect a live backend connection
+- reduces ambiguity around local versus remote data state
 - supports eventual consolidation of branch or machine-level data
 
 Business caution:
@@ -481,7 +481,7 @@ Based on the current codebase review, these points should be noted:
 - startup includes outlet and local folder setup
 - inventory and sales are the strongest completed functional areas
 - user and permission management is built in
-- cloud sync exists and is operationally important
+- online synchronization exists and is operationally important
 - software update handling is built into the application
 - some sales reporting functionality is still under development
 
@@ -545,4 +545,4 @@ Settings, sync, and updates
 
 POSMaster V3 is a branch-aware desktop retail operations system centered on inventory control and point-of-sale processing. It combines store setup, stock operations, sales, supplier handling, user governance, and operational settings in one application.
 
-For business analysis purposes, the system can be understood as a retail operations platform with local execution, branch-aware data handling, controlled user access, and optional cloud synchronization. The most business-critical areas are inventory, sales, branch operations, user governance, and sync reliability.
+For business analysis purposes, the system can be understood as a retail operations platform with branch-aware data handling, controlled user access, and real-time online synchronization. The most business-critical areas are inventory, sales, branch operations, user governance, and availability.

@@ -1,8 +1,8 @@
 /**
  * Local Authentication Service
  *
- * Provides authentication services using the local SQLite backend.
- * All operations use the local database only - no cloud fallback.
+ * Compatibility authentication service.
+ * The app is online-only; this facade delegates to the online API.
  *
  * Usage:
  * import { localAuth } from '../api/services/localAuth';
@@ -37,7 +37,7 @@ async function getResetSyncFn() {
  */
 export const localAuth = {
     /**
-     * Login with local database
+     * Login with the online auth service
      * @param {string} email - Email or username
      * @param {string} password - Password
      * @returns {Promise<Object>} Login result
@@ -52,7 +52,7 @@ export const localAuth = {
         }
 
         try {
-            const result = await window.electronAPI.auth.login(email, password, deviceInfo);
+            const result = await window.electronAPI.online.login(email, password, deviceInfo);
 
             if (result.success) {
                 // Store in localStorage for compatibility
@@ -86,8 +86,7 @@ export const localAuth = {
         }
 
         try {
-            const result = await window.electronAPI.auth.register(userData);
-            return result;
+            return await window.electronAPI.online.register(userData);
         } catch (error) {
             console.error('[LocalAuth] Registration error:', error);
             return {
@@ -107,14 +106,14 @@ export const localAuth = {
 
         if (isElectron() && token) {
             try {
-                await window.electronAPI.auth.logout(token);
+                await window.electronAPI.online.logout();
             } catch (error) {
                 console.warn('[LocalAuth] Logout error:', error);
             }
         }
 
-        // Reset real-time sync module state so the next user's session
-        // doesn't inherit stale subscribers or sync status from this user.
+        // Reset realtime module state so the next user's session
+        // doesn't inherit stale subscribers or status from this user.
         try {
             const resetFn = await getResetSyncFn();
             resetFn();
@@ -150,7 +149,11 @@ export const localAuth = {
 
         if (isElectron()) {
             try {
-                return await window.electronAPI.auth.validateSession(token);
+                const result = await window.electronAPI.online.validateSession();
+                return {
+                    valid: result?.status === 'success' && result?.data?.valid !== false,
+                    ...result?.data
+                };
             } catch (error) {
                 console.error('[LocalAuth] Session validation error:', error);
                 return { valid: false, message: error.message };
@@ -169,9 +172,11 @@ export const localAuth = {
 
         if (isElectron() && token) {
             try {
-                const result = await window.electronAPI.auth.getCurrentUser(token);
-                if (result && result.data) return result.data;
-                if (result) return result;
+                const result = await window.electronAPI.online.validateSession();
+                if (result?.status === 'success') {
+                    const stored = localStorage.getItem('user') || sessionStorage.getItem('user');
+                    return stored ? JSON.parse(stored) : result.data;
+                }
             } catch (error) {
                 console.error('[LocalAuth] Get current user error:', error);
             }
@@ -188,7 +193,7 @@ export const localAuth = {
      * @param {string} newPassword - New password
      * @returns {Promise<Object>} Result
      */
-    async changePassword(currentPassword, newPassword) {
+    async changePassword() {
         const user = await this.getCurrentUser();
 
         if (!user) {
@@ -199,19 +204,11 @@ export const localAuth = {
             return { success: false, message: 'Not in Electron environment' };
         }
 
-        try {
-            return await window.electronAPI.auth.changePassword(
-                user.id || user._id,
-                currentPassword,
-                newPassword
-            );
-        } catch (error) {
-            return {
-                success: false,
-                status: 'error',
-                message: 'Password change failed: ' + error.message
-            };
-        }
+        return {
+            status: 'error',
+            success: false,
+            message: 'Password changes must use the online auth service endpoint'
+        };
     },
 
     /**
@@ -277,7 +274,12 @@ export const databaseService = {
         }
 
         try {
-            return await window.electronAPI.database.getStatus();
+            const result = await window.electronAPI.online.ready();
+            return {
+                initialized: result?.status === 'success',
+                onlineOnly: true,
+                data: result?.data
+            };
         } catch (error) {
             console.error('[DatabaseService] Get status error:', error);
             return { initialized: false, error: error.message };

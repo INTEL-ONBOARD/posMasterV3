@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronUp, Search, Filter, SortAsc, Receipt, CreditCard, DollarSign, Clock, RefreshCw, Eye, User, RotateCcw, X, Minus, Plus } from "lucide-react";
 import { useReactiveData, TABLES } from "../../store";
 import TransactionDetailModal from "./modals/TransactionDetailModal";

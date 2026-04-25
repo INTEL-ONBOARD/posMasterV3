@@ -69,7 +69,7 @@ updates: {
 
 ### 4. localApi.js — updatesApi
 
-Add `updatesApi` export following the same async wrapper pattern as `cloudSyncApi`:
+Add `updatesApi` export following the same async wrapper pattern as the other renderer API facades:
 - `checkForUpdates()` → proxies to `api.updates.checkForUpdates()`
 - `downloadUpdate()` → proxies to `api.updates.downloadUpdate()`
 - `installUpdate()` → proxies to `api.updates.installUpdate()`

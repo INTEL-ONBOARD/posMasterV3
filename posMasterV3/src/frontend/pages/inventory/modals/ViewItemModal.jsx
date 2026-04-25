@@ -7,14 +7,13 @@ import { extractDateOnly } from "../../../util/common/date";
 import { restockApi } from "../../../api/localApi";
 
 function ViewItemModal({ isOpen, closeModal, item }) {
-  if (!isOpen) return null;
-
   //to populate recent batch code changes
   const [stockEntries, setStockEntries] = useState([]);
 
-  useEffect (() => {
-    fetchStockEntries(item.sku)
-  }, [item.sku]);
+  useEffect(() => {
+    if (!isOpen || !item?.sku) return;
+    fetchStockEntries(item.sku);
+  }, [isOpen, item?.sku]);
 
   const imageSrc = item.item_image_url || item.item_image_blob || placeholderImg;
 
@@ -58,7 +57,7 @@ function ViewItemModal({ isOpen, closeModal, item }) {
   const displayThreshold = primaryStock?.threshold_limit || item.threshold_limit || 10;
   const maxCapacity = item.maximum_capacity || 100;
 
-  return (
+  return isOpen ? (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
       role="dialog"
@@ -235,7 +234,7 @@ function ViewItemModal({ isOpen, closeModal, item }) {
         </div>
       </div>
     </div>
-  );
+  ) : null;
 }
 
 export default ViewItemModal;

@@ -15,6 +15,7 @@ module.exports = {
         // Update existing settings to enabled
         const settingsToEnable = [
             'auto_logout',
+            'cloud_sync',
             'notifications',
             'temp_system',
             'run_on_startup',
@@ -53,7 +54,6 @@ module.exports = {
         // Revert to original defaults (some disabled)
         const settingsToDisable = [
             'auto_logout',
-            'cloud_sync',
             'temp_system'
         ];
 

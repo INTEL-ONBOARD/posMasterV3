@@ -4,7 +4,7 @@ import { teaCoopApi } from "../../../api/localApi";
 import { useReactiveData, TABLES } from "../../../store";
 
 function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember }) {
-  const [activeTab, setActiveTab] = useState("search"); // search | details
+  const [_activeTab, setActiveTab] = useState("search"); // search | details
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMember, setSelectedMember] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]);

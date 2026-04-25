@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
 function Startup() {
@@ -8,7 +7,6 @@ function Startup() {
     outlet: "",
     filePath: "", // Default folder path will be set here on load
   });
-  const [message, setMessage] = useState("");
   const [selecting, setSelecting] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const navigate = useNavigate();
@@ -41,13 +39,11 @@ function Startup() {
   // Handle folder selection
   const handleSelectFolder = async () => {
     setSelecting(true);
-    setMessage(""); // Clear any previous messages
     try {
       if (window.electronAPI && window.electronAPI.selectFolder) {
         const folderPath = await window.electronAPI.selectFolder();
         if (folderPath) {
           setFormData((prev) => ({ ...prev, filePath: folderPath }));
-          setMessage(`Folder selected: ${folderPath}`);
         }
       } else {
         alert("Electron API not available!");
@@ -62,7 +58,6 @@ function Startup() {
   // Handle confirmation (create files)
   const handleConfirm = async () => {
     setConfirming(true);
-    setMessage(""); // Clear any previous messages
     try {
       if (window.electronAPI && window.electronAPI.createFiles) {
         const result = await window.electronAPI.createFiles(
@@ -70,9 +65,6 @@ function Startup() {
           formData.outlet
         );
         if (result.success) {
-          setMessage(
-            `Files created successfully:\n- temp.json: ${result.tempFilePath}\n- config.json: ${result.configFilePath}`
-          );
           setCurrentPage("finalLoading");
         } else {
           alert("Failed to create files: " + result.error);
@@ -91,17 +83,7 @@ function Startup() {
     <div className="min-h-screen flex items-center justify-center bg-white">
       {/* Initial Loading */}
       {currentPage === "initialLoading" && (
-        <motion.div
-          className="flex flex-col gap-4 items-center justify-center"
-          initial={{ scale: 0.6, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{
-            delay: 0.2,
-            duration: 0.45,
-            type: "spring",
-            stiffness: 100,
-          }}
-        >
+        <div className="flex flex-col gap-4 items-center justify-center">
           <p className="mt-3 text-xl text-[#484848]">
             We are preparing for you...
           </p>
@@ -110,7 +92,7 @@ function Startup() {
             <div className="absolute top-0 left-0 w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
           <p className="text-sm text-[#C8C8C8]">Please wait...</p>
-        </motion.div>
+        </div>
       )}
 
       {/* Setup Form */}
@@ -188,17 +170,7 @@ function Startup() {
 
       {/* Final Loading */}
       {currentPage === "finalLoading" && (
-        <motion.div
-          className="flex flex-col gap-4 items-center justify-center"
-          initial={{ scale: 0.6, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{
-            delay: 0.2,
-            duration: 0.45,
-            type: "spring",
-            stiffness: 100,
-          }}
-        >
+        <div className="flex flex-col gap-4 items-center justify-center">
           <p className="mt-3 text-xl text-[#484848]">
             All set... please wait...
           </p>
@@ -207,7 +179,7 @@ function Startup() {
             <div className="absolute top-0 left-0 w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
           <p className="text-sm text-[#C8C8C8]">Please wait...</p>
-        </motion.div>
+        </div>
       )}
     </div>
   );

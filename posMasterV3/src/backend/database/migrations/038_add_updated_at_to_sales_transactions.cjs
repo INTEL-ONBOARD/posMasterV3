@@ -2,7 +2,7 @@
  * Migration: Add updated_at column to sales_transactions table
  * Version: 038
  *
- * Required for version-based conflict resolution during cloud sync.
+ * Required for version-based conflict resolution and change tracking.
  * Without updated_at, the sync system falls back to created_at, which
  * is a fixed insertion timestamp and cannot detect updates.
  */
