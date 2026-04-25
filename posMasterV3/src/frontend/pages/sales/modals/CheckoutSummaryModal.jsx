@@ -145,6 +145,29 @@ function CheckoutSummaryModal({
 
   // Fetch payment methods when modal opens
   useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      setIsLoadingMethods(true);
+      try {
+        // Get methods based on whether customer is a member
+        const response = selectedMember?.is_guest
+          ? await paymentMethodApi.getForNonMembers()
+          : await paymentMethodApi.getForMembers();
+
+        if (response.status === 'success') {
+          const methods = response.data || [];
+          setPaymentMethods(methods);
+          // Auto-select first method (usually cash)
+          if (methods.length > 0) {
+            setSelectedPaymentMethod(methods[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch payment methods:', error);
+      } finally {
+        setIsLoadingMethods(false);
+      }
+    };
+
     if (isOpen) {
       fetchPaymentMethods();
       setFinalDiscount(0);
@@ -155,29 +178,6 @@ function CheckoutSummaryModal({
       setSaleResult(null);
     }
   }, [isOpen, selectedMember]);
-
-  const fetchPaymentMethods = async () => {
-    setIsLoadingMethods(true);
-    try {
-      // Get methods based on whether customer is a member
-      const response = selectedMember?.is_guest
-        ? await paymentMethodApi.getForNonMembers()
-        : await paymentMethodApi.getForMembers();
-
-      if (response.status === 'success') {
-        const methods = response.data || [];
-        setPaymentMethods(methods);
-        // Auto-select first method (usually cash)
-        if (methods.length > 0) {
-          setSelectedPaymentMethod(methods[0]);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch payment methods:', error);
-    } finally {
-      setIsLoadingMethods(false);
-    }
-  };
 
   if (!isOpen) return null;
 

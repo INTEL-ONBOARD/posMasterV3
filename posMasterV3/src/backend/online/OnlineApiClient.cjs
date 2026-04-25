@@ -4,6 +4,19 @@ class OnlineApiClient {
         this.token = options.token || null;
     }
 
+    static _isTransientFetchError(error) {
+        const code = error?.cause?.code || error?.code || error?.statusCode;
+        return code === 'ECONNREFUSED' || code === 'ENOTFOUND' || code === 'EAI_AGAIN' || code === 'ECONNRESET' || error?.message === 'fetch failed';
+    }
+
+    static _sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    static _retryDelay(attempt) {
+        return Math.min(250 * (2 ** attempt), 1500);
+    }
+
     setToken(token) {
         this.token = token || null;
     }
@@ -13,6 +26,8 @@ class OnlineApiClient {
     }
 
     async request(path, options = {}) {
+        const method = String(options.method || 'GET').toUpperCase();
+        const maxRetries = options.retries ?? (method === 'GET' || method === 'HEAD' ? 2 : 0);
         const url = `${this.baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
         const headers = {
             'Content-Type': 'application/json',
@@ -20,23 +35,43 @@ class OnlineApiClient {
         };
         if (this.token) headers.Authorization = `Bearer ${this.token}`;
 
-        const response = await fetch(url, {
-            ...options,
-            headers,
-            body: options.body && typeof options.body !== 'string'
-                ? JSON.stringify(options.body)
-                : options.body
-        });
+        let lastError = null;
+        for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers,
+                    method,
+                    body: options.body && typeof options.body !== 'string'
+                        ? JSON.stringify(options.body)
+                        : options.body
+                });
 
-        const text = await response.text();
-        const payload = text ? JSON.parse(text) : null;
-        if (!response.ok) {
-            const error = new Error(payload?.message || `Online API request failed: ${response.status}`);
-            error.statusCode = response.status;
-            error.payload = payload;
-            throw error;
+                const text = await response.text();
+                const payload = text ? JSON.parse(text) : null;
+                if (!response.ok) {
+                    const error = new Error(payload?.message || `Online API request failed: ${response.status}`);
+                    error.statusCode = response.status;
+                    error.payload = payload;
+                    if (response.status >= 500 && attempt < maxRetries) {
+                        lastError = error;
+                        await OnlineApiClient._sleep(OnlineApiClient._retryDelay(attempt));
+                        continue;
+                    }
+                    throw error;
+                }
+                return payload;
+            } catch (error) {
+                lastError = error;
+                if (attempt < maxRetries && OnlineApiClient._isTransientFetchError(error)) {
+                    await OnlineApiClient._sleep(OnlineApiClient._retryDelay(attempt));
+                    continue;
+                }
+                throw error;
+            }
         }
-        return payload;
+
+        throw lastError || new Error('Online API request failed');
     }
 
     health() {

@@ -67,9 +67,39 @@ async function createSale(auth, saleInput) {
         await session.withTransaction(async () => {
             const invoiceNo = saleInput.invoiceNo || await nextInvoiceNo(db, session, { ...auth, branchId });
             const now = new Date();
-            const lines = saleInput.items || [];
+            const lines = (saleInput.items || []).map((line) => {
+                const itemId = line.itemId ?? line.item_id ?? line.itemID ?? line.item?.id ?? null;
+                const batchCode = line.batchCode ?? line.batch_code ?? line.batch ?? null;
+                const stockId = line.stockId ?? line.stock_id ?? null;
+                const quantity = Number(line.quantity ?? line.qty ?? line.customer_quantity ?? 0);
+                const unitPrice = Number(line.unitPrice ?? line.unit_price ?? line.retail_price ?? 0);
+                const discount = Number(line.discount ?? line.customer_discount ?? 0);
+                const totalPrice = Number(line.totalPrice ?? line.total_price ?? (unitPrice - discount) * quantity);
+
+                return {
+                    ...line,
+                    itemId,
+                    item_id: itemId,
+                    stockId,
+                    stock_id: stockId,
+                    batchCode,
+                    batch_code: batchCode,
+                    quantity,
+                    unitPrice,
+                    unit_price: unitPrice,
+                    discount,
+                    totalPrice,
+                    total_price: totalPrice
+                };
+            });
 
             for (const line of lines) {
+                if (!line.itemId || !line.batchCode) {
+                    const err = new Error(`Sale line is missing item or batch identity: item ${line.itemId || 'undefined'} / batch ${line.batchCode || 'undefined'}`);
+                    err.statusCode = 400;
+                    throw err;
+                }
+
                 const result = await db.collection('stock_batches').updateOne(
                     {
                         orgId: auth.orgId,

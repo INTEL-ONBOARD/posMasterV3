@@ -4,6 +4,28 @@ import { supplierApi } from '../../api/localApi';
 import { useReactiveData, TABLES } from '../../store';
 import StatusModal from '../../components/StatusModal.jsx';
 
+const normalizeSupplierForUI = (supplier) => ({
+  ...supplier,
+  basic_info: supplier?.basic_info || {
+    supplier_name: supplier?.supplier_name || '',
+    contact: supplier?.contact || '',
+    type: supplier?.type || '',
+    supplier_address: supplier?.supplier_address || '',
+    status: supplier?.status ?? true
+  },
+  financial_info: supplier?.financial_info || {
+    current_amount: supplier?.current_amount ?? 0,
+    previous_amount: supplier?.previous_amount ?? 0
+  },
+  account_info: supplier?.account_info || {
+    account_name: supplier?.account_name || '',
+    account_nickname: supplier?.account_nickname || '',
+    account_bank: supplier?.account_bank || '',
+    account_number: supplier?.account_number || '',
+    account_branch: supplier?.account_branch || ''
+  }
+});
+
 function SupplierReg() {
   //left section form block controls
   const [openSupplier, setOpenSupplier] = useState(true);
@@ -20,11 +42,17 @@ function SupplierReg() {
   const [searchCategory, setSearchCategory] = useState("All");
   const [searchAvailability, _setSearchAvailability] = useState("All");
 
+  // keep the timer ID so we can clear it if the component unmounts early
+  const timerRef = useRef(null);
+
   // Search handler
   const handleSearch = (e) => {
     setSearchLoading(true);
     setSearch(e.target.value);
-    setTimeout(() => setSearchLoading(false), 600);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    timerRef.current = setTimeout(() => setSearchLoading(false), 600);
   };
 
   //helper method for supplier availability filtering
@@ -37,11 +65,11 @@ function SupplierReg() {
   };
 
   // Filter suppliers based on search, category and availability
-  const filteredSuppliers = (supplierList || []).filter((supplier) => {
+  const filteredSuppliers = (supplierList || []).map(normalizeSupplierForUI).filter((supplier) => {
     // category match: either All or supplier.category.type equals selected
     const matchesCategory =
       searchCategory === "All" ||
-      (supplier?.basic_info && supplier.basic_info.type === searchCategory);
+      supplier?.basic_info?.type === searchCategory;
 
     // availability match: All, Available (true), Unavailable (false)
     const isAvailable = interpretAvailability(supplier);
@@ -62,12 +90,11 @@ function SupplierReg() {
   const [formStatus, setFormStatus] = useState("form");   // possible values: "form" | "loading"
   const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
 
-  // keep the timer ID so we can clear it if the component unmounts early
-  const timerRef = useRef(null);
   useEffect(() => {
+    const activeTimer = timerRef;
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
+      if (activeTimer.current) {
+        clearTimeout(activeTimer.current);
       }
     };
   }, []);
@@ -161,17 +188,17 @@ function SupplierReg() {
 
     // Check basic_info fields
     if (
-      !basic_info.supplier_name?.trim() ||
-      !basic_info.contact?.trim() ||
-      !basic_info.type?.trim() ||
-      !basic_info.supplier_address?.trim()
+      !basic_info?.supplier_name?.trim() ||
+      !basic_info?.contact?.trim() ||
+      !basic_info?.type?.trim() ||
+      !basic_info?.supplier_address?.trim()
     ) {
       console.log("basic info missing");
       return false;
     }
 
     // Validate contact is digits only (7–15 digits)
-    const contactDigits = basic_info.contact.trim().replace(/\s+/g, '');
+    const contactDigits = String(basic_info?.contact || '').trim().replace(/\s+/g, '');
     if (!/^\d{7,15}$/.test(contactDigits)) {
       return false;
     }
@@ -643,66 +670,72 @@ function SupplierReg() {
                   <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
                 </div>
               ) : (
-                filteredSuppliers.map((supplier, index) => (
-                  <div
-                    key={supplier.id}
-                    onClick={() => loadSupplier(supplier)}
-                    className={`grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
-                      formData.id === supplier.id ? "bg-[#1A318C]/5 border-l-4 border-l-[#1A318C]" : ""
-                    }`}
-                  >
-                    <div className="col-span-1 text-sm text-gray-400 font-medium">{index + 1}</div>
-                    <div className="col-span-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1A318C] to-[#152870] flex items-center justify-center">
-                          <span className="text-white font-bold text-sm">
-                            {supplier.basic_info.supplier_name?.charAt(0).toUpperCase()}
-                          </span>
+                filteredSuppliers.map((supplier, index) => {
+                  const basicInfo = supplier.basic_info || {};
+                  const supplierName = basicInfo.supplier_name || 'Unnamed supplier';
+                  const isActive = basicInfo.status !== false;
+
+                  return (
+                    <div
+                      key={supplier.id || supplier._id || index}
+                      onClick={() => loadSupplier(supplier)}
+                      className={`grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
+                        formData.id === supplier.id ? "bg-[#1A318C]/5 border-l-4 border-l-[#1A318C]" : ""
+                      }`}
+                    >
+                      <div className="col-span-1 text-sm text-gray-400 font-medium">{index + 1}</div>
+                      <div className="col-span-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1A318C] to-[#152870] flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">
+                              {supplierName.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <span className="font-semibold text-gray-800">{supplierName}</span>
                         </div>
-                        <span className="font-semibold text-gray-800">{supplier.basic_info.supplier_name}</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${
+                          basicInfo.type === 'company'
+                            ? 'bg-blue-50 text-blue-600'
+                            : 'bg-purple-50 text-purple-600'
+                        }`}>
+                          {basicInfo.type === 'company' ? (
+                            <Building2 className="w-3 h-3 mr-1" />
+                          ) : (
+                            <Users className="w-3 h-3 mr-1" />
+                          )}
+                          {basicInfo.type || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                          isActive
+                            ? 'bg-emerald-50 text-emerald-600'
+                            : 'bg-red-50 text-red-600'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                          {isActive ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                      <div className="col-span-2 text-sm text-gray-600 font-mono">{basicInfo.contact || 'N/A'}</div>
+                      <div className="col-span-1 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                          className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-100 hover:text-red-500 flex items-center justify-center text-gray-400 transition-all"
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
-                    <div className="col-span-2">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${
-                        supplier.basic_info.type === 'company'
-                          ? 'bg-blue-50 text-blue-600'
-                          : 'bg-purple-50 text-purple-600'
-                      }`}>
-                        {supplier.basic_info.type === 'company' ? (
-                          <Building2 className="w-3 h-3 mr-1" />
-                        ) : (
-                          <Users className="w-3 h-3 mr-1" />
-                        )}
-                        {supplier.basic_info.type || 'N/A'}
-                      </span>
-                    </div>
-                    <div className="col-span-2">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                        supplier.basic_info.status
-                          ? 'bg-emerald-50 text-emerald-600'
-                          : 'bg-red-50 text-red-600'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${supplier.basic_info.status ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                        {supplier.basic_info.status ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-                    <div className="col-span-2 text-sm text-gray-600 font-mono">{supplier.basic_info.contact}</div>
-                    <div className="col-span-1 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                        className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-100 hover:text-red-500 flex items-center justify-center text-gray-400 transition-all"
-                      >
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

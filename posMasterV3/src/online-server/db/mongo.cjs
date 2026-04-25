@@ -4,19 +4,34 @@ const { config } = require('../config.cjs');
 let client = null;
 let db = null;
 let transactionsSupported = false;
+let connectPromise = null;
 
 async function connectMongo() {
     if (db) return db;
+    if (connectPromise) return connectPromise;
 
-    client = new MongoClient(config.mongoUri, {
-        appName: 'posmasterv3-online'
-    });
+    connectPromise = (async () => {
+        client = new MongoClient(config.mongoUri, {
+            appName: 'posmasterv3-online'
+        });
 
-    await client.connect();
-    db = client.db(config.mongoDbName);
-    transactionsSupported = await detectTransactionSupport(db);
-    await ensureIndexes(db);
-    return db;
+        await client.connect();
+        db = client.db(config.mongoDbName);
+        transactionsSupported = await detectTransactionSupport(db);
+        await ensureIndexes(db);
+        return db;
+    })();
+
+    try {
+        return await connectPromise;
+    } catch (error) {
+        client = null;
+        db = null;
+        transactionsSupported = false;
+        throw error;
+    } finally {
+        connectPromise = null;
+    }
 }
 
 function getDb() {
@@ -44,6 +59,7 @@ async function closeMongo() {
     client = null;
     db = null;
     transactionsSupported = false;
+    connectPromise = null;
 }
 
 async function detectTransactionSupport(database) {

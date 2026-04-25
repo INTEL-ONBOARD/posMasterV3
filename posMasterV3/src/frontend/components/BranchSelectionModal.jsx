@@ -25,13 +25,6 @@ export default function BranchSelectionModal({
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
-    // Fetch available branches on mount
-    useEffect(() => {
-        if (isOpen) {
-            fetchBranches();
-        }
-    }, [isOpen, fetchBranches]);
-
     const fetchBranches = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -88,6 +81,13 @@ export default function BranchSelectionModal({
             setLoading(false);
         }
     }, [onBranchSelected]);
+
+    // Fetch available branches on mount/open
+    useEffect(() => {
+        if (isOpen) {
+            fetchBranches();
+        }
+    }, [isOpen, fetchBranches]);
 
     const handleSelectBranch = async () => {
         if (!selectedBranchId) return;

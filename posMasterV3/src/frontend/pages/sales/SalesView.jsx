@@ -204,6 +204,35 @@ export default function SalesView({ isActive }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [preparedBy, setPreparedBy] = useState("");
 
+  // Fetch the most recent held order for this session
+  const fetchHeldOrder = useCallback(async (user = currentUser) => {
+    try {
+      const response = await salesApi.getHeldOrders();
+      if (response?.status === 'success' && response.data?.length > 0) {
+        const currentUserId = String(user?.id || user?._id || user?.userId || '');
+        const currentBranchId = String(user?.branch_id || user?.branchId || '');
+        const currentSessionId = getSalesSessionId();
+
+        const nextHeldOrder = response.data.find((row) => {
+          const rowCashierId = String(row?.cashier_id || row?.cashierId || row?.createdBy || row?.created_by || '');
+          const rowBranchId = String(row?.branchId || row?.branch_id || '');
+          const rowSessionId = String(row?.sales_session_id || row?.session_id || row?.sessionId || '');
+
+          if (!currentUserId || rowCashierId !== currentUserId) return false;
+          if (currentBranchId && rowBranchId && rowBranchId !== currentBranchId) return false;
+          if (rowSessionId !== currentSessionId) return false;
+          return true;
+        }) || null;
+
+        setHeldOrder(nextHeldOrder);
+      } else {
+        setHeldOrder(null);
+      }
+    } catch (e) {
+      console.error('[SalesView] Failed to fetch held orders:', e);
+    }
+  }, [currentUser]);
+
   // Fetch current user on mount
   useEffect(() => {
     const fetchCurrentUser = async () => {
@@ -212,32 +241,22 @@ export default function SalesView({ isActive }) {
         if (user) {
           setCurrentUser(user);
           setPreparedBy(user.username || user.name || "");
+          return user;
         }
       } catch (error) {
         console.error('[SalesView] Error fetching current user:', error);
       }
+      return null;
     };
 
     if (isActive) {
-      fetchCurrentUser();
       focusSearch();
-      fetchHeldOrder();
+      (async () => {
+        const user = await fetchCurrentUser();
+        await fetchHeldOrder(user);
+      })();
     }
-  }, [isActive]);
-
-  // Fetch the most recent held order for this session
-  const fetchHeldOrder = async () => {
-    try {
-      const response = await salesApi.getHeldOrders();
-      if (response?.status === 'success' && response.data?.length > 0) {
-        setHeldOrder(response.data[0]);
-      } else {
-        setHeldOrder(null);
-      }
-    } catch (e) {
-      console.error('[SalesView] Failed to fetch held orders:', e);
-    }
-  };
+  }, [isActive, fetchHeldOrder]);
 
   // Shift+Space opens the member selection modal
   useEffect(() => {
@@ -253,7 +272,7 @@ export default function SalesView({ isActive }) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isActive]);
+  }, [isActive, fetchHeldOrder]);
 
   const [selectedItems, setSelectedItems] = useState([]);
   const [lastScannedCode, setLastScannedCode] = useState("");
@@ -450,17 +469,41 @@ export default function SalesView({ isActive }) {
     selectedMember?.is_guest ? null : (selectedMember?.id || selectedMember?._id || null)
   );
 
-  const buildSaleItemsPayload = () => selectedItems.map(item => ({
-    item_id: item.item_id || item.id,
-    stock_id: item.stock_id || item.id,
-    batch_code: item.batch_code,
-    item_name: item.item_name,
-    sku: item.sku,
-    quantity: item.customer_quantity,
-    unit_price: item.retail_price,
-    discount: item.customer_discount || 0,
-    total_price: (item.retail_price - (item.customer_discount || 0)) * item.customer_quantity
-  }));
+  const getSalesSessionId = () => {
+    const storageKey = 'sales_session_id';
+    const existing = sessionStorage.getItem(storageKey);
+    if (existing) return existing;
+    const next = window.crypto?.randomUUID?.() || `sales-session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    sessionStorage.setItem(storageKey, next);
+    return next;
+  };
+
+  const buildSaleItemsPayload = () => selectedItems.map((item) => {
+    const itemId = item.itemId || item.item_id || item.id || item._id || null;
+    const stockId = item.stockId || item.stock_id || item.stock?.id || item.id || null;
+    const batchCode = item.batchCode || item.batch_code || item.batch || null;
+    const unitPrice = Number(item.unit_price ?? item.unitPrice ?? item.retail_price ?? 0);
+    const discount = Number(item.discount ?? item.customer_discount ?? 0);
+    const quantity = Number(item.quantity ?? item.customer_quantity ?? 0);
+    const totalPrice = (unitPrice - discount) * quantity;
+
+    return {
+      itemId,
+      item_id: itemId,
+      stockId,
+      stock_id: stockId,
+      batchCode,
+      batch_code: batchCode,
+      item_name: item.item_name,
+      sku: item.sku,
+      quantity,
+      unitPrice,
+      unit_price: unitPrice,
+      discount,
+      totalPrice,
+      total_price: totalPrice
+    };
+  });
 
   const buildSalePayload = ({
     paymentMethod = "cash",
@@ -471,6 +514,7 @@ export default function SalesView({ isActive }) {
     changeAmount = 0
   } = {}) => ({
     invoice_no: invoiceNo,
+    sales_session_id: getSalesSessionId(),
     member_id: getSelectedMemberId(),
     cashier_id: currentUser?.id || null,
     payment_method: paymentMethod,
@@ -548,7 +592,7 @@ export default function SalesView({ isActive }) {
             setStatusModal({ open: true, type: 'failed', description: 'Sale saved but bill printing failed' });
         }
         setReleasedHeldOrder(null);
-        await fetchHeldOrder();
+        await fetchHeldOrder(currentUser);
         // Mark sale as completed - clearForm will be called when modal closes
         setSaleCompleted(true);
         // Return success for the modal to show animation
@@ -587,7 +631,7 @@ export default function SalesView({ isActive }) {
       if (response.status === "success") {
         setStatusModal({ open: true, type: 'success', description: "Sale held. Click Release to resume." });
         clearForm();
-        await fetchHeldOrder();
+        await fetchHeldOrder(currentUser);
       } else {
         setStatusModal({ open: true, type: 'failed', description: response.message || "Failed to hold sale" });
       }
@@ -607,16 +651,19 @@ export default function SalesView({ isActive }) {
     }
 
     const restoredItems = (heldOrder.items || []).map(item => ({
-      id: item.item_id,
-      _id: item.item_id,
-      stock_id: item.stock_id,
-      item_id: item.item_id,
+      id: item.itemId || item.item_id,
+      _id: item.itemId || item.item_id,
+      stock_id: item.stockId || item.stock_id,
+      stockId: item.stockId || item.stock_id,
+      item_id: item.itemId || item.item_id,
+      itemId: item.itemId || item.item_id,
       sku: item.sku,
       item_name: item.item_name,
       item_image_url: item.item_image_url || null,
-      batch_code: item.batch_code,
-      retail_price: item.unit_price,
-      stock_price: item.unit_price,
+      batch_code: item.batchCode || item.batch_code,
+      batchCode: item.batchCode || item.batch_code,
+      retail_price: item.unitPrice || item.unit_price,
+      stock_price: item.unitPrice || item.unit_price,
       customer_quantity: item.quantity,
       customer_discount: item.discount || 0,
       quantity: item.quantity,

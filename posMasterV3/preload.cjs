@@ -336,8 +336,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
         cancel: (id) => ipcRenderer.invoke("sales:cancel", id),
         return: (saleId, data) => ipcRenderer.invoke("sales:return", saleId, data),
         getSummary: (startDate, endDate) =>
-            ipcRenderer.invoke("sales:get-summary", startDate, endDate),
-        getDaily: (days) => ipcRenderer.invoke("sales:get-daily", days),
+            ipcRenderer.invoke("online:sales:get-summary", { startDate, endDate }),
+        getDaily: (days) => ipcRenderer.invoke("online:sales:get-daily", { days }),
         generateInvoiceNo: () => ipcRenderer.invoke("sales:generate-invoice-no")
     },
 
@@ -546,10 +546,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
             ipcRenderer.invoke("loginHistory:getUserActivitySummary", days),
         // Get currently active sessions
         getActiveSessions: () =>
-            ipcRenderer.invoke("loginHistory:getActiveSessions"),
+            ipcRenderer.invoke("online:login-history:get-active-sessions"),
         // Count active sessions
         countActiveSessions: () =>
-            ipcRenderer.invoke("loginHistory:countActiveSessions"),
+            ipcRenderer.invoke("online:login-history:count-active-sessions"),
         // Mark stale sessions (cleanup)
         markStaleSessions: (hoursThreshold) =>
             ipcRenderer.invoke("loginHistory:markStaleSessions", hoursThreshold)

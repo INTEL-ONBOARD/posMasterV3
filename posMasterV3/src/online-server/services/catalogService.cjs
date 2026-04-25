@@ -50,6 +50,9 @@ function scopedQuery(auth, query = {}) {
         deletedAt: null
     };
     if (query.branchId) filter.branchId = query.branchId;
+    for (const key of ['userId', 'memberId', 'saleId', 'restockId', 'itemId', 'stockId']) {
+        if (query[key]) filter[key] = query[key];
+    }
     return filter;
 }
 

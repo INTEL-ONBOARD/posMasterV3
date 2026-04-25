@@ -1795,7 +1795,20 @@ export const onlineStatusApi = {
      * @returns {Promise<ApiResponse & {data: {isOnline: boolean}}>}
      */
     checkConnection: async () => {
-        return onlineCall((api) => api.ready());
+        const response = await onlineCall(async (api) => {
+            const ready = await api.ready();
+            return {
+                status: 'success',
+                data: {
+                    isOnline: ready?.status === 'success' && ready?.data?.ready !== false,
+                    ready: Boolean(ready?.data?.ready),
+                    syncStatus: ready?.status === 'success' ? 'connected' : 'unavailable',
+                    connectionQuality: ready?.status === 'success' ? 'online' : 'offline'
+                }
+            };
+        });
+
+        return response;
     },
 };
 
@@ -2395,6 +2408,145 @@ const normalizeCollectionRecord = (record) => {
     };
 };
 
+const normalizeStockRecord = (record) => {
+    if (!record || typeof record !== 'object') return record;
+    const normalized = normalizeCollectionRecord(record);
+    return {
+        ...normalized,
+        qty: normalized.qty ?? normalized.quantity ?? 0,
+        quantity: normalized.quantity ?? normalized.qty ?? 0,
+        exp_date: normalized.exp_date ?? normalized.expiry_date ?? null,
+        expiry_date: normalized.expiry_date ?? normalized.exp_date ?? null,
+        threshold_limit: normalized.threshold_limit ?? normalized.thresholdLimit ?? 0,
+        stock_price: normalized.stock_price ?? normalized.stockPrice ?? 0,
+        retail_price: normalized.retail_price ?? normalized.retailPrice ?? 0
+    };
+};
+
+const normalizePaymentMethodRecord = (record) => {
+    if (!record || typeof record !== 'object') return record;
+    const normalized = normalizeCollectionRecord(record);
+    return {
+        ...normalized,
+        name: normalized.name ?? normalized.payment_method_name ?? normalized.label ?? '',
+        description: normalized.description ?? '',
+        type: normalized.type ?? 'cash',
+        credit_months: normalized.credit_months ?? normalized.creditMonths ?? 0,
+        interest_rate: normalized.interest_rate ?? normalized.interestRate ?? 0,
+        is_active: normalized.is_active ?? normalized.isActive ?? true,
+        is_member_only: normalized.is_member_only ?? normalized.isMemberOnly ?? false,
+        display_order: normalized.display_order ?? normalized.displayOrder ?? 0,
+        icon: normalized.icon ?? 'Wallet',
+        color: normalized.color ?? 'teal'
+    };
+};
+
+const getSelectedBranchId = () => {
+    if (typeof localStorage === 'undefined') return null;
+    return localStorage.getItem('selectedBranchId') || null;
+};
+
+const normalizeSupplierRecord = (record) => {
+    if (!record || typeof record !== 'object') return record;
+    const normalized = normalizeCollectionRecord(record);
+    const basic_info = normalized.basic_info && typeof normalized.basic_info === 'object'
+        ? normalized.basic_info
+        : {
+            supplier_name: normalized.supplier_name || '',
+            contact: normalized.contact || '',
+            type: normalized.type || '',
+            supplier_address: normalized.supplier_address || '',
+            status: normalized.status ?? true
+        };
+    const financial_info = normalized.financial_info && typeof normalized.financial_info === 'object'
+        ? normalized.financial_info
+        : {
+            current_amount: normalized.current_amount ?? 0,
+            previous_amount: normalized.previous_amount ?? 0
+        };
+    const account_info = normalized.account_info && typeof normalized.account_info === 'object'
+        ? normalized.account_info
+        : {
+            account_number: normalized.account_number ?? '',
+            account_bank: normalized.account_bank ?? '',
+            account_branch: normalized.account_branch ?? '',
+            account_name: normalized.account_name ?? '',
+            account_nickname: normalized.account_nickname ?? ''
+        };
+
+    return {
+        ...normalized,
+        basic_info,
+        financial_info,
+        account_info
+    };
+};
+
+const flattenSupplierPayload = (data = {}) => {
+    if (!data?.basic_info || typeof data.basic_info !== 'object') return data;
+
+    const basicInfo = data.basic_info;
+    const financialInfo = data.financial_info || {};
+    const accountInfo = data.account_info || {};
+
+    return {
+        supplier_name: basicInfo.supplier_name,
+        contact: basicInfo.contact,
+        type: basicInfo.type,
+        supplier_address: basicInfo.supplier_address,
+        status: basicInfo.status,
+        current_amount: financialInfo.current_amount ?? 0,
+        previous_amount: financialInfo.previous_amount ?? 0,
+        account_number: accountInfo.account_number ?? '',
+        account_bank: accountInfo.account_bank ?? '',
+        account_branch: accountInfo.account_branch ?? '',
+        account_name: accountInfo.account_name ?? '',
+        account_nickname: accountInfo.account_nickname ?? ''
+    };
+};
+
+const parseSettingValue = (record) => {
+    if (!record || typeof record !== 'object') return record;
+    if ('value' in record && record.value !== undefined) return record.value;
+    const rawValue = record.setting_value ?? record.settings ?? null;
+    const type = String(record.setting_type || record.type || 'string').toLowerCase();
+    switch (type) {
+        case 'boolean':
+            return rawValue === true || rawValue === 1 || rawValue === '1' || String(rawValue).toLowerCase() === 'true';
+        case 'number': {
+            const parsed = Number(rawValue);
+            return Number.isNaN(parsed) ? rawValue : parsed;
+        }
+        case 'json':
+            try {
+                return typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+            } catch {
+                return rawValue;
+            }
+        default:
+            return rawValue;
+    }
+};
+
+const mergeAppSettingsResponse = (response) => {
+    if (!Array.isArray(response?.data)) return response;
+    const merged = {};
+    for (const record of response.data) {
+        if (!record || typeof record !== 'object') continue;
+        if (record.settings && typeof record.settings === 'object' && !Array.isArray(record.settings)) {
+            Object.assign(merged, record.settings);
+        }
+        const key = record.key ?? record.setting_key;
+        if (key) {
+            merged[key] = parseSettingValue(record);
+        }
+    }
+    return {
+        ...response,
+        data: merged
+    };
+};
+
 const normalizeCollectionResponse = (response) => {
     if (Array.isArray(response?.data)) {
         return {
@@ -2465,6 +2617,53 @@ const installOnlineOnlyOverrides = () => {
     Object.assign(uomApi, onlineCollectionApi('units_of_measurement'));
     Object.assign(branchApi, onlineCollectionApi('branches'));
     Object.assign(supplierApi, onlineCollectionApi('suppliers'), {
+        getAll: async () => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('suppliers', {})));
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.map(normalizeSupplierRecord);
+            }
+            return response;
+        },
+        getActive: async () => {
+            const response = await supplierApi.getAll();
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.filter((row) => row?.basic_info?.status !== false);
+            }
+            return response;
+        },
+        getById: async (id) => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.get('suppliers', id)));
+            if (response?.data) {
+                response.data = normalizeSupplierRecord(response.data);
+            }
+            return response;
+        },
+        search: async (searchTerm = '') => {
+            const response = await supplierApi.getAll();
+            const term = String(searchTerm || '').toLowerCase();
+            if (Array.isArray(response?.data) && term) {
+                response.data = response.data.filter((row) =>
+                    String(row?.basic_info?.supplier_name || '').toLowerCase().includes(term) ||
+                    String(row?.basic_info?.contact || '').toLowerCase().includes(term) ||
+                    String(row?.basic_info?.type || '').toLowerCase().includes(term)
+                );
+            }
+            return response;
+        },
+        create: async (data) => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.create('suppliers', flattenSupplierPayload(data))));
+            if (response?.data) {
+                response.data = normalizeSupplierRecord(response.data);
+            }
+            return response;
+        },
+        update: async (id, data) => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.update('suppliers', id, flattenSupplierPayload(data))));
+            if (response?.data) {
+                response.data = normalizeSupplierRecord(response.data);
+            }
+            return response;
+        },
         updateAmounts: async (id, currentAmount, previousAmount) =>
             onlineCall((api) => api.update('suppliers', id, { current_amount: currentAmount, previous_amount: previousAmount }))
     });
@@ -2480,8 +2679,30 @@ const installOnlineOnlyOverrides = () => {
         }
     });
     Object.assign(stockApi, onlineCollectionApi('stock_batches'), {
+        getAll: async (query = {}) => {
+            const response = normalizeCollectionResponse(
+                await onlineCall((api) => api.list('stock_batches', query))
+            );
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.map(normalizeStockRecord);
+            }
+            return response;
+        },
         getAllWithItems: async () => stockApi.getAll(),
-        getBySku: async (sku) => stockApi.search(sku),
+        getBySku: async (sku) => {
+            const response = await stockApi.getAll();
+            if (Array.isArray(response?.data)) {
+                const term = String(sku || '').toLowerCase();
+                return {
+                    status: 'success',
+                    data: response.data.filter((row) =>
+                        String(row?.sku || '').toLowerCase().includes(term) ||
+                        String(row?.batch_code || '').toLowerCase().includes(term)
+                    )
+                };
+            }
+            return response;
+        },
         getLowStock: async () => {
             const response = await stockApi.getAll();
             if (Array.isArray(response?.data)) {
@@ -2503,6 +2724,30 @@ const installOnlineOnlyOverrides = () => {
     });
     Object.assign(restockApi, onlineCollectionApi('restock_transactions'), {
         getStockItems: async () => stockApi.getAllWithItems(),
+        getStockData: async (sku) => {
+            const itemResponse = await itemApi.getBySku(sku);
+            const item = Array.isArray(itemResponse?.data) ? itemResponse.data[0] : itemResponse?.data;
+            const itemId = item?.id ?? item?._id ?? null;
+
+            const responses = [];
+            responses.push(normalizeCollectionResponse(
+                await onlineCall((api) => api.list('stock_batches', { sku }))
+            ));
+
+            if ((!responses[0]?.data || responses[0].data.length === 0) && itemId != null) {
+                responses.push(normalizeCollectionResponse(
+                    await onlineCall((api) => api.list('stock_batches', { itemId, item_id: itemId }))
+                ));
+            }
+
+            const batches = responses.flatMap((response) => Array.isArray(response?.data) ? response.data : [])
+                .map(normalizeStockRecord);
+
+            return {
+                status: 'success',
+                data: batches
+            };
+        },
         getByInvoice: async (invoiceNo) => {
             const response = await restockApi.getAll();
             if (Array.isArray(response?.data)) {
@@ -2528,7 +2773,13 @@ const installOnlineOnlyOverrides = () => {
         getHeldOrders: async () => {
             const response = await salesApi.getAll();
             if (Array.isArray(response?.data)) {
-                response.data = response.data.filter((row) => row.is_held || row.isHeld);
+                const branchId = getSelectedBranchId();
+                response.data = response.data.filter((row) => {
+                    const isHeld = row.is_held || row.isHeld;
+                    if (!isHeld) return false;
+                    if (!branchId) return true;
+                    return String(row.branchId || row.branch_id || '') === String(branchId);
+                });
             }
             return response;
         },
@@ -2536,7 +2787,65 @@ const installOnlineOnlyOverrides = () => {
         cancelSale: async (id) => salesApi.update(id, { status: 'cancelled' }),
         returnSaleItems: async (id, items, reason) => salesApi.update(id, { returned_items: items, returnReason: reason })
     });
-    Object.assign(paymentMethodApi, onlineCollectionApi('payment_methods'));
+    Object.assign(paymentMethodApi, onlineCollectionApi('payment_methods'), {
+        getAll: async () => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('payment_methods', {})));
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.map(normalizePaymentMethodRecord);
+            }
+            return response;
+        },
+        getActive: async () => {
+            const response = await paymentMethodApi.getAll();
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.filter((row) => row.is_active !== false && row.isActive !== false);
+            }
+            return response;
+        },
+        getForMembers: async () => paymentMethodApi.getActive(),
+        getForNonMembers: async () => {
+            const response = await paymentMethodApi.getActive();
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.filter((row) => String(row.type || '').toLowerCase() === 'cash');
+            }
+            return response;
+        },
+        getById: async (id) => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.get('payment_methods', id)));
+            if (response?.data) {
+                response.data = normalizePaymentMethodRecord(response.data);
+            }
+            return response;
+        },
+        search: async (searchTerm = '') => {
+            const response = await paymentMethodApi.getAll();
+            const term = String(searchTerm || '').toLowerCase();
+            if (Array.isArray(response?.data) && term) {
+                response.data = response.data.filter((row) =>
+                    String(row?.name || '').toLowerCase().includes(term) ||
+                    String(row?.description || '').toLowerCase().includes(term) ||
+                    String(row?.type || '').toLowerCase().includes(term)
+                );
+            }
+            return response;
+        },
+        create: async (data) => normalizeCollectionResponse(
+            await onlineCall((api) => api.create('payment_methods', data))
+        ),
+        update: async (id, data) => normalizeCollectionResponse(
+            await onlineCall((api) => api.update('payment_methods', id, data))
+        ),
+        toggleActive: async (id) => {
+            const current = await paymentMethodApi.getById(id);
+            if (current.status !== 'success') return current;
+            const active = current.data?.is_active !== false && current.data?.isActive !== false;
+            return paymentMethodApi.update(id, {
+                is_active: !active,
+                isActive: !active
+            });
+        },
+        delete: async (id) => onlineCall((api) => api.delete('payment_methods', id))
+    });
     Object.assign(userApi, onlineCollectionApi('users'), {
         create: async (data) => onlineCall((api) => api.register(data)),
         resetPassword: async () => ({ status: 'error', message: 'Password reset must use the online auth service endpoint' })
@@ -2567,13 +2876,13 @@ const installOnlineOnlyOverrides = () => {
             };
         },
         getCurrentUserWithSettings: async () => authApi.getCurrentUser(),
-        getAppSettings: async () => normalizeCollectionResponse(await onlineCall((api) => api.list('app_settings', {}))),
+        getAppSettings: async () => mergeAppSettingsResponse(
+            normalizeCollectionResponse(await onlineCall((api) => api.list('app_settings', {})))
+        ),
         getAppSetting: async (key) => {
-            const response = await settingsApi.getAppSettings();
-            if (Array.isArray(response?.data)) {
-                return { status: 'success', data: response.data.find((row) => row.key === key) || null };
-            }
-            return response;
+            const response = mergeAppSettingsResponse(await settingsApi.getAppSettings());
+            if (response?.status !== 'success') return response;
+            return { status: 'success', data: response.data?.[key] ?? null };
         },
         updateAppSettings: async (settings) => onlineCall((api) => api.create('app_settings', { settings })),
         updateAppSetting: async (key, value) => onlineCall((api) => api.create('app_settings', { key, value }))

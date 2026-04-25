@@ -16,6 +16,7 @@
     "online:server": "node src/online-server/server.cjs",
     "online:dev": "node --watch src/online-server/server.cjs",
     "online:seed-admin": "node scripts/seed-online-admin.cjs",
+    "import:legacy-db": "node scripts/import-legacy-sqlite-to-mongo.cjs",
     "preview": "vite preview",
     "electron": "node run-electron.cjs",
     "electron-dev": "vite build && node run-electron.cjs",

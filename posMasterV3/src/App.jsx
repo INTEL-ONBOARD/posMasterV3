@@ -26,6 +26,7 @@ import Sales from './frontend/pages/sales/Sales.jsx';
 
 import Startup from './frontend/pages/Startup.jsx';
 import Users from './frontend/pages/users/users.jsx';
+import OnlineConnectionOverlay from './frontend/components/OnlineConnectionOverlay.jsx';
 
 // Reactive Data Store Provider
 import { DataStoreProvider } from './frontend/store';
@@ -106,7 +107,7 @@ function PermissionRoute({ requiredPermissions = [], anyRole = [] }) {
 
     check();
     return () => { cancelled = true; };
-  }, []);
+  }, [anyRole, requiredPermissions]);
 
   if (allowed === null) return null; // loading — render nothing briefly
   if (!allowed) return <Navigate to="/dashboard/notifications" replace />;
@@ -173,6 +174,7 @@ function App() {
       <StatusLogProvider>
         <DataStoreProvider>
           <HashRouter>
+            <OnlineConnectionOverlay />
             <Routes>
               <Route index element={<Intro />} />
               <Route path="startup" element={<Startup />} />

@@ -71,6 +71,22 @@ function registerHandlers() {
         return service.generateInvoiceNo(payload?.type || 'SALE');
     }));
 
+    ipcMain.handle('online:sales:get-summary', wrapIpcHandler(async (event, payload) => {
+        return service.getSalesSummary(payload?.startDate, payload?.endDate);
+    }));
+
+    ipcMain.handle('online:sales:get-daily', wrapIpcHandler(async (event, payload) => {
+        return service.getSalesDaily(payload?.days || 30);
+    }));
+
+    ipcMain.handle('online:login-history:get-active-sessions', wrapIpcHandler(async () => {
+        return service.getActiveSessions();
+    }));
+
+    ipcMain.handle('online:login-history:count-active-sessions', wrapIpcHandler(async () => {
+        return service.countActiveSessions();
+    }));
+
     console.log('[OnlineController] Online-only IPC handlers registered');
 }
 
