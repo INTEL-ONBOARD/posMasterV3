@@ -77,13 +77,24 @@ contextBridge.exposeInMainWorld("electronAPI", {
         getConfig: () => ipcRenderer.invoke("online:get-config"),
         health: () => ipcRenderer.invoke("online:health"),
         ready: () => ipcRenderer.invoke("online:ready"),
+        setToken: (token) => ipcRenderer.invoke("online:set-token", { token }),
         login: (email, password, deviceInfo) =>
             ipcRenderer.invoke("online:login", { email, password, deviceInfo }),
         register: (userData) =>
             ipcRenderer.invoke("online:register", userData),
         logout: () => ipcRenderer.invoke("online:logout"),
-        validateSession: () => ipcRenderer.invoke("online:validate-session"),
+        validateSession: (token = null) => ipcRenderer.invoke("online:validate-session", { token }),
+        changePassword: (currentPassword, newPassword) =>
+            ipcRenderer.invoke("online:auth:change-password", { currentPassword, newPassword }),
+        resetPassword: (userId, newPassword) =>
+            ipcRenderer.invoke("online:users:reset-password", { userId, newPassword }),
         getRealtimeStatus: () => ipcRenderer.invoke("online:realtime-status"),
+        getSalesSummary: (startDate, endDate) =>
+            ipcRenderer.invoke("online:sales:get-summary", { startDate, endDate }),
+        getSalesDaily: (days) =>
+            ipcRenderer.invoke("online:sales:get-daily", { days }),
+        completeHeldSale: (id, data) =>
+            ipcRenderer.invoke("online:sales:complete-held", { id, ...data }),
         list: (collection, query = {}) =>
             ipcRenderer.invoke("online:list", { collection, query }),
         get: (collection, id) =>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { X, Receipt, User, CreditCard, Clock, Package, DollarSign, Wallet, Calendar, Hash, Printer, Download, ArrowRight, ShoppingBag, Tag } from "lucide-react";
 import { salesApi } from "../../../api/localApi";
 
@@ -6,13 +6,7 @@ function TransactionDetailModal({ isOpen, closeModal, transaction }) {
   const [transactionDetails, setTransactionDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && transaction?.id) {
-      fetchTransactionDetails();
-    }
-  }, [isOpen, transaction?.id]);
-
-  const fetchTransactionDetails = async () => {
+  const fetchTransactionDetails = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await salesApi.getById(transaction.id);
@@ -24,7 +18,13 @@ function TransactionDetailModal({ isOpen, closeModal, transaction }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [transaction?.id]);
+
+  useEffect(() => {
+    if (isOpen && transaction?.id) {
+      fetchTransactionDetails();
+    }
+  }, [isOpen, transaction?.id, fetchTransactionDetails]);
 
   if (!isOpen) return null;
 

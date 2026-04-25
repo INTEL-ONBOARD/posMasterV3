@@ -306,6 +306,10 @@ export default function SalesView({ isActive }) {
       sku: item.sku,
       _id: item._id,
       id: item.id,
+      item_id: item.item_id || item.id,
+      itemId: item.itemId || item.item_id || item.id,
+      stock_id: item.stock_id || item.id,
+      stockId: item.stockId || item.stock_id || item.id,
       stock_trace: item.stock_trace,
       item_name: item.item_name,
       item_image_url: item.item_image_url,
@@ -314,6 +318,7 @@ export default function SalesView({ isActive }) {
       category_id: item.category_id,
       inventory_id: item.inventory_id,
       batch_code: item.batch_code,
+      batchCode: item.batchCode || item.batch_code,
       quantity: parseFloat(item.quantity) || 0,
       threshold_limit: parseFloat(item.threshold_limit) || 0,
       stock_price: parseFloat(item.stock_price) || 0,
@@ -360,7 +365,10 @@ export default function SalesView({ isActive }) {
       sku: item.sku,
       _id: item._id,
       id: item.id,
+      item_id: item.item_id || item.id,
+      itemId: item.itemId || item.item_id || item.id,
       stock_id: item.stock_id || item.id,
+      stockId: item.stockId || item.stock_id || item.id,
       stock_trace: item.stock_trace,
       item_name: item.item_name,
       item_image_url: item.item_image_url,
@@ -369,6 +377,7 @@ export default function SalesView({ isActive }) {
       category_id: item.category_id,
       inventory_id: item.inventory_id,
       batch_code: item.batch_code,
+      batchCode: item.batchCode || item.batch_code,
       quantity: parseFloat(item.quantity) || 0,
       threshold_limit: parseFloat(item.threshold_limit) || 0,
       stock_price: parseFloat(item.stock_price) || 0,
@@ -530,10 +539,8 @@ export default function SalesView({ isActive }) {
   const clearForm = () => {
     setSelectedItems([]);
     setSelectedMember(GUEST_USER);
-    if (releasedHeldOrder) {
-      setHeldOrder(releasedHeldOrder);
-      setReleasedHeldOrder(null);
-    }
+    setHeldOrder(null);
+    setReleasedHeldOrder(null);
     generateNewInvoice();
     focusSearch();
   };

@@ -23,6 +23,11 @@ router.post('/auth/logout', requireAuth, asyncHandler(async (req, res) => {
     return res.json(result);
 }));
 
+router.post('/auth/change-password', requireAuth, asyncHandler(async (req, res) => {
+    const result = await authService.changePassword(req.auth, req.body || {});
+    return res.json(result);
+}));
+
 router.get('/auth/session', requireAuth, asyncHandler(async (req, res) => {
     return ok(res, {
         valid: true,
@@ -31,6 +36,11 @@ router.get('/auth/session', requireAuth, asyncHandler(async (req, res) => {
         branchId: req.auth.branchId,
         roles: req.auth.roles
     });
+}));
+
+router.post('/users/:id/reset-password', requireAuth, asyncHandler(async (req, res) => {
+    const result = await authService.resetPassword(req.auth, req.params.id, req.body?.newPassword || req.body?.password);
+    return res.json(result);
 }));
 
 module.exports = router;

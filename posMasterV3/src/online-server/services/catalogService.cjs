@@ -1,4 +1,5 @@
 const { ObjectId } = require('mongodb');
+const bcrypt = require('bcryptjs');
 const { getDb } = require('../db/mongo.cjs');
 const { publishDomainEvent } = require('./domainEvents.cjs');
 
@@ -49,11 +50,100 @@ function scopedQuery(auth, query = {}) {
         orgId: auth.orgId,
         deletedAt: null
     };
-    if (query.branchId) filter.branchId = query.branchId;
-    for (const key of ['userId', 'memberId', 'saleId', 'restockId', 'itemId', 'stockId']) {
-        if (query[key]) filter[key] = query[key];
+    const queryAliases = [
+        ['branchId', 'branchId'],
+        ['branch_id', 'branchId'],
+        ['userId', 'userId'],
+        ['user_id', 'userId'],
+        ['memberId', 'memberId'],
+        ['member_id', 'memberId'],
+        ['saleId', 'saleId'],
+        ['sale_id', 'saleId'],
+        ['restockId', 'restockId'],
+        ['restock_id', 'restockId'],
+        ['itemId', 'itemId'],
+        ['item_id', 'itemId'],
+        ['stockId', 'stockId'],
+        ['stock_id', 'stockId'],
+        ['sku', 'sku'],
+        ['batchCode', 'batchCode'],
+        ['batch_code', 'batchCode'],
+        ['invoiceNo', 'invoiceNo'],
+        ['invoice_no', 'invoiceNo'],
+        ['key', 'key'],
+        ['setting_key', 'setting_key'],
+        ['name', 'name'],
+        ['type', 'type'],
+        ['status', 'status']
+    ];
+    for (const [sourceKey, targetKey] of queryAliases) {
+        if (query[sourceKey] !== undefined && query[sourceKey] !== null && query[sourceKey] !== '') {
+            filter[targetKey] = query[sourceKey];
+        }
     }
     return filter;
+}
+
+function normalizeCollectionBody(collectionName, auth, body = {}, existing = null) {
+    const payload = { ...body };
+
+    const boolFrom = (value) => value === true || value === 1 || value === '1' || value === 'true';
+
+    if (collectionName === 'users') {
+        if (payload.password || payload.newPassword) {
+            payload.passwordHashPromise = bcrypt.hash(String(payload.password || payload.newPassword), 12);
+        }
+        if (payload.is_active !== undefined || payload.isActive !== undefined) {
+            const active = boolFrom(payload.is_active ?? payload.isActive);
+            payload.is_active = active;
+            payload.isActive = active;
+        }
+        if (payload.branch_id !== undefined || payload.branchId !== undefined) {
+            const branchId = payload.branch_id ?? payload.branchId ?? null;
+            payload.branch_id = branchId;
+            payload.branchId = branchId;
+        }
+        if (payload.roles && !Array.isArray(payload.roles)) {
+            payload.roles = [payload.roles].filter(Boolean);
+        }
+    }
+
+    if (collectionName === 'payment_methods') {
+        if (payload.is_active !== undefined || payload.isActive !== undefined) {
+            const active = boolFrom(payload.is_active ?? payload.isActive);
+            payload.is_active = active;
+            payload.isActive = active;
+        }
+        if (payload.is_member_only !== undefined || payload.isMemberOnly !== undefined) {
+            const memberOnly = boolFrom(payload.is_member_only ?? payload.isMemberOnly);
+            payload.is_member_only = memberOnly;
+            payload.isMemberOnly = memberOnly;
+        }
+    }
+
+    if (collectionName === 'branches' || collectionName === 'members') {
+        if (payload.is_active !== undefined || payload.isActive !== undefined) {
+            const active = boolFrom(payload.is_active ?? payload.isActive);
+            payload.is_active = active;
+            payload.isActive = active;
+        }
+    }
+
+    if (collectionName === 'app_settings') {
+        const settingKey = payload.setting_key ?? payload.key ?? existing?.setting_key ?? existing?.key ?? null;
+        if (settingKey) {
+            payload.setting_key = settingKey;
+            payload.key = settingKey;
+        }
+        if (payload.setting_value === undefined && payload.value !== undefined) {
+            payload.setting_value = payload.value;
+        }
+        if (payload.value === undefined && payload.setting_value !== undefined) {
+            payload.value = payload.setting_value;
+        }
+    }
+
+    return payload;
 }
 
 async function list(collectionName, auth, query = {}) {
@@ -89,10 +179,17 @@ async function create(collectionName, auth, body) {
     ensureCollection(collectionName);
     const db = getDb();
     const now = new Date();
+    const payload = normalizeCollectionBody(collectionName, auth, body);
+    if (payload.passwordHashPromise) {
+        payload.passwordHash = await payload.passwordHashPromise;
+        delete payload.passwordHashPromise;
+        delete payload.password;
+        delete payload.newPassword;
+    }
     const document = {
-        ...body,
+        ...payload,
         orgId: auth.orgId,
-        branchId: body.branchId || auth.branchId || null,
+        branchId: payload.branchId || payload.branch_id || auth.branchId || null,
         createdAt: now,
         updatedAt: now,
         createdBy: auth.userId,
@@ -131,8 +228,16 @@ async function update(collectionName, auth, id, body) {
         throw err;
     }
 
+    const payload = normalizeCollectionBody(collectionName, auth, body, existing);
+    if (payload.passwordHashPromise) {
+        payload.passwordHash = await payload.passwordHashPromise;
+        delete payload.passwordHashPromise;
+        delete payload.password;
+        delete payload.newPassword;
+    }
+
     const updateDoc = {
-        ...body,
+        ...payload,
         orgId: existing.orgId,
         updatedAt: new Date(),
         updatedBy: auth.userId,
@@ -142,6 +247,10 @@ async function update(collectionName, auth, id, body) {
     delete updateDoc.createdAt;
     delete updateDoc.createdBy;
     delete updateDoc.deletedAt;
+    if (updateDoc.is_active !== undefined) updateDoc.isActive = updateDoc.is_active;
+    if (updateDoc.isActive !== undefined) updateDoc.is_active = updateDoc.isActive;
+    if (updateDoc.branch_id !== undefined && updateDoc.branchId === undefined) updateDoc.branchId = updateDoc.branch_id;
+    if (updateDoc.branchId !== undefined && updateDoc.branch_id === undefined) updateDoc.branch_id = updateDoc.branchId;
 
     await db.collection(collectionName).updateOne({ _id }, { $set: updateDoc });
     const updated = await db.collection(collectionName).findOne({ _id });

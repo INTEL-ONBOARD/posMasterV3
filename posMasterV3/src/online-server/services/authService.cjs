@@ -35,6 +35,7 @@ async function register(body = {}, auth = null) {
         throw err;
     }
 
+    const isActive = body.isActive !== false && body.is_active !== false;
     const user = {
         ...body,
         orgId,
@@ -43,7 +44,8 @@ async function register(body = {}, auth = null) {
         username,
         passwordHash: await bcrypt.hash(password, 12),
         roles: Array.isArray(body.roles) && body.roles.length ? body.roles : ['cashier'],
-        isActive: body.isActive !== false,
+        isActive,
+        is_active: isActive,
         createdAt: now,
         updatedAt: now,
         createdBy: auth?.userId || null,
@@ -86,7 +88,7 @@ async function login({ email, password, deviceInfo = null }) {
         deletedAt: null
     });
 
-    if (!user || user.isActive === false) {
+    if (!user || user.isActive === false || user.is_active === false) {
         return { success: false, status: 'error', message: 'Invalid credentials' };
     }
 
@@ -198,9 +200,105 @@ async function logout(token) {
     return { success: true, status: 'success', message: 'Logged out' };
 }
 
+async function changePassword(auth, body = {}) {
+    const db = getDb();
+    const userId = auth?.userId;
+    const currentPassword = body.currentPassword || body.current_password || '';
+    const newPassword = body.newPassword || body.new_password || body.password || '';
+
+    if (!userId || !currentPassword || !newPassword) {
+        const err = new Error('Current password and new password are required');
+        err.statusCode = 400;
+        throw err;
+    }
+
+    const user = await db.collection('users').findOne({
+        _id: new ObjectId(userId),
+        orgId: auth.orgId,
+        deletedAt: null
+    });
+
+    if (!user) {
+        const err = new Error('User not found');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash || '');
+    if (!ok) {
+        const err = new Error('Current password is incorrect');
+        err.statusCode = 401;
+        throw err;
+    }
+
+    await db.collection('users').updateOne(
+        { _id: user._id },
+        {
+            $set: {
+                passwordHash: await bcrypt.hash(newPassword, 12),
+                updatedAt: new Date(),
+                updatedBy: auth.userId
+            }
+        }
+    );
+
+    return {
+        success: true,
+        status: 'success',
+        message: 'Password updated'
+    };
+}
+
+async function resetPassword(auth, targetUserId, newPassword) {
+    const db = getDb();
+    if (!targetUserId || !newPassword) {
+        const err = new Error('User ID and new password are required');
+        err.statusCode = 400;
+        throw err;
+    }
+
+    const allowed = Array.isArray(auth?.roles) && (auth.roles.includes('admin') || auth.roles.includes('manager'));
+    if (!allowed && String(auth?.userId) !== String(targetUserId)) {
+        const err = new Error('Not authorized to reset this password');
+        err.statusCode = 403;
+        throw err;
+    }
+
+    const user = await db.collection('users').findOne({
+        _id: new ObjectId(targetUserId),
+        orgId: auth.orgId,
+        deletedAt: null
+    });
+
+    if (!user) {
+        const err = new Error('User not found');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    await db.collection('users').updateOne(
+        { _id: user._id },
+        {
+            $set: {
+                passwordHash: await bcrypt.hash(newPassword, 12),
+                updatedAt: new Date(),
+                updatedBy: auth.userId
+            }
+        }
+    );
+
+    return {
+        success: true,
+        status: 'success',
+        message: 'Password reset'
+    };
+}
+
 module.exports = {
     register,
     login,
     validateSession,
-    logout
+    logout,
+    changePassword,
+    resetPassword
 };

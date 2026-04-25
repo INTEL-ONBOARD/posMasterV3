@@ -60,8 +60,21 @@ class OnlineModeService {
         return result;
     }
 
-    async validateSession() {
-        return this.api.validateSession();
+    async validateSession(token = null) {
+        return this.api.validateSession(token);
+    }
+
+    setToken(token) {
+        this.api.setToken(token);
+        return { success: true, status: 'success' };
+    }
+
+    async changePassword(currentPassword, newPassword) {
+        return this.api.changePassword(currentPassword, newPassword);
+    }
+
+    async resetPassword(userId, newPassword) {
+        return this.api.resetPassword(userId, newPassword);
     }
 
     async list(collection, query = {}) {
@@ -86,6 +99,19 @@ class OnlineModeService {
 
     async createSale(data) {
         return this.api.createSale(data);
+    }
+
+    async completeHeldSale(saleId, updateData = {}) {
+        const { completeHeldSale } = require('../../online-server/services/salesService.cjs');
+        const session = await this.api.validateSession();
+        const claims = session?.data || {};
+        const auth = {
+            orgId: claims.orgId || config.defaultOrgId,
+            branchId: claims.branchId || updateData.branchId || updateData.branch_id || null,
+            userId: claims.userId || claims.sub || updateData.updatedBy || updateData.updated_by || null,
+            roles: claims.roles || []
+        };
+        return completeHeldSale(auth, saleId, updateData);
     }
 
     async generateInvoiceNo(type = 'SALE') {
@@ -119,6 +145,7 @@ class OnlineModeService {
                 }
             },
             { $match: filter },
+            { $match: { $or: [{ is_held: { $ne: true } }, { isHeld: { $ne: true } }, { status: { $ne: 'held' } }] } },
             ...(Object.keys(dateRange).length
                 ? [{ $match: { effectiveCreatedAt: dateRange } }]
                 : []),
@@ -169,6 +196,7 @@ class OnlineModeService {
                 }
             },
             { $match: { orgId: config.defaultOrgId, effectiveCreatedAt: { $gte: start } } },
+            { $match: { $or: [{ is_held: { $ne: true } }, { isHeld: { $ne: true } }, { status: { $ne: 'held' } }] } },
             {
                 $group: {
                     _id: { $dateToString: { format: '%Y-%m-%d', date: '$effectiveCreatedAt' } },
@@ -185,7 +213,7 @@ class OnlineModeService {
     async getActiveSessions() {
         const db = await getConnectedDb();
         const sessions = await db.collection('sessions')
-            .find({ active: true })
+            .find({ active: true, orgId: config.defaultOrgId })
             .sort({ lastSeenAt: -1, createdAt: -1 })
             .toArray();
         return {
@@ -197,7 +225,7 @@ class OnlineModeService {
 
     async countActiveSessions() {
         const db = await getConnectedDb();
-        const count = await db.collection('sessions').countDocuments({ active: true });
+        const count = await db.collection('sessions').countDocuments({ active: true, orgId: config.defaultOrgId });
         return {
             success: true,
             status: 'success',

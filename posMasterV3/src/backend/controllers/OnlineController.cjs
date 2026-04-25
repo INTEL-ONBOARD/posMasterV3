@@ -30,8 +30,12 @@ function registerHandlers() {
         return service.logout();
     }));
 
-    ipcMain.handle('online:validate-session', wrapIpcHandler(async () => {
-        return service.validateSession();
+    ipcMain.handle('online:validate-session', wrapIpcHandler(async (event, payload) => {
+        return service.validateSession(payload?.token || null);
+    }));
+
+    ipcMain.handle('online:set-token', wrapIpcHandler(async (event, payload) => {
+        return service.setToken(payload?.token || null);
     }));
 
     ipcMain.handle('online:realtime-status', wrapIpcHandler(async () => {
@@ -67,6 +71,10 @@ function registerHandlers() {
         return service.createSale(payload || {});
     }));
 
+    ipcMain.handle('online:sales:complete-held', wrapIpcHandler(async (event, payload) => {
+        return service.completeHeldSale(payload?.id || payload?.saleId || payload?._id, payload || {});
+    }));
+
     ipcMain.handle('online:sales:invoice-no', wrapIpcHandler(async (event, payload) => {
         return service.generateInvoiceNo(payload?.type || 'SALE');
     }));
@@ -85,6 +93,14 @@ function registerHandlers() {
 
     ipcMain.handle('online:login-history:count-active-sessions', wrapIpcHandler(async () => {
         return service.countActiveSessions();
+    }));
+
+    ipcMain.handle('online:auth:change-password', wrapIpcHandler(async (event, payload) => {
+        return service.changePassword(payload?.currentPassword || payload?.current_password || '', payload?.newPassword || payload?.new_password || payload?.password || '');
+    }));
+
+    ipcMain.handle('online:users:reset-password', wrapIpcHandler(async (event, payload) => {
+        return service.resetPassword(payload?.userId || payload?.user_id || payload?.id, payload?.newPassword || payload?.new_password || payload?.password || '');
     }));
 
     console.log('[OnlineController] Online-only IPC handlers registered');

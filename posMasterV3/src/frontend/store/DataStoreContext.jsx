@@ -136,7 +136,16 @@ export function DataStoreProvider({ children }) {
     const checkNetwork = useCallback(async () => {
         const result = await onlineStatusApi.checkConnection();
         if (result?.data) {
-            setIsOnline(result.data.isOnline);
+            const nextIsOnline = result.data.isOnline ?? result.data.ready ?? false;
+            setIsOnline(nextIsOnline);
+            if (result.data.connectionQuality) {
+                setConnectionQuality(result.data.connectionQuality);
+            } else {
+                setConnectionQuality(nextIsOnline ? 'online' : 'offline');
+            }
+            if (result.data.syncStatus) {
+                setSyncStatus(result.data.syncStatus);
+            }
         }
         return result?.data;
     }, []);

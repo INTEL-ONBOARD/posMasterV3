@@ -29,11 +29,12 @@ class OnlineApiClient {
         const method = String(options.method || 'GET').toUpperCase();
         const maxRetries = options.retries ?? (method === 'GET' || method === 'HEAD' ? 2 : 0);
         const url = `${this.baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+        const requestToken = options.token || this.token;
         const headers = {
             'Content-Type': 'application/json',
             ...(options.headers || {})
         };
-        if (this.token) headers.Authorization = `Bearer ${this.token}`;
+        if (requestToken) headers.Authorization = `Bearer ${requestToken}`;
 
         let lastError = null;
         for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
@@ -106,8 +107,22 @@ class OnlineApiClient {
         }
     }
 
-    validateSession() {
-        return this.request('/auth/session');
+    validateSession(token = null) {
+        return this.request('/auth/session', token ? { token } : {});
+    }
+
+    changePassword(currentPassword, newPassword) {
+        return this.request('/auth/change-password', {
+            method: 'POST',
+            body: { currentPassword, newPassword }
+        });
+    }
+
+    resetPassword(userId, newPassword) {
+        return this.request(`/users/${userId}/reset-password`, {
+            method: 'POST',
+            body: { newPassword }
+        });
     }
 
     list(collection, query = {}) {

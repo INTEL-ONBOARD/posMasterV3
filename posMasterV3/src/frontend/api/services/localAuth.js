@@ -149,7 +149,7 @@ export const localAuth = {
 
         if (isElectron()) {
             try {
-                const result = await window.electronAPI.online.validateSession();
+                const result = await window.electronAPI.online.validateSession(token);
                 return {
                     valid: result?.status === 'success' && result?.data?.valid !== false,
                     ...result?.data
@@ -172,7 +172,7 @@ export const localAuth = {
 
         if (isElectron() && token) {
             try {
-                const result = await window.electronAPI.online.validateSession();
+                const result = await window.electronAPI.online.validateSession(token);
                 if (result?.status === 'success') {
                     const stored = localStorage.getItem('user') || sessionStorage.getItem('user');
                     return stored ? JSON.parse(stored) : result.data;
@@ -193,7 +193,7 @@ export const localAuth = {
      * @param {string} newPassword - New password
      * @returns {Promise<Object>} Result
      */
-    async changePassword() {
+    async changePassword(currentPassword, newPassword) {
         const user = await this.getCurrentUser();
 
         if (!user) {
@@ -204,11 +204,7 @@ export const localAuth = {
             return { success: false, message: 'Not in Electron environment' };
         }
 
-        return {
-            status: 'error',
-            success: false,
-            message: 'Password changes must use the online auth service endpoint'
-        };
+        return window.electronAPI.online.changePassword(currentPassword, newPassword);
     },
 
     /**

@@ -1397,7 +1397,13 @@ export const authApi = {
     validateSession: async (token) => {
         const api = getElectronAPI();
         if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.auth.validateSession(token);
+        return onlineCall((onlineApi) => onlineApi.validateSession(token));
+    },
+
+    changePassword: async (currentPassword, newPassword) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return onlineCall((onlineApi) => onlineApi.changePassword(currentPassword, newPassword));
     },
 
     /**
@@ -1408,7 +1414,12 @@ export const authApi = {
     getCurrentUser: async (token) => {
         const api = getElectronAPI();
         if (!api) return { status: 'error', message: 'Not in Electron environment' };
-        return api.auth.getCurrentUser(token);
+        const validation = await onlineCall((onlineApi) => onlineApi.validateSession(token));
+        if (validation?.status === 'success' && validation?.data?.valid !== false) {
+            const stored = sessionStorage.getItem('user') || localStorage.getItem('user');
+            return stored ? JSON.parse(stored) : validation.data?.user || validation.data || null;
+        }
+        return null;
     },
 
     /**
@@ -1440,7 +1451,7 @@ export const authApi = {
     checkSessionWithSync: async (token) => {
         const api = getElectronAPI();
         if (!api) return { valid: false, message: 'Not in Electron environment' };
-        return api.auth.checkSessionWithSync(token);
+        return onlineCall((onlineApi) => onlineApi.validateSession(token));
     },
 
     /**
@@ -1452,7 +1463,7 @@ export const authApi = {
     validateSessionFast: async (token) => {
         const api = getElectronAPI();
         if (!api) return { valid: false, message: 'Not in Electron environment' };
-        return api.auth.validateSessionFast(token);
+        return onlineCall((onlineApi) => onlineApi.validateSession(token));
     }
 };
 
@@ -2388,10 +2399,23 @@ const getOnlineAPI = () => {
     return api?.online || null;
 };
 
+const syncOnlineToken = async () => {
+    const api = getOnlineAPI();
+    if (!api?.setToken) return;
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    if (!token) return;
+    try {
+        await api.setToken(token);
+    } catch (error) {
+        console.warn('[localApi] Failed to sync online token:', error?.message || error);
+    }
+};
+
 const onlineCall = async (operation) => {
     const api = getOnlineAPI();
     if (!api) return onlineUnavailable();
     try {
+        await syncOnlineToken();
         return await operation(api);
     } catch (error) {
         return { status: 'error', message: error.message || 'Online request failed' };
@@ -2770,6 +2794,28 @@ const installOnlineOnlyOverrides = () => {
         generateInvoiceNo: async () => onlineCall((api) => api.generateInvoiceNo()),
         create: async (data) => onlineCall((api) => api.createSale(data)),
         hold: async (data) => onlineCall((api) => api.create('sales', { ...data, is_held: true, isHeld: true })),
+        getSummary: async (startDate, endDate) => onlineCall((api) => api.getSalesSummary(startDate, endDate)),
+        getDaily: async (days = 30) => onlineCall((api) => api.getSalesDaily(days)),
+        getByMember: async (memberId) => {
+            const response = await salesApi.getAll();
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.filter((row) => String(row.memberId || row.member_id || '') === String(memberId));
+            }
+            return response;
+        },
+        getByDateRange: async (startDate, endDate) => {
+            const response = await salesApi.getAll();
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.filter((row) => {
+                    const created = row.createdAt || row.created_at || row.date || null;
+                    if (!created) return false;
+                    if (startDate && created < startDate) return false;
+                    if (endDate && created > endDate) return false;
+                    return true;
+                });
+            }
+            return response;
+        },
         getHeldOrders: async () => {
             const response = await salesApi.getAll();
             if (Array.isArray(response?.data)) {
@@ -2783,7 +2829,7 @@ const installOnlineOnlyOverrides = () => {
             }
             return response;
         },
-        completeHeld: async (id, data = {}) => salesApi.update(id, { ...data, is_held: false, isHeld: false }),
+        completeHeld: async (id, data = {}) => onlineCall((api) => api.completeHeldSale(id, data)),
         cancelSale: async (id) => salesApi.update(id, { status: 'cancelled' }),
         returnSaleItems: async (id, items, reason) => salesApi.update(id, { returned_items: items, returnReason: reason })
     });
@@ -2806,7 +2852,7 @@ const installOnlineOnlyOverrides = () => {
         getForNonMembers: async () => {
             const response = await paymentMethodApi.getActive();
             if (Array.isArray(response?.data)) {
-                response.data = response.data.filter((row) => String(row.type || '').toLowerCase() === 'cash');
+                response.data = response.data.filter((row) => row.is_member_only !== true && row.isMemberOnly !== true);
             }
             return response;
         },
@@ -2848,16 +2894,27 @@ const installOnlineOnlyOverrides = () => {
     });
     Object.assign(userApi, onlineCollectionApi('users'), {
         create: async (data) => onlineCall((api) => api.register(data)),
-        resetPassword: async () => ({ status: 'error', message: 'Password reset must use the online auth service endpoint' })
+        update: async (userId, data) => onlineCall((api) => api.update('users', userId, data)),
+        resetPassword: async (userId, newPassword) => onlineCall((api) => api.resetPassword(userId, newPassword))
     });
     Object.assign(authApi, {
         login: async (email, password, deviceInfo = '') => onlineCall((api) => api.login(email, password, deviceInfo)),
         register: async (userData) => onlineCall((api) => api.register(userData)),
         logout: async () => onlineCall((api) => api.logout()),
-        validateSession: async () => onlineCall((api) => api.validateSession()),
-        checkSessionWithSync: async () => onlineCall((api) => api.validateSession()),
-        validateSessionFast: async () => onlineCall((api) => api.validateSession()),
+        validateSession: async () => onlineCall((api) => api.validateSession(sessionStorage.getItem('token') || localStorage.getItem('token'))),
+        checkSessionWithSync: async () => onlineCall((api) => api.validateSession(sessionStorage.getItem('token') || localStorage.getItem('token'))),
+        validateSessionFast: async () => onlineCall((api) => api.validateSession(sessionStorage.getItem('token') || localStorage.getItem('token'))),
+        changePassword: async (currentPassword, newPassword) => onlineCall((api) => api.changePassword(currentPassword, newPassword)),
+        resetPassword: async (userId, newPassword) => onlineCall((api) => api.resetPassword(userId, newPassword)),
         getCurrentUser: async () => {
+            const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+            if (token) {
+                const session = await onlineCall((api) => api.validateSession(token));
+                if (session?.status === 'success' && session?.data?.valid !== false) {
+                    const stored = sessionStorage.getItem('user') || localStorage.getItem('user');
+                    return stored ? JSON.parse(stored) : session.data?.user || session.data || null;
+                }
+            }
             const stored = sessionStorage.getItem('user') || localStorage.getItem('user');
             return stored ? JSON.parse(stored) : null;
         }
@@ -2884,8 +2941,32 @@ const installOnlineOnlyOverrides = () => {
             if (response?.status !== 'success') return response;
             return { status: 'success', data: response.data?.[key] ?? null };
         },
-        updateAppSettings: async (settings) => onlineCall((api) => api.create('app_settings', { settings })),
-        updateAppSetting: async (key, value) => onlineCall((api) => api.create('app_settings', { key, value }))
+        updateAppSettings: async (settings) => onlineCall(async (api) => {
+            const current = await api.list('app_settings', { key: 'app_settings', setting_key: 'app_settings' });
+            const records = Array.isArray(current?.data) ? current.data : [];
+            const existing = records[0];
+            const payload = {
+                key: 'app_settings',
+                setting_key: 'app_settings',
+                value: settings,
+                setting_value: settings,
+                settings
+            };
+            if (existing?.id || existing?._id) {
+                return api.update('app_settings', existing.id || existing._id, payload);
+            }
+            return api.create('app_settings', payload);
+        }),
+        updateAppSetting: async (key, value) => onlineCall(async (api) => {
+            const current = await api.list('app_settings', { key, setting_key: key });
+            const records = Array.isArray(current?.data) ? current.data : [];
+            const existing = records[0];
+            const payload = { key, setting_key: key, value, setting_value: value };
+            if (existing?.id || existing?._id) {
+                return api.update('app_settings', existing.id || existing._id, payload);
+            }
+            return api.create('app_settings', payload);
+        })
     });
     Object.assign(appSettingsApi, {
         getAll: async () => ({ status: 'success', data: { online_only: true } })
@@ -2906,7 +2987,18 @@ const installOnlineOnlyOverrides = () => {
             };
         }),
         refreshStatus: async () => ({ status: 'success', data: { synced: 0, skipped: true }, message: 'Online-only mode does not use local sync jobs' }),
-        checkConnection: async () => onlineCall((api) => api.ready())
+        checkConnection: async () => onlineCall(async (api) => {
+            const ready = await api.ready();
+            return {
+                status: 'success',
+                data: {
+                    isOnline: ready?.status === 'success' && ready?.data?.ready !== false,
+                    ready: Boolean(ready?.data?.ready),
+                    syncStatus: ready?.status === 'success' ? 'connected' : 'unavailable',
+                    connectionQuality: ready?.status === 'success' ? 'online' : 'offline'
+                }
+            };
+        })
     });
     Object.assign(loginHistoryApi, onlineCollectionApi('login_history'));
     Object.assign(branchContextApi, {
