@@ -41,13 +41,13 @@ function AddItem({ isActive }) {
 
   // when user picks a UOM
   const handleUOMChange = e => {
-    const uomId = Number(e.target.value);
+    const uomId = e.target.value || null;
     setFormUOMData(uomId);
     // optionally keep formData.uom_id in sync:
     setFormData(fd => ({
       ...fd,
       uom_id: uomId,
-      uom: (uoms || []).find(u => u.id === uomId) || fd.uom
+      uom: (uoms || []).find(u => String(u.id) === String(uomId)) || fd.uom
     }));
   };
 
@@ -445,9 +445,10 @@ function AddItem({ isActive }) {
     });
     //set unit of measure in the dropdown
     // 3. pre‐select the UOM dropdown
-    setFormUOMData(item.uom?.id);
+    const selectedUomId = item.uom?.id || item.uom_id || item.uomId || null;
+    setFormUOMData(selectedUomId);
     // and keep formData.uom_id correct:
-    setFormData(fd => ({ ...fd, uom_id: item.uom?.id, uom: item.uom }));
+    setFormData(fd => ({ ...fd, uom_id: selectedUomId, uom: item.uom }));
   };
 
 
