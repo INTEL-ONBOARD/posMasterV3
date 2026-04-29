@@ -48,6 +48,20 @@ jobs:
           git tag $TAG || true
           git push origin $TAG || true
 
+      - name: Generate packaged online runtime config
+        shell: bash
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB: ${{ vars.MONGODB_DB || secrets.MONGODB_DB || 'POSmaster' }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN: ${{ vars.JWT_EXPIRES_IN || '8h' }}
+          POS_ORG_ID: ${{ vars.POS_ORG_ID || 'default-org' }}
+          ONLINE_API_HOST: ${{ vars.ONLINE_API_HOST || '127.0.0.1' }}
+          ONLINE_API_PORT: ${{ vars.ONLINE_API_PORT || '4100' }}
+          ONLINE_API_CORS_ORIGIN: ${{ vars.ONLINE_API_CORS_ORIGIN || '*' }}
+          POS_ONLINE_CLIENT_HOST: ${{ vars.POS_ONLINE_CLIENT_HOST || '127.0.0.1' }}
+        run: node scripts/write-online-runtime-config.cjs
+
       - name: Build and publish (Windows)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -72,6 +86,20 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Generate packaged online runtime config
+        shell: bash
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB: ${{ vars.MONGODB_DB || secrets.MONGODB_DB || 'POSmaster' }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN: ${{ vars.JWT_EXPIRES_IN || '8h' }}
+          POS_ORG_ID: ${{ vars.POS_ORG_ID || 'default-org' }}
+          ONLINE_API_HOST: ${{ vars.ONLINE_API_HOST || '127.0.0.1' }}
+          ONLINE_API_PORT: ${{ vars.ONLINE_API_PORT || '4100' }}
+          ONLINE_API_CORS_ORIGIN: ${{ vars.ONLINE_API_CORS_ORIGIN || '*' }}
+          POS_ONLINE_CLIENT_HOST: ${{ vars.POS_ONLINE_CLIENT_HOST || '127.0.0.1' }}
+        run: node scripts/write-online-runtime-config.cjs
 
       - name: Build and publish (macOS)
         env:

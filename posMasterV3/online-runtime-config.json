@@ -1,0 +1,11 @@
+{
+  "ONLINE_API_HOST": "127.0.0.1",
+  "ONLINE_API_PORT": "4100",
+  "ONLINE_API_CORS_ORIGIN": "*",
+  "POS_ONLINE_CLIENT_HOST": "127.0.0.1",
+  "MONGODB_URI": "",
+  "MONGODB_DB": "POSmaster",
+  "JWT_SECRET": "",
+  "JWT_EXPIRES_IN": "8h",
+  "POS_ORG_ID": "default-org"
+}

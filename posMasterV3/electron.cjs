@@ -3,7 +3,8 @@ const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const { pathToFileURL } = require("url");
 const axios = require("axios");
-const fs = require("fs").promises;
+const fsSync = require("fs");
+const fs = fsSync.promises;
 const printer = require("pdf-to-printer");
 
 // Backend initialization - lazy loaded to avoid importing Electron modules
@@ -27,9 +28,120 @@ autoUpdater.logger = console;
 let mainWindow;
 let storedUser = null;
 let isQuitting = false;
+let bundledOnlineBackendStarted = false;
 
 // Default folder path
 const defaultFolderPath = "C:\\POS Master";
+const onlineRuntimeConfigFile = "online-runtime-config.json";
+
+function readPackagedOnlineRuntimeConfig() {
+  if (!app.isPackaged) return null;
+
+  const candidates = [
+    process.env.POS_ONLINE_RUNTIME_CONFIG,
+    process.resourcesPath
+      ? path.join(process.resourcesPath, onlineRuntimeConfigFile)
+      : null,
+    path.join(__dirname, onlineRuntimeConfigFile),
+    path.join(process.cwd(), onlineRuntimeConfigFile),
+  ].filter(Boolean);
+
+  for (const configPath of candidates) {
+    try {
+      if (!fsSync.existsSync(configPath)) continue;
+      const parsed = JSON.parse(fsSync.readFileSync(configPath, "utf8"));
+      for (const [key, value] of Object.entries(parsed)) {
+        if (value === undefined || value === null || value === "") continue;
+        if (!process.env[key]) process.env[key] = String(value);
+      }
+      console.log(`[Electron] Loaded online runtime config: ${configPath}`);
+      return configPath;
+    } catch (error) {
+      console.error(
+        `[Electron] Failed to load online runtime config at ${configPath}:`,
+        error.message
+      );
+    }
+  }
+
+  console.warn("[Electron] No packaged online runtime config found");
+  return null;
+}
+
+function applyBundledOnlineDefaults() {
+  process.env.ONLINE_API_HOST = process.env.ONLINE_API_HOST || "127.0.0.1";
+  process.env.ONLINE_API_PORT = process.env.ONLINE_API_PORT || "4100";
+  process.env.ONLINE_API_CORS_ORIGIN =
+    process.env.ONLINE_API_CORS_ORIGIN || "*";
+
+  const clientHost = process.env.POS_ONLINE_CLIENT_HOST || "127.0.0.1";
+  const port = process.env.ONLINE_API_PORT;
+  process.env.POS_ONLINE_API_URL =
+    process.env.POS_ONLINE_API_URL || `http://${clientHost}:${port}/api`;
+  process.env.POS_ONLINE_REALTIME_URL =
+    process.env.POS_ONLINE_REALTIME_URL || `http://${clientHost}:${port}`;
+}
+
+function prepareBundledOnlineEnvironment() {
+  if (!app.isPackaged) return;
+  readPackagedOnlineRuntimeConfig();
+  applyBundledOnlineDefaults();
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForOnlineBackendReady(timeoutMs = 30000) {
+  const baseUrl = process.env.POS_ONLINE_API_URL || "http://127.0.0.1:4100/api";
+  const readyUrl = `${baseUrl.replace(/\/$/, "")}/ready`;
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(readyUrl);
+      if (response.ok) return true;
+    } catch {
+      // Retry until timeout; the server may still be binding or connecting Mongo.
+    }
+    await sleep(500);
+  }
+
+  return false;
+}
+
+async function startBundledOnlineBackend() {
+  if (!app.isPackaged) return;
+  if (bundledOnlineBackendStarted) return;
+
+  prepareBundledOnlineEnvironment();
+
+  if (await waitForOnlineBackendReady(1000)) {
+    console.log("[Electron] Online backend already reachable");
+    bundledOnlineBackendStarted = true;
+    return;
+  }
+
+  const { startOnlineServer } = require("./src/online-server/runtime.cjs");
+  await startOnlineServer();
+
+  if (!(await waitForOnlineBackendReady(30000))) {
+    throw new Error("Bundled online backend started but did not become ready");
+  }
+
+  bundledOnlineBackendStarted = true;
+  console.log("[Electron] Bundled online backend ready");
+}
+
+async function stopBundledOnlineBackend() {
+  if (!bundledOnlineBackendStarted) return;
+  try {
+    const { stopOnlineServer } = require("./src/online-server/runtime.cjs");
+    await stopOnlineServer();
+  } finally {
+    bundledOnlineBackendStarted = false;
+  }
+}
 
 // Paths to your DTOs (as you specified)
 const dtoPaths = {
@@ -796,6 +908,8 @@ app.whenReady().then(async () => {
 
   await mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(splashHtml)}`);
 
+  prepareBundledOnlineEnvironment();
+
   // Now initialize backend (user sees splash during this)
   console.log("[Electron] Starting backend initialization...");
   const backendResult = getBackend().initializeBackend(defaultFolderPath);
@@ -819,6 +933,18 @@ app.whenReady().then(async () => {
   // Apply maximize setting
   if (shouldMaximize) {
     mainWindow.maximize();
+  }
+
+  if (app.isPackaged) {
+    console.log("[Electron] Starting bundled online backend...");
+    try {
+      await startBundledOnlineBackend();
+    } catch (error) {
+      console.error(
+        "[Electron] Bundled online backend failed to start:",
+        error && error.stack ? error.stack : error
+      );
+    }
   }
 
   // Now load the React app (backend is ready, Intro will navigate to login quickly)
@@ -905,4 +1031,7 @@ app.on("window-all-closed", () => {
 app.on("will-quit", () => {
   console.log("[Electron] Shutting down backend...");
   getBackend().shutdownBackend();
+  stopBundledOnlineBackend().catch((error) => {
+    console.error("[Electron] Failed to stop bundled online backend:", error);
+  });
 });

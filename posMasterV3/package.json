@@ -1,7 +1,7 @@
 {
   "name": "posmasterv3",
   "private": true,
-  "version": "1.4.4",
+  "version": "1.4.5",
   "main": "electron.cjs",
   "type": "module",
   "scripts": {
@@ -50,6 +50,10 @@
       "icon": "src/frontend/assets/app_logo/app_logo.png"
     },
     "extraResources": [
+      {
+        "from": "online-runtime-config.json",
+        "to": "online-runtime-config.json"
+      },
       {
         "from": "node_modules/better-sqlite3",
         "to": "node_modules/better-sqlite3"
