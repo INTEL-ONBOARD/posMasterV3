@@ -1,9 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, RefreshCw, Database, Cloud, Wifi, WifiOff, Download, CheckCircle, XCircle } from 'lucide-react';
-import { settingsApi, onlineStatusApi, appSettingsApi, updatesApi } from '../../api/localApi';
+import { settingsApi, onlineStatusApi, appSettingsApi, updatesApi, onlineEventApi as onlineEvents } from '../../api/localApi';
 import { useReactiveData, TABLES } from '../../store';
 import { useBranchContext } from '../../context/BranchContext';
 import StatusModal from '../../components/StatusModal.jsx';
+
+function normalizeOnlineStatus(status = {}) {
+  const payload = status?.data && typeof status.data === 'object' ? status.data : (status || {});
+  const rawOnline = payload.isOnline ?? payload.ready ?? payload.connected;
+  const isOnline = rawOnline ?? false;
+
+  return {
+    ...payload,
+    isOnline,
+    mongoInitialized: payload.mongoInitialized ?? isOnline,
+    syncStatus: payload.syncStatus
+      ?? payload.status
+      ?? (rawOnline !== undefined ? (isOnline ? 'connected' : 'unavailable') : 'unknown'),
+    connectionQuality: payload.connectionQuality
+      ?? payload.quality
+      ?? (rawOnline !== undefined ? (isOnline ? 'online' : 'offline') : 'unknown'),
+    pendingCount: payload.pendingCount ?? payload.pendingChangesCount ?? 0
+  };
+}
 
 function AppSettings() {
   const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
@@ -72,7 +91,7 @@ function AppSettings() {
         // Load online backend status
         const syncResponse = await onlineStatusApi.getStatus();
         if (syncResponse.status === 'success' && syncResponse.data) {
-          setSyncStatus(syncResponse.data);
+          setSyncStatus(normalizeOnlineStatus(syncResponse.data));
         }
       } catch (err) {
         console.error('[AppSettings] Load error:', err);
@@ -83,19 +102,15 @@ function AppSettings() {
 
     loadSettings();
 
-    // Refresh online backend status every 10 seconds
-    const interval = setInterval(async () => {
-      try {
-        const syncResponse = await onlineStatusApi.getStatus();
-        if (syncResponse.status === 'success' && syncResponse.data) {
-          setSyncStatus(syncResponse.data);
-        }
-      } catch (err) {
-        console.error('[AppSettings] Online status refresh error:', err);
+    const unsubscribeStatus = onlineEvents.onSyncStatusChange?.((status) => {
+      if (status) {
+        setSyncStatus(normalizeOnlineStatus(status));
       }
-    }, 10000);
+    });
 
-    return () => clearInterval(interval);
+    return () => {
+      unsubscribeStatus?.();
+    };
   }, []);
 
   // Fetch current version on mount so it's always visible

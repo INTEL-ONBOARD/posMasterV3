@@ -1,9 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion as Motion } from "framer-motion";
 import { CloudOff, RefreshCw, ShieldAlert } from "lucide-react";
 import { useConnectionStatus } from "../store/DataStoreContext";
-
-const SESSION_POLL_MS = 1000;
 
 function readSessionToken() {
   if (typeof window === "undefined") return null;
@@ -25,12 +23,14 @@ export default function OnlineConnectionOverlay() {
     };
 
     syncSession();
-    const interval = window.setInterval(syncSession, SESSION_POLL_MS);
+    window.addEventListener("storage", syncSession);
     window.addEventListener("focus", syncSession);
+    document.addEventListener("visibilitychange", syncSession);
 
     return () => {
-      window.clearInterval(interval);
+      window.removeEventListener("storage", syncSession);
       window.removeEventListener("focus", syncSession);
+      document.removeEventListener("visibilitychange", syncSession);
     };
   }, []);
 
@@ -68,17 +68,25 @@ export default function OnlineConnectionOverlay() {
     };
 
     runCheck();
-    const interval = window.setInterval(runCheck, 5000);
+    const handleFocus = () => {
+      runCheck();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        runCheck();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [hasSession, refreshConnection]);
 
-  const shouldShow = useMemo(() => {
-    return hasSession && hasVerifiedConnection && !isOnline;
-  }, [hasSession, hasVerifiedConnection, isOnline]);
+  const shouldShow = hasSession && hasVerifiedConnection && !isOnline;
 
   const statusText = isChecking
     ? "Checking online backend..."

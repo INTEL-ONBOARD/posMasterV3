@@ -13,7 +13,7 @@ class OnlineRealtimeClient {
 
         this.socket = io(this.baseUrl, {
             auth: { token },
-            transports: ['websocket', 'polling'],
+            transports: ['websocket'],
             reconnection: true,
             reconnectionAttempts: Infinity,
             reconnectionDelay: 1000

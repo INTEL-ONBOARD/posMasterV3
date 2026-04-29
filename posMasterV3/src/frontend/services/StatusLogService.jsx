@@ -17,6 +17,11 @@ const StatusLogContext = createContext(null);
 // Maximum logs to keep in history
 const MAX_LOG_HISTORY = 100;
 
+function resolveOnlineState(status) {
+  const payload = status?.data && typeof status.data === "object" ? status.data : (status || {});
+  return payload?.isOnline ?? payload?.ready ?? payload?.connected ?? true;
+}
+
 /**
  * StatusLogProvider - Provides app-wide status logging functionality
  */
@@ -42,10 +47,12 @@ export function StatusLogProvider({ children }) {
 
   // Check network status
   useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
     const checkNetwork = async () => {
       try {
         const status = await window.electronAPI?.online?.getRealtimeStatus?.();
-        setIsOnline(status?.data?.isOnline ?? status?.isOnline ?? true);
+        setIsOnline(resolveOnlineState(status));
       } catch {
         // Ignore errors
       }
@@ -54,20 +61,38 @@ export function StatusLogProvider({ children }) {
     // Initial fetch on mount
     checkNetwork();
 
-    // Listen for online realtime status events instead of polling
+    const handleFocus = () => {
+      checkNetwork();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkNetwork();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Listen for online realtime status events.
     const handler = window.electronAPI?.online?.onRealtimeStatus;
     if (handler) {
       const unsubscribe = handler((status) => {
-        if (typeof status?.isOnline === 'boolean') {
-          setIsOnline(status.isOnline);
+        const nextOnline = resolveOnlineState(status);
+        if (typeof nextOnline === 'boolean') {
+          setIsOnline(nextOnline);
         }
       });
-      return () => unsubscribe?.();
+      return () => {
+        unsubscribe?.();
+        window.removeEventListener('focus', handleFocus);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
 
-    // Fallback: poll every 30s if IPC event listener not available
-    const interval = setInterval(checkNetwork, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   /**

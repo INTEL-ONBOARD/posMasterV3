@@ -206,8 +206,8 @@ function Dashboard() {
       });
     }
 
-    // Start real-time session monitoring (checks every 3 seconds + on visibility change)
-    const stopMonitor = startSessionMonitor(3000);
+    // Start real-time session monitoring from backend events plus focus/visibility checks.
+    const stopMonitor = startSessionMonitor();
 
     return () => {
       unsubscribe();

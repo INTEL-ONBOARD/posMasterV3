@@ -34,20 +34,27 @@ const DEFAULT_SYNC_STATUS = {
 };
 
 function normalizeSyncStatus(status = {}) {
-    const pendingCount = status.pendingCount ?? status.pendingChangesCount ?? 0;
-    const syncStatus = status.syncStatus ?? status.status ?? DEFAULT_SYNC_STATUS.syncStatus;
+    const payload = status?.data && typeof status.data === 'object' ? status.data : (status || {});
+    const rawOnline = payload.isOnline ?? payload.ready ?? payload.connected;
+    const isOnline = rawOnline ?? DEFAULT_SYNC_STATUS.isOnline;
+    const pendingCount = payload.pendingCount ?? payload.pendingChangesCount ?? 0;
+    const syncStatus = payload.syncStatus
+        ?? payload.status
+        ?? (rawOnline !== undefined ? (isOnline ? 'connected' : 'unavailable') : DEFAULT_SYNC_STATUS.syncStatus);
 
     return {
         ...DEFAULT_SYNC_STATUS,
-        ...status,
-        isOnline: status.isOnline ?? DEFAULT_SYNC_STATUS.isOnline,
-        isSyncing: status.isSyncing ?? DEFAULT_SYNC_STATUS.isSyncing,
+        ...payload,
+        isOnline,
+        isSyncing: payload.isSyncing ?? DEFAULT_SYNC_STATUS.isSyncing,
         syncStatus,
         status: syncStatus,
-        connectionQuality: status.connectionQuality ?? DEFAULT_SYNC_STATUS.connectionQuality,
+        connectionQuality: payload.connectionQuality
+            ?? payload.quality
+            ?? (rawOnline !== undefined ? (isOnline ? 'online' : 'offline') : DEFAULT_SYNC_STATUS.connectionQuality),
         pendingCount,
         pendingChangesCount: pendingCount,
-        lastSyncTime: status.lastSyncTime ?? DEFAULT_SYNC_STATUS.lastSyncTime
+        lastSyncTime: payload.lastSyncTime ?? payload.timestamp ?? DEFAULT_SYNC_STATUS.lastSyncTime
     };
 }
 
@@ -155,11 +162,10 @@ export function useRealTimeSync() {
         });
 
         electronUnsubscribeStatus = window.electronAPI.online?.onRealtimeStatus?.((status) => {
+            const payload = status?.data && typeof status.data === 'object' ? status.data : (status || {});
             globalSyncStatus = normalizeSyncStatus({
                 ...globalSyncStatus,
-                ...(status?.data || {}),
-                isOnline: status?.data?.ready ?? status?.data?.isOnline ?? globalSyncStatus.isOnline,
-                syncStatus: status?.data?.ready ? 'connected' : (status?.data?.syncStatus ?? globalSyncStatus.syncStatus)
+                ...payload
             });
 
             statusSubscribers.forEach(callback => {

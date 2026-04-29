@@ -167,18 +167,12 @@ function Dashboard() {
     }
   }, [currentUser, fetchSalesStats]));
 
-  // LIVE: Auto-refresh sales stats every 30 seconds for real-time updates
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const REFRESH_INTERVAL = 30000; // 30 seconds
-    const intervalId = setInterval(() => {
-      console.log('[Dashboard] Auto-refreshing sales stats...');
+  useDataChangeSubscription(TABLES.LOGIN_HISTORY, useCallback((state) => {
+    if (!state.loading && currentUser) {
+      console.log('[Dashboard] Login history changed, refreshing stats...');
       fetchSalesStats();
-    }, REFRESH_INTERVAL);
-
-    return () => clearInterval(intervalId);
-  }, [currentUser, fetchSalesStats]);
+    }
+  }, [currentUser, fetchSalesStats]));
 
   // Generate notifications from reactive data
   useEffect(() => {

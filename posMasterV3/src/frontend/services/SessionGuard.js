@@ -160,12 +160,10 @@ export function createGuardedApi(api) {
 
 /**
  * Start real-time session monitoring
- * Checks session periodically and on visibility change
- * @param {number} interval - Check interval in ms (default 10000)
+ * Checks session on visibility/focus changes and relies on backend events for kicks.
  * @returns {Function} Stop function
  */
-export function startSessionMonitor(interval = 10000) {
-    let checkInterval = null;
+export function startSessionMonitor() {
     let isMonitoring = true;
 
     const check = async () => {
@@ -210,18 +208,12 @@ export function startSessionMonitor(interval = 10000) {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
 
-    // Start interval
-    checkInterval = setInterval(check, interval);
-
     // Initial check
     setTimeout(check, 100);
 
     // Return stop function
     return () => {
         isMonitoring = false;
-        if (checkInterval) {
-            clearInterval(checkInterval);
-        }
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         window.removeEventListener('focus', handleFocus);
     };

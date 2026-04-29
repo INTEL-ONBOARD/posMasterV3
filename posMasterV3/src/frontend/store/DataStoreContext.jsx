@@ -42,16 +42,23 @@ const DEFAULT_SYNC_STATUS = {
 };
 
 function normalizeSyncStatus(status = {}) {
-    const pendingCount = status.pendingCount ?? status.pendingChangesCount ?? DEFAULT_SYNC_STATUS.pendingCount;
-    const syncStatus = status.syncStatus ?? status.status ?? DEFAULT_SYNC_STATUS.syncStatus;
+    const payload = status?.data && typeof status.data === 'object' ? status.data : (status || {});
+    const rawOnline = payload.isOnline ?? payload.ready ?? payload.connected;
+    const isOnline = rawOnline ?? DEFAULT_SYNC_STATUS.isOnline;
+    const pendingCount = payload.pendingCount ?? payload.pendingChangesCount ?? DEFAULT_SYNC_STATUS.pendingCount;
+    const syncStatus = payload.syncStatus
+        ?? payload.status
+        ?? (rawOnline !== undefined ? (isOnline ? 'connected' : 'unavailable') : DEFAULT_SYNC_STATUS.syncStatus);
 
     return {
-        isOnline: status.isOnline ?? DEFAULT_SYNC_STATUS.isOnline,
-        connectionQuality: status.connectionQuality ?? DEFAULT_SYNC_STATUS.connectionQuality,
+        isOnline,
+        connectionQuality: payload.connectionQuality
+            ?? payload.quality
+            ?? (rawOnline !== undefined ? (isOnline ? 'online' : 'offline') : DEFAULT_SYNC_STATUS.connectionQuality),
         syncStatus,
-        lastSyncTime: status.lastSyncTime ?? DEFAULT_SYNC_STATUS.lastSyncTime,
+        lastSyncTime: payload.lastSyncTime ?? payload.timestamp ?? DEFAULT_SYNC_STATUS.lastSyncTime,
         pendingCount,
-        isSyncing: status.isSyncing ?? DEFAULT_SYNC_STATUS.isSyncing
+        isSyncing: payload.isSyncing ?? DEFAULT_SYNC_STATUS.isSyncing
     };
 }
 
@@ -76,10 +83,7 @@ export function DataStoreProvider({ children }) {
 
         const unsubscribeRealtime = window.electronAPI.online?.onRealtimeStatus?.((status) => {
             console.log('[DataStoreProvider] Online realtime status:', status);
-            const nextStatus = normalizeSyncStatus({
-                ...status?.data,
-                isOnline: status?.data?.ready ?? status?.data?.isOnline
-            });
+            const nextStatus = normalizeSyncStatus(status);
             setIsOnline(nextStatus.isOnline);
             setConnectionQuality(nextStatus.connectionQuality);
             setSyncStatus(nextStatus.syncStatus);
