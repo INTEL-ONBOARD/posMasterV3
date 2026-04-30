@@ -3002,19 +3002,37 @@ const installOnlineOnlyOverrides = () => {
     });
     Object.assign(loginHistoryApi, onlineCollectionApi('login_history'));
     Object.assign(branchContextApi, {
-        getCurrentBranch: async () => {
+        getCurrent: async () => {
+            const selectedBranchId = getSelectedBranchId();
+            if (selectedBranchId) {
+                const selected = await branchApi.getById(selectedBranchId);
+                if (selected?.status === 'success' && selected?.data) return selected;
+                localStorage.removeItem('selectedBranchId');
+            }
+
             const user = await authApi.getCurrentUser();
-            if (!user?.branchId && !user?.branch_id) return { status: 'success', data: null };
-            return branchApi.getById(user.branchId || user.branch_id);
+            const userBranchId = user?.branchId || user?.branch_id;
+            if (!userBranchId) return { status: 'success', data: null };
+
+            const assigned = await branchApi.getById(userBranchId);
+            if (assigned?.status === 'success' && assigned?.data) return assigned;
+
+            return { status: 'success', data: null };
         },
-        setCurrentBranch: async (branchId) => {
-            localStorage.setItem('selectedBranchId', branchId);
-            return branchApi.getById(branchId);
+        getCurrentBranch: async () => branchContextApi.getCurrent(),
+        setCurrent: async (branchId) => {
+            const response = await branchApi.getById(branchId);
+            if (response?.status === 'success' && response?.data) {
+                localStorage.setItem('selectedBranchId', branchId);
+            }
+            return response;
         },
-        clearCurrentBranch: async () => {
+        setCurrentBranch: async (branchId) => branchContextApi.setCurrent(branchId),
+        clear: async () => {
             localStorage.removeItem('selectedBranchId');
             return { status: 'success', data: null };
         },
+        clearCurrentBranch: async () => branchContextApi.clear(),
         isRequired: async () => ({ status: 'success', data: { required: true } }),
         getAvailableBranches: async () => branchApi.getActive(),
         validateOperation: async () => ({ status: 'success', valid: true }),
