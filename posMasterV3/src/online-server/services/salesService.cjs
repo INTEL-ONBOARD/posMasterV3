@@ -66,7 +66,7 @@ async function createSale(auth, saleInput) {
 
     try {
         await session.withTransaction(async () => {
-            const invoiceNo = saleInput.invoiceNo || await nextInvoiceNo(db, session, { ...auth, branchId });
+            const invoiceNo = saleInput.invoiceNo || saleInput.invoice_no || await nextInvoiceNo(db, session, { ...auth, branchId });
             const now = new Date();
             const lines = (saleInput.items || []).map((line) => {
                 const itemId = line.itemId ?? line.item_id ?? line.itemID ?? line.item?.id ?? null;
@@ -124,18 +124,73 @@ async function createSale(auth, saleInput) {
                 }
             }
 
+            // Resolve IDs using both naming conventions
+            const memberId = saleInput.memberId || saleInput.member_id || null;
+            const cashierId = saleInput.cashierId || saleInput.cashier_id || null;
+
+            // Look up member and cashier names if not provided
+            let memberName = saleInput.memberName || saleInput.member_name || null;
+            let cashierName = saleInput.cashierName || saleInput.cashier_name || null;
+
+            if (memberId && !memberName) {
+                try {
+                    const memberQuery = { orgId: auth.orgId, deletedAt: null };
+                    if (ObjectId.isValid(memberId)) {
+                        memberQuery.$or = [{ _id: new ObjectId(memberId) }, { id: memberId }];
+                    } else {
+                        memberQuery.id = memberId;
+                    }
+                    const member = await db.collection('members').findOne(memberQuery, { session });
+                    memberName = member?.full_name || member?.member_name || member?.name || null;
+                } catch (e) { /* ignore lookup error */ }
+            }
+
+            if (cashierId && !cashierName) {
+                try {
+                    const userQuery = { orgId: auth.orgId, deletedAt: null };
+                    if (ObjectId.isValid(cashierId)) {
+                        userQuery.$or = [{ _id: new ObjectId(cashierId) }, { id: cashierId }];
+                    } else {
+                        userQuery.id = cashierId;
+                    }
+                    const user = await db.collection('users').findOne(userQuery, { session });
+                    cashierName = user?.username || user?.name || user?.full_name || null;
+                } catch (e) { /* ignore lookup error */ }
+            }
+
             sale = {
                 orgId: auth.orgId,
                 branchId,
                 invoiceNo,
-                memberId: saleInput.memberId || null,
-                paymentMethod: saleInput.paymentMethod || 'cash',
+                invoice_no: invoiceNo,
+                memberId,
+                member_id: memberId,
+                memberName,
+                member_name: memberName,
+                cashierId,
+                cashier_id: cashierId,
+                cashierName,
+                cashier_name: cashierName,
+                paymentMethod: saleInput.paymentMethod || saleInput.payment_method || 'cash',
+                payment_method: saleInput.payment_method || saleInput.paymentMethod || 'cash',
                 subtotal: Number(saleInput.subtotal || 0),
                 discount: Number(saleInput.discount || 0),
-                totalAmount: Number(saleInput.totalAmount || 0),
+                totalAmount: Number(saleInput.totalAmount || saleInput.total_amount || 0),
+                total_amount: Number(saleInput.total_amount || saleInput.totalAmount || 0),
+                cashReceived: Number(saleInput.cashReceived || saleInput.cash_received || 0),
+                cash_received: Number(saleInput.cash_received || saleInput.cashReceived || 0),
+                changeAmount: Number(saleInput.changeAmount || saleInput.change_amount || 0),
+                change_amount: Number(saleInput.change_amount || saleInput.changeAmount || 0),
+                creditDuration: saleInput.creditDuration || saleInput.credit_duration || null,
+                credit_duration: saleInput.credit_duration || saleInput.creditDuration || null,
+                salesSessionId: saleInput.salesSessionId || saleInput.sales_session_id || null,
+                sales_session_id: saleInput.sales_session_id || saleInput.salesSessionId || null,
                 items: lines,
+                status: 'completed',
                 createdAt: now,
+                created_at: now,
                 updatedAt: now,
+                updated_at: now,
                 createdBy: auth.userId,
                 updatedBy: auth.userId,
                 version: 1,
@@ -257,19 +312,69 @@ async function completeHeldSale(auth, saleId, updateData = {}) {
                 }
             }
 
+            // Resolve IDs using both naming conventions
+            const memberId = updateData.memberId ?? updateData.member_id ?? existing.memberId ?? null;
+            const cashierId = updateData.cashierId ?? updateData.cashier_id ?? existing.cashierId ?? null;
+
+            // Look up member and cashier names if not provided
+            let memberName = updateData.memberName ?? updateData.member_name ?? existing.memberName ?? existing.member_name ?? null;
+            let cashierName = updateData.cashierName ?? updateData.cashier_name ?? existing.cashierName ?? existing.cashier_name ?? null;
+
+            if (memberId && !memberName) {
+                try {
+                    const memberQuery = { orgId: auth.orgId, deletedAt: null };
+                    if (ObjectId.isValid(memberId)) {
+                        memberQuery.$or = [{ _id: new ObjectId(memberId) }, { id: memberId }];
+                    } else {
+                        memberQuery.id = memberId;
+                    }
+                    const member = await db.collection('members').findOne(memberQuery, { session });
+                    memberName = member?.full_name || member?.member_name || member?.name || null;
+                } catch (e) { /* ignore lookup error */ }
+            }
+
+            if (cashierId && !cashierName) {
+                try {
+                    const userQuery = { orgId: auth.orgId, deletedAt: null };
+                    if (ObjectId.isValid(cashierId)) {
+                        userQuery.$or = [{ _id: new ObjectId(cashierId) }, { id: cashierId }];
+                    } else {
+                        userQuery.id = cashierId;
+                    }
+                    const user = await db.collection('users').findOne(userQuery, { session });
+                    cashierName = user?.username || user?.name || user?.full_name || null;
+                } catch (e) { /* ignore lookup error */ }
+            }
+
             const updateDoc = {
                 is_held: false,
                 isHeld: false,
                 status: updateData.status || existing.status || 'completed',
-                memberId: updateData.memberId ?? updateData.member_id ?? existing.memberId ?? null,
+                memberId,
+                member_id: memberId,
+                memberName,
+                member_name: memberName,
+                cashierId,
+                cashier_id: cashierId,
+                cashierName,
+                cashier_name: cashierName,
                 paymentMethod: updateData.paymentMethod || updateData.payment_method || existing.paymentMethod || 'cash',
+                payment_method: updateData.payment_method || updateData.paymentMethod || existing.payment_method || existing.paymentMethod || 'cash',
                 subtotal: Number(updateData.subtotal ?? existing.subtotal ?? 0),
                 discount: Number(updateData.discount ?? existing.discount ?? 0),
                 totalAmount: Number(updateData.totalAmount ?? updateData.total_amount ?? existing.totalAmount ?? 0),
+                total_amount: Number(updateData.total_amount ?? updateData.totalAmount ?? existing.total_amount ?? existing.totalAmount ?? 0),
                 cashReceived: Number(updateData.cashReceived ?? updateData.cash_received ?? existing.cashReceived ?? 0),
+                cash_received: Number(updateData.cash_received ?? updateData.cashReceived ?? existing.cash_received ?? existing.cashReceived ?? 0),
                 changeAmount: Number(updateData.changeAmount ?? updateData.change_amount ?? existing.changeAmount ?? 0),
+                change_amount: Number(updateData.change_amount ?? updateData.changeAmount ?? existing.change_amount ?? existing.changeAmount ?? 0),
+                creditDuration: updateData.creditDuration ?? updateData.credit_duration ?? existing.creditDuration ?? existing.credit_duration ?? null,
+                credit_duration: updateData.credit_duration ?? updateData.creditDuration ?? existing.credit_duration ?? existing.creditDuration ?? null,
+                salesSessionId: updateData.salesSessionId ?? updateData.sales_session_id ?? existing.salesSessionId ?? existing.sales_session_id ?? null,
+                sales_session_id: updateData.sales_session_id ?? updateData.salesSessionId ?? existing.sales_session_id ?? existing.salesSessionId ?? null,
                 items: lines,
                 updatedAt: now,
+                updated_at: now,
                 updatedBy: auth.userId,
                 version: (existing.version || 1) + 1
             };

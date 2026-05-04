@@ -2432,6 +2432,38 @@ const normalizeCollectionRecord = (record) => {
     };
 };
 
+const normalizeSaleRecord = (record) => {
+    if (!record || typeof record !== 'object') return record;
+    const normalized = normalizeCollectionRecord(record);
+    return {
+        ...normalized,
+        invoice_no: normalized.invoice_no ?? normalized.invoiceNo ?? '',
+        member_id: normalized.member_id ?? normalized.memberId ?? null,
+        member_name: normalized.member_name ?? normalized.memberName ?? 'Guest',
+        cashier_id: normalized.cashier_id ?? normalized.cashierId ?? null,
+        cashier_name: normalized.cashier_name ?? normalized.cashierName ?? 'N/A',
+        payment_method: normalized.payment_method ?? normalized.paymentMethod ?? 'cash',
+        total_amount: normalized.total_amount ?? normalized.totalAmount ?? 0,
+        subtotal: normalized.subtotal ?? 0,
+        discount: normalized.discount ?? 0,
+        discount_amount: normalized.discount_amount ?? normalized.discount ?? 0,
+        cash_received: normalized.cash_received ?? normalized.cashReceived ?? 0,
+        change_amount: normalized.change_amount ?? normalized.changeAmount ?? 0,
+        created_at: normalized.created_at ?? normalized.createdAt ?? null,
+        status: normalized.status ?? 'completed',
+        items: Array.isArray(normalized.items) ? normalized.items.map(item => ({
+            ...item,
+            item_name: item.item_name ?? item.itemName ?? '',
+            sku: item.sku ?? '',
+            quantity: item.quantity ?? 0,
+            unit_price: item.unit_price ?? item.unitPrice ?? 0,
+            discount: item.discount ?? 0,
+            total_price: item.total_price ?? item.totalPrice ?? 0,
+            batch_code: item.batch_code ?? item.batchCode ?? ''
+        })) : []
+    };
+};
+
 const normalizeStockRecord = (record) => {
     if (!record || typeof record !== 'object') return record;
     const normalized = normalizeCollectionRecord(record);
@@ -2926,6 +2958,32 @@ const installOnlineOnlyOverrides = () => {
         }
     });
     Object.assign(salesApi, onlineCollectionApi('sales'), {
+        getAll: async (query = {}) => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('sales', query)));
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.map(normalizeSaleRecord);
+            }
+            return response;
+        },
+        getById: async (id) => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.get('sales', id)));
+            if (response?.data) {
+                response.data = normalizeSaleRecord(response.data);
+            }
+            return response;
+        },
+        search: async (searchTerm = '') => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('sales', {})));
+            const term = String(searchTerm).toLowerCase();
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.map(normalizeSaleRecord).filter((row) =>
+                    Object.values(row).some((value) =>
+                        typeof value === 'string' && value.toLowerCase().includes(term)
+                    )
+                );
+            }
+            return response;
+        },
         generateInvoiceNo: async () => onlineCall((api) => api.generateInvoiceNo()),
         create: async (data) => onlineCall((api) => api.createSale(data)),
         hold: async (data) => onlineCall((api) => api.create('sales', { ...data, is_held: true, isHeld: true })),

@@ -527,7 +527,9 @@ export default function SalesView({ isActive }) {
     invoice_no: invoiceNo,
     sales_session_id: getSalesSessionId(),
     member_id: getSelectedMemberId(),
+    member_name: selectedMember?.is_guest ? null : (selectedMember?.full_name || null),
     cashier_id: currentUser?.id || null,
+    cashier_name: currentUser?.username || currentUser?.name || null,
     payment_method: paymentMethod,
     credit_duration: creditMonths ? `${creditMonths} months` : null,
     subtotal: stockTotal,
@@ -580,7 +582,9 @@ export default function SalesView({ isActive }) {
       const response = releasedHeldOrder
         ? await salesApi.completeHeld(releasedHeldOrder.id, {
             member_id: saleData.member_id,
+            member_name: saleData.member_name,
             cashier_id: saleData.cashier_id,
+            cashier_name: saleData.cashier_name,
             payment_method: saleData.payment_method,
             credit_duration: saleData.credit_duration,
             subtotal: saleData.subtotal,
