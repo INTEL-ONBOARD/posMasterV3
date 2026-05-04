@@ -308,6 +308,7 @@ function InventoryRestock({ isActive }) {
         //load item basic details(loaded for all item types-reg, return...etc)
     setFormDataRegItem({
       sku: item.sku,
+      item_code: item.item_code || null,
 
       _id: item._id,
       id: item.id,
@@ -370,6 +371,7 @@ function InventoryRestock({ isActive }) {
     //load item basic details(loaded for all item types-reg, return...etc)
     setFormDataRegItem({
       sku: item.sku,
+      item_code: item.item_code || null,
 
       _id: item._id,
       id: item.id,
@@ -1362,6 +1364,14 @@ function InventoryRestock({ isActive }) {
                       <div>
                         <p className="text-xs text-gray-400 uppercase tracking-wide">Name</p>
                         <p className="text-sm font-semibold text-gray-800">{formDataRegItem.item_name || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 uppercase tracking-wide">SKU</p>
+                        <p className="text-sm font-mono font-medium text-gray-700">{formDataRegItem.sku || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 uppercase tracking-wide">Product Code</p>
+                        <p className="text-sm font-mono font-medium text-gray-700">{formDataRegItem.item_code || '—'}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-400 uppercase tracking-wide">Category</p>
