@@ -13,6 +13,11 @@ const isScanCandidate = (value) => (
 );
 
 const normalizeScannerEnterValue = (currentValue, lastValue) => {
+  // Support alphanumeric SKUs: if current value contains non-digits, return as-is
+  if (/\D/.test(currentValue)) {
+    return currentValue;
+  }
+
   const newChars = lastValue && currentValue.startsWith(lastValue)
     ? currentValue.slice(lastValue.length)
     : currentValue;
@@ -23,7 +28,7 @@ const normalizeScannerEnterValue = (currentValue, lastValue) => {
     return digitsOnly;
   }
   if (isAllDigits && digitsOnly.length > 13) {
-    return "";
+    return currentValue.slice(0, 13);
   }
   return currentValue;
 };
