@@ -99,8 +99,8 @@ function AddItem({ isActive }) {
   // Barcode generation
   const barcodeValue = formData.sku || "-";
   const normalizeSkuValue = (value) => {
-    const digitsOnly = String(value ?? "").replace(/\D/g, "");
-    return digitsOnly.length > 13 ? "" : digitsOnly;
+    const trimmed = String(value ?? "").trim();
+    return trimmed.length > 13 ? trimmed.slice(0, 13) : trimmed;
   };
 
   const generateBarcode = () => {
@@ -256,8 +256,8 @@ function AddItem({ isActive }) {
       return;
     }
 
-    if (!/^\d{1,13}$/.test(skuValue)) {
-      setStatusModal({ open: true, type: 'failed', description: 'SKU must be numeric and up to 13 digits' });
+    if (!/^.{1,13}$/.test(skuValue)) {
+      setStatusModal({ open: true, type: 'failed', description: 'SKU must be up to 13 characters' });
       setFormStatus("form");
       return;
     }
@@ -340,8 +340,8 @@ function AddItem({ isActive }) {
       return;
     }
 
-    if (!/^\d{1,13}$/.test(skuValue)) {
-      setStatusModal({ open: true, type: 'failed', description: 'SKU must be numeric and up to 13 digits' });
+    if (!/^.{1,13}$/.test(skuValue)) {
+      setStatusModal({ open: true, type: 'failed', description: 'SKU must be up to 13 characters' });
       setFormStatus("form");
       return;
     }
@@ -703,7 +703,6 @@ function AddItem({ isActive }) {
                       </label>
                       <input
                         type="text"
-                        inputMode="numeric"
                         name="sku"
                         value={formData.sku ?? ""}
                         onChange={handleInputChange}

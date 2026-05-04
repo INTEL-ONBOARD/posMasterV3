@@ -25,7 +25,7 @@ function BreadCrumb({ activeSection }) {
     'system-config': 'System Configuration',
     
     // Notification sections
-    'notifications': 'Notifications'
+    'notifications': 'Dashboard'
   };
 
 

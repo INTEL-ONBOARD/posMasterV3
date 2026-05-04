@@ -45,10 +45,19 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
       if (e.target === quantityInputRef.current) return;
       if (e.key === '+' || e.key === '=') {
         e.preventDefault();
-        setQuantity(q => Math.min(maxQuantityRef.current, q + 1));
+        const step = isKg ? 0.5 : 1;
+        setQuantity(q => {
+          const newQ = Math.min(maxQuantityRef.current, q + step);
+          return isKg ? Math.round(newQ * 100) / 100 : newQ;
+        });
       } else if (e.key === '-') {
         e.preventDefault();
-        setQuantity(q => Math.max(1, q - 1));
+        const step = isKg ? 0.5 : 1;
+        const minQty = isKg ? 0.01 : 1;
+        setQuantity(q => {
+          const newQ = Math.max(minQty, q - step);
+          return isKg ? Math.round(newQ * 100) / 100 : newQ;
+        });
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -103,9 +112,15 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
   const lineTotal = (unitPrice - discount) * quantity;
   const hasMultipleBatches = stockEntries.length > 1;
 
+  const uomSymbol = (item.uom?.symbol || '').toLowerCase();
+  const isKg = uomSymbol === 'kg';
+  const isWeighable = isKg || uomSymbol === 'g';
+  const minQuantity = isKg ? 0.01 : 1;
+  const quantityStep = isKg ? 0.5 : 1;
+
   const handleQuantityChange = (delta) => {
-    const newQty = Math.max(1, Math.min(maxQuantity, quantity + delta));
-    setQuantity(newQty);
+    const newQty = Math.max(minQuantity, Math.min(maxQuantity, quantity + (delta * quantityStep)));
+    setQuantity(isKg ? Math.round(newQty * 100) / 100 : newQty);
   };
 
   const handleBatchSelect = (batch) => {
@@ -284,13 +299,13 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
                   <Package className="w-4 h-4 text-gray-500" />
                   <span className="text-sm font-semibold text-gray-700">Quantity</span>
                 </div>
-                <span className="text-xs text-gray-400">Max: {maxQuantity}</span>
+                <span className="text-xs text-gray-400">Max: {maxQuantity} {item.uom?.symbol || ''}</span>
               </div>
 
               <div className="flex items-center justify-center gap-4">
                 <button
                   onClick={() => handleQuantityChange(-1)}
-                  disabled={quantity <= 1}
+                  disabled={quantity <= minQuantity}
                   className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 text-gray-600 hover:border-[#1A318C] hover:text-[#1A318C] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all"
                 >
                   <Minus className="w-5 h-5" />
@@ -299,10 +314,15 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
                 <input
                   ref={quantityInputRef}
                   type="number"
+                  step={isKg ? "0.01" : "1"}
                   value={quantity}
                   onChange={(e) => {
-                    const val = parseInt(e.target.value) || 1;
-                    setQuantity(Math.max(1, Math.min(maxQuantity, val)));
+                    const val = isKg ? parseFloat(e.target.value) : parseInt(e.target.value);
+                    if (isNaN(val)) {
+                      setQuantity(minQuantity);
+                      return;
+                    }
+                    setQuantity(Math.max(minQuantity, Math.min(maxQuantity, val)));
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === 'Tab') {
@@ -358,7 +378,7 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
               <div>
                 <p className="text-xs text-blue-300 uppercase tracking-wide font-medium">Line Total</p>
                 <p className="text-xs text-blue-200 mt-0.5">
-                  {quantity} x Rs.{(unitPrice - discount).toFixed(2)}
+                  {quantity} {item.uom?.symbol || ''} x Rs.{(unitPrice - discount).toFixed(2)}
                 </p>
               </div>
               <p className="text-2xl font-bold text-white">Rs.{lineTotal.toFixed(2)}</p>

@@ -2432,6 +2432,38 @@ const normalizeCollectionRecord = (record) => {
     };
 };
 
+const normalizeSaleRecord = (record) => {
+    if (!record || typeof record !== 'object') return record;
+    const normalized = normalizeCollectionRecord(record);
+    return {
+        ...normalized,
+        invoice_no: normalized.invoice_no ?? normalized.invoiceNo ?? '',
+        member_id: normalized.member_id ?? normalized.memberId ?? null,
+        member_name: normalized.member_name ?? normalized.memberName ?? 'Guest',
+        cashier_id: normalized.cashier_id ?? normalized.cashierId ?? null,
+        cashier_name: normalized.cashier_name ?? normalized.cashierName ?? 'N/A',
+        payment_method: normalized.payment_method ?? normalized.paymentMethod ?? 'cash',
+        total_amount: normalized.total_amount ?? normalized.totalAmount ?? 0,
+        subtotal: normalized.subtotal ?? 0,
+        discount: normalized.discount ?? 0,
+        discount_amount: normalized.discount_amount ?? normalized.discount ?? 0,
+        cash_received: normalized.cash_received ?? normalized.cashReceived ?? 0,
+        change_amount: normalized.change_amount ?? normalized.changeAmount ?? 0,
+        created_at: normalized.created_at ?? normalized.createdAt ?? null,
+        status: normalized.status ?? 'completed',
+        items: Array.isArray(normalized.items) ? normalized.items.map(item => ({
+            ...item,
+            item_name: item.item_name ?? item.itemName ?? '',
+            sku: item.sku ?? '',
+            quantity: item.quantity ?? 0,
+            unit_price: item.unit_price ?? item.unitPrice ?? 0,
+            discount: item.discount ?? 0,
+            total_price: item.total_price ?? item.totalPrice ?? 0,
+            batch_code: item.batch_code ?? item.batchCode ?? ''
+        })) : []
+    };
+};
+
 const normalizeStockRecord = (record) => {
     if (!record || typeof record !== 'object') return record;
     const normalized = normalizeCollectionRecord(record);
@@ -2692,25 +2724,160 @@ const installOnlineOnlyOverrides = () => {
             onlineCall((api) => api.update('suppliers', id, { current_amount: currentAmount, previous_amount: previousAmount }))
     });
     Object.assign(itemApi, onlineCollectionApi('items'), {
-        getAllExtended: async () => itemApi.getAll(),
-        getByIdExtended: async (id) => itemApi.getById(id),
-        getBySku: async (sku) => {
-            const response = await itemApi.getAll();
-            if (Array.isArray(response?.data)) {
-                return { status: 'success', data: response.data.find((row) => row.sku === sku) || null };
+        getAllExtended: async () => {
+            try {
+                const [itemsResponse, categoriesResponse, uomsResponse] = await Promise.all([
+                    itemApi.getAll(),
+                    categoryApi.getAll(),
+                    uomApi.getAll()
+                ]);
+
+                if (!itemsResponse || !Array.isArray(itemsResponse.data)) {
+                    console.warn('[itemApi.getAllExtended] itemsResponse missing or data not array:', itemsResponse);
+                    return itemsResponse || { status: 'error', message: 'Invalid items response', data: [] };
+                }
+
+                const categories = Array.isArray(categoriesResponse?.data) ? categoriesResponse.data : [];
+                const categoryMap = new Map(categories.map(c => [String(c?.id ?? c?._id), c]).filter(([, c]) => c != null));
+                const uoms = Array.isArray(uomsResponse?.data) ? uomsResponse.data : [];
+                const uomMap = new Map(uoms.map(u => [String(u?.id ?? u?._id), u]).filter(([, u]) => u != null));
+
+                itemsResponse.data = itemsResponse.data.map((item, index) => {
+                    if (!item || typeof item !== 'object') {
+                        console.warn(`[itemApi.getAllExtended] Invalid item at index ${index}:`, item);
+                        return item;
+                    }
+                    const cat = categoryMap.get(String(item.category_id ?? item.categoryId ?? ''));
+                    const uom = uomMap.get(String(item.uom_id ?? item.uomId ?? ''));
+                    return {
+                        ...item,
+                        category: cat ? {
+                            id: cat.id ?? cat._id,
+                            type: cat.type,
+                            brand: cat.brand
+                        } : item.category,
+                        uom: uom ? {
+                            id: uom.id ?? uom._id,
+                            symbol: uom.symbol,
+                            unit_name: uom.unit_name ?? uom.unitName
+                        } : item.uom
+                    };
+                });
+                return itemsResponse;
+            } catch (err) {
+                console.error('[itemApi.getAllExtended] Unexpected error:', err);
+                return { status: 'error', message: err.message || 'Failed to load items', data: [] };
             }
-            return response;
+        },
+        getByIdExtended: async (id) => {
+            try {
+                const response = await itemApi.getById(id);
+                if (!response?.data) return response;
+
+                const [categoriesResponse, uomsResponse] = await Promise.all([
+                    categoryApi.getAll(),
+                    uomApi.getAll()
+                ]);
+                const categories = Array.isArray(categoriesResponse?.data) ? categoriesResponse.data : [];
+                const categoryMap = new Map(categories.map(c => [String(c?.id ?? c?._id), c]).filter(([, c]) => c != null));
+                const uoms = Array.isArray(uomsResponse?.data) ? uomsResponse.data : [];
+                const uomMap = new Map(uoms.map(u => [String(u?.id ?? u?._id), u]).filter(([, u]) => u != null));
+
+                const item = response.data;
+                const cat = categoryMap.get(String(item.category_id ?? item.categoryId ?? ''));
+                const uom = uomMap.get(String(item.uom_id ?? item.uomId ?? ''));
+                response.data = {
+                    ...item,
+                    category: cat ? {
+                        id: cat.id ?? cat._id,
+                        type: cat.type,
+                        brand: cat.brand
+                    } : item.category,
+                    uom: uom ? {
+                        id: uom.id ?? uom._id,
+                        symbol: uom.symbol,
+                        unit_name: uom.unit_name ?? uom.unitName
+                    } : item.uom
+                };
+                return response;
+            } catch (err) {
+                console.error('[itemApi.getByIdExtended] Unexpected error:', err);
+                return { status: 'error', message: err.message || 'Failed to load item', data: null };
+            }
+        },
+        getBySku: async (sku) => {
+            try {
+                const response = await itemApi.getAllExtended();
+                if (Array.isArray(response?.data)) {
+                    return { status: 'success', data: response.data.find((row) => row?.sku === sku) || null };
+                }
+                return response;
+            } catch (err) {
+                console.error('[itemApi.getBySku] Unexpected error:', err);
+                return { status: 'error', message: err.message || 'Failed to load item', data: null };
+            }
         }
     });
     Object.assign(stockApi, onlineCollectionApi('stock_batches'), {
         getAll: async (query = {}) => {
-            const response = normalizeCollectionResponse(
-                await onlineCall((api) => api.list('stock_batches', query))
-            );
-            if (Array.isArray(response?.data)) {
-                response.data = response.data.map(normalizeStockRecord);
+            try {
+                const [stockResponse, itemsResponse] = await Promise.all([
+                    (async () => {
+                        const response = normalizeCollectionResponse(
+                            await onlineCall((api) => api.list('stock_batches', query))
+                        );
+                        if (Array.isArray(response?.data)) {
+                            response.data = response.data.map(normalizeStockRecord);
+                        }
+                        return response;
+                    })(),
+                    itemApi.getAllExtended().catch(err => {
+                        console.warn('[stockApi.getAll] itemApi.getAllExtended failed:', err);
+                        return { status: 'error', data: [] };
+                    })
+                ]);
+
+                if (!stockResponse || !Array.isArray(stockResponse.data)) {
+                    console.warn('[stockApi.getAll] stockResponse missing or data not array:', stockResponse);
+                    return stockResponse || { status: 'error', message: 'Invalid stock response', data: [] };
+                }
+
+                const items = Array.isArray(itemsResponse?.data) ? itemsResponse.data : [];
+                const itemMap = new Map(items.filter(i => i != null).map(i => [String(i.id ?? i._id), i]));
+                const skuMap = new Map(items.filter(i => i != null).map(i => [String(i.sku ?? '').toLowerCase(), i]));
+
+                stockResponse.data = stockResponse.data.map((stock, index) => {
+                    if (!stock || typeof stock !== 'object') {
+                        console.warn(`[stockApi.getAll] Invalid stock record at index ${index}:`, stock);
+                        return stock;
+                    }
+                    const itemId = String(stock.itemId ?? stock.item_id ?? '');
+                    const sku = String(stock.sku ?? '').toLowerCase();
+                    const item = itemMap.get(itemId) || skuMap.get(sku) || null;
+
+                    return {
+                        ...stock,
+                        item_id: item?.id ?? item?._id ?? stock.itemId ?? stock.item_id ?? null,
+                        item_name: item?.item_name ?? stock.item_name ?? null,
+                        item_image_url: item?.item_image_url ?? stock.item_image_url ?? null,
+                        item_code: item?.item_code ?? stock.item_code ?? null,
+                        maximum_capacity: item?.maximum_capacity ?? stock.maximum_capacity ?? 100,
+                        category_id: item?.category_id ?? stock.category_id ?? null,
+                        category_brand: item?.category?.brand ?? stock.category_brand ?? null,
+                        category_type: item?.category?.type ?? stock.category_type ?? null,
+                        uom_id: item?.uom_id ?? stock.uom_id ?? null,
+                        uom_symbol: item?.uom?.symbol ?? stock.uom_symbol ?? null,
+                        uom_unit_name: item?.uom?.unit_name ?? stock.uom_unit_name ?? null,
+                        category: item?.category ?? stock.category ?? null,
+                        uom: item?.uom ?? stock.uom ?? null
+                    };
+                });
+
+                return stockResponse;
+            } catch (err) {
+                console.error('[stockApi.getAll] Unexpected error:', err);
+                return { status: 'error', message: err.message || 'Failed to load stock', data: [] };
             }
-            return response;
         },
         getAllWithItems: async () => stockApi.getAll(),
         getBySku: async (sku) => {
@@ -2791,6 +2958,32 @@ const installOnlineOnlyOverrides = () => {
         }
     });
     Object.assign(salesApi, onlineCollectionApi('sales'), {
+        getAll: async (query = {}) => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('sales', query)));
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.map(normalizeSaleRecord);
+            }
+            return response;
+        },
+        getById: async (id) => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.get('sales', id)));
+            if (response?.data) {
+                response.data = normalizeSaleRecord(response.data);
+            }
+            return response;
+        },
+        search: async (searchTerm = '') => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('sales', {})));
+            const term = String(searchTerm).toLowerCase();
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.map(normalizeSaleRecord).filter((row) =>
+                    Object.values(row).some((value) =>
+                        typeof value === 'string' && value.toLowerCase().includes(term)
+                    )
+                );
+            }
+            return response;
+        },
         generateInvoiceNo: async () => onlineCall((api) => api.generateInvoiceNo()),
         create: async (data) => onlineCall((api) => api.createSale(data)),
         hold: async (data) => onlineCall((api) => api.create('sales', { ...data, is_held: true, isHeld: true })),

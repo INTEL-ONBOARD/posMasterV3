@@ -94,7 +94,7 @@ function ManageUser() {
     full_name: "",
     password: "",
     confirm_password: "",
-    roles: ["cashier"],
+    roles: [""],
     is_active: true,
     branch_id: "",
     profile_image: "",
@@ -392,7 +392,7 @@ function ManageUser() {
       full_name: "",
       password: "",
       confirm_password: "",
-      roles: ["cashier"],
+      roles: [""],
       is_active: true,
       branch_id: "",
       profile_image: "",
@@ -419,6 +419,8 @@ function ManageUser() {
         const selectedRolePerms = rolePermissions[value];
         if (selectedRolePerms) {
           setPermissions(selectedRolePerms);
+        } else {
+          setPermissions(defaultPermissions);
         }
       }
     } else {
@@ -529,6 +531,11 @@ function ManageUser() {
     }
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
       setStatusModal({ open: true, type: 'failed', description: "Username can only contain letters, numbers, and underscores" });
+      return false;
+    }
+
+    if (!formData.roles[0]) {
+      setStatusModal({ open: true, type: 'failed', description: "Please select a role" });
       return false;
     }
 
@@ -945,10 +952,11 @@ function ManageUser() {
                     </label>
                     <select
                       name="roles"
-                      value={formData.roles[0] || "cashier"}
+                      value={formData.roles[0] || ""}
                       onChange={handleInputChange}
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                     >
+                      <option value="" disabled>Choose a role</option>
                       {rolesList.map((role) => (
                         <option key={role.value} value={role.value}>
                           {role.label}

@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { localAuth } from "../api/services/localAuth";
 import { settingsApi } from "../api/localApi";
+import { LayoutDashboard } from "lucide-react";
 import Dashboard_inventory from "../assets/Dashboard_inventory.png";
 import Dashboard_logout from "../assets/Dashboard_logout.png";
 import Dashboard_settings from "../assets/Dashboard_settings.png";
-import Dashboard_notification from "../assets/Dashboard_notification.png";
 import Dashboard_sales from "../assets/Dashboard_sales.png";
 import Dashboard_users from "../assets/Dashboard_users.png";
 
@@ -136,9 +136,9 @@ function Sidebar() {
           {/* Sidebar Tiles */}
           {[
             {
-              to: "notifications",
-              icon: Dashboard_notification,
-              label: "Notifications",
+              to: "/dashboard",
+              reactIcon: LayoutDashboard,
+              label: "Dashboard",
               alwaysVisible: true,
             },
             {
@@ -168,7 +168,9 @@ function Sidebar() {
           ]
             .filter((item) => item.alwaysVisible || hasAccess(item.permissionKey))
             .map((item) => {
-              const isActive = currentPath.startsWith(`/dashboard/${item.to}`);
+              const isActive = item.to.startsWith('/')
+                ? currentPath === item.to
+                : currentPath.startsWith(`/dashboard/${item.to}`);
               return (
                 <li key={item.to} className="relative group">
                   <Link
@@ -186,11 +188,15 @@ function Sidebar() {
                     <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-2 transition-transform duration-300 ${
                       isActive ? "bg-white/90 shadow-sm" : "bg-white shadow-sm"
                     } ${!isActive && "group-hover:scale-105"}`}>
-                      <img
-                        className="w-8 h-8 object-contain transition-all duration-300"
-                        src={item.icon}
-                        alt={item.label}
-                      />
+                      {item.reactIcon ? (
+                        <item.reactIcon className={`w-8 h-8 transition-all duration-300 ${isActive ? 'text-[#1A318C]' : 'text-gray-500'}`} />
+                      ) : (
+                        <img
+                          className="w-8 h-8 object-contain transition-all duration-300"
+                          src={item.icon}
+                          alt={item.label}
+                        />
+                      )}
                     </div>
                     <span className={`text-xs font-semibold text-center transition-colors duration-300 ${
                       isActive ? "text-white" : "text-gray-600"
