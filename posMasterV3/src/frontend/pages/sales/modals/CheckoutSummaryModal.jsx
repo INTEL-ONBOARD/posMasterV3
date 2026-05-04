@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X, User, ShoppingCart, CreditCard, Wallet, DollarSign, Receipt, AlertTriangle, Heart, Users, Check, Banknote, ArrowRight, CheckCircle2, Sparkles, Printer } from "lucide-react";
 import { paymentMethodApi } from "../../../api/localApi";
 
 // Success Animation Component
 function SuccessAnimation({ saleData, onClose, formatCurrency }) {
   const [step, setStep] = useState(0);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
+    setStep(0);
     const timers = [
       setTimeout(() => setStep(1), 300),
       setTimeout(() => setStep(2), 800),
@@ -15,23 +18,25 @@ function SuccessAnimation({ saleData, onClose, formatCurrency }) {
 
     // Auto-close after 10 seconds as a safety measure
     const autoCloseTimer = setTimeout(() => {
-      onClose();
+      onCloseRef.current();
     }, 10000);
 
     return () => {
       timers.forEach(clearTimeout);
       clearTimeout(autoCloseTimer);
     };
-  }, [onClose]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Press Enter to close the success screen
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Enter') onClose();
+      if (e.key === 'Enter') onCloseRef.current();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-2xl overflow-hidden">

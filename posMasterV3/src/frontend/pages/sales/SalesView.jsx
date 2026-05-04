@@ -495,7 +495,7 @@ export default function SalesView({ isActive }) {
     const batchCode = item.batchCode || item.batch_code || item.batch || null;
     const unitPrice = Number(item.unit_price ?? item.unitPrice ?? item.retail_price ?? 0);
     const discount = Number(item.discount ?? item.customer_discount ?? 0);
-    const quantity = Number(item.quantity ?? item.customer_quantity ?? 0);
+    const quantity = Number(item.customer_quantity ?? item.quantity ?? 0);
     const totalPrice = (unitPrice - discount) * quantity;
 
     return {
