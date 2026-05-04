@@ -2,6 +2,7 @@ const { ObjectId } = require('mongodb');
 const bcrypt = require('bcryptjs');
 const { getDb } = require('../db/mongo.cjs');
 const { publishDomainEvent } = require('./domainEvents.cjs');
+const restockService = require('./restockService.cjs');
 
 const COLLECTIONS = new Set([
     'branches',
@@ -177,6 +178,13 @@ async function getById(collectionName, auth, id) {
 
 async function create(collectionName, auth, body) {
     ensureCollection(collectionName);
+
+    // Delegate restock transactions to dedicated service that also
+    // creates/updates stock_batches for each added item.
+    if (collectionName === 'restock_transactions') {
+        return restockService.createRestock(auth, body);
+    }
+
     const db = getDb();
     const now = new Date();
     const payload = normalizeCollectionBody(collectionName, auth, body);
