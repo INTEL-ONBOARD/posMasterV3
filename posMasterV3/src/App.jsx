@@ -110,7 +110,7 @@ function PermissionRoute({ requiredPermissions = [], anyRole = [] }) {
   }, [anyRole, requiredPermissions]);
 
   if (allowed === null) return null; // loading — render nothing briefly
-  if (!allowed) return <Navigate to="/dashboard/notifications" replace />;
+  if (!allowed) return <Navigate to="/dashboard" replace />;
   return <Outlet context={outletContext} />;
 }
 

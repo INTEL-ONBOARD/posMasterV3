@@ -336,10 +336,12 @@ export default function SalesView({ isActive }) {
     setSelectedItems(prev => {
       const exists = prev.find(item => item.id === newRegItem.id);
       if (exists) {
-        // Increment quantity if already exists
+        // Increment quantity if already exists (use 0.5 step for kg items)
+        const uomSymbol = (exists.uom?.symbol || '').toLowerCase();
+        const increment = uomSymbol === 'kg' ? 0.5 : 1;
         return prev.map(item =>
           item.id === newRegItem.id
-            ? { ...item, customer_quantity: item.customer_quantity + 1 }
+            ? { ...item, customer_quantity: uomSymbol === 'kg' ? Math.round((item.customer_quantity + increment) * 100) / 100 : item.customer_quantity + increment }
             : item
         );
       }
