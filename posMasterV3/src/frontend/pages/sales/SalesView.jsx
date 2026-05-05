@@ -541,10 +541,11 @@ export default function SalesView({ isActive }) {
     items: buildSaleItemsPayload()
   });
 
+  const getHeldSaleId = (sale) => sale?.id || sale?._id || sale?.saleId || sale?.sale_id || null;
+
   const clearForm = () => {
     setSelectedItems([]);
     setSelectedMember(GUEST_USER);
-    setHeldOrder(null);
     setReleasedHeldOrder(null);
     generateNewInvoice();
     focusSearch();
@@ -569,6 +570,21 @@ export default function SalesView({ isActive }) {
               setStatusModal({ open: true, type: 'failed', description: `Invalid quantity for "${item.item_name || 'unknown'}"` });
               return { success: false };
           }
+
+          const currentStock = inventoryItems.find((stock) =>
+            String(stock?.stock_id ?? stock?.id ?? '') === String(stockId)
+          );
+          if (currentStock) {
+            const availableQty = Number(currentStock.quantity || 0);
+            if (availableQty < Number(qty)) {
+              setStatusModal({
+                open: true,
+                type: 'failed',
+                description: `Insufficient stock for "${item.item_name || 'unknown'}". Available: ${availableQty}, requested: ${qty}`
+              });
+              return { success: false };
+            }
+          }
       }
 
       const saleData = buildSalePayload({
@@ -580,21 +596,14 @@ export default function SalesView({ isActive }) {
         changeAmount
       });
 
+      const restoredHeldSaleId = getHeldSaleId(releasedHeldOrder);
+      if (releasedHeldOrder && !restoredHeldSaleId) {
+        setStatusModal({ open: true, type: 'failed', description: 'Unable to complete restored held sale: missing sale ID' });
+        return { success: false };
+      }
+
       const response = releasedHeldOrder
-        ? await salesApi.completeHeld(releasedHeldOrder.id, {
-            member_id: saleData.member_id,
-            member_name: saleData.member_name,
-            cashier_id: saleData.cashier_id,
-            cashier_name: saleData.cashier_name,
-            payment_method: saleData.payment_method,
-            credit_duration: saleData.credit_duration,
-            subtotal: saleData.subtotal,
-            discount: saleData.discount,
-            total_amount: saleData.total_amount,
-            cash_received: saleData.cash_received,
-            change_amount: saleData.change_amount,
-            items: saleData.items
-          })
+        ? await salesApi.completeHeld(restoredHeldSaleId, saleData)
         : await salesApi.create(saleData);
 
       if (response.status === "success") {
@@ -617,7 +626,11 @@ export default function SalesView({ isActive }) {
       }
     } catch (error) {
       console.error("[SalesView] Error processing sale:", error);
-      setStatusModal({ open: true, type: 'failed', description: "Failed to process sale" });
+      setStatusModal({
+        open: true,
+        type: 'failed',
+        description: error?.message || "Failed to process sale"
+      });
       throw error;
     }
   };
