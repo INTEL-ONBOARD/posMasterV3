@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { localAuth } from "../api/services/localAuth";
 import { settingsApi } from "../api/localApi";
-import { LayoutDashboard } from "lucide-react";
+import Dashboard_dashboard from "../assets/dashboard.png";
 import Dashboard_inventory from "../assets/Dashboard_inventory.png";
 import Dashboard_logout from "../assets/Dashboard_logout.png";
 import Dashboard_settings from "../assets/Dashboard_settings.png";
@@ -137,7 +137,7 @@ function Sidebar() {
           {[
             {
               to: "/dashboard",
-              reactIcon: LayoutDashboard,
+              icon: Dashboard_dashboard,
               label: "Dashboard",
               alwaysVisible: true,
             },

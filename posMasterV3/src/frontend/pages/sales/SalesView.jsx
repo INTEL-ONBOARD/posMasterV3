@@ -256,7 +256,8 @@ export default function SalesView({ isActive }) {
         await fetchHeldOrder(user);
       })();
     }
-  }, [isActive, fetchHeldOrder]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive]);
 
   // Shift+Space opens the member selection modal
   useEffect(() => {
