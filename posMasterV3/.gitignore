@@ -12,6 +12,7 @@ dist
 dist-react
 dist-ssr
 *.local
+.env
 .env.online
 
 # Editor directories and files
