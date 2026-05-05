@@ -1,6 +1,11 @@
+import { isKgUom, isLiterUom } from "../common/uomPricing";
+
 // validate restocking items in inventory restock form
-export function validateStockForm(formDataStock = {}) {
+export function validateStockForm(formDataStock = {}, options = {}) {
   const formErrors = {};
+  const uomSymbol = options?.uomSymbol || "";
+  const needsKgSellingPrice = isKgUom(uomSymbol);
+  const needsLiterSellingPrice = isLiterUom(uomSymbol);
 
   const batch = (formDataStock.batch_code || "").toString().trim();
   if (!batch) {
@@ -23,8 +28,18 @@ export function validateStockForm(formDataStock = {}) {
   }
 
   const retailPrice = parseFloat(formDataStock.retail_price);
-  if (Number.isNaN(retailPrice) || retailPrice <= 0) {
+  if (!needsKgSellingPrice && !needsLiterSellingPrice && (Number.isNaN(retailPrice) || retailPrice <= 0)) {
     formErrors.retail_price = "Retail price must be greater than 0.";
+  }
+
+  const sellingPricePerKg = parseFloat(formDataStock.selling_price_per_kg);
+  if (needsKgSellingPrice && (Number.isNaN(sellingPricePerKg) || sellingPricePerKg <= 0)) {
+    formErrors.selling_price_per_kg = "Selling value per 1 KG must be greater than 0.";
+  }
+
+  const sellingPricePerLiter = parseFloat(formDataStock.selling_price_per_liter);
+  if (needsLiterSellingPrice && (Number.isNaN(sellingPricePerLiter) || sellingPricePerLiter <= 0)) {
+    formErrors.selling_price_per_liter = "Selling value per 1 Liter must be greater than 0.";
   }
 
   // if (!formDataStock.expired_datetime) { //commented assuming some items doesn't have expiration dates 

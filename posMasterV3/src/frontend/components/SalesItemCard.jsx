@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import barcodeImg from "../assets/barcode.png";
 import placeholderImg from "../assets/card_placeholder_img.png";
+import { getEffectiveSellingPrice } from "../util/common/uomPricing";
 
 export default function SalesItemCard({ item, onOpen, label = "Add to Cart" }) {
   const nameRef = useRef(null);
@@ -18,7 +19,7 @@ export default function SalesItemCard({ item, onOpen, label = "Add to Cart" }) {
   const quantity = item.quantity || 0;
   const maxCapacity = item.maximum_capacity || 100; // Default to 100 if not set
   const thresholdLimit = item.threshold_limit || 20; // Default to 20%
-  const retailPrice = item.retail_price || 0;
+  const retailPrice = getEffectiveSellingPrice(item);
 
   // Calculate status color based on quantity
   const percentFull = maxCapacity > 0 ? (quantity / maxCapacity) * 100 : 0;

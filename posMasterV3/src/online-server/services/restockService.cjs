@@ -1,5 +1,6 @@
 const { getDb, getMongoClient, supportsTransactions } = require('../db/mongo.cjs');
 const { publishDomainEvent } = require('./domainEvents.cjs');
+const { normalizeUomSymbol, getEffectiveSellingPrice } = require('../utils/uomPricing.cjs');
 
 async function createRestock(auth, restockInput = {}) {
     const db = getDb();
@@ -9,10 +10,16 @@ async function createRestock(auth, restockInput = {}) {
     const addedItems = (restockInput.added_items || []).map((item) => ({
         sku: item.sku || item.SKU || '',
         batchCode: item.batch_code || item.batchCode || '',
+        uomSymbol: normalizeUomSymbol(item.uom_symbol || item.uomSymbol || item.uom?.symbol || ''),
         quantity: Number(item.qty || item.quantity || 0),
         stockPrice: Number(item.stock_price || item.stockPrice || 0),
         retailPrice: Number(item.retail_price || item.retailPrice || 0),
+        sellingPricePerKg: Number(item.selling_price_per_kg || item.sellingPricePerKg || 0),
+        sellingPricePerLiter: Number(item.selling_price_per_liter || item.sellingPricePerLiter || 0),
         expiryDate: item.exp_date || item.expiryDate || item.expiry_date || null
+    })).map((item) => ({
+        ...item,
+        retailPrice: getEffectiveSellingPrice(item, item.uomSymbol) || item.retailPrice
     }));
 
     if (addedItems.length === 0) {
@@ -137,6 +144,12 @@ async function executeRestock(db, auth, restockDoc, addedItems, branchId, now, s
                         stock_price: item.stockPrice,
                         retailPrice: item.retailPrice,
                         retail_price: item.retailPrice,
+                        sellingPricePerKg: item.sellingPricePerKg,
+                        selling_price_per_kg: item.sellingPricePerKg,
+                        sellingPricePerLiter: item.sellingPricePerLiter,
+                        selling_price_per_liter: item.sellingPricePerLiter,
+                        uomSymbol: item.uomSymbol,
+                        uom_symbol: item.uomSymbol,
                         expiryDate: item.expiryDate,
                         expiry_date: item.expiryDate,
                         updatedAt: now,
@@ -160,6 +173,12 @@ async function executeRestock(db, auth, restockDoc, addedItems, branchId, now, s
                 stock_price: item.stockPrice,
                 retailPrice: item.retailPrice,
                 retail_price: item.retailPrice,
+                sellingPricePerKg: item.sellingPricePerKg,
+                selling_price_per_kg: item.sellingPricePerKg,
+                sellingPricePerLiter: item.sellingPricePerLiter,
+                selling_price_per_liter: item.sellingPricePerLiter,
+                uomSymbol: item.uomSymbol,
+                uom_symbol: item.uomSymbol,
                 expiryDate: item.expiryDate,
                 expiry_date: item.expiryDate,
                 thresholdLimit: 0,
