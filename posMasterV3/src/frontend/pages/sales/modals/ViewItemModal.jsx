@@ -5,6 +5,7 @@ import placeholderImg from "../../../assets/card_placeholder_img.png";
 
 import { extractDateOnly } from "../../../util/common/date";
 import { restockApi } from "../../../api/localApi";
+import { getEffectiveSellingPrice } from "../../../util/common/uomPricing";
 
 function ViewItemModal({ isOpen, closeModal, item }) {
   //to populate recent batch code changes
@@ -53,7 +54,12 @@ function ViewItemModal({ isOpen, closeModal, item }) {
   // Use primary stock data, falling back to item data
   const displayBatchCode = primaryStock?.batch_code || item?.batch_code || "N/A";
   const displayStockPrice = primaryStock?.stock_price ?? item?.stock_price ?? 0;
-  const displayRetailPrice = primaryStock?.retail_price ?? item?.retail_price ?? 0;
+  const displayRetailPrice = getEffectiveSellingPrice({
+    ...item,
+    ...(primaryStock || {}),
+    uom: item?.uom,
+    uom_symbol: item?.uom?.symbol || item?.uom_symbol
+  });
   const displayExpDate = primaryStock?.exp_date || item?.expiry_date || item?.exp_date;
   const displayThreshold = primaryStock?.threshold_limit || item?.threshold_limit || 10;
   const maxCapacity = item?.maximum_capacity || 100;
@@ -222,7 +228,14 @@ function ViewItemModal({ isOpen, closeModal, item }) {
                           <p className="text-xs font-bold text-emerald-600 tabular-nums">{s.qty} units</p>
                         </div>
                         <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span>Rs. {Number(s.retail_price || 0).toFixed(2)}</span>
+                          <span>
+                            Rs. {Number(getEffectiveSellingPrice({
+                              ...item,
+                              ...s,
+                              uom: item?.uom,
+                              uom_symbol: item?.uom?.symbol || item?.uom_symbol
+                            }) || 0).toFixed(2)}
+                          </span>
                           <span>Exp: {s.exp_date ? extractDateOnly(s.exp_date) : 'N/A'}</span>
                         </div>
                       </div>
