@@ -26,11 +26,13 @@ export default function OnlineConnectionOverlay() {
     window.addEventListener("storage", syncSession);
     window.addEventListener("focus", syncSession);
     document.addEventListener("visibilitychange", syncSession);
+    window.addEventListener("auth-changed", syncSession);
 
     return () => {
       window.removeEventListener("storage", syncSession);
       window.removeEventListener("focus", syncSession);
       document.removeEventListener("visibilitychange", syncSession);
+      window.removeEventListener("auth-changed", syncSession);
     };
   }, []);
 
