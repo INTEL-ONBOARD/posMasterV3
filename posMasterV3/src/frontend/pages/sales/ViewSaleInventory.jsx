@@ -9,6 +9,7 @@ function ViewSaleInventory({ isActive }) {
   const [modal, setModal] = useState(false);
   const closeModal = () => setModal(false);
   const [selectedItem, setSelectedItem] = useState({});
+  const normalizeText = (value) => String(value ?? "");
 
   // Use reactive data hooks - fetch STOCK_ITEMS which includes prices and quantities
   const { data: stockItems, loading: isLoadingStock } = useReactiveData(
@@ -102,12 +103,14 @@ function ViewSaleInventory({ isActive }) {
 
   const filteredItems = inventoryItems
     .filter((item) => {
+      const itemName = normalizeText(item.item_name);
+      const itemSku = normalizeText(item.sku);
       const matchesCategory =
         searchCategory === "All" ||
         (item.category && item.category.type === searchCategory);
       const matchesSearch =
-        item.item_name.toLowerCase().includes(search.toLowerCase()) ||
-        (item.sku || "").toLowerCase().includes(search.toLowerCase());
+        itemName.toLowerCase().includes(search.toLowerCase()) ||
+        itemSku.toLowerCase().includes(search.toLowerCase());
       const matchesAvailability =
         searchAvailability === "All" ||
         (searchAvailability === "Available" && item.quantity > 0) ||
@@ -115,11 +118,13 @@ function ViewSaleInventory({ isActive }) {
       return matchesCategory && matchesSearch && matchesAvailability;
     })
     .sort((a, b) => {
+      const aName = normalizeText(a.item_name);
+      const bName = normalizeText(b.item_name);
       switch (sortOrder) {
         case "name_asc":
-          return a.item_name.localeCompare(b.item_name);
+          return aName.localeCompare(bName);
         case "name_desc":
-          return b.item_name.localeCompare(a.item_name);
+          return bName.localeCompare(aName);
         case "price_asc":
           return (a.retail_price || 0) - (b.retail_price || 0);
         case "price_desc":
@@ -246,14 +251,16 @@ function ViewSaleInventory({ isActive }) {
                             {item.item_image_url ? (
                               <img
                                 src={item.item_image_url}
-                                alt={item.item_name}
+                                alt={normalizeText(item.item_name) || "Inventory item"}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
                               <Package className="w-5 h-5 text-gray-400" />
                             )}
                           </div>
-                          <span className="text-sm font-medium text-gray-800">{item.item_name}</span>
+                          <span className="text-sm font-medium text-gray-800">
+                            {normalizeText(item.item_name) || item.sku || "Unnamed item"}
+                          </span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
