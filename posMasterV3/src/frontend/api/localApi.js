@@ -2454,12 +2454,16 @@ const normalizeSaleRecord = (record) => {
         items: Array.isArray(normalized.items) ? normalized.items.map(item => ({
             ...item,
             item_name: item.item_name ?? item.itemName ?? '',
+            item_image_url: item.item_image_url ?? item.itemImageUrl ?? null,
             sku: item.sku ?? '',
             quantity: item.quantity ?? 0,
             unit_price: item.unit_price ?? item.unitPrice ?? 0,
             discount: item.discount ?? 0,
             total_price: item.total_price ?? item.totalPrice ?? 0,
-            batch_code: item.batch_code ?? item.batchCode ?? ''
+            batch_code: item.batch_code ?? item.batchCode ?? '',
+            uom_symbol: item.uom_symbol ?? item.uomSymbol ?? '',
+            selling_price_per_kg: item.selling_price_per_kg ?? item.sellingPricePerKg ?? 0,
+            selling_price_per_liter: item.selling_price_per_liter ?? item.sellingPricePerLiter ?? 0
         })) : []
     };
 };
@@ -2475,7 +2479,9 @@ const normalizeStockRecord = (record) => {
         expiry_date: normalized.expiry_date ?? normalized.exp_date ?? null,
         threshold_limit: normalized.threshold_limit ?? normalized.thresholdLimit ?? 0,
         stock_price: normalized.stock_price ?? normalized.stockPrice ?? 0,
-        retail_price: normalized.retail_price ?? normalized.retailPrice ?? 0
+        retail_price: normalized.retail_price ?? normalized.retailPrice ?? 0,
+        selling_price_per_kg: normalized.selling_price_per_kg ?? normalized.sellingPricePerKg ?? 0,
+        selling_price_per_liter: normalized.selling_price_per_liter ?? normalized.sellingPricePerLiter ?? 0
     };
 };
 

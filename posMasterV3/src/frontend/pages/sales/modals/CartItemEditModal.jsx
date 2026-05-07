@@ -4,6 +4,7 @@ import barcodeImg from "../../../assets/barcode.png";
 import placeholderImg from "../../../assets/card_placeholder_img.png";
 import { restockApi } from "../../../api/localApi";
 import { extractDateOnly } from "../../../util/common/date";
+import { getEffectiveSellingPrice, supportsDecimalSaleQuantity } from "../../../util/common/uomPricing";
 
 function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClose }) {
   const [quantity, setQuantity] = useState(1);
@@ -14,6 +15,8 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
   const quantityInputRef = useRef(null);
   const updateBtnRef = useRef(null);
   const maxQuantityRef = useRef(999);
+  const uomSymbol = item?.uom?.symbol || item?.uom_symbol || '';
+  const isDecimalQuantityUom = supportsDecimalSaleQuantity(uomSymbol);
 
   // Fetch stock entries when item changes
   useEffect(() => {
@@ -35,7 +38,7 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
     if (isOpen) {
       setTimeout(() => quantityInputRef.current?.focus(), 80);
     }
-  }, [isOpen]);
+  }, [isOpen, isDecimalQuantityUom]);
 
   // Keyboard +/- to adjust quantity while modal is open
   useEffect(() => {
@@ -45,24 +48,24 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
       if (e.target === quantityInputRef.current) return;
       if (e.key === '+' || e.key === '=') {
         e.preventDefault();
-        const step = isKg ? 0.5 : 1;
+        const step = isDecimalQuantityUom ? 0.25 : 1;
         setQuantity(q => {
           const newQ = Math.min(maxQuantityRef.current, q + step);
-          return isKg ? Math.round(newQ * 100) / 100 : newQ;
+          return isDecimalQuantityUom ? Math.round(newQ * 100) / 100 : newQ;
         });
       } else if (e.key === '-') {
         e.preventDefault();
-        const step = isKg ? 0.5 : 1;
-        const minQty = isKg ? 0.01 : 1;
+        const step = isDecimalQuantityUom ? 0.25 : 1;
+        const minQty = isDecimalQuantityUom ? 0.01 : 1;
         setQuantity(q => {
           const newQ = Math.max(minQty, q - step);
-          return isKg ? Math.round(newQ * 100) / 100 : newQ;
+          return isDecimalQuantityUom ? Math.round(newQ * 100) / 100 : newQ;
         });
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, isDecimalQuantityUom]);
 
   // Set selected batch when stock entries are loaded
   useEffect(() => {
@@ -106,21 +109,23 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
 
   if (!isOpen || !item) return null;
 
-  const unitPrice = selectedBatch?.retail_price || item.retail_price || 0;
+  const unitPrice = getEffectiveSellingPrice({
+    ...item,
+    ...(selectedBatch || {}),
+    uom: item.uom,
+    uom_symbol: item.uom?.symbol || item.uom_symbol
+  });
   const maxQuantity = selectedBatch?.qty || item.quantity || 999;
   maxQuantityRef.current = maxQuantity;
   const lineTotal = (unitPrice - discount) * quantity;
   const hasMultipleBatches = stockEntries.length > 1;
 
-  const uomSymbol = (item.uom?.symbol || '').toLowerCase();
-  const isKg = uomSymbol === 'kg';
-  const isWeighable = isKg || uomSymbol === 'g';
-  const minQuantity = isKg ? 0.01 : 1;
-  const quantityStep = isKg ? 0.5 : 1;
+  const minQuantity = isDecimalQuantityUom ? 0.01 : 1;
+  const quantityStep = isDecimalQuantityUom ? 0.25 : 1;
 
   const handleQuantityChange = (delta) => {
     const newQty = Math.max(minQuantity, Math.min(maxQuantity, quantity + (delta * quantityStep)));
-    setQuantity(isKg ? Math.round(newQty * 100) / 100 : newQty);
+    setQuantity(isDecimalQuantityUom ? Math.round(newQty * 100) / 100 : newQty);
   };
 
   const handleBatchSelect = (batch) => {
@@ -136,12 +141,16 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
       ...item,
       // Update with selected batch info
       batch_code: selectedBatch?.batch_code || item.batch_code,
-      retail_price: selectedBatch?.retail_price || item.retail_price,
+      retail_price: unitPrice,
+      unit_price: unitPrice,
       stock_price: selectedBatch?.stock_price || item.stock_price,
+      selling_price_per_kg: selectedBatch?.selling_price_per_kg ?? selectedBatch?.sellingPricePerKg ?? item.selling_price_per_kg ?? 0,
+      selling_price_per_liter: selectedBatch?.selling_price_per_liter ?? selectedBatch?.sellingPricePerLiter ?? item.selling_price_per_liter ?? 0,
       quantity: selectedBatch?.qty || item.quantity,
       expiry_date: selectedBatch?.exp_date || item.expiry_date,
       customer_quantity: quantity,
-      customer_discount: discount
+      customer_discount: discount,
+      uom_symbol: item.uom?.symbol || item.uom_symbol || ""
     });
     closeModal();
     onClose?.();
@@ -258,12 +267,17 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
                             <p className={`text-sm font-bold ${
                               selectedBatch?.batch_code === batch.batch_code ? 'text-white' : 'text-emerald-600'
                             }`}>
-                              {batch.qty} units
+                              {batch.qty} {item.uom?.symbol || item.uom_symbol || 'units'}
                             </p>
                             <p className={`text-xs ${
                               selectedBatch?.batch_code === batch.batch_code ? 'text-teal-100' : 'text-gray-500'
                             }`}>
-                              Rs.{Number(batch.retail_price || 0).toFixed(2)}
+                              Rs.{Number(getEffectiveSellingPrice({
+                                ...item,
+                                ...batch,
+                                uom: item.uom,
+                                uom_symbol: item.uom?.symbol || item.uom_symbol
+                              }) || 0).toFixed(2)}
                             </p>
                           </div>
                         </div>
@@ -314,15 +328,16 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
                 <input
                   ref={quantityInputRef}
                   type="number"
-                  step={isKg ? "0.01" : "1"}
+                  step={isDecimalQuantityUom ? "0.01" : "1"}
                   value={quantity}
                   onChange={(e) => {
-                    const val = isKg ? parseFloat(e.target.value) : parseInt(e.target.value);
+                    const val = isDecimalQuantityUom ? parseFloat(e.target.value) : parseInt(e.target.value, 10);
                     if (isNaN(val)) {
                       setQuantity(minQuantity);
                       return;
                     }
-                    setQuantity(Math.max(minQuantity, Math.min(maxQuantity, val)));
+                    const nextValue = Math.max(minQuantity, Math.min(maxQuantity, val));
+                    setQuantity(isDecimalQuantityUom ? Math.round(nextValue * 100) / 100 : Math.trunc(nextValue));
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === 'Tab') {

@@ -15,6 +15,7 @@ import MemEvaluationModal from "./modals/MemEvaluationModal.jsx";
 import CartItemEditModal from "./modals/CartItemEditModal.jsx";
 import CheckoutSummaryModal from "./modals/CheckoutSummaryModal.jsx";
 import { useScannerSearch } from "../../hooks/useScannerSearch";
+import { getEffectiveSellingPrice, supportsDecimalSaleQuantity } from "../../util/common/uomPricing";
 
 // Default guest user
 const GUEST_USER = {
@@ -140,6 +141,8 @@ export default function SalesView({ isActive }) {
       threshold_limit: stock.threshold_limit || 20,
       stock_price: stock.stock_price || 0,
       retail_price: stock.retail_price || 0,
+      selling_price_per_kg: stock.selling_price_per_kg || 0,
+      selling_price_per_liter: stock.selling_price_per_liter || 0,
       discount_price: stock.discount_price || 0,
       expiry_date: stock.expiry_date,
       exp_date: stock.expiry_date,
@@ -302,8 +305,14 @@ export default function SalesView({ isActive }) {
     setSelectedItems(prev => prev.filter(item => item.id !== id));
   };
 
-  const loadItemtoList = (item) => {
-    const newRegItem = {
+  const getCartUnitPrice = (item) => (
+    Number(item?.unit_price ?? item?.unitPrice ?? getEffectiveSellingPrice(item) ?? 0)
+  );
+
+  const buildCartItem = (item, customerQuantity = 1) => {
+    const unitPrice = getEffectiveSellingPrice(item);
+
+    return {
       sku: item.sku,
       _id: item._id,
       id: item.id,
@@ -323,16 +332,23 @@ export default function SalesView({ isActive }) {
       quantity: parseFloat(item.quantity) || 0,
       threshold_limit: parseFloat(item.threshold_limit) || 0,
       stock_price: parseFloat(item.stock_price) || 0,
-      retail_price: parseFloat(item.retail_price) || 0,
+      retail_price: unitPrice,
+      unit_price: unitPrice,
+      selling_price_per_kg: parseFloat(item.selling_price_per_kg) || 0,
+      selling_price_per_liter: parseFloat(item.selling_price_per_liter) || 0,
       discount_price: parseFloat(item.discount_price) || 0,
-      expired_datetime: item.exp_date,
-      availability: item.stock_availability,
-      uom: { symbol: item.uom?.symbol || "", unit_name: item.uom?.unit_name || "" },
+      expired_datetime: item.exp_date || item.expired_datetime,
+      availability: item.stock_availability ?? item.availability,
+      uom: { symbol: item.uom?.symbol || item.uom_symbol || "", unit_name: item.uom?.unit_name || "" },
       category: { brand: item.category?.brand || "", type: item.category?.type || "" },
       customer_discount: 0,
-      customer_quantity: 1, // Default to 1 when adding
-      uom_symbol: item.uom?.symbol
+      customer_quantity: customerQuantity,
+      uom_symbol: item.uom?.symbol || item.uom_symbol || ""
     };
+  };
+
+  const loadItemtoList = (item) => {
+    const newRegItem = buildCartItem(item, 1);
 
     setSelectedItems(prev => {
       const exists = prev.find(item => item.id === newRegItem.id);
@@ -357,7 +373,7 @@ export default function SalesView({ isActive }) {
 
   // Calculate totals
   const stockTotal = selectedItems.reduce((total, item) => {
-    const discountedPrice = item.retail_price - (item.customer_discount || 0);
+    const discountedPrice = getCartUnitPrice(item) - (item.customer_discount || 0);
     return total + (discountedPrice * item.customer_quantity);
   }, 0);
 
@@ -368,37 +384,7 @@ export default function SalesView({ isActive }) {
 
   // Open modal when clicking an item card in the right panel
   const handleItemCardClick = (item) => {
-    // Build the cart-shaped item (same as loadItemtoList but open modal instead)
-    const cartItem = {
-      sku: item.sku,
-      _id: item._id,
-      id: item.id,
-      item_id: item.item_id || item.id,
-      itemId: item.itemId || item.item_id || item.id,
-      stock_id: item.stock_id || item.id,
-      stockId: item.stockId || item.stock_id || item.id,
-      stock_trace: item.stock_trace,
-      item_name: item.item_name,
-      item_image_url: item.item_image_url,
-      maximum_capacity: item.maximum_capacity,
-      uom_id: item.uom_id,
-      category_id: item.category_id,
-      inventory_id: item.inventory_id,
-      batch_code: item.batch_code,
-      batchCode: item.batchCode || item.batch_code,
-      quantity: parseFloat(item.quantity) || 0,
-      threshold_limit: parseFloat(item.threshold_limit) || 0,
-      stock_price: parseFloat(item.stock_price) || 0,
-      retail_price: parseFloat(item.retail_price) || 0,
-      discount_price: parseFloat(item.discount_price) || 0,
-      expired_datetime: item.exp_date,
-      availability: item.stock_availability,
-      uom: { symbol: item.uom?.symbol || "", unit_name: item.uom?.unit_name || "" },
-      category: { brand: item.category?.brand || "", type: item.category?.type || "" },
-      customer_discount: 0,
-      customer_quantity: 1,
-      uom_symbol: item.uom?.symbol
-    };
+    const cartItem = buildCartItem(item, 1);
     setSelectedCartItem(cartItem);
     setCartItemModal(true);
   };
@@ -499,7 +485,7 @@ export default function SalesView({ isActive }) {
     const itemId = item.itemId || item.item_id || item.id || item._id || null;
     const stockId = item.stockId || item.stock_id || item.stock?.id || item.id || null;
     const batchCode = item.batchCode || item.batch_code || item.batch || null;
-    const unitPrice = Number(item.unit_price ?? item.unitPrice ?? item.retail_price ?? 0);
+    const unitPrice = getCartUnitPrice(item);
     const discount = Number(item.discount ?? item.customer_discount ?? 0);
     const quantity = Number(item.customer_quantity ?? item.quantity ?? 0);
     const totalPrice = (unitPrice - discount) * quantity;
@@ -518,7 +504,11 @@ export default function SalesView({ isActive }) {
       unit_price: unitPrice,
       discount,
       totalPrice,
-      total_price: totalPrice
+      total_price: totalPrice,
+      item_image_url: item.item_image_url || null,
+      uom_symbol: item.uom?.symbol || item.uom_symbol || "",
+      selling_price_per_kg: Number(item.selling_price_per_kg || 0),
+      selling_price_per_liter: Number(item.selling_price_per_liter || 0)
     };
   });
 
@@ -795,11 +785,15 @@ export default function SalesView({ isActive }) {
       batch_code: item.batchCode || item.batch_code,
       batchCode: item.batchCode || item.batch_code,
       retail_price: item.unitPrice || item.unit_price,
+      unit_price: item.unitPrice || item.unit_price,
       stock_price: item.unitPrice || item.unit_price,
+      selling_price_per_kg: item.selling_price_per_kg || 0,
+      selling_price_per_liter: item.selling_price_per_liter || 0,
       customer_quantity: item.quantity,
       customer_discount: item.discount || 0,
       quantity: item.quantity,
-      uom: { symbol: '', unit_name: '' },
+      uom_symbol: item.uom_symbol || '',
+      uom: { symbol: item.uom_symbol || '', unit_name: '' },
       category: { brand: '', type: '' },
     }));
 
@@ -922,7 +916,8 @@ const generateBillPdf = async (checkoutData) => {
 
   const stock_items = selectedItems.map((item) => ({
     ...item,
-    total_price: (item.retail_price - (item.customer_discount || 0)) * item.customer_quantity,
+    retail_price: getCartUnitPrice(item),
+    total_price: (getCartUnitPrice(item) - (item.customer_discount || 0)) * item.customer_quantity,
   }));
 
   // Bill data uses checkout ref for payment details
@@ -1080,14 +1075,14 @@ const generateBillPdf = async (checkoutData) => {
                     </span>
                   </div>
                   <div className="col-span-2 text-right">
-                    <span className="text-sm text-slate-500 tabular-nums font-medium">{formatCurrency(item.retail_price)}</span>
+                    <span className="text-sm text-slate-500 tabular-nums font-medium">{formatCurrency(getCartUnitPrice(item))}</span>
                     {item.customer_discount > 0 && (
                       <p className="text-[10px] text-orange-500 font-medium">-{formatCurrency(item.customer_discount)}</p>
                     )}
                   </div>
                   <div className="col-span-2 text-right">
                     <span className="text-sm font-bold text-slate-800 tabular-nums">
-                      {formatCurrency((item.retail_price - (item.customer_discount || 0)) * item.customer_quantity)}
+                      {formatCurrency((getCartUnitPrice(item) - (item.customer_discount || 0)) * item.customer_quantity)}
                     </span>
                   </div>
                   <div className="col-span-1 flex justify-end">
