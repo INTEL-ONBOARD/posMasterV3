@@ -47,6 +47,10 @@ export function useActivityTracker({ enabled = true, idleTimeoutMs = DEFAULT_IDL
             localStorage.removeItem('user');
             localStorage.removeItem('sessionId');
 
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new Event('auth-changed'));
+            }
+
             navigate('/login', {
                 replace: true,
                 state: { message: 'Session expired due to inactivity' }

@@ -534,10 +534,51 @@ export default function SalesView({ isActive }) {
     items: buildSaleItemsPayload()
   });
 
+  const getHeldSaleId = (sale) => sale?.id || sale?._id || sale?.saleId || sale?.sale_id || null;
+
+  const getHeldSaleMember = (sale) => {
+    if (!sale) return null;
+    const memberId = sale.memberId || sale.member_id || null;
+    const memberName = sale.memberName || sale.member_name || null;
+
+    if (sale.member && typeof sale.member === 'object') {
+      return sale.member;
+    }
+
+    if (!memberId && !memberName) {
+      return null;
+    }
+
+    return {
+      id: memberId,
+      _id: memberId,
+      member_id: memberId,
+      member_no: sale.member_no || sale.memberNo || '',
+      full_name: memberName || 'Member',
+      contact: sale.member_contact || sale.contact || '',
+      is_guest: false
+    };
+  };
+
+  const mergeHeldSaleItems = (items = []) =>
+    items.map((item) => ({
+      ...item,
+      itemId: item.itemId || item.item_id || item.id || item._id || null,
+      item_id: item.item_id || item.itemId || item.id || item._id || null,
+      stockId: item.stockId || item.stock_id || item.id || item._id || null,
+      stock_id: item.stock_id || item.stockId || item.id || item._id || null,
+      batchCode: item.batchCode || item.batch_code || item.batch || null,
+      batch_code: item.batch_code || item.batchCode || item.batch || null,
+      unitPrice: Number(item.unitPrice ?? item.unit_price ?? item.retail_price ?? 0),
+      unit_price: Number(item.unit_price ?? item.unitPrice ?? item.retail_price ?? 0),
+      discount: Number(item.discount ?? item.customer_discount ?? 0),
+      quantity: Number(item.quantity ?? item.customer_quantity ?? 0),
+      customer_quantity: Number(item.customer_quantity ?? item.quantity ?? 0)
+    }));
+
   const clearForm = () => {
     setSelectedItems([]);
     setSelectedMember(GUEST_USER);
-    setHeldOrder(null);
     setReleasedHeldOrder(null);
     generateNewInvoice();
     focusSearch();
@@ -562,6 +603,20 @@ export default function SalesView({ isActive }) {
               setStatusModal({ open: true, type: 'failed', description: `Invalid quantity for "${item.item_name || 'unknown'}"` });
               return { success: false };
           }
+
+          const currentStock = inventoryItems.find((stock) =>
+            String(stock?.stock_id ?? stock?.id ?? '') === String(stockId)
+          );
+          if (currentStock) {
+            const availableQty = Number(currentStock.quantity || 0);
+            if (availableQty < Number(qty)) {
+              setStatusModal({
+                open: true,
+                type: 'failed',
+                description: `Insufficient stock for "${item.item_name || 'unknown'}". Available: ${availableQty}, requested: ${qty}`
+              });
+              return { success: false };
+            }
           if (!supportsDecimalSaleQuantity(item.uom?.symbol || item.uom_symbol) && !Number.isInteger(qty)) {
               setStatusModal({ open: true, type: 'failed', description: `Only KG and Liter items can use decimal quantities. "${item.item_name || 'unknown'}" must be a whole number.` });
               return { success: false };
@@ -577,21 +632,35 @@ export default function SalesView({ isActive }) {
         changeAmount
       });
 
+      const restoredHeldSaleId = getHeldSaleId(releasedHeldOrder);
+      if (releasedHeldOrder && !restoredHeldSaleId) {
+        setStatusModal({ open: true, type: 'failed', description: 'Unable to complete restored held sale: missing sale ID' });
+        return { success: false };
+      }
+
+      if (releasedHeldOrder) {
+        const heldMember = getHeldSaleMember(releasedHeldOrder);
+        const heldBranchId = releasedHeldOrder.branchId || releasedHeldOrder.branch_id || currentUser?.branchId || currentUser?.branch_id || null;
+        const heldCashierId = releasedHeldOrder.cashierId || releasedHeldOrder.cashier_id || currentUser?.id || currentUser?._id || null;
+        const heldCashierName = releasedHeldOrder.cashierName || releasedHeldOrder.cashier_name || currentUser?.username || currentUser?.name || null;
+
+        saleData.saleId = restoredHeldSaleId;
+        saleData.sale_id = restoredHeldSaleId;
+        saleData.branchId = heldBranchId;
+        saleData.branch_id = heldBranchId;
+        saleData.memberId = heldMember?.id || saleData.memberId || null;
+        saleData.member_id = heldMember?.id || saleData.member_id || null;
+        saleData.memberName = heldMember?.full_name || saleData.memberName || null;
+        saleData.member_name = heldMember?.full_name || saleData.member_name || null;
+        saleData.cashierId = heldCashierId;
+        saleData.cashier_id = heldCashierId;
+        saleData.cashierName = heldCashierName;
+        saleData.cashier_name = heldCashierName;
+        saleData.items = mergeHeldSaleItems(saleData.items);
+      }
+
       const response = releasedHeldOrder
-        ? await salesApi.completeHeld(releasedHeldOrder.id, {
-            member_id: saleData.member_id,
-            member_name: saleData.member_name,
-            cashier_id: saleData.cashier_id,
-            cashier_name: saleData.cashier_name,
-            payment_method: saleData.payment_method,
-            credit_duration: saleData.credit_duration,
-            subtotal: saleData.subtotal,
-            discount: saleData.discount,
-            total_amount: saleData.total_amount,
-            cash_received: saleData.cash_received,
-            change_amount: saleData.change_amount,
-            items: saleData.items
-          })
+        ? await salesApi.completeHeld(restoredHeldSaleId, saleData)
         : await salesApi.create(saleData);
 
       if (response.status === "success") {
@@ -614,7 +683,11 @@ export default function SalesView({ isActive }) {
       }
     } catch (error) {
       console.error("[SalesView] Error processing sale:", error);
-      setStatusModal({ open: true, type: 'failed', description: "Failed to process sale" });
+      setStatusModal({
+        open: true,
+        type: 'failed',
+        description: error?.message || "Failed to process sale"
+      });
       throw error;
     }
   };
@@ -691,8 +764,9 @@ export default function SalesView({ isActive }) {
     setInvoiceNo(heldOrder.invoice_no || invoiceNo);
 
     // Restore member if not guest
-    if (heldOrder.member && !heldOrder.member.is_guest) {
-      setSelectedMember(heldOrder.member);
+    const restoredMember = getHeldSaleMember(heldOrder);
+    if (restoredMember && !restoredMember.is_guest) {
+      setSelectedMember(restoredMember);
     } else {
       setSelectedMember(GUEST_USER);
     }

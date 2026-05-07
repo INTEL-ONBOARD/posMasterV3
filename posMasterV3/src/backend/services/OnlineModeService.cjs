@@ -2,6 +2,7 @@ const { OnlineApiClient } = require('../online/OnlineApiClient.cjs');
 const { OnlineRealtimeClient } = require('../online/OnlineRealtimeClient.cjs');
 const { config } = require('../../online-server/config.cjs');
 const { connectMongo, getDb } = require('../../online-server/db/mongo.cjs');
+const { successResponse } = require('../utils/helpers.cjs');
 
 async function getConnectedDb() {
     try {
@@ -111,7 +112,8 @@ class OnlineModeService {
             userId: claims.userId || claims.sub || updateData.updatedBy || updateData.updated_by || null,
             roles: claims.roles || []
         };
-        return completeHeldSale(auth, saleId, updateData);
+        const sale = await completeHeldSale(auth, saleId, updateData);
+        return successResponse(sale, 'Held sale completed');
     }
 
     async generateInvoiceNo(type = 'SALE') {

@@ -144,6 +144,20 @@ function normalizeCollectionBody(collectionName, auth, body = {}, existing = nul
         }
     }
 
+    if (collectionName === 'sales') {
+        if (payload.invoice_no !== undefined && payload.invoiceNo === undefined) {
+            payload.invoiceNo = payload.invoice_no;
+        }
+        if (payload.invoiceNo !== undefined && payload.invoice_no === undefined) {
+            payload.invoice_no = payload.invoiceNo;
+        }
+        if (payload.is_held !== undefined || payload.isHeld !== undefined) {
+            const held = boolFrom(payload.is_held ?? payload.isHeld);
+            payload.is_held = held;
+            payload.isHeld = held;
+        }
+    }
+
     return payload;
 }
 

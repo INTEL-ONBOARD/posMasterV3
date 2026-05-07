@@ -147,37 +147,42 @@ function CheckoutSummaryModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [saleResult, setSaleResult] = useState(null);
+  const cashOnlyMethod = {
+    id: 'cash',
+    name: 'Cash',
+    type: 'cash',
+    icon: 'Wallet',
+    color: 'emerald'
+  };
 
   // Fetch payment methods when modal opens
   useEffect(() => {
     const fetchPaymentMethods = async () => {
       setIsLoadingMethods(true);
       try {
-        // Get methods based on whether customer is a member
-        const response = selectedMember?.is_guest
-          ? await paymentMethodApi.getForNonMembers()
-          : await paymentMethodApi.getForMembers();
+        // Cash only checkout for now
+        const response = await paymentMethodApi.getForNonMembers();
 
         if (response.status === 'success') {
-          const methods = response.data || [];
+          const methods = (response.data || []).filter((method) => method?.type === 'cash');
           setPaymentMethods(methods);
-          // Auto-select first method (usually cash)
-          if (methods.length > 0) {
-            setSelectedPaymentMethod(methods[0]);
-          }
+          setSelectedPaymentMethod(methods[0] || cashOnlyMethod);
         }
       } catch (error) {
         console.error('Failed to fetch payment methods:', error);
+        setPaymentMethods([cashOnlyMethod]);
+        setSelectedPaymentMethod(cashOnlyMethod);
       } finally {
         setIsLoadingMethods(false);
       }
     };
 
     if (isOpen) {
+      setPaymentMethods([cashOnlyMethod]);
+      setSelectedPaymentMethod(cashOnlyMethod);
       fetchPaymentMethods();
       setFinalDiscount(0);
       setCashReceived('');
-      setSelectedPaymentMethod(null);
       setIsProcessing(false);
       setShowSuccess(false);
       setSaleResult(null);
@@ -191,8 +196,6 @@ function CheckoutSummaryModal({
   const balanceAmount = cashReceivedNum - totalAmount;
 
   // Credit validation — any non-guest member can use credit regardless of balance
-  const availableCredit = selectedMember?.credit_balance || 0;
-  const isCredit = selectedPaymentMethod?.type === 'credit';
   const creditWarning = false;
 
   const formatCurrency = (amount) => `Rs. ${(parseFloat(amount) || 0).toFixed(2)}`;
@@ -237,29 +240,6 @@ function CheckoutSummaryModal({
     setSaleResult(null);
     closeModal();
   };
-
-  const getMethodIcon = (iconName) => {
-    const icons = { Wallet, CreditCard, Heart, Users };
-    return icons[iconName] || Wallet;
-  };
-
-  const colorClasses = {
-    emerald: { bg: 'bg-emerald-500', bgLight: 'bg-emerald-100', text: 'text-emerald-600', border: 'border-emerald-500', ring: 'ring-emerald-200' },
-    blue: { bg: 'bg-blue-500', bgLight: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-500', ring: 'ring-blue-200' },
-    indigo: { bg: 'bg-indigo-500', bgLight: 'bg-indigo-100', text: 'text-indigo-600', border: 'border-indigo-500', ring: 'ring-indigo-200' },
-    purple: { bg: 'bg-purple-500', bgLight: 'bg-purple-100', text: 'text-purple-600', border: 'border-purple-500', ring: 'ring-purple-200' },
-    pink: { bg: 'bg-pink-500', bgLight: 'bg-pink-100', text: 'text-pink-600', border: 'border-pink-500', ring: 'ring-pink-200' },
-    amber: { bg: 'bg-amber-500', bgLight: 'bg-amber-100', text: 'text-amber-600', border: 'border-amber-500', ring: 'ring-amber-200' },
-    gray: { bg: 'bg-gray-500', bgLight: 'bg-gray-100', text: 'text-gray-600', border: 'border-gray-500', ring: 'ring-gray-200' },
-    teal: { bg: 'bg-teal-500', bgLight: 'bg-teal-100', text: 'text-teal-600', border: 'border-teal-500', ring: 'ring-teal-200' },
-    violet: { bg: 'bg-violet-500', bgLight: 'bg-violet-100', text: 'text-violet-600', border: 'border-violet-500', ring: 'ring-violet-200' },
-    red: { bg: 'bg-red-500', bgLight: 'bg-red-100', text: 'text-red-600', border: 'border-red-500', ring: 'ring-red-200' }
-  };
-
-  // Group payment methods by type
-  const cashMethods = paymentMethods.filter(m => m.type === 'cash');
-  const creditMethods = paymentMethods.filter(m => m.type === 'credit');
-  const specialMethods = paymentMethods.filter(m => m.type === 'special');
 
   // Quick cash buttons
   const quickCashAmounts = [100, 500, 1000, 5000];
@@ -422,9 +402,8 @@ function CheckoutSummaryModal({
               </div>
             </div>
 
-            {/* Right Column - Payment Methods & Cash */}
+            {/* Right Column - Cash Only */}
             <div className="w-[380px] p-5 bg-gray-50 flex flex-col">
-              {/* Payment Methods */}
               <div className="flex-1 overflow-y-auto mb-4">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Payment Method</p>
 
@@ -434,218 +413,106 @@ function CheckoutSummaryModal({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {/* Cash Methods */}
-                    {cashMethods.length > 0 && (
-                      <div>
-                        <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-2">Cash</p>
-                        <div className="space-y-2">
-                          {cashMethods.map((method) => {
-                            const IconComponent = getMethodIcon(method.icon);
-                            const _colors = colorClasses[method.color] || colorClasses.emerald;
-                            const isSelected = selectedPaymentMethod?.id === method.id;
-                            return (
-                              <button
-                                key={method.id}
-                                onClick={() => setSelectedPaymentMethod(method)}
-                                disabled={isProcessing}
-                                className={`w-full p-3 rounded-xl transition-all border-2 flex items-center gap-3 disabled:opacity-50 ${
-                                  isSelected
-                                    ? `border-emerald-500 bg-emerald-50 shadow-md`
-                                    : 'border-gray-200 bg-white hover:border-gray-300'
-                                }`}
-                              >
-                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                  isSelected ? 'bg-emerald-500' : 'bg-emerald-100'
-                                }`}>
-                                  <IconComponent className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-emerald-600'}`} />
-                                </div>
-                                <p className={`text-sm font-semibold flex-1 text-left ${isSelected ? 'text-emerald-700' : 'text-gray-600'}`}>
-                                  {method.name}
-                                </p>
-                                {isSelected && (
-                                  <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
-                                    <Check className="w-4 h-4 text-white" />
-                                  </div>
-                                )}
-                              </button>
-                            );
-                          })}
+                    <div>
+                      <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-2">Cash</p>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPaymentMethod(paymentMethods[0] || cashOnlyMethod)}
+                        disabled={isProcessing}
+                        className="w-full p-3 rounded-xl transition-all border-2 flex items-center gap-3 disabled:opacity-50 border-emerald-500 bg-emerald-50 shadow-md"
+                      >
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-500">
+                          <Wallet className="w-5 h-5 text-white" />
                         </div>
-                      </div>
-                    )}
-
-                    {/* Credit Methods */}
-                    {creditMethods.length > 0 && !selectedMember?.is_guest && (
-                      <div>
-                        <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide mb-2">Credit</p>
-                        <div className="space-y-2">
-                          {creditMethods.map((method) => {
-                            const IconComponent = getMethodIcon(method.icon);
-                            const isSelected = selectedPaymentMethod?.id === method.id;
-                            return (
-                              <button
-                                key={method.id}
-                                onClick={() => !isProcessing && setSelectedPaymentMethod(method)}
-                                disabled={isProcessing}
-                                className={`w-full p-3 rounded-xl transition-all border-2 flex items-center gap-3 ${
-                                  isSelected
-                                    ? 'border-blue-500 bg-blue-50 shadow-md'
-                                    : 'border-gray-200 bg-white hover:border-gray-300'
-                                } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              >
-                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                  isSelected ? 'bg-blue-500' : 'bg-blue-100'
-                                }`}>
-                                  <IconComponent className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-blue-600'}`} />
-                                </div>
-                                <div className="flex-1 text-left">
-                                  <p className={`text-sm font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>
-                                    {method.name}
-                                  </p>
-                                  <p className="text-[10px] text-gray-400">{method.credit_months} months</p>
-                                </div>
-                                {isSelected && (
-                                  <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
-                                    <Check className="w-4 h-4 text-white" />
-                                  </div>
-                                )}
-                              </button>
-                            );
-                          })}
+                        <p className="text-sm font-semibold flex-1 text-left text-emerald-700">
+                          Cash
+                        </p>
+                        <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                          <Check className="w-4 h-4 text-white" />
                         </div>
-                        {isCredit && (
-                          <p className="text-[10px] text-gray-500 mt-2 flex items-center gap-1">
-                            Current credit balance: {formatCurrency(availableCredit)}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Special Methods */}
-                    {specialMethods.length > 0 && !selectedMember?.is_guest && (
-                      <div>
-                        <p className="text-[10px] font-semibold text-purple-600 uppercase tracking-wide mb-2">Special</p>
-                        <div className="space-y-2">
-                          {specialMethods.map((method) => {
-                            const IconComponent = getMethodIcon(method.icon);
-                            const isSelected = selectedPaymentMethod?.id === method.id;
-                            return (
-                              <button
-                                key={method.id}
-                                onClick={() => setSelectedPaymentMethod(method)}
-                                disabled={isProcessing}
-                                className={`w-full p-3 rounded-xl transition-all border-2 flex items-center gap-3 disabled:opacity-50 ${
-                                  isSelected
-                                    ? 'border-purple-500 bg-purple-50 shadow-md'
-                                    : 'border-gray-200 bg-white hover:border-gray-300'
-                                }`}
-                              >
-                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                  isSelected ? 'bg-purple-500' : 'bg-purple-100'
-                                }`}>
-                                  <IconComponent className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-purple-600'}`} />
-                                </div>
-                                <p className={`text-sm font-semibold flex-1 text-left ${isSelected ? 'text-purple-700' : 'text-gray-600'}`}>
-                                  {method.name}
-                                </p>
-                                {isSelected && (
-                                  <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center">
-                                    <Check className="w-4 h-4 text-white" />
-                                  </div>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Cash Received & Balance Section - Always visible for cash */}
-              {selectedPaymentMethod?.type === 'cash' && (
-                <div className="bg-white rounded-xl border-2 border-gray-200 p-4 space-y-3">
-                  {/* Cash Received Input */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
-                        <Banknote className="w-4 h-4 text-emerald-500" />
-                        Cash Received
-                      </p>
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">Rs.</span>
-                      <input
-                        type="number"
-                        value={cashReceived}
-                        onChange={(e) => setCashReceived(e.target.value)}
-                        disabled={isProcessing}
-                        className="w-full pl-12 pr-4 py-3 text-xl font-bold text-gray-800 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none tabular-nums disabled:opacity-50"
-                        placeholder="0.00"
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            const canConfirm = !isProcessing && totalAmount > 0 && !creditWarning && selectedPaymentMethod &&
-                              !(selectedPaymentMethod?.type === 'cash' && cashReceivedNum < totalAmount && cashReceivedNum > 0);
-                            if (canConfirm) handleConfirm();
-                          }
-                        }}
-                      />
-                    </div>
-                    {/* Quick amount buttons */}
-                    <div className="flex gap-2 mt-2">
-                      {quickCashAmounts.map(amount => (
-                        <button
-                          key={amount}
-                          onClick={() => setCashReceived(amount.toString())}
-                          disabled={isProcessing}
-                          className="flex-1 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-                        >
-                          {amount}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() => setCashReceived(Math.ceil(totalAmount).toString())}
-                        disabled={isProcessing}
-                        className="flex-1 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-100 rounded-lg hover:bg-emerald-200 transition-colors disabled:opacity-50"
-                      >
-                        Exact
-                      </button>
-                    </div>
+              <div className="bg-white rounded-xl border-2 border-gray-200 p-4 space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+                      <Banknote className="w-4 h-4 text-emerald-500" />
+                      Cash Received
+                    </p>
                   </div>
-
-                  {/* Balance/Change Display */}
-                  <div className={`rounded-xl p-4 border-2 ${
-                    cashReceivedNum === 0
-                      ? 'bg-gray-50 border-gray-200'
-                      : balanceAmount >= 0
-                        ? 'bg-emerald-50 border-emerald-300'
-                        : 'bg-red-50 border-red-300'
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <p className={`text-xs font-bold uppercase tracking-wide ${
-                        cashReceivedNum === 0
-                          ? 'text-gray-400'
-                          : balanceAmount >= 0
-                            ? 'text-emerald-600'
-                            : 'text-red-600'
-                      }`}>
-                        {balanceAmount >= 0 ? 'Change to Return' : 'Amount Due'}
-                      </p>
-                      <p className={`text-2xl font-bold tabular-nums ${
-                        cashReceivedNum === 0
-                          ? 'text-gray-400'
-                          : balanceAmount >= 0
-                            ? 'text-emerald-600'
-                            : 'text-red-600'
-                      }`}>
-                        Rs. {Math.abs(balanceAmount).toFixed(2)}
-                      </p>
-                    </div>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">Rs.</span>
+                    <input
+                      type="number"
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value)}
+                      disabled={isProcessing}
+                      className="w-full pl-12 pr-4 py-3 text-xl font-bold text-gray-800 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none tabular-nums disabled:opacity-50"
+                      placeholder="0.00"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const canConfirm = !isProcessing && totalAmount > 0 && !creditWarning && selectedPaymentMethod &&
+                            !(selectedPaymentMethod?.type === 'cash' && cashReceivedNum < totalAmount && cashReceivedNum > 0);
+                          if (canConfirm) handleConfirm();
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    {quickCashAmounts.map(amount => (
+                      <button
+                        key={amount}
+                        onClick={() => setCashReceived(amount.toString())}
+                        disabled={isProcessing}
+                        className="flex-1 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                      >
+                        {amount}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setCashReceived(Math.ceil(totalAmount).toString())}
+                      disabled={isProcessing}
+                      className="flex-1 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-100 rounded-lg hover:bg-emerald-200 transition-colors disabled:opacity-50"
+                    >
+                      Exact
+                    </button>
                   </div>
                 </div>
-              )}
+
+                <div className={`rounded-xl p-4 border-2 ${
+                  cashReceivedNum === 0
+                    ? 'bg-gray-50 border-gray-200'
+                    : balanceAmount >= 0
+                      ? 'bg-emerald-50 border-emerald-300'
+                      : 'bg-red-50 border-red-300'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <p className={`text-xs font-bold uppercase tracking-wide ${
+                      cashReceivedNum === 0
+                        ? 'text-gray-400'
+                        : balanceAmount >= 0
+                          ? 'text-emerald-600'
+                          : 'text-red-600'
+                    }`}>
+                      {balanceAmount >= 0 ? 'Change to Return' : 'Amount Due'}
+                    </p>
+                    <p className={`text-2xl font-bold tabular-nums ${
+                      cashReceivedNum === 0
+                        ? 'text-gray-400'
+                        : balanceAmount >= 0
+                          ? 'text-emerald-600'
+                          : 'text-red-600'
+                    }`}>
+                      Rs. {Math.abs(balanceAmount).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

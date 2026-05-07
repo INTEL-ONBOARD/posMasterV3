@@ -22,6 +22,11 @@ const isElectron = () => {
     return typeof window !== 'undefined' && window.electronAPI;
 };
 
+function notifyAuthChange() {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new Event('auth-changed'));
+}
+
 // Lazy import to avoid circular deps — useRealTimeSync imports nothing from auth
 let _resetSyncModuleState = null;
 async function getResetSyncFn() {
@@ -132,6 +137,7 @@ export const localAuth = {
 
         // Clear localStorage
         this._clearUserData();
+        notifyAuthChange();
 
         return { success: true, message: 'Logged out' };
     },
@@ -249,6 +255,7 @@ export const localAuth = {
     _clearUserData() {
         localStorage.removeItem('user');
         sessionStorage.removeItem('token');
+        localStorage.removeItem('token');
         localStorage.removeItem('sessionId');
         localStorage.removeItem('username');
         localStorage.removeItem('email');

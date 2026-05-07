@@ -71,6 +71,13 @@ function UserSettings() {
       .replace(/\b\w/g, c => c.toUpperCase());
   };
 
+  const getDisplayName = (user = {}) => user.full_name || user.fullName || user.name || '';
+  const getDisplayRole = (user = {}) => {
+    if (Array.isArray(user.roles)) return user.roles[0] || '';
+    if (typeof user.roles === 'string') return user.roles;
+    return user.role || '';
+  };
+
   // Load current user data on mount
   useEffect(() => {
     const fetchUserData = async () => {
@@ -86,30 +93,28 @@ function UserSettings() {
         const userId = currentUser.id || currentUser._id;
         const response = await settingsApi.getUserSettings(userId);
 
+        setUserData(currentUser);
+        setFormData({
+          id: currentUser.id || currentUser._id || '',
+          username: currentUser.username || '',
+          fullName: getDisplayName(currentUser),
+          email: currentUser.email || '',
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+          role: getDisplayRole(currentUser)
+        });
+
         if (response.status === 'success' && response.data) {
-          const user = response.data.user;
           const settings = response.data.settings;
 
-          setUserData(user);
-
           // Check if user is admin
-          const userRoles = Array.isArray(user.roles) ? user.roles :
-            (typeof user.roles === 'string' ? JSON.parse(user.roles) : []);
+          const userRoles = Array.isArray(currentUser.roles) ? currentUser.roles :
+            (typeof currentUser.roles === 'string' ? JSON.parse(currentUser.roles) : []);
           const adminCheck = userRoles.some(role =>
             ['admin', 'superadmin', 'Admin', 'SuperAdmin'].includes(role)
           );
           setIsAdmin(adminCheck);
-
-          setFormData({
-            id: user.id || user._id || '',
-            username: user.username || '',
-            fullName: user.full_name || '',
-            email: user.email || '',
-            currentPassword: '',
-            newPassword: '',
-            confirmPassword: '',
-            role: Array.isArray(user.roles) ? user.roles[0] : (user.roles || '')
-          });
 
           // For admin users, set all permissions to true
           if (adminCheck) {
@@ -226,12 +231,12 @@ function UserSettings() {
       setFormData({
         id: userData.id || userData._id || '',
         username: userData.username || '',
-        fullName: userData.full_name || '',
+        fullName: getDisplayName(userData),
         email: userData.email || '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
-        role: Array.isArray(userData.roles) ? userData.roles[0] : (userData.roles || '')
+        role: getDisplayRole(userData)
       });
     }
   };

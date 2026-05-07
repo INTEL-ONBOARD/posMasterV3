@@ -141,6 +141,10 @@ function Dashboard() {
     localStorage.removeItem('user');
     localStorage.removeItem('sessionId');
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('auth-changed'));
+    }
+
     // Clean up DataStore to prevent data leak to next user
     if (window.dataStore?.cleanup) {
         try {
