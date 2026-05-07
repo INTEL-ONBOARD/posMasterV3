@@ -337,12 +337,17 @@ export default function SalesView({ isActive }) {
     setSelectedItems(prev => {
       const exists = prev.find(item => item.id === newRegItem.id);
       if (exists) {
-        // Increment quantity if already exists (use 0.5 step for kg items)
-        const uomSymbol = (exists.uom?.symbol || '').toLowerCase();
-        const increment = uomSymbol === 'kg' ? 0.5 : 1;
+        // Increment quantity by 0.5 for decimal-supported units like KG/Liter.
+        const canUseDecimalQuantity = supportsDecimalSaleQuantity(exists);
+        const increment = canUseDecimalQuantity ? 0.5 : 1;
         return prev.map(item =>
           item.id === newRegItem.id
-            ? { ...item, customer_quantity: uomSymbol === 'kg' ? Math.round((item.customer_quantity + increment) * 100) / 100 : item.customer_quantity + increment }
+            ? {
+                ...item,
+                customer_quantity: canUseDecimalQuantity
+                  ? Math.round((item.customer_quantity + increment) * 100) / 100
+                  : item.customer_quantity + increment
+              }
             : item
         );
       }
@@ -567,6 +572,26 @@ export default function SalesView({ isActive }) {
     };
   };
 
+  const supportsDecimalSaleQuantity = (item) => {
+    const uomValue = String(
+      item?.uom?.symbol ||
+      item?.uom_symbol ||
+      item?.uom?.unit_name ||
+      ""
+    ).trim().toLowerCase();
+
+    return [
+      "kg",
+      "kilogram",
+      "kilograms",
+      "l",
+      "liter",
+      "liters",
+      "litre",
+      "litres"
+    ].includes(uomValue);
+  };
+
   const mergeHeldSaleItems = (items = []) =>
     items.map((item) => ({
       ...item,
@@ -599,32 +624,51 @@ export default function SalesView({ isActive }) {
     try {
       // Validate cart items before sending to backend
       for (const item of selectedItems) {
-          const itemId = item.item_id || item.id;
-          const stockId = item.stock_id || item.id;
-          const qty = item.customer_quantity;
-          if (!itemId || !stockId) {
-              setStatusModal({ open: true, type: 'failed', description: `Item "${item.item_name || 'unknown'}" is missing required IDs` });
-              return { success: false };
-          }
-          if (!Number.isFinite(qty) || qty <= 0) {
-              setStatusModal({ open: true, type: 'failed', description: `Invalid quantity for "${item.item_name || 'unknown'}"` });
-              return { success: false };
-          }
+        const itemId = item.item_id || item.id;
+        const stockId = item.stock_id || item.id;
+        const qty = item.customer_quantity;
 
-          const currentStock = inventoryItems.find((stock) =>
-            String(stock?.stock_id ?? stock?.id ?? '') === String(stockId)
-          );
-          if (currentStock) {
-            const availableQty = Number(currentStock.quantity || 0);
-            if (availableQty < Number(qty)) {
-              setStatusModal({
-                open: true,
-                type: 'failed',
-                description: `Insufficient stock for "${item.item_name || 'unknown'}". Available: ${availableQty}, requested: ${qty}`
-              });
-              return { success: false };
-            }
+        if (!itemId || !stockId) {
+          setStatusModal({
+            open: true,
+            type: 'failed',
+            description: `Item "${item.item_name || 'unknown'}" is missing required IDs`
+          });
+          return { success: false };
+        }
+
+        if (!Number.isFinite(qty) || qty <= 0) {
+          setStatusModal({
+            open: true,
+            type: 'failed',
+            description: `Invalid quantity for "${item.item_name || 'unknown'}"`
+          });
+          return { success: false };
+        }
+
+        if (!supportsDecimalSaleQuantity(item) && !Number.isInteger(qty)) {
+          setStatusModal({
+            open: true,
+            type: 'failed',
+            description: `Only KG and Liter items can use decimal quantities. "${item.item_name || 'unknown'}" must be a whole number.`
+          });
+          return { success: false };
+        }
+
+        const currentStock = inventoryItems.find((stock) =>
+          String(stock?.stock_id ?? stock?.id ?? '') === String(stockId)
+        );
+        if (currentStock) {
+          const availableQty = Number(currentStock.quantity || 0);
+          if (availableQty < Number(qty)) {
+            setStatusModal({
+              open: true,
+              type: 'failed',
+              description: `Insufficient stock for "${item.item_name || 'unknown'}". Available: ${availableQty}, requested: ${qty}`
+            });
+            return { success: false };
           }
+        }
       }
 
       const saleData = buildSalePayload({
