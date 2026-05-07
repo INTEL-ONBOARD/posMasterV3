@@ -13,6 +13,7 @@ import { appendCurrentTimeToDate, extractDateOnly, getCurrentDate } from "../../
 //form validations
 import { validateReturnForm, validateStockForm } from "../../util/inventory/validate";
 import StatusModal from "../../components/StatusModal.jsx";
+import { getEffectiveSellingPrice, isKgUom, isLiterUom, normalizeUomSymbol } from "../../util/common/uomPricing";
 
 function InventoryRestock({ isActive }) {
   const statusLog = useStatusLog();
@@ -347,6 +348,8 @@ function InventoryRestock({ isActive }) {
       threshold_limit: item.threshold_limit ?? "",
       stock_price: item.stock_price ?? "",
       retail_price: item.retail_price ?? "",
+      selling_price_per_kg: item.selling_price_per_kg ?? item.sellingPricePerKg ?? "",
+      selling_price_per_liter: item.selling_price_per_liter ?? item.sellingPricePerLiter ?? "",
       expired_datetime: item.expired_datetime || item.expiry_date || null,
       availability: item.availability ?? true,
 
@@ -410,6 +413,8 @@ function InventoryRestock({ isActive }) {
       threshold_limit: item.threshold_limit,
       stock_price: item.stock_price,
       retail_price: item.retail_price,
+      selling_price_per_kg: item.selling_price_per_kg ?? item.sellingPricePerKg ?? "",
+      selling_price_per_liter: item.selling_price_per_liter ?? item.sellingPricePerLiter ?? "",
       expired_datetime: item.expired_datetime,
       availability: item.availability,
 
@@ -453,7 +458,9 @@ function InventoryRestock({ isActive }) {
     }
 
   //validate stock data input fields
-  const { valid, formErrors: validationErrors } = validateStockForm(formDataStock);
+  const { valid, formErrors: validationErrors } = validateStockForm(formDataStock, {
+    uomSymbol: formDataRegItem.uom?.symbol
+  });
   setFormErrors(validationErrors);
 
   if (!valid) {
@@ -465,6 +472,16 @@ function InventoryRestock({ isActive }) {
     setReturnItemSelected(false);
 
     //check if it already exists on the item list first
+      const uomSymbol = formDataRegItem.uom?.symbol || "";
+      const sellingPricePerKg = parseFloat(formDataStock.selling_price_per_kg) || 0;
+      const sellingPricePerLiter = parseFloat(formDataStock.selling_price_per_liter) || 0;
+      const effectiveSellingPrice = getEffectiveSellingPrice({
+        retail_price: formDataStock.retail_price,
+        selling_price_per_kg: sellingPricePerKg,
+        selling_price_per_liter: sellingPricePerLiter,
+        uom_symbol: uomSymbol
+      });
+
       const newRegItem = {
         _id: formDataRegItem._id,
         id: formItemId,
@@ -479,19 +496,23 @@ function InventoryRestock({ isActive }) {
         item_created_datetime: formDataRegItem.item_created_datetime,
         __v: formDataRegItem.__v,
         inventory: formDataRegItem.inventory,
+        uom: formDataRegItem.uom,
+        category: formDataRegItem.category,
 
         batch_code: formDataStock.batch_code,
         sku: formDataRegItem.sku,
         quantity: parseFloat(formDataStock.quantity) || 0,
         threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
         stock_price: parseFloat(formDataStock.stock_price) || 0,
-        retail_price: parseFloat(formDataStock.retail_price) || 0,
+        retail_price: effectiveSellingPrice,
+        selling_price_per_kg: sellingPricePerKg,
+        selling_price_per_liter: sellingPricePerLiter,
         expired_datetime: formDataStock.expired_datetime,
         availability: formDataStock.availability,
 
         item_discount_amt: parseFloat(formDataStock.discount) || 0,
 
-        uom_symbol: formDataStock.uom?.uom_symbol
+        uom_symbol: uomSymbol
       };
       console.log("Adding/updating stock item:", newRegItem);
 
@@ -529,6 +550,8 @@ function InventoryRestock({ isActive }) {
         return; // don't proceed if invalid
       }
 
+      const uomSymbol = formDataRegItem.uom?.symbol || "";
+
       const newRetItem = {
 
         _id: formDataRegItem._id,
@@ -544,18 +567,22 @@ function InventoryRestock({ isActive }) {
         item_created_datetime: formDataRegItem.item_created_datetime,
         __v: formDataRegItem.__v,
         inventory: formDataRegItem.inventory,
+        uom: formDataRegItem.uom,
+        category: formDataRegItem.category,
 
         sku: formDataRegItem.sku,
         threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
         stock_price: parseFloat(formDataReturnItem.stock_price) || parseFloat(formDataStock.stock_price) || 0,
         retail_price: parseFloat(formDataReturnItem.retail_price) || parseFloat(formDataStock.retail_price) || 0,
+        selling_price_per_kg: parseFloat(formDataStock.selling_price_per_kg) || 0,
+        selling_price_per_liter: parseFloat(formDataStock.selling_price_per_liter) || 0,
         expired_datetime: formDataStock.expired_datetime,
         availability: formDataStock.availability,
 
         //the batch code for table row - use return form's batch_code which is validated
         batch_code: formDataReturnItem.batch_code || formDataStock.batch_code,
         quantity: parseFloat(formDataReturnItem.quantity),
-        uom_symbol: formDataStock.uom?.uom_symbol,
+        uom_symbol: uomSymbol,
 
         item_discount_amt: formDataStock.discount,
 
@@ -636,6 +663,8 @@ function InventoryRestock({ isActive }) {
       threshold_limit: 0,
       stock_price: 0,
       retail_price: 0,
+      selling_price_per_kg: "",
+      selling_price_per_liter: "",
       expired_datetime: null,
       availability: true,
 
@@ -739,11 +768,17 @@ function InventoryRestock({ isActive }) {
     threshold_limit: 0,
     stock_price: 0,
     retail_price: 0,
+    selling_price_per_kg: "",
+    selling_price_per_liter: "",
     expired_datetime: null,
     availability: true,
 
     discount: 0
   });
+  const activeUomSymbol = normalizeUomSymbol(formDataRegItem.uom?.symbol);
+  const isKgSaleItem = isKgUom(activeUomSymbol);
+  const isLiterSaleItem = isLiterUom(activeUomSymbol);
+  const requiresMeasuredSellingRate = isKgSaleItem || isLiterSaleItem;
   //to validate and
   const [formErrors, setFormErrors] = useState({});
   
@@ -790,6 +825,8 @@ function InventoryRestock({ isActive }) {
       threshold_limit: item.threshold_limit ?? 0,
       stock_price: item.stock_price ?? 0,
       retail_price: item.retail_price ?? 0,
+      selling_price_per_kg: item.selling_price_per_kg ?? item.sellingPricePerKg ?? "",
+      selling_price_per_liter: item.selling_price_per_liter ?? item.sellingPricePerLiter ?? "",
       expired_datetime: item.exp_date || null,
       availability: item.availability ?? true,
       discount: item.discount_price ?? 0
@@ -1015,6 +1052,8 @@ function InventoryRestock({ isActive }) {
         threshold_limit: "",
         stock_price: "",
         retail_price: "",
+        selling_price_per_kg: "",
+        selling_price_per_liter: "",
         discount: 0,
         availability: true
       }));
@@ -1134,6 +1173,9 @@ function InventoryRestock({ isActive }) {
         //stock price is deducted with the discount upon the request sendint
         stock_price: item.stock_price-item.item_discount_amt,
         retail_price: item.retail_price,
+        selling_price_per_kg: item.selling_price_per_kg || 0,
+        selling_price_per_liter: item.selling_price_per_liter || 0,
+        uom_symbol: item.uom?.symbol || item.uom_symbol || "",
         exp_date: item.expired_datetime,
         batch_code: item.batch_code
       }));
@@ -1440,6 +1482,7 @@ function InventoryRestock({ isActive }) {
                     <input
                       type="number"
                       name="quantity"
+                      step={requiresMeasuredSellingRate ? "0.01" : "1"}
                       value={formDataStock.quantity}
                       onChange={handleStockInputChange}
                       className={`w-full px-4 py-2.5 border rounded-lg text-sm tabular-nums ${
@@ -1514,6 +1557,33 @@ function InventoryRestock({ isActive }) {
                       {formErrors.retail_price && <p className="text-red-500 text-xs mt-1">{formErrors.retail_price}</p>}
                     </div>
                   </div>
+                  {requiresMeasuredSellingRate && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                        {isKgSaleItem ? "Selling Value per 1 KG" : "Selling Value per 1 Liter"}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name={isKgSaleItem ? "selling_price_per_kg" : "selling_price_per_liter"}
+                        value={isKgSaleItem ? formDataStock.selling_price_per_kg : formDataStock.selling_price_per_liter}
+                        onChange={handleStockInputChange}
+                        className={`w-full px-4 py-2.5 border rounded-lg text-sm tabular-nums ${
+                          formErrors[isKgSaleItem ? "selling_price_per_kg" : "selling_price_per_liter"]
+                            ? "border-red-500 focus:ring-red-500/20"
+                            : "border-gray-200 focus:ring-[#1A318C]/20 focus:border-[#1A318C]"
+                        } bg-gray-50 focus:outline-none focus:ring-2 transition-all`}
+                      />
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        Sales line totals for this UOM use this rate.
+                      </p>
+                      {formErrors[isKgSaleItem ? "selling_price_per_kg" : "selling_price_per_liter"] && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {formErrors[isKgSaleItem ? "selling_price_per_kg" : "selling_price_per_liter"]}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
@@ -1936,6 +2006,7 @@ function InventoryRestock({ isActive }) {
               {selectedStockItemList.map((item, index) => {
                 const itemId = item.id ?? item._id;
                 const formId = formDataRegItem.id ?? formDataRegItem._id;
+                const retailUnitPrice = getEffectiveSellingPrice(item);
                 return (
                 <tr
                   onClick={() => {
@@ -1961,10 +2032,10 @@ function InventoryRestock({ isActive }) {
                     {((item.stock_price - item.item_discount_amt) * item.quantity).toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700 tabular-nums">
-                    {(item.retail_price - item.item_discount_amt).toFixed(2)}
+                    {retailUnitPrice.toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-sm font-semibold text-gray-800 tabular-nums">
-                    {(item.retail_price * item.quantity).toFixed(2)}
+                    {(retailUnitPrice * item.quantity).toFixed(2)}
                   </td>
                   <td className="px-4 py-3">
                     <button
