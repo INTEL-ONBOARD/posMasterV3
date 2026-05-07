@@ -426,8 +426,8 @@ export default function SalesView({ isActive }) {
       } else if (typeof result === 'string') {
         setInvoiceNo(result);
       }
-    } catch {
-      // Fallback: generate locally if IPC fails
+    } catch (error) {
+      console.warn("[SalesView] Invoice number generation failed, using local fallback:", error);
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       let fallback = 'INV';
       for (let i = 0; i < 8; i++) {
