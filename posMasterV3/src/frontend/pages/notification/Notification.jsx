@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Bell, HelpCircle, Send, CheckCircle, XCircle, Trash2, BellRing,
   TrendingUp, Package, Users, AlertTriangle, DollarSign, ShoppingCart,
@@ -29,6 +30,7 @@ function Dashboard() {
 
   // Loading state for manual refresh
   const [refreshing, setRefreshing] = useState(false);
+  const navigate = useNavigate();
 
   // Admin-specific data that needs custom fetching (date-based)
   const [recentSales, setRecentSales] = useState([]);
@@ -788,11 +790,19 @@ function Dashboard() {
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Quick Actions</p>
               <div className="flex flex-wrap gap-2">
-                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-[#1A318C] hover:text-[#1A318C] transition-colors">
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard/sales')}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-[#1A318C] hover:text-[#1A318C] transition-colors"
+                >
                   <ShoppingCart className="w-4 h-4" />
                   New Sale
                 </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-[#1A318C] hover:text-[#1A318C] transition-colors">
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard/inventory')}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-[#1A318C] hover:text-[#1A318C] transition-colors"
+                >
                   <Package className="w-4 h-4" />
                   View Inventory
                 </button>
