@@ -23,7 +23,9 @@ export default function ItemCard({ item, onOpen, onRemove }) {
 
   const percentFull = maxCapacity > 0 ? (quantity / maxCapacity) * 100 : 0;
   let statusConfig;
-  if (percentFull <= thresholdLimit) {
+  if (quantity <= 0) {
+    statusConfig = { bg: "bg-red-600", ring: "ring-red-200", text: "text-red-700", label: "No Stock" };
+  } else if (percentFull <= thresholdLimit) {
     statusConfig = { bg: "bg-red-500", ring: "ring-red-200", text: "text-red-600", label: "Low Stock" };
   } else if (percentFull <= thresholdLimit + 20) {
     statusConfig = { bg: "bg-amber-500", ring: "ring-amber-200", text: "text-amber-600", label: "Medium" };

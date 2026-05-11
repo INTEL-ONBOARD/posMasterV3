@@ -61,6 +61,134 @@ function UserSettings() {
     },
   });
 
+  const defaultRolePermissions = {
+    admin: {
+      SaleAccess: {
+        sale_process: true,
+        sale_history: true,
+        sale_view_inventory: true,
+        sale_reports: true,
+        sale_configurations: true,
+        sale_discounts: true,
+      },
+      InventoryAccess: {
+        inventory_view: true,
+        inventory_register_item: true,
+        inventory_restock: true,
+        inventory_suppliers: true,
+        inventory_discount: true,
+        inventory_price_change: true,
+        inventory_history: true,
+        inventory_configurations: true,
+        inventory_reports: true,
+      },
+      UserAccess: {
+        user_manage: true,
+        user_role_manage: true,
+      },
+    },
+    manager: {
+      SaleAccess: {
+        sale_process: true,
+        sale_history: true,
+        sale_view_inventory: true,
+        sale_reports: true,
+        sale_configurations: true,
+        sale_discounts: true,
+      },
+      InventoryAccess: {
+        inventory_view: true,
+        inventory_register_item: true,
+        inventory_restock: true,
+        inventory_suppliers: true,
+        inventory_discount: true,
+        inventory_price_change: true,
+        inventory_history: true,
+        inventory_configurations: false,
+        inventory_reports: true,
+      },
+      UserAccess: {
+        user_manage: true,
+        user_role_manage: false,
+      },
+    },
+    cashier: {
+      SaleAccess: {
+        sale_process: true,
+        sale_history: true,
+        sale_view_inventory: true,
+        sale_reports: false,
+        sale_configurations: false,
+        sale_discounts: true,
+      },
+      InventoryAccess: {
+        inventory_view: true,
+        inventory_register_item: false,
+        inventory_restock: false,
+        inventory_suppliers: false,
+        inventory_discount: false,
+        inventory_price_change: false,
+        inventory_history: false,
+        inventory_configurations: false,
+        inventory_reports: false,
+      },
+      UserAccess: {
+        user_manage: false,
+        user_role_manage: false,
+      },
+    },
+    assistant: {
+      SaleAccess: {
+        sale_process: true,
+        sale_history: false,
+        sale_view_inventory: true,
+        sale_reports: false,
+        sale_configurations: false,
+        sale_discounts: false,
+      },
+      InventoryAccess: {
+        inventory_view: true,
+        inventory_register_item: false,
+        inventory_restock: false,
+        inventory_suppliers: false,
+        inventory_discount: false,
+        inventory_price_change: false,
+        inventory_history: false,
+        inventory_configurations: false,
+        inventory_reports: false,
+      },
+      UserAccess: {
+        user_manage: false,
+        user_role_manage: false,
+      },
+    },
+    user: {
+      SaleAccess: {
+        sale_process: true,
+        sale_history: false,
+        sale_view_inventory: true,
+        sale_reports: false,
+        sale_configurations: false,
+        sale_discounts: false,
+      },
+      InventoryAccess: {
+        inventory_view: true,
+        inventory_register_item: false,
+        inventory_restock: false,
+        inventory_suppliers: false,
+        inventory_discount: false,
+        inventory_price_change: false,
+        inventory_history: false,
+        inventory_configurations: false,
+        inventory_reports: false,
+      },
+      UserAccess: {
+        user_manage: false,
+        user_role_manage: false,
+      },
+    },
+  };
+
   const [profileImage, setProfileImage] = useState(null);
 
   // Helper to format permission keys for display
@@ -76,6 +204,15 @@ function UserSettings() {
     if (Array.isArray(user.roles)) return user.roles[0] || '';
     if (typeof user.roles === 'string') return user.roles;
     return user.role || '';
+  };
+
+  const getPrimaryRole = (user = {}) => {
+    const rawRole = getDisplayRole(user);
+    return (rawRole || 'user').toLowerCase();
+  };
+
+  const getRolePermissions = (role) => {
+    return defaultRolePermissions[role] || defaultRolePermissions.user;
   };
 
   // Load current user data on mount
@@ -107,6 +244,7 @@ function UserSettings() {
 
         if (response.status === 'success' && response.data) {
           const settings = response.data.settings;
+          const primaryRole = getPrimaryRole(currentUser);
 
           // Check if user is admin
           const userRoles = Array.isArray(currentUser.roles) ? currentUser.roles :
@@ -144,11 +282,23 @@ function UserSettings() {
               },
             });
           } else if (settings && settings.permissions) {
-            setPermissions(prev => ({
-              SaleAccess: settings.permissions.SaleAccess || prev.SaleAccess,
-              InventoryAccess: settings.permissions.InventoryAccess || prev.InventoryAccess,
-              UserAccess: settings.permissions.UserAccess || prev.UserAccess,
-            }));
+            const roleFallback = getRolePermissions(primaryRole);
+            setPermissions({
+              SaleAccess: {
+                ...roleFallback.SaleAccess,
+                ...(settings.permissions.SaleAccess || {}),
+              },
+              InventoryAccess: {
+                ...roleFallback.InventoryAccess,
+                ...(settings.permissions.InventoryAccess || {}),
+              },
+              UserAccess: {
+                ...roleFallback.UserAccess,
+                ...(settings.permissions.UserAccess || {}),
+              },
+            });
+          } else {
+            setPermissions(getRolePermissions(primaryRole));
           }
 
           if (settings && settings.profile_image) {
@@ -157,6 +307,14 @@ function UserSettings() {
         }
       } catch (err) {
         console.error('[UserSettings] Fetch error:', err);
+        try {
+          const currentUser = await localAuth.getCurrentUser();
+          if (currentUser) {
+            setPermissions(getRolePermissions(getPrimaryRole(currentUser)));
+          }
+        } catch {
+          // Keep the default permission state if we cannot resolve the current user.
+        }
       } finally {
         setLoading(false);
       }
