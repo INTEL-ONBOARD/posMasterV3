@@ -57,6 +57,9 @@ export const localAuth = {
         }
 
         try {
+            // Prevent the next session from inheriting the previous branch context.
+            localStorage.removeItem('selectedBranchId');
+
             const result = await window.electronAPI.online.login(email, password, deviceInfo);
 
             if (result.success) {
@@ -234,6 +237,10 @@ export const localAuth = {
      * @private
      */
     _storeUserData(result) {
+        // Clear any branch selection from the previous session so a new user
+        // does not inherit the last user's outlet context.
+        localStorage.removeItem('selectedBranchId');
+
         if (result.data) {
             localStorage.setItem('user', JSON.stringify(result.data));
             localStorage.setItem('username', result.data.username || result.data.email || '');
@@ -257,6 +264,7 @@ export const localAuth = {
         sessionStorage.removeItem('token');
         localStorage.removeItem('token');
         localStorage.removeItem('sessionId');
+        localStorage.removeItem('selectedBranchId');
         localStorage.removeItem('username');
         localStorage.removeItem('email');
         localStorage.removeItem('_id');

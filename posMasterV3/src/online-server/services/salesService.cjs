@@ -46,13 +46,6 @@ async function generateInvoiceNo(auth, type = 'SALE') {
 }
 
 async function createSale(auth, saleInput) {
-    if (!supportsTransactions()) {
-        const err = new Error('MongoDB transactions are required for sales. Use MongoDB Atlas or a replica set.');
-        err.statusCode = 503;
-        err.code = 'TRANSACTIONS_REQUIRED';
-        throw err;
-    }
-
     if (!auth.branchId && !saleInput.branchId) {
         const err = new Error('Branch is required to create a sale');
         err.statusCode = 400;
@@ -60,13 +53,16 @@ async function createSale(auth, saleInput) {
     }
 
     const db = getDb();
-    const session = getMongoClient().startSession();
+    const useTransactions = supportsTransactions();
+    const session = useTransactions ? getMongoClient().startSession() : null;
+    const querySession = useTransactions ? session : undefined;
     const branchId = saleInput.branchId || auth.branchId;
+    const isHeldSale = saleInput.is_held === true || saleInput.isHeld === true;
     let sale;
 
     try {
-        await session.withTransaction(async () => {
-            const invoiceNo = saleInput.invoiceNo || saleInput.invoice_no || await nextInvoiceNo(db, session, { ...auth, branchId });
+        const executeCreateSale = async () => {
+            const invoiceNo = saleInput.invoiceNo || saleInput.invoice_no || await nextInvoiceNo(db, querySession, { ...auth, branchId });
             const now = new Date();
             const lines = (saleInput.items || []).map((line) => {
                 const itemId = line.itemId ?? line.item_id ?? line.itemID ?? line.item?.id ?? null;
@@ -94,33 +90,35 @@ async function createSale(auth, saleInput) {
                 };
             });
 
-            for (const line of lines) {
-                if (!line.itemId || !line.batchCode) {
-                    const err = new Error(`Sale line is missing item or batch identity: item ${line.itemId || 'undefined'} / batch ${line.batchCode || 'undefined'}`);
-                    err.statusCode = 400;
-                    throw err;
-                }
+            if (!isHeldSale) {
+                for (const line of lines) {
+                    if (!line.itemId || !line.batchCode) {
+                        const err = new Error(`Sale line is missing item or batch identity: item ${line.itemId || 'undefined'} / batch ${line.batchCode || 'undefined'}`);
+                        err.statusCode = 400;
+                        throw err;
+                    }
 
-                const result = await db.collection('stock_batches').updateOne(
-                    {
-                        orgId: auth.orgId,
-                        branchId,
-                        itemId: line.itemId,
-                        batchCode: line.batchCode,
-                        quantity: { $gte: Number(line.quantity) },
-                        deletedAt: null
-                    },
-                    {
-                        $inc: { quantity: -Number(line.quantity), version: 1 },
-                        $set: { updatedAt: now, updatedBy: auth.userId }
-                    },
-                    { session }
-                );
+                    const result = await db.collection('stock_batches').updateOne(
+                        {
+                            orgId: auth.orgId,
+                            branchId,
+                            itemId: line.itemId,
+                            batchCode: line.batchCode,
+                            quantity: { $gte: Number(line.quantity) },
+                            deletedAt: null
+                        },
+                        {
+                            $inc: { quantity: -Number(line.quantity), version: 1 },
+                            $set: { updatedAt: now, updatedBy: auth.userId }
+                        },
+                        { session: querySession }
+                    );
 
-                if (result.modifiedCount !== 1) {
-                    const err = new Error(`Insufficient stock for item ${line.itemId} / batch ${line.batchCode}`);
-                    err.statusCode = 409;
-                    throw err;
+                    if (result.modifiedCount !== 1) {
+                        const err = new Error(`Insufficient stock for item ${line.itemId} / batch ${line.batchCode}`);
+                        err.statusCode = 409;
+                        throw err;
+                    }
                 }
             }
 
@@ -140,7 +138,7 @@ async function createSale(auth, saleInput) {
                     } else {
                         memberQuery.id = memberId;
                     }
-                    const member = await db.collection('members').findOne(memberQuery, { session });
+                    const member = await db.collection('members').findOne(memberQuery, { session: querySession });
                     memberName = member?.full_name || member?.member_name || member?.name || null;
                 } catch (e) { /* ignore lookup error */ }
             }
@@ -153,7 +151,7 @@ async function createSale(auth, saleInput) {
                     } else {
                         userQuery.id = cashierId;
                     }
-                    const user = await db.collection('users').findOne(userQuery, { session });
+                    const user = await db.collection('users').findOne(userQuery, { session: querySession });
                     cashierName = user?.username || user?.name || user?.full_name || null;
                 } catch (e) { /* ignore lookup error */ }
             }
@@ -186,7 +184,9 @@ async function createSale(auth, saleInput) {
                 salesSessionId: saleInput.salesSessionId || saleInput.sales_session_id || null,
                 sales_session_id: saleInput.sales_session_id || saleInput.salesSessionId || null,
                 items: lines,
-                status: 'completed',
+                status: isHeldSale ? 'held' : 'completed',
+                is_held: isHeldSale,
+                isHeld: isHeldSale,
                 createdAt: now,
                 created_at: now,
                 updatedAt: now,
@@ -197,11 +197,19 @@ async function createSale(auth, saleInput) {
                 deletedAt: null
             };
 
-            const insert = await db.collection('sales').insertOne(sale, { session });
+            const insert = await db.collection('sales').insertOne(sale, { session: querySession });
             sale._id = insert.insertedId;
-        });
+        };
+
+        if (useTransactions) {
+            await session.withTransaction(executeCreateSale);
+        } else {
+            await executeCreateSale();
+        }
     } finally {
-        await session.endSession();
+        if (session) {
+            await session.endSession();
+        }
     }
 
     await publishDomainEvent({
@@ -215,38 +223,35 @@ async function createSale(auth, saleInput) {
         changedBy: auth.userId
     });
 
-    await publishDomainEvent({
-        event: 'stock_batches.updated',
-        orgId: auth.orgId,
-        branchId,
-        entity: 'stock_batches',
-        operation: 'update',
-        changedBy: auth.userId
-    });
+    if (!isHeldSale) {
+        await publishDomainEvent({
+            event: 'stock_batches.updated',
+            orgId: auth.orgId,
+            branchId,
+            entity: 'stock_batches',
+            operation: 'update',
+            changedBy: auth.userId
+        });
+    }
 
     return sale;
 }
 
 async function completeHeldSale(auth, saleId, updateData = {}) {
-    if (!supportsTransactions()) {
-        const err = new Error('MongoDB transactions are required for sales. Use MongoDB Atlas or a replica set.');
-        err.statusCode = 503;
-        err.code = 'TRANSACTIONS_REQUIRED';
-        throw err;
-    }
-
     const db = getDb();
-    const session = getMongoClient().startSession();
+    const useTransactions = supportsTransactions();
+    const session = useTransactions ? getMongoClient().startSession() : null;
+    const querySession = useTransactions ? session : undefined;
     const saleObjectId = ObjectId.isValid(saleId) ? new ObjectId(saleId) : saleId;
     let sale;
 
     try {
-        await session.withTransaction(async () => {
+        const executeCompleteHeldSale = async () => {
             const existing = await db.collection('sales').findOne({
                 _id: saleObjectId,
                 orgId: auth.orgId,
                 deletedAt: null
-            }, { session });
+            }, { session: querySession });
 
             if (!existing) {
                 const err = new Error('Held sale not found');
@@ -289,21 +294,21 @@ async function completeHeldSale(auth, saleId, updateData = {}) {
                     throw err;
                 }
 
-                const result = await db.collection('stock_batches').updateOne(
-                    {
-                        orgId: auth.orgId,
-                        branchId,
-                        itemId: line.itemId,
-                        batchCode: line.batchCode,
-                        quantity: { $gte: Number(line.quantity) },
-                        deletedAt: null
-                    },
-                    {
-                        $inc: { quantity: -Number(line.quantity), version: 1 },
-                        $set: { updatedAt: now, updatedBy: auth.userId }
-                    },
-                    { session }
-                );
+                    const result = await db.collection('stock_batches').updateOne(
+                        {
+                            orgId: auth.orgId,
+                            branchId,
+                            itemId: line.itemId,
+                            batchCode: line.batchCode,
+                            quantity: { $gte: Number(line.quantity) },
+                            deletedAt: null
+                        },
+                        {
+                            $inc: { quantity: -Number(line.quantity), version: 1 },
+                            $set: { updatedAt: now, updatedBy: auth.userId }
+                        },
+                        { session: querySession }
+                    );
 
                 if (result.modifiedCount !== 1) {
                     const err = new Error(`Insufficient stock for item ${line.itemId} / batch ${line.batchCode}`);
@@ -328,7 +333,7 @@ async function completeHeldSale(auth, saleId, updateData = {}) {
                     } else {
                         memberQuery.id = memberId;
                     }
-                    const member = await db.collection('members').findOne(memberQuery, { session });
+                    const member = await db.collection('members').findOne(memberQuery, { session: querySession });
                     memberName = member?.full_name || member?.member_name || member?.name || null;
                 } catch (e) { /* ignore lookup error */ }
             }
@@ -341,7 +346,7 @@ async function completeHeldSale(auth, saleId, updateData = {}) {
                     } else {
                         userQuery.id = cashierId;
                     }
-                    const user = await db.collection('users').findOne(userQuery, { session });
+                    const user = await db.collection('users').findOne(userQuery, { session: querySession });
                     cashierName = user?.username || user?.name || user?.full_name || null;
                 } catch (e) { /* ignore lookup error */ }
             }
@@ -382,7 +387,7 @@ async function completeHeldSale(auth, saleId, updateData = {}) {
             await db.collection('sales').updateOne(
                 { _id: existing._id, orgId: auth.orgId },
                 { $set: updateDoc },
-                { session }
+                { session: querySession }
             );
 
             sale = {
@@ -390,9 +395,17 @@ async function completeHeldSale(auth, saleId, updateData = {}) {
                 ...updateDoc,
                 _id: existing._id
             };
-        });
+        };
+
+        if (useTransactions) {
+            await session.withTransaction(executeCompleteHeldSale);
+        } else {
+            await executeCompleteHeldSale();
+        }
     } finally {
-        await session.endSession();
+        if (session) {
+            await session.endSession();
+        }
     }
 
     await publishDomainEvent({

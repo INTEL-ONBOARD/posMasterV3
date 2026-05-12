@@ -4,6 +4,7 @@ import { salesApi } from "../../api/localApi";
 import { ChevronDown, User, Package, ShoppingCart, X, DollarSign, RefreshCw, Pause, Play, Trash2, ScanLine } from "lucide-react";
 import StatusModal from "../../components/StatusModal.jsx";
 import { localAuth } from "../../api/services/localAuth";
+import { restockApi } from "../../api/localApi";
 import { useReactiveData, TABLES } from "../../store";
 
 
@@ -15,6 +16,7 @@ import MemEvaluationModal from "./modals/MemEvaluationModal.jsx";
 import CartItemEditModal from "./modals/CartItemEditModal.jsx";
 import CheckoutSummaryModal from "./modals/CheckoutSummaryModal.jsx";
 import { useScannerSearch } from "../../hooks/useScannerSearch";
+import { useBranchContext } from "../../context/BranchContext.jsx";
 import { getEffectiveSellingPrice, supportsDecimalSaleQuantity } from "../../util/common/uomPricing";
 
 // Default guest user
@@ -107,6 +109,7 @@ export default function SalesView({ isActive }) {
   const searchInputRef = useRef(null);
   const proceedBtnRef = useRef(null);
   const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
+  const { currentBranch } = useBranchContext();
 
   const focusSearch = () => {
     setTimeout(() => searchInputRef.current?.focus(), 50);
@@ -207,9 +210,33 @@ export default function SalesView({ isActive }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [preparedBy, setPreparedBy] = useState("");
 
+  const resolvedBranchId = useMemo(() => (
+    currentBranch?.id ||
+    currentBranch?.branchId ||
+    currentUser?.branchId ||
+    currentUser?.branch_id ||
+    null
+  ), [currentBranch, currentUser]);
+
+  const isAdminUser = useCallback((user = currentUser) => {
+    const roles = Array.isArray(user?.roles)
+      ? user.roles
+      : (typeof user?.roles === 'string' ? [user.roles] : []);
+
+    return roles.some((role) => {
+      const value = String(role || '').toLowerCase();
+      return value === 'admin' || value === 'superadmin';
+    });
+  }, [currentUser]);
+
   // Fetch the most recent held order for this session
   const fetchHeldOrder = useCallback(async (user = currentUser) => {
     try {
+      if (isAdminUser(user)) {
+        setHeldOrder(null);
+        return;
+      }
+
       const response = await salesApi.getHeldOrders();
       if (response?.status === 'success' && response.data?.length > 0) {
         const currentUserId = String(user?.id || user?._id || user?.userId || '');
@@ -234,7 +261,7 @@ export default function SalesView({ isActive }) {
     } catch (e) {
       console.error('[SalesView] Failed to fetch held orders:', e);
     }
-  }, [currentUser]);
+  }, [currentUser, isAdminUser]);
 
   // Fetch current user on mount
   useEffect(() => {
@@ -522,6 +549,8 @@ export default function SalesView({ isActive }) {
   } = {}) => ({
     invoice_no: invoiceNo,
     sales_session_id: getSalesSessionId(),
+    branchId: resolvedBranchId,
+    branch_id: resolvedBranchId,
     member_id: getSelectedMemberId(),
     member_name: selectedMember?.is_guest ? null : (selectedMember?.full_name || null),
     cashier_id: currentUser?.id || null,
@@ -535,6 +564,25 @@ export default function SalesView({ isActive }) {
     change_amount: changeAmount,
     items: buildSaleItemsPayload()
   });
+
+  const buildHeldOrderSnapshot = (saleRecord, fallbackItems = []) => {
+    if (!saleRecord) return null;
+
+    return {
+      ...saleRecord,
+      invoice_no: saleRecord.invoice_no || saleRecord.invoiceNo || invoiceNo,
+      invoiceNo: saleRecord.invoiceNo || saleRecord.invoice_no || invoiceNo,
+      sales_session_id: saleRecord.sales_session_id || saleRecord.salesSessionId || getSalesSessionId(),
+      salesSessionId: saleRecord.salesSessionId || saleRecord.sales_session_id || getSalesSessionId(),
+      branchId: saleRecord.branchId || saleRecord.branch_id || resolvedBranchId,
+      branch_id: saleRecord.branch_id || saleRecord.branchId || resolvedBranchId,
+      cashierId: saleRecord.cashierId || saleRecord.cashier_id || currentUser?.id || currentUser?._id || null,
+      cashier_id: saleRecord.cashier_id || saleRecord.cashierId || currentUser?.id || currentUser?._id || null,
+      cashierName: saleRecord.cashierName || saleRecord.cashier_name || currentUser?.username || currentUser?.name || null,
+      cashier_name: saleRecord.cashier_name || saleRecord.cashierName || currentUser?.username || currentUser?.name || null,
+      items: Array.isArray(saleRecord.items) && saleRecord.items.length > 0 ? saleRecord.items : fallbackItems
+    };
+  };
 
   const getHeldSaleId = (sale) => sale?.id || sale?._id || sale?.saleId || sale?.sale_id || null;
 
@@ -612,6 +660,8 @@ export default function SalesView({ isActive }) {
     const { finalDiscount, paymentMethod, creditMonths, cashAmount, totalAmount, changeAmount } = checkoutData;
 
     try {
+      const liveStockBySku = new Map();
+
       // Validate cart items before sending to backend
       for (const item of selectedItems) {
         const itemId = item.item_id || item.id;
@@ -645,11 +695,22 @@ export default function SalesView({ isActive }) {
           return { success: false };
         }
 
-        const currentStock = inventoryItems.find((stock) =>
+        let liveBatches = liveStockBySku.get(item.sku);
+        if (!liveBatches) {
+          const liveResponse = await restockApi.getStockData(item.sku, resolvedBranchId);
+          liveBatches = Array.isArray(liveResponse?.data) ? liveResponse.data : [];
+          liveStockBySku.set(item.sku, liveBatches);
+        }
+
+        const currentStock = liveBatches.find((stock) =>
+          String(stock?.stock_id ?? stock?.id ?? stock?.stockId ?? '') === String(stockId) ||
+          String(stock?.batch_code ?? stock?.batchCode ?? '') === String(item.batch_code || item.batchCode || '')
+        ) || inventoryItems.find((stock) =>
           String(stock?.stock_id ?? stock?.id ?? '') === String(stockId)
         );
+
         if (currentStock) {
-          const availableQty = Number(currentStock.quantity || 0);
+          const availableQty = Number(currentStock.qty ?? currentStock.quantity ?? 0);
           if (availableQty < Number(qty)) {
             setStatusModal({
               open: true,
@@ -709,8 +770,11 @@ export default function SalesView({ isActive }) {
             console.error('[SalesView] Bill generation failed:', printError);
             setStatusModal({ open: true, type: 'failed', description: 'Sale saved but bill printing failed' });
         }
+        if (releasedHeldOrder) {
+          setHeldOrder(null);
+          await fetchHeldOrder(currentUser);
+        }
         setReleasedHeldOrder(null);
-        await fetchHeldOrder(currentUser);
         // Mark sale as completed - clearForm will be called when modal closes
         setSaleCompleted(true);
         // Return success for the modal to show animation
@@ -751,9 +815,13 @@ export default function SalesView({ isActive }) {
     try {
       const response = await salesApi.hold(saleData);
       if (response.status === "success") {
+        const heldSnapshot = buildHeldOrderSnapshot(response.data || saleData, saleData.items);
+        if (heldSnapshot) {
+          setHeldOrder(heldSnapshot);
+        }
+        setReleasedHeldOrder(null);
         setStatusModal({ open: true, type: 'success', description: "Sale held. Click Release to resume." });
         clearForm();
-        await fetchHeldOrder(currentUser);
       } else {
         setStatusModal({ open: true, type: 'failed', description: response.message || "Failed to hold sale" });
       }

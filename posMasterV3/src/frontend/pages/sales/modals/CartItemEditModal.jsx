@@ -122,6 +122,17 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
 
   const minQuantity = isDecimalQuantityUom ? 0.01 : 1;
   const quantityStep = isDecimalQuantityUom ? 0.25 : 1;
+  const getBatchRowKey = (batch, index) => {
+    const stableId = batch?.id ?? batch?.stock_id ?? batch?.stockId;
+    if (stableId !== undefined && stableId !== null && stableId !== "") {
+      return `batch-${stableId}`;
+    }
+
+    const batchCode = batch?.batch_code || "batch";
+    const expDate = batch?.exp_date || batch?.expiry_date || "no-exp";
+    const qty = batch?.qty ?? "no-qty";
+    return `${batchCode}-${expDate}-${qty}-${index}`;
+  };
 
   const handleQuantityChange = (delta) => {
     const newQty = Math.max(minQuantity, Math.min(maxQuantity, quantity + (delta * quantityStep)));
@@ -240,9 +251,9 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-[150px] overflow-y-auto">
-                    {stockEntries.map((batch) => (
+                    {stockEntries.map((batch, index) => (
                       <button
-                        key={batch.batch_code}
+                        key={getBatchRowKey(batch, index)}
                         onClick={() => handleBatchSelect(batch)}
                         className={`w-full p-3 rounded-lg text-left transition-all ${
                           selectedBatch?.batch_code === batch.batch_code

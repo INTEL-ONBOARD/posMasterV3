@@ -2921,19 +2921,19 @@ const installOnlineOnlyOverrides = () => {
     });
     Object.assign(restockApi, onlineCollectionApi('restock_transactions'), {
         getStockItems: async () => stockApi.getAllWithItems(),
-        getStockData: async (sku) => {
+        getStockData: async (sku, branchId = null) => {
             const itemResponse = await itemApi.getBySku(sku);
             const item = Array.isArray(itemResponse?.data) ? itemResponse.data[0] : itemResponse?.data;
             const itemId = item?.id ?? item?._id ?? null;
 
             const responses = [];
             responses.push(normalizeCollectionResponse(
-                await onlineCall((api) => api.list('stock_batches', { sku }))
+                await onlineCall((api) => api.list('stock_batches', branchId ? { sku, branchId } : { sku }))
             ));
 
             if ((!responses[0]?.data || responses[0].data.length === 0) && itemId != null) {
                 responses.push(normalizeCollectionResponse(
-                    await onlineCall((api) => api.list('stock_batches', { itemId, item_id: itemId }))
+                    await onlineCall((api) => api.list('stock_batches', branchId ? { itemId, item_id: itemId, branchId } : { itemId, item_id: itemId }))
                 ));
             }
 
@@ -2992,7 +2992,7 @@ const installOnlineOnlyOverrides = () => {
         },
         generateInvoiceNo: async () => onlineCall((api) => api.generateInvoiceNo()),
         create: async (data) => onlineCall((api) => api.createSale(data)),
-        hold: async (data) => onlineCall((api) => api.create('sales', { ...data, is_held: true, isHeld: true })),
+        hold: async (data) => onlineCall((api) => api.createSale({ ...data, is_held: true, isHeld: true })),
         getSummary: async (startDate, endDate) => onlineCall((api) => api.getSalesSummary(startDate, endDate)),
         getDaily: async (days = 30) => onlineCall((api) => api.getSalesDaily(days)),
         getByMember: async (memberId) => {
@@ -3202,6 +3202,18 @@ const installOnlineOnlyOverrides = () => {
     Object.assign(loginHistoryApi, onlineCollectionApi('login_history'));
     Object.assign(branchContextApi, {
         getCurrent: async () => {
+            const user = await authApi.getCurrentUser();
+            const userBranchId = user?.branchId || user?.branch_id;
+            const roles = Array.isArray(user?.roles)
+                ? user.roles
+                : (typeof user?.roles === 'string' ? [user.roles] : []);
+            const isCashier = roles.some((role) => String(role || '').toLowerCase() === 'cashier');
+
+            if (isCashier && userBranchId) {
+                const assigned = await branchApi.getById(userBranchId);
+                if (assigned?.status === 'success' && assigned?.data) return assigned;
+            }
+
             const selectedBranchId = getSelectedBranchId();
             if (selectedBranchId) {
                 const selected = await branchApi.getById(selectedBranchId);
@@ -3209,12 +3221,12 @@ const installOnlineOnlyOverrides = () => {
                 localStorage.removeItem('selectedBranchId');
             }
 
-            const user = await authApi.getCurrentUser();
-            const userBranchId = user?.branchId || user?.branch_id;
-            if (!userBranchId) return { status: 'success', data: null };
+            if (userBranchId) {
+                const assigned = await branchApi.getById(userBranchId);
+                if (assigned?.status === 'success' && assigned?.data) return assigned;
+            }
 
-            const assigned = await branchApi.getById(userBranchId);
-            if (assigned?.status === 'success' && assigned?.data) return assigned;
+            if (!userBranchId) return { status: 'success', data: null };
 
             return { status: 'success', data: null };
         },
