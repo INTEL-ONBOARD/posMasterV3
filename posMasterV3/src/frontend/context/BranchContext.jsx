@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { branchContextApi } from '../api/localApi';
+import { localAuth } from '../api/services/localAuth';
 import BranchSelectionModal from '../components/BranchSelectionModal';
 import { dataStore } from '../store/DataStore';
 
@@ -56,32 +57,34 @@ export function BranchProvider({ children }) {
     const loadCurrentBranch = useCallback(async () => {
         setLoading(true);
         try {
+            let user = null;
+            try {
+                user = await localAuth.getCurrentUser();
+            } catch (userError) {
+                console.warn('[BranchContext] Could not load current user while resolving branch:', userError);
+            }
+
+            const assignedBranchId = user?.branch_id || user?.branchId || null;
+            const roles = Array.isArray(user?.roles)
+                ? user.roles
+                : (typeof user?.roles === 'string' ? [user.roles] : []);
+            const isCashier = roles.some((role) => String(role || '').toLowerCase() === 'cashier');
+
+            if (isCashier && assignedBranchId) {
+                console.log('[BranchContext] Using assigned user branch_id:', assignedBranchId);
+                const setBranchResponse = await branchContextApi.setCurrent(assignedBranchId);
+                if (setBranchResponse.status === 'success' && setBranchResponse.data) {
+                    setCurrentBranch(setBranchResponse.data);
+                    console.log('[BranchContext] Auto-selected user branch:', setBranchResponse.data?.name);
+                    return;
+                }
+            }
+
             const response = await branchContextApi.getCurrent();
             if (response.status === 'success') {
                 setCurrentBranch(response.data);
 
-                // If no branch is set, check if we need to show the modal
                 if (!response.data) {
-                    // Check if user has an assigned branch (from localStorage user data)
-                    const userData = localStorage.getItem('user');
-                    if (userData) {
-                        try {
-                            const user = JSON.parse(userData);
-                            if (user.branch_id) {
-                                // User has an assigned branch - try to auto-select it
-                                console.log('[BranchContext] User has assigned branch_id:', user.branch_id);
-                                const setBranchResponse = await branchContextApi.setCurrent(user.branch_id);
-                                if (setBranchResponse.status === 'success') {
-                                    setCurrentBranch(setBranchResponse.data);
-                                    console.log('[BranchContext] Auto-selected user branch:', setBranchResponse.data?.name);
-                                    return; // Don't show modal
-                                }
-                            }
-                        } catch (parseError) {
-                            console.error('[BranchContext] Error parsing user data:', parseError);
-                        }
-                    }
-
                     // No branch assigned or auto-select failed - show selection modal
                     setShowSelectionModal(true);
                 }
