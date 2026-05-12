@@ -10,6 +10,7 @@ import priceChangeImg from "../../assets/price_change.png";
 import disposeItemsImg from "../../assets/dispose_items.png";
 import { localAuth } from "../../api/services/localAuth";
 import { settingsApi } from "../../api/localApi";
+import { ArrowLeftRight } from "lucide-react";
 
 function InventorySidebar({
   activeSection,
@@ -18,6 +19,7 @@ function InventorySidebar({
   onRestockClick,
   onSupplierRegClick,
   onCheckHistoryClick,
+  onShareClick,
   onConfigClick,
   onCReportClick,
   onPriceChangeClick,
@@ -123,6 +125,13 @@ function InventorySidebar({
       permissionKey: "inventory_reports",
     },
     {
+      id: "inventory-share",
+      label: "Inventory Share",
+      reactIcon: ArrowLeftRight,
+      onClick: onShareClick,
+      permissionKey: "inventory_view",
+    },
+    {
       id: "disposed-items",
       label: "Disposed Items",
       icon: disposeItemsImg,
@@ -153,11 +162,19 @@ function InventorySidebar({
                 <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-1 transition-transform duration-300 ${
                   isActive ? "bg-white/90 shadow-sm" : "bg-white shadow-sm"
                 } ${!isActive && "group-hover:scale-105"}`}>
-                  <img
-                    src={item.icon}
-                    alt={item.label}
-                    className="w-8 h-8 object-contain pointer-events-none transition-all duration-300"
-                  />
+                  {item.reactIcon ? (
+                    <item.reactIcon
+                      className={`w-8 h-8 transition-all duration-300 ${
+                        isActive ? "text-[#1A318C]" : "text-gray-500"
+                      }`}
+                    />
+                  ) : (
+                    <img
+                      src={item.icon}
+                      alt={item.label}
+                      className="w-8 h-8 object-contain pointer-events-none transition-all duration-300"
+                    />
+                  )}
                 </div>
               </button>
               {/* Tooltip */}

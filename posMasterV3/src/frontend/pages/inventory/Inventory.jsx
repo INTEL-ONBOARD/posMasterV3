@@ -3,9 +3,10 @@ import InventorySidebar from "./Inventory_sidebar";
 import AddItem from "./AddItem.jsx";
 import InventoryConfig from "./InventoryConfig";
 import InventoryReport from "./InventoryReport";
-import { useOutletContext } from "react-router-dom";
+import { useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import InventoryView from "./InventoryView.jsx";
 import InventoryRestock from "./InventoryRestock.jsx";
+import InventoryShare from "./InventoryShare.jsx";
 import SupplierReg from "./SupplierReg.jsx";
 import CheckHistory from "./CheckHistory.jsx";
 import PriceChange from "./PriceChange.jsx";
@@ -22,13 +23,23 @@ const sectionLabels = {
   "check-history": "Check History",
   "inventory-config": "Inventory Configuration",
   "inventory-report": "Inventory Report",
+  "inventory-share": "Inventory Share",
   "disposed-items": "Disposed Items",
 };
 
 function Inventory() {
   const { setActiveSection } = useOutletContext();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [activeSection, setLocalActiveSection] = useState("view-inventory");
   const statusLog = useStatusLog();
+
+  useEffect(() => {
+    if (location.pathname.endsWith("/share")) {
+      setLocalActiveSection("inventory-share");
+      setActiveSection("inventory-share");
+    }
+  }, [location.pathname, setActiveSection]);
 
   // Update parent's activeSection whenever local activeSection changes
   useEffect(() => {
@@ -39,6 +50,9 @@ function Inventory() {
     setLocalActiveSection(section);
     setActiveSection(section);
     statusLog.info(`Inventory: ${sectionLabels[section] || section}`);
+    if (section === "inventory-share") {
+      navigate("/dashboard/inventory/share", { replace: true });
+    }
   };
 
   // helper function to toggle Tailwind visibility between sections
@@ -56,6 +70,7 @@ function Inventory() {
         onSupplierRegClick={() => handleSectionChange("supplier-registration")}
         onPriceChangeClick={() => handleSectionChange("price-change")}
         onCheckHistoryClick={() => handleSectionChange("check-history")}
+        onShareClick={() => handleSectionChange("inventory-share")}
         onConfigClick={() => handleSectionChange("inventory-config")}
         onCReportClick={() => handleSectionChange("inventory-report")}
         onDisposedItemsClick={() => handleSectionChange("disposed-items")}
@@ -94,6 +109,10 @@ function Inventory() {
         {/* Inventory Report */}
         <div className={isVisible("inventory-report")}>
           <InventoryReport isActive={activeSection === "inventory-report"} />
+        </div>
+        {/* Inventory Share */}
+        <div className={isVisible("inventory-share")}>
+          <InventoryShare isActive={activeSection === "inventory-share"} />
         </div>
         {/* Disposed Items */}
         <div className={isVisible("disposed-items")}>

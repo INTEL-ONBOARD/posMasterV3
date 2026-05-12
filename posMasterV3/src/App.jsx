@@ -183,6 +183,7 @@ function App() {
               <Route path="dashboard" element={<PrivateRoute />}>
                 <Route element={<Dashboard />}>
                   <Route index element={<Notification />} />
+                  <Route path="inventory/share" element={<Inventory />} />
                   <Route path="inventory/*" element={<Inventory />} />
                   <Route path="inventory-config" element={<InventoryConfig />} />
                   <Route path="settings/*" element={<Settings />} />
