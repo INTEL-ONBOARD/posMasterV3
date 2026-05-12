@@ -1,6 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
-import { X, User, ShoppingCart, CreditCard, Wallet, DollarSign, Receipt, AlertTriangle, Heart, Users, Check, Banknote, ArrowRight, CheckCircle2, Sparkles, Printer } from "lucide-react";
-import { paymentMethodApi } from "../../../api/localApi";
+import {
+  X,
+  User,
+  CreditCard,
+  Wallet,
+  DollarSign,
+  Receipt,
+  Heart,
+  Users,
+  Check,
+  Banknote,
+  ArrowRight,
+  CheckCircle2,
+  Sparkles
+} from "lucide-react";
+import { useReactiveData, TABLES } from "../../../store";
 
 // Success Animation Component
 function SuccessAnimation({ saleData, onClose, formatCurrency }) {
@@ -131,6 +145,84 @@ function SuccessAnimation({ saleData, onClose, formatCurrency }) {
   );
 }
 
+const PAYMENT_METHOD_THEMES = {
+  cash: {
+    bg: "bg-emerald-100",
+    text: "text-emerald-600",
+    border: "border-emerald-500",
+    selectedBg: "bg-emerald-50/20",
+    selectedText: "text-emerald-700",
+    icon: Wallet,
+    label: "Cash"
+  },
+  credit: {
+    bg: "bg-indigo-100",
+    text: "text-indigo-600",
+    border: "border-indigo-500",
+    selectedBg: "bg-indigo-50/20",
+    selectedText: "text-indigo-700",
+    icon: CreditCard,
+    label: "Credit"
+  },
+  society: {
+    bg: "bg-orange-100",
+    text: "text-orange-500",
+    border: "border-orange-500",
+    selectedBg: "bg-orange-50/20",
+    selectedText: "text-orange-600",
+    icon: Users,
+    label: "Society"
+  },
+  welfare: {
+    bg: "bg-pink-100",
+    text: "text-pink-500",
+    border: "border-pink-500",
+    selectedBg: "bg-pink-50/20",
+    selectedText: "text-pink-600",
+    icon: Heart,
+    label: "Welfare"
+  },
+  default: {
+    bg: "bg-slate-100",
+    text: "text-slate-600",
+    border: "border-slate-300",
+    selectedBg: "bg-slate-50/20",
+    selectedText: "text-slate-700",
+    icon: Wallet,
+    label: "Payment"
+  }
+};
+
+function getPaymentMethodTheme(method) {
+  const name = String(method?.name || "").toLowerCase();
+  const type = String(method?.type || "").toLowerCase();
+  const creditMonths = Number(method?.credit_months ?? method?.creditMonths ?? 0);
+
+  if (type === "cash" || name.includes("cash")) {
+    return { ...PAYMENT_METHOD_THEMES.cash, methodLabel: "Cash" };
+  }
+
+  if (type === "credit" || name.includes("credit") || creditMonths > 0) {
+    return {
+      ...PAYMENT_METHOD_THEMES.credit,
+      methodLabel: `Credit ${creditMonths > 0 ? `${creditMonths} Month${creditMonths === 1 ? "" : "s"}` : ""}`.trim()
+    };
+  }
+
+  if (name.includes("society")) {
+    return { ...PAYMENT_METHOD_THEMES.society, methodLabel: "Society" };
+  }
+
+  if (name.includes("welfare")) {
+    return { ...PAYMENT_METHOD_THEMES.welfare, methodLabel: "Welfare" };
+  }
+
+  return {
+    ...PAYMENT_METHOD_THEMES.default,
+    methodLabel: method?.name || PAYMENT_METHOD_THEMES.default.label
+  };
+}
+
 function CheckoutSummaryModal({
   isOpen,
   closeModal,
@@ -142,58 +234,52 @@ function CheckoutSummaryModal({
   const [finalDiscount, setFinalDiscount] = useState(0);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [cashReceived, setCashReceived] = useState('');
-  const [paymentMethods, setPaymentMethods] = useState([]);
-  const [isLoadingMethods, setIsLoadingMethods] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [saleResult, setSaleResult] = useState(null);
-  const cashOnlyMethod = {
-    id: 'cash',
-    name: 'Cash',
-    type: 'cash',
-    icon: 'Wallet',
-    color: 'emerald'
-  };
+  const { data: paymentMethods = [], loading: isLoadingMethods } = useReactiveData(
+    TABLES.PAYMENT_METHODS,
+    null,
+    {
+      enabled: isOpen,
+      initialData: []
+    }
+  );
+  const activePaymentMethods = paymentMethods.filter((method) => {
+    const isActive = method?.isActive ?? method?.is_active;
+    return isActive !== false;
+  });
 
-  // Fetch payment methods when modal opens
   useEffect(() => {
-    const fetchPaymentMethods = async () => {
-      setIsLoadingMethods(true);
-      try {
-        // Cash only checkout for now
-        const response = await paymentMethodApi.getForNonMembers();
-
-        if (response.status === 'success') {
-          const methods = (response.data || []).filter((method) => method?.type === 'cash');
-          setPaymentMethods(methods);
-          setSelectedPaymentMethod(methods[0] || cashOnlyMethod);
-        }
-      } catch (error) {
-        console.error('Failed to fetch payment methods:', error);
-        setPaymentMethods([cashOnlyMethod]);
-        setSelectedPaymentMethod(cashOnlyMethod);
-      } finally {
-        setIsLoadingMethods(false);
-      }
-    };
-
     if (isOpen) {
-      setPaymentMethods([cashOnlyMethod]);
-      setSelectedPaymentMethod(cashOnlyMethod);
-      fetchPaymentMethods();
       setFinalDiscount(0);
       setCashReceived('');
       setIsProcessing(false);
       setShowSuccess(false);
       setSaleResult(null);
     }
-  }, [isOpen, selectedMember]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setSelectedPaymentMethod((current) => {
+      if (!activePaymentMethods.length) return null;
+
+      const currentId = current?.id;
+      const stillAvailable = activePaymentMethods.find((method) => String(method?.id) === String(currentId));
+      return stillAvailable || activePaymentMethods[0] || null;
+    });
+  }, [isOpen, activePaymentMethods]);
 
   if (!isOpen) return null;
 
   const totalAmount = stockTotal - parseFloat(finalDiscount || 0);
   const cashReceivedNum = parseFloat(cashReceived) || 0;
   const balanceAmount = cashReceivedNum - totalAmount;
+  const selectedMethodTheme = getPaymentMethodTheme(selectedPaymentMethod);
+  const isCashMethod = String(selectedPaymentMethod?.type || "").toLowerCase() === "cash";
+  const SelectedMethodIcon = selectedMethodTheme.icon;
 
   // Credit validation — any non-guest member can use credit regardless of balance
   const creditWarning = false;
@@ -213,9 +299,9 @@ function CheckoutSummaryModal({
       paymentMethodId: selectedPaymentMethod.id,
       paymentMethodName: selectedPaymentMethod.name,
       creditMonths: selectedPaymentMethod.credit_months || 0,
-      cashAmount: selectedPaymentMethod.type === "cash" ? (cashReceivedNum || totalAmount) : 0,
+      cashAmount: isCashMethod ? (cashReceivedNum || totalAmount) : 0,
       totalAmount,
-      changeAmount: selectedPaymentMethod.type === "cash" ? Math.max(0, balanceAmount) : 0
+      changeAmount: isCashMethod ? Math.max(0, balanceAmount) : 0
     };
 
     try {
@@ -402,7 +488,7 @@ function CheckoutSummaryModal({
               </div>
             </div>
 
-            {/* Right Column - Cash Only */}
+            {/* Right Column - Payment Method Selection */}
             <div className="w-[380px] p-5 bg-gray-50 flex flex-col">
               <div className="flex-1 overflow-y-auto mb-4">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Payment Method</p>
@@ -411,107 +497,145 @@ function CheckoutSummaryModal({
                   <div className="flex items-center justify-center py-10">
                     <div className="w-8 h-8 border-2 border-gray-200 border-t-[#1A318C] rounded-full animate-spin"></div>
                   </div>
+                ) : activePaymentMethods.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-500">
+                    No active payment methods are available.
+                  </div>
                 ) : (
                   <div className="space-y-3">
-                    <div>
-                      <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-2">Cash</p>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPaymentMethod(paymentMethods[0] || cashOnlyMethod)}
-                        disabled={isProcessing}
-                        className="w-full p-3 rounded-xl transition-all border-2 flex items-center gap-3 disabled:opacity-50 border-emerald-500 bg-emerald-50 shadow-md"
-                      >
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-500">
-                          <Wallet className="w-5 h-5 text-white" />
-                        </div>
-                        <p className="text-sm font-semibold flex-1 text-left text-emerald-700">
-                          Cash
-                        </p>
-                        <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      </button>
-                    </div>
+                    {activePaymentMethods.map((method) => {
+                      const theme = getPaymentMethodTheme(method);
+                      const Icon = theme.icon;
+                      const isSelected = String(selectedPaymentMethod?.id) === String(method?.id);
+
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          onClick={() => setSelectedPaymentMethod(method)}
+                          disabled={isProcessing}
+                          className={`w-full p-3 rounded-2xl transition-all border-2 flex items-center gap-3 disabled:opacity-50 ${
+                            isSelected
+                              ? `${theme.border} ${theme.selectedBg} shadow-md`
+                              : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                          }`}
+                        >
+                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${theme.bg}`}>
+                            <Icon className={`w-5 h-5 ${theme.text}`} />
+                          </div>
+                          <div className="flex-1 text-left min-w-0">
+                            <p className={`text-sm font-semibold truncate ${isSelected ? theme.selectedText : "text-gray-800"}`}>
+                              {method.name}
+                            </p>
+                            <p className="text-[10px] text-gray-400 uppercase tracking-wide mt-0.5">
+                              {theme.methodLabel}
+                            </p>
+                          </div>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isSelected ? theme.border.replace("border-", "bg-") : "bg-gray-200"}`}>
+                            {isSelected ? <Check className="w-4 h-4 text-white" /> : null}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
               <div className="bg-white rounded-xl border-2 border-gray-200 p-4 space-y-3">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
-                      <Banknote className="w-4 h-4 text-emerald-500" />
-                      Cash Received
-                    </p>
-                  </div>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">Rs.</span>
-                    <input
-                      type="number"
-                      value={cashReceived}
-                      onChange={(e) => setCashReceived(e.target.value)}
-                      disabled={isProcessing}
-                      className="w-full pl-12 pr-4 py-3 text-xl font-bold text-gray-800 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none tabular-nums disabled:opacity-50"
-                      placeholder="0.00"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const canConfirm = !isProcessing && totalAmount > 0 && !creditWarning && selectedPaymentMethod &&
-                            !(selectedPaymentMethod?.type === 'cash' && cashReceivedNum < totalAmount && cashReceivedNum > 0);
-                          if (canConfirm) handleConfirm();
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="flex gap-2 mt-2">
-                    {quickCashAmounts.map(amount => (
-                      <button
-                        key={amount}
-                        onClick={() => setCashReceived(amount.toString())}
-                        disabled={isProcessing}
-                        className="flex-1 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-                      >
-                        {amount}
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => setCashReceived(Math.ceil(totalAmount).toString())}
-                      disabled={isProcessing}
-                      className="flex-1 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-100 rounded-lg hover:bg-emerald-200 transition-colors disabled:opacity-50"
-                    >
-                      Exact
-                    </button>
-                  </div>
-                </div>
+                {isCashMethod ? (
+                  <>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+                          <Banknote className="w-4 h-4 text-emerald-500" />
+                          Cash Received
+                        </p>
+                      </div>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">Rs.</span>
+                        <input
+                          type="number"
+                          value={cashReceived}
+                          onChange={(e) => setCashReceived(e.target.value)}
+                          disabled={isProcessing}
+                          className="w-full pl-12 pr-4 py-3 text-xl font-bold text-gray-800 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none tabular-nums disabled:opacity-50"
+                          placeholder="0.00"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const canConfirm = !isProcessing && totalAmount > 0 && !creditWarning && selectedPaymentMethod &&
+                                !(isCashMethod && cashReceivedNum < totalAmount && cashReceivedNum > 0);
+                              if (canConfirm) handleConfirm();
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        {quickCashAmounts.map((amount) => (
+                          <button
+                            key={amount}
+                            onClick={() => setCashReceived(amount.toString())}
+                            disabled={isProcessing}
+                            className="flex-1 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                          >
+                            {amount}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setCashReceived(Math.ceil(totalAmount).toString())}
+                          disabled={isProcessing}
+                          className="flex-1 py-1.5 text-xs font-semibold text-emerald-600 bg-emerald-100 rounded-lg hover:bg-emerald-200 transition-colors disabled:opacity-50"
+                        >
+                          Exact
+                        </button>
+                      </div>
+                    </div>
 
-                <div className={`rounded-xl p-4 border-2 ${
-                  cashReceivedNum === 0
-                    ? 'bg-gray-50 border-gray-200'
-                    : balanceAmount >= 0
-                      ? 'bg-emerald-50 border-emerald-300'
-                      : 'bg-red-50 border-red-300'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <p className={`text-xs font-bold uppercase tracking-wide ${
+                    <div className={`rounded-xl p-4 border-2 ${
                       cashReceivedNum === 0
-                        ? 'text-gray-400'
+                        ? 'bg-gray-50 border-gray-200'
                         : balanceAmount >= 0
-                          ? 'text-emerald-600'
-                          : 'text-red-600'
+                          ? 'bg-emerald-50 border-emerald-300'
+                          : 'bg-red-50 border-red-300'
                     }`}>
-                      {balanceAmount >= 0 ? 'Change to Return' : 'Amount Due'}
-                    </p>
-                    <p className={`text-2xl font-bold tabular-nums ${
-                      cashReceivedNum === 0
-                        ? 'text-gray-400'
-                        : balanceAmount >= 0
-                          ? 'text-emerald-600'
-                          : 'text-red-600'
-                    }`}>
-                      Rs. {Math.abs(balanceAmount).toFixed(2)}
-                    </p>
+                      <div className="flex items-center justify-between">
+                        <p className={`text-xs font-bold uppercase tracking-wide ${
+                          cashReceivedNum === 0
+                            ? 'text-gray-400'
+                            : balanceAmount >= 0
+                              ? 'text-emerald-600'
+                              : 'text-red-600'
+                        }`}>
+                          {balanceAmount >= 0 ? 'Change to Return' : 'Amount Due'}
+                        </p>
+                        <p className={`text-2xl font-bold tabular-nums ${
+                          cashReceivedNum === 0
+                            ? 'text-gray-400'
+                            : balanceAmount >= 0
+                              ? 'text-emerald-600'
+                              : 'text-red-600'
+                        }`}>
+                          Rs. {Math.abs(balanceAmount).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className={`rounded-xl p-4 border-2 ${selectedMethodTheme.border} ${selectedMethodTheme.selectedBg}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${selectedMethodTheme.bg}`}>
+                        <SelectedMethodIcon className={`w-5 h-5 ${selectedMethodTheme.text}`} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Selected Method</p>
+                        <p className={`text-lg font-semibold truncate ${selectedMethodTheme.selectedText}`}>
+                          {selectedPaymentMethod?.name || "Payment method"}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-0.5">No cash entry is required for this method.</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -527,7 +651,7 @@ function CheckoutSummaryModal({
             </button>
             <button
               onClick={handleConfirm}
-              disabled={isProcessing || totalAmount < 0 || creditWarning || !selectedPaymentMethod || (selectedPaymentMethod?.type === 'cash' && cashReceivedNum < totalAmount && cashReceivedNum > 0)}
+              disabled={isProcessing || totalAmount < 0 || creditWarning || !selectedPaymentMethod || (isCashMethod && cashReceivedNum < totalAmount && cashReceivedNum > 0)}
               className="flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:from-emerald-600 hover:to-emerald-700 transition-all disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/30 disabled:shadow-none flex items-center justify-center gap-3"
             >
               {isProcessing ? (
