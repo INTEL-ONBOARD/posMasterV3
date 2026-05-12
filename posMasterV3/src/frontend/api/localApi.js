@@ -942,6 +942,54 @@ export const restockApi = {
 };
 
 // ============================================
+// INVENTORY TRANSFER API
+// ============================================
+
+export const inventoryTransferApi = {
+    getAll: async (query = {}) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment', data: [] };
+        return normalizeCollectionResponse(await onlineCall((onlineApi) => onlineApi.list('inventory_transfers', query)));
+    },
+    getById: async (id) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return normalizeCollectionResponse(await onlineCall((onlineApi) => onlineApi.get('inventory_transfers', id)));
+    },
+    create: async (data) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return normalizeCollectionResponse(await onlineCall((onlineApi) => onlineApi.create('inventory_transfers', toInventoryTransferPayload(data))));
+    },
+    update: async (id, data) => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        const current = await inventoryTransferApi.getById(id);
+        if (current.status !== 'success' || !current.data) return current;
+        const merged = {
+            ...current.data,
+            ...data
+        };
+        return normalizeCollectionResponse(await onlineCall((onlineApi) => onlineApi.update('inventory_transfers', id, toInventoryTransferPayload(merged))));
+    },
+    updateStatus: async (id, data = {}) => inventoryTransferApi.update(id, data),
+    accept: async (id, acceptedQty, data = {}) => inventoryTransferApi.updateStatus(id, {
+        ...data,
+        status: 'accepted',
+        acceptedQty,
+        accepted_qty: acceptedQty,
+        accepted_quantity: acceptedQty
+    }),
+    reject: async (id, data = {}) => inventoryTransferApi.updateStatus(id, {
+        ...data,
+        status: 'rejected',
+        acceptedQty: 0,
+        accepted_qty: 0,
+        accepted_quantity: 0
+    })
+};
+
+// ============================================
 // MEMBER API
 // ============================================
 
@@ -2485,6 +2533,62 @@ const normalizeStockRecord = (record) => {
     };
 };
 
+const normalizeInventoryTransferRecord = (record) => {
+    if (!record || typeof record !== 'object') return record;
+    const normalized = normalizeCollectionRecord(record);
+    const sourceBranchId = normalized.source_branch_id
+        ?? normalized.sourceBranchId
+        ?? normalized.fromBranchId
+        ?? normalized.from_branch_id
+        ?? normalized.branch_id
+        ?? normalized.branchId
+        ?? null;
+    const targetBranchId = normalized.target_branch_id
+        ?? normalized.targetBranchId
+        ?? normalized.toBranchId
+        ?? normalized.to_branch_id
+        ?? normalized.destination_branch_id
+        ?? normalized.destinationBranchId
+        ?? null;
+    const requestedQty = Number(
+        normalized.quantity
+        ?? normalized.requestedQty
+        ?? normalized.requested_qty
+        ?? 0
+    ) || 0;
+    const acceptedQty = Number(
+        normalized.acceptedQty
+        ?? normalized.accepted_qty
+        ?? normalized.accepted_quantity
+        ?? 0
+    ) || 0;
+
+    return {
+        ...normalized,
+        source_branch_id: sourceBranchId,
+        sourceBranchId,
+        fromBranchId: sourceBranchId,
+        target_branch_id: targetBranchId,
+        targetBranchId,
+        toBranchId: targetBranchId,
+        requestedQty,
+        requested_qty: requestedQty,
+        quantity: requestedQty,
+        acceptedQty,
+        accepted_qty: acceptedQty,
+        accepted_quantity: acceptedQty,
+        batch_code: normalized.batch_code ?? normalized.batchCode ?? '',
+        item_id: normalized.item_id ?? normalized.itemId ?? null,
+        itemId: normalized.itemId ?? normalized.item_id ?? null,
+        sku: normalized.sku ?? '',
+        item_name: normalized.item_name ?? normalized.itemName ?? '',
+        note: normalized.note ?? normalized.transfer_note ?? '',
+        status: String(normalized.status ?? 'pending').toLowerCase(),
+        created_at: normalized.created_at ?? normalized.createdAt ?? null,
+        updated_at: normalized.updated_at ?? normalized.updatedAt ?? normalized.created_at ?? normalized.createdAt ?? null
+    };
+};
+
 const normalizePaymentMethodRecord = (record) => {
     if (!record || typeof record !== 'object') return record;
     const normalized = normalizeCollectionRecord(record);
@@ -2665,6 +2769,38 @@ const onlineCollectionApi = (collection, options = {}) => ({
         return normalizeCollectionResponse(await onlineCall((api) => api.update(collection, id, { isActive: !currentActive, is_active: !currentActive, status: !currentActive })));
     }
 });
+
+const toInventoryTransferPayload = (data = {}) => {
+    const requestedQty = Number(data.quantity ?? data.requestedQty ?? data.requested_qty ?? 0) || 0;
+    const acceptedQty = Number(data.acceptedQty ?? data.accepted_qty ?? data.accepted_quantity ?? 0) || 0;
+
+    return {
+        item_id: data.item_id ?? data.itemId ?? null,
+        sku: data.sku ?? '',
+        batch_code: data.batch_code ?? data.batchCode ?? '',
+        source_branch_id: data.source_branch_id ?? data.sourceBranchId ?? data.fromBranchId ?? null,
+        target_branch_id: data.target_branch_id ?? data.targetBranchId ?? data.toBranchId ?? null,
+        quantity: requestedQty,
+        requested_qty: requestedQty,
+        accepted_qty: acceptedQty,
+        accepted_quantity: acceptedQty,
+        status: String(data.status ?? 'pending').toLowerCase(),
+        note: data.note ?? data.transfer_note ?? '',
+        item_name: data.item_name ?? data.itemName ?? '',
+        maximum_capacity: data.maximum_capacity ?? data.maximumCapacity ?? null,
+        retail_price: data.retail_price ?? data.retailPrice ?? 0,
+        stock_price: data.stock_price ?? data.stockPrice ?? 0,
+        threshold_limit: data.threshold_limit ?? data.thresholdLimit ?? 0,
+        category_id: data.category_id ?? data.categoryId ?? data.category?.id ?? null,
+        category_brand: data.category_brand ?? data.categoryBrand ?? data.category?.brand ?? '',
+        category_type: data.category_type ?? data.categoryType ?? data.category?.type ?? '',
+        uom_id: data.uom_id ?? data.uomId ?? data.uom?.id ?? null,
+        uom_symbol: data.uom_symbol ?? data.uomSymbol ?? data.uom?.symbol ?? '',
+        uom_unit_name: data.uom_unit_name ?? data.uomUnitName ?? data.uom?.unit_name ?? '',
+        created_by: data.created_by ?? data.createdBy ?? null,
+        updated_by: data.updated_by ?? data.updatedBy ?? null
+    };
+};
 
 const installOnlineOnlyOverrides = () => {
     Object.assign(categoryApi, onlineCollectionApi('categories'), {
@@ -2953,6 +3089,60 @@ const installOnlineOnlyOverrides = () => {
             return response;
         },
         create: async (data) => onlineCall((api) => api.create('restock_transactions', data))
+    });
+    Object.assign(inventoryTransferApi, onlineCollectionApi('inventory_transfers', {
+        toOnline: toInventoryTransferPayload
+    }), {
+        getAll: async (query = {}) => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('inventory_transfers', query)));
+            if (Array.isArray(response?.data)) {
+                response.data = response.data.map(normalizeInventoryTransferRecord);
+            }
+            return response;
+        },
+        getById: async (id) => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.get('inventory_transfers', id)));
+            if (response?.data) {
+                response.data = normalizeInventoryTransferRecord(response.data);
+            }
+            return response;
+        },
+        create: async (data) => {
+            const response = normalizeCollectionResponse(
+                await onlineCall((api) => api.create('inventory_transfers', toInventoryTransferPayload(data)))
+            );
+            if (response?.data) {
+                response.data = normalizeInventoryTransferRecord(response.data);
+            }
+            return response;
+        },
+        update: async (id, data) => {
+            const current = await inventoryTransferApi.getById(id);
+            if (current.status !== 'success' || !current.data) return current;
+            const merged = { ...current.data, ...data };
+            const response = normalizeCollectionResponse(
+                await onlineCall((api) => api.update('inventory_transfers', id, toInventoryTransferPayload(merged)))
+            );
+            if (response?.data) {
+                response.data = normalizeInventoryTransferRecord(response.data);
+            }
+            return response;
+        },
+        updateStatus: async (id, data = {}) => inventoryTransferApi.update(id, data),
+        accept: async (id, acceptedQty, data = {}) => inventoryTransferApi.updateStatus(id, {
+            ...data,
+            status: 'accepted',
+            acceptedQty,
+            accepted_qty: acceptedQty,
+            accepted_quantity: acceptedQty
+        }),
+        reject: async (id, data = {}) => inventoryTransferApi.updateStatus(id, {
+            ...data,
+            status: 'rejected',
+            acceptedQty: 0,
+            accepted_qty: 0,
+            accepted_quantity: 0
+        })
     });
     Object.assign(memberApi, onlineCollectionApi('members'), {
         getByMemberNo: async (memberNo) => {
@@ -3303,6 +3493,8 @@ export default {
     loginHistory: loginHistoryApi,
     onlineEvents: onlineEventApi,
     branchContext: branchContextApi,
+    inventoryTransferApi,
+    inventoryTransfers: inventoryTransferApi,
     teaCoop: teaCoopApi,
     offers: offersApi,
     disposed: disposedApi,

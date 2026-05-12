@@ -1338,7 +1338,7 @@ function InventoryRestock({ isActive }) {
 
   return (
 
-    <div className="flex bg-gray-50 w-full h-[calc(100vh-2rem)] relative">
+    <div className="flex bg-gray-50 w-full h-[calc(100vh-2rem)] relative overflow-y-auto pb-24">
       {/* form section (left) */}
       <div className="bg-gray-100 w-[calc(28rem)] h-[calc(100vh-2rem)] p-3 z-10 flex flex-col">
         {/* Scrollable content area */}
@@ -1959,7 +1959,7 @@ function InventoryRestock({ isActive }) {
       </div>
 
       {/* main transaction section (mid) with loading state and content*/}
-      <div className="flex-1 h-[calc(100vh-2rem)] flex flex-col">
+      <div className="flex-1 h-[calc(100vh-2rem)] flex flex-col min-h-0">
         {/* supplier details section*/}
         <div className="bg-white border-b border-gray-100 p-5">
           <div className="flex flex-row gap-8">
