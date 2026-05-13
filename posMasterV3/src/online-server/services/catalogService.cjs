@@ -14,6 +14,7 @@ const COLLECTIONS = new Set([
     'restock_transactions',
     'restock_items',
     'return_items',
+    'inventory_transfers',
     'members',
     'sales',
     'sales_items',
@@ -34,6 +35,7 @@ const BRANCH_SCOPED_COLLECTIONS = new Set([
     'restock_transactions',
     'restock_items',
     'return_items',
+    'inventory_transfers',
     'sales',
     'sales_items',
     'returned_items',
@@ -58,8 +60,38 @@ function parseObjectId(id) {
     return new ObjectId(id);
 }
 
+function getTransferBranchIds(record = {}) {
+    return [
+        record.branchId,
+        record.branch_id,
+        record.source_branch_id,
+        record.sourceBranchId,
+        record.fromBranchId,
+        record.from_branch_id,
+        record.target_branch_id,
+        record.targetBranchId,
+        record.toBranchId,
+        record.to_branch_id,
+        record.destination_branch_id,
+        record.destinationBranchId
+    ]
+        .filter((value) => value !== undefined && value !== null && value !== '')
+        .map((value) => String(value));
+}
+
 function assertBranchAccess(collectionName, auth, record) {
     if (!BRANCH_SCOPED_COLLECTIONS.has(collectionName) || !auth.branchId) return;
+
+    if (collectionName === 'inventory_transfers') {
+        const authBranchId = String(auth.branchId);
+        if (!getTransferBranchIds(record).includes(authBranchId)) {
+            const err = new Error('Record not found in the active branch');
+            err.statusCode = 404;
+            throw err;
+        }
+        return;
+    }
+
     const recordBranchId = record?.branchId || record?.branch_id || null;
     if (recordBranchId && String(recordBranchId) !== String(auth.branchId)) {
         const err = new Error('Record not found in the active branch');
@@ -88,6 +120,10 @@ function scopedQuery(collectionName, auth, query = {}) {
         ['item_id', 'itemId'],
         ['stockId', 'stockId'],
         ['stock_id', 'stockId'],
+        ['sourceBranchId', 'sourceBranchId'],
+        ['source_branch_id', 'sourceBranchId'],
+        ['targetBranchId', 'targetBranchId'],
+        ['target_branch_id', 'targetBranchId'],
         ['sku', 'sku'],
         ['batchCode', 'batchCode'],
         ['batch_code', 'batchCode'],
@@ -103,6 +139,24 @@ function scopedQuery(collectionName, auth, query = {}) {
         if (query[sourceKey] !== undefined && query[sourceKey] !== null && query[sourceKey] !== '') {
             filter[targetKey] = query[sourceKey];
         }
+    }
+    if (collectionName === 'inventory_transfers' && auth.branchId && !filter.branchId && !filter.sourceBranchId && !filter.targetBranchId) {
+        const branchId = auth.branchId;
+        filter.$or = [
+            { branchId },
+            { branch_id: branchId },
+            { sourceBranchId: branchId },
+            { source_branch_id: branchId },
+            { fromBranchId: branchId },
+            { from_branch_id: branchId },
+            { targetBranchId: branchId },
+            { target_branch_id: branchId },
+            { toBranchId: branchId },
+            { to_branch_id: branchId },
+            { destinationBranchId: branchId },
+            { destination_branch_id: branchId }
+        ];
+        return filter;
     }
     if (BRANCH_SCOPED_COLLECTIONS.has(collectionName) && !filter.branchId && auth.branchId) {
         filter.branchId = auth.branchId;
@@ -186,6 +240,45 @@ function normalizeCollectionBody(collectionName, auth, body = {}, existing = nul
             payload.is_held = held;
             payload.isHeld = held;
         }
+    }
+
+    if (collectionName === 'inventory_transfers') {
+        const sourceBranchId = payload.source_branch_id
+            ?? payload.sourceBranchId
+            ?? payload.fromBranchId
+            ?? payload.from_branch_id
+            ?? existing?.source_branch_id
+            ?? existing?.sourceBranchId
+            ?? existing?.fromBranchId
+            ?? existing?.from_branch_id
+            ?? null;
+        const targetBranchId = payload.target_branch_id
+            ?? payload.targetBranchId
+            ?? payload.toBranchId
+            ?? payload.to_branch_id
+            ?? payload.destination_branch_id
+            ?? payload.destinationBranchId
+            ?? existing?.target_branch_id
+            ?? existing?.targetBranchId
+            ?? existing?.toBranchId
+            ?? existing?.to_branch_id
+            ?? existing?.destination_branch_id
+            ?? existing?.destinationBranchId
+            ?? null;
+
+        if (sourceBranchId) {
+            payload.source_branch_id = sourceBranchId;
+            payload.sourceBranchId = sourceBranchId;
+            payload.fromBranchId = sourceBranchId;
+        }
+        if (targetBranchId) {
+            payload.target_branch_id = targetBranchId;
+            payload.targetBranchId = targetBranchId;
+            payload.toBranchId = targetBranchId;
+        }
+        payload.branchId = sourceBranchId || payload.branchId || payload.branch_id || existing?.branchId || existing?.branch_id || auth.branchId || null;
+        payload.branch_id = payload.branchId;
+        payload.status = String(payload.status ?? existing?.status ?? 'pending').toLowerCase();
     }
 
     return payload;
@@ -306,7 +399,7 @@ async function update(collectionName, auth, id, body) {
     if (updateDoc.isActive !== undefined) updateDoc.is_active = updateDoc.isActive;
     if (updateDoc.branch_id !== undefined && updateDoc.branchId === undefined) updateDoc.branchId = updateDoc.branch_id;
     if (updateDoc.branchId !== undefined && updateDoc.branch_id === undefined) updateDoc.branch_id = updateDoc.branchId;
-    if (BRANCH_SCOPED_COLLECTIONS.has(collectionName) && auth.branchId) {
+    if (BRANCH_SCOPED_COLLECTIONS.has(collectionName) && collectionName !== 'inventory_transfers' && auth.branchId) {
         updateDoc.branchId = auth.branchId;
         updateDoc.branch_id = auth.branchId;
     }
