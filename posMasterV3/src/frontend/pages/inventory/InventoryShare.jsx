@@ -602,7 +602,7 @@ function StatusBadge({ status }) {
   );
 }
 
-export function ShareItemCard({ item, selected, onSelect }) {
+export function ShareItemCard({ item, isAdded, onAdd }) {
   const quantity = Number(item?.quantity) || 0;
   const maxCapacity = Number(item?.maximum_capacity) || 100;
   const threshold = Number(item?.threshold_limit) || 20;
@@ -616,12 +616,8 @@ export function ShareItemCard({ item, selected, onSelect }) {
         : { label: "In Stock", badge: "bg-emerald-500", text: "text-emerald-600" };
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`group relative overflow-hidden rounded-2xl border bg-white text-left shadow-sm transition-all duration-300 hover:shadow-lg ${
-        selected ? "border-[#1A318C] ring-2 ring-[#1A318C]/10" : "border-slate-100 hover:border-[#1A318C]/20"
-      }`}
+    <div
+      className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-white text-left shadow-sm transition-all duration-300 hover:shadow-lg"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100/80" />
       <div className="relative">
@@ -665,9 +661,22 @@ export function ShareItemCard({ item, selected, onSelect }) {
               {quantity}/{maxCapacity}
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => onAdd(item)}
+            disabled={isAdded}
+            className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+              isAdded
+                ? "cursor-default border border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "bg-[#1A318C] text-white shadow-sm hover:bg-[#152a79]"
+            }`}
+          >
+            {isAdded ? "Added" : "Add"}
+          </button>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -813,17 +822,26 @@ export function TransferHistoryTable({ title, rows, counterpartyLabel, branches,
   );
 }
 
-function SectionShell({ title, subtitle, icon: Icon, rightSlot, children }) {
+function SectionShell({
+  title,
+  subtitle,
+  icon: Icon,
+  rightSlot,
+  children,
+  headerClassName = "flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between",
+  titleClassName = "text-lg font-bold text-slate-800",
+  subtitleClassName = "text-sm text-slate-500",
+}) {
   return (
     <div className="rounded-3xl border border-slate-100 bg-white shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className={headerClassName}>
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1A318C]/10 text-[#1A318C]">
             <Icon className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-800">{title}</h3>
-            <p className="text-sm text-slate-500">{subtitle}</p>
+            <h3 className={titleClassName}>{title}</h3>
+            <p className={subtitleClassName}>{subtitle}</p>
           </div>
         </div>
         {rightSlot}
@@ -866,37 +884,101 @@ export function OutgoingShareTab({
   setOutgoingSearch,
   outgoingCategory,
   setOutgoingCategory,
-  selectedOutgoingItemId,
-  setSelectedOutgoingItemId,
-  transferQty,
-  setTransferQty,
-  destinationBranchId,
-  setDestinationBranchId,
-  transferNote,
-  setTransferNote,
   onSendTransfer,
   sending,
   filteredOutgoingItems,
   loading,
 }) {
-  const selectedItem = useMemo(
-    () => inventoryItems.find((item) => item.id === selectedOutgoingItemId) || inventoryItems[0] || null,
-    [inventoryItems, selectedOutgoingItemId]
-  );
-
-  useEffect(() => {
-    if (!selectedItem) return;
-    const maxQty = Number(selectedItem.quantity) || 1;
-    setTransferQty((prev) => {
-      const parsed = Number(prev) || 1;
-      return Math.min(Math.max(parsed, 1), maxQty);
-    });
-  }, [selectedItem, setTransferQty]);
+  const [selectedItemsList, setSelectedItemsList] = useState([]);
+  const [destinationBranchId, setDestinationBranchId] = useState("");
+  const [transferNote, setTransferNote] = useState("");
+  const [cartError, setCartError] = useState("");
 
   const categoryOptions = useMemo(
     () => Array.from(new Set(inventoryItems.map((item) => item?.category?.type).filter(Boolean))),
     [inventoryItems]
   );
+
+  const selectedItemIds = useMemo(
+    () => new Set(selectedItemsList.map((item) => String(item.id))),
+    [selectedItemsList]
+  );
+
+  const selectedItemsTotalQty = useMemo(
+    () => selectedItemsList.reduce((sum, item) => sum + (Number(item.transferQty) || 0), 0),
+    [selectedItemsList]
+  );
+
+  const destinationBranches = useMemo(
+    () => branches.filter((branch) => branchIdValue(branch) !== String(currentBranch?.id ?? currentBranch?.branch_id ?? "")),
+    [branches, currentBranch]
+  );
+
+  useEffect(() => {
+    if (!destinationBranches.length) {
+      setDestinationBranchId("");
+      return;
+    }
+
+    setDestinationBranchId((prev) => {
+      if (prev && destinationBranches.some((branch) => branchIdValue(branch) === String(prev))) {
+        return prev;
+      }
+      return branchIdValue(destinationBranches[0]);
+    });
+  }, [destinationBranches]);
+
+  useEffect(() => {
+    setSelectedItemsList((prev) =>
+      prev.map((cartItem) => {
+        if (cartItem.transferQty === "") return cartItem;
+
+        const sourceItem = inventoryItems.find((item) => String(item.id) === String(cartItem.id));
+        if (!sourceItem) return cartItem;
+
+        const availableQty = Math.max(1, Number(sourceItem.quantity) || 1);
+        const transferQty = String(Math.min(Math.max(Number(cartItem.transferQty) || 1, 1), availableQty));
+        return { ...cartItem, transferQty };
+      })
+    );
+  }, [inventoryItems]);
+
+  const addItemToCart = (item) => {
+    setSelectedItemsList((prev) => {
+      if (prev.some((entry) => String(entry.id) === String(item.id))) return prev;
+      setCartError("");
+      return [...prev, { ...item, transferQty: "1" }];
+    });
+  };
+
+  const removeItemFromCart = (itemId) => {
+    setSelectedItemsList((prev) => prev.filter((item) => String(item.id) !== String(itemId)));
+    setCartError("");
+  };
+
+  const updateCartQuantity = (itemId, value) => {
+    setCartError("");
+    const rawValue = String(value ?? "");
+    const sanitizedValue = rawValue.replace(/[^\d]/g, "");
+
+    setSelectedItemsList((prev) =>
+      prev.map((item) => {
+        if (String(item.id) !== String(itemId)) return item;
+        if (rawValue === "") {
+          return { ...item, transferQty: "" };
+        }
+
+        const availableQty = Math.max(1, Number(item.quantity) || 1);
+        const parsed = Number(sanitizedValue);
+        if (!Number.isFinite(parsed)) {
+          return item;
+        }
+
+        const transferQty = String(Math.min(Math.max(parsed, 1), availableQty));
+        return { ...item, transferQty };
+      })
+    );
+  };
 
   useEffect(() => {
     console.groupCollapsed("[OutgoingShareTab] Render debug");
@@ -906,6 +988,45 @@ export function OutgoingShareTab({
     console.groupEnd();
   }, [currentBranch, filteredOutgoingItems, inventoryItems]);
 
+  const handleBulkSend = async () => {
+    setCartError("");
+
+    if (!selectedItemsList.length) {
+      setCartError("Please add at least one item to the cart.");
+      return;
+    }
+
+    if (!destinationBranchId) {
+      setCartError("Please select a destination branch.");
+      return;
+    }
+
+    if (String(destinationBranchId) === String(branchIdValue(currentBranch))) {
+      setCartError("You cannot share inventory with the same branch.");
+      return;
+    }
+
+    const invalidItem = selectedItemsList.find((item) => {
+      const availableQty = Number(item.quantity) || 0;
+      const qty = Number(item.transferQty) || 0;
+      return qty <= 0 || qty > availableQty;
+    });
+
+    if (invalidItem) {
+      setCartError(`Invalid quantity for ${invalidItem.item_name}.`);
+      return;
+    }
+
+    try {
+      await onSendTransfer(selectedItemsList, destinationBranchId, transferNote);
+      setSelectedItemsList([]);
+      setTransferNote("");
+      setCartError("");
+    } catch (error) {
+      // Parent handles the failure toast.
+    }
+  };
+
   return (
     <div className="space-y-5">
       <div className="grid gap-5 xl:grid-cols-[1.35fr_0.9fr]">
@@ -913,6 +1034,8 @@ export function OutgoingShareTab({
           title="Current Branch Inventory"
           subtitle={`Select items from ${branchDisplayName(currentBranch)} and send them to another branch`}
           icon={Package2}
+          titleClassName="text-base font-semibold text-slate-800"
+          subtitleClassName="text-xs leading-tight text-slate-500"
           rightSlot={
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative min-w-[260px]">
@@ -957,8 +1080,8 @@ export function OutgoingShareTab({
                     <ShareItemCard
                       key={item.id}
                       item={item}
-                      selected={item.id === selectedOutgoingItemId}
-                      onSelect={() => setSelectedOutgoingItemId(item.id)}
+                      isAdded={selectedItemIds.has(String(item.id))}
+                      onAdd={addItemToCart}
                     />
                   ))}
                 </div>
@@ -971,6 +1094,9 @@ export function OutgoingShareTab({
           title="Send Share Request"
           subtitle="Choose the destination branch and quantity"
           icon={Send}
+          headerClassName="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4"
+          titleClassName="text-base font-semibold text-slate-800"
+          subtitleClassName="text-xs leading-tight text-slate-500"
           rightSlot={
             <Badge tone="blue">
               <Building2 className="mr-1.5 h-3.5 w-3.5" />
@@ -979,88 +1105,115 @@ export function OutgoingShareTab({
           }
         >
           <div className="space-y-4">
-            {selectedItem ? (
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#1A318C]/10 text-[#1A318C]">
-                    <Package2 className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Selected Item</p>
-                    <h4 className="truncate text-lg font-bold text-slate-800">{selectedItem.item_name}</h4>
-                    <p className="text-sm text-slate-500">{selectedItem.sku}</p>
-                  </div>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-white p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Available</p>
-                    <p className="mt-1 text-xl font-bold text-slate-800 tabular-nums">{selectedItem.quantity}</p>
-                  </div>
-                  <div className="rounded-xl bg-white p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Maximum</p>
-                    <p className="mt-1 text-xl font-bold text-slate-800 tabular-nums">{selectedItem.maximum_capacity}</p>
-                  </div>
-                </div>
+            {cartError ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                {cartError}
               </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
-                <Package2 className="mx-auto h-9 w-9 text-slate-300" />
-                <p className="mt-3 text-sm font-semibold text-slate-700">Select an item to start a transfer</p>
-              </div>
-            )}
+            ) : null}
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Transfer Quantity</label>
-                <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5">
-                  <input
-                    type="number"
-                    min="1"
-                    max={selectedItem?.quantity || 1}
-                    value={transferQty}
-                    onChange={(e) => setTransferQty(e.target.value)}
-                    className="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none"
-                  />
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Selected Items</p>
+                  <h4 className="text-lg font-bold text-slate-800">{selectedItemsList.length} item(s)</h4>
                 </div>
+                <Badge tone="blue">Total Qty: {selectedItemsTotalQty}</Badge>
               </div>
+
+              <div className="mt-4 max-h-[320px] overflow-y-auto pr-1">
+                {selectedItemsList.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center">
+                    <Package2 className="mx-auto h-9 w-9 text-slate-300" />
+                    <p className="mt-3 text-sm font-semibold text-slate-700">Add items from the left panel</p>
+                    <p className="mt-1 text-xs text-slate-500">Your transfer cart will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedItemsList.map((item) => (
+                      <div
+                        key={item.id}
+                        className="mb-2 flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <Package2 className="h-4 w-4 shrink-0 text-[#1A318C]" />
+                            <p className="truncate text-sm font-semibold text-slate-800">{item.item_name}</p>
+                          </div>
+                          <p className="mt-1 truncate text-xs text-slate-500">{item.sku}</p>
+                        </div>
+
+                        <div className="w-28 shrink-0">
+                          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                            Transfer Qty
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            min="1"
+                            max={Number(item.quantity) || 1}
+                            value={item.transferQty ?? ""}
+                            onChange={(e) => updateCartQuantity(item.id, e.target.value)}
+                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-[#1A318C]"
+                          />
+                        </div>
+
+                        <div className="shrink-0 self-end pb-[2px]">
+                          <button
+                            type="button"
+                            onClick={() => removeItemFromCart(item.id)}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-100"
+                          >
+                            <XCircle className="h-4 w-4" />
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4">
               <div>
                 <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Destination Branch</label>
                 <select
                   value={destinationBranchId}
-                  onChange={(e) => setDestinationBranchId(e.target.value)}
+                  onChange={(e) => {
+                    setDestinationBranchId(e.target.value);
+                    setCartError("");
+                  }}
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#1A318C]"
                 >
                   <option value="">Select branch</option>
-                  {branches
-                    .filter((branch) => branch.id !== currentBranch.id)
-                    .map((branch) => (
-                      <option key={branch.id} value={branch.id}>
-                        {branchDisplayName(branch)}
-                      </option>
-                    ))}
+                  {destinationBranches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branchDisplayName(branch)}
+                    </option>
+                  ))}
                 </select>
               </div>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Transfer Note</label>
-              <textarea
-                rows={4}
-                value={transferNote}
-                onChange={(e) => setTransferNote(e.target.value)}
-                placeholder="Optional note to accompany the share request..."
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#1A318C]"
-              />
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Transfer Note</label>
+                <textarea
+                  rows={4}
+                  value={transferNote}
+                  onChange={(e) => setTransferNote(e.target.value)}
+                  placeholder="Optional note to accompany the share request..."
+                  className="h-full w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#1A318C]"
+                />
+              </div>
             </div>
 
             <button
               type="button"
-              disabled={sending || !selectedItem || !destinationBranchId || Number(transferQty) <= 0}
-              onClick={onSendTransfer}
+              disabled={sending || selectedItemsList.length === 0 || !destinationBranchId}
+              onClick={handleBulkSend}
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1A318C] px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#152a79] disabled:cursor-not-allowed disabled:bg-slate-300"
             >
               {sending ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-              Send Share Request
+              Send Share Requests
             </button>
 
             <div className="rounded-2xl bg-[#1A318C]/5 p-4">
@@ -1214,10 +1367,6 @@ function BellIcon({ type }) {
 function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp = CURRENT_BRANCH_ID }) {
   const { currentBranch: activeBranch, loading: branchLoading } = useBranchContext();
   const [activeTab, setActiveTab] = useState("outgoing");
-  const [selectedOutgoingItemId, setSelectedOutgoingItemId] = useState("");
-  const [transferQty, setTransferQty] = useState(1);
-  const [destinationBranchId, setDestinationBranchId] = useState("");
-  const [transferNote, setTransferNote] = useState("");
   const [outgoingSearch, setOutgoingSearch] = useState("");
   const [outgoingCategory, setOutgoingCategory] = useState("All");
   const [incomingSearch, setIncomingSearch] = useState("");
@@ -1329,26 +1478,6 @@ function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp 
   );
 
   useEffect(() => {
-    if (!destinationBranches.length) {
-      setDestinationBranchId("");
-      return;
-    }
-    setDestinationBranchId((prev) => {
-      if (prev && destinationBranches.some((branch) => branchIdValue(branch) === String(prev))) {
-        return prev;
-      }
-      return branchIdValue(destinationBranches[0]);
-    });
-  }, [destinationBranches]);
-
-  useEffect(() => {
-    if (!inventoryItems.length) return;
-    setSelectedOutgoingItemId((prev) =>
-      prev && inventoryItems.some((item) => item.id === prev) ? prev : inventoryItems[0].id
-    );
-  }, [inventoryItems]);
-
-  useEffect(() => {
     if (!pendingIncoming.length) return;
     setAcceptQuantities((prev) => {
       const next = { ...prev };
@@ -1381,70 +1510,41 @@ function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp 
     });
   }, [inventoryItems, outgoingCategory, outgoingSearch]);
 
-  const handleSendTransfer = async () => {
-    const selectedItem = inventoryItems.find((item) => item.id === selectedOutgoingItemId);
-    const qty = Number(transferQty) || 0;
-
-    if (!selectedItem) {
-      setToast({ type: "error", title: "Select an item", message: "Please choose an inventory item to share." });
-      return;
-    }
-
-    if (!destinationBranchId) {
-      setToast({ type: "error", title: "Destination required", message: "Please select a destination branch." });
-      return;
-    }
-
-    if (String(destinationBranchId) === String(resolvedCurrentBranchId)) {
-      setToast({ type: "error", title: "Invalid branch", message: "You cannot share inventory with the same branch." });
-      return;
-    }
-
-    if (qty <= 0 || qty > Number(selectedItem.quantity) || Number.isNaN(qty)) {
-      setToast({
-        type: "error",
-        title: "Invalid quantity",
-        message: `Enter a quantity between 1 and ${selectedItem.quantity}.`,
-      });
-      return;
-    }
-
+  const handleSendTransfer = async (selectedItemsList, destinationBranchId, transferNote) => {
     setSending(true);
     try {
-      const createdResponse = await inventoryTransferApi.create({
-        item_id: selectedItem.item_id || selectedItem.id,
-        itemId: selectedItem.item_id || selectedItem.id,
-        sku: selectedItem.sku,
-        batch_code: selectedItem.batch_code,
-        source_branch_id: resolvedCurrentBranchId,
-        target_branch_id: destinationBranchId,
-        quantity: qty,
-        item_name: selectedItem.item_name,
-        category: selectedItem.category,
-        uom: selectedItem.uom,
-        maximum_capacity: selectedItem.maximum_capacity,
-        retail_price: selectedItem.retail_price,
-        stock_price: selectedItem.stock_price,
-        threshold_limit: selectedItem.threshold_limit,
-        note: transferNote,
-      });
+      const payload = {
+        status: "Pending",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        requestDetails: {
+          destinationBranch: {
+            id: destinationBranchId,
+            name: branchName(branches, destinationBranchId),
+          },
+          note: transferNote,
+        },
+        items: selectedItemsList,
+      };
 
-      const created = createdResponse?.data || createdResponse;
+      console.log("1. Payload before send:", payload);
+      await inventoryTransferApi.create(payload);
       await Promise.all([refetchTransfers(), refetchStockItems()]);
-      setAcceptQuantities((prev) => ({ ...prev, [created.id]: created.requestedQty ?? qty }));
-      setTransferQty(1);
-      setTransferNote("");
       setToast({
         type: "success",
-        title: "Request sent",
-        message: `${selectedItem.item_name} transferred to ${branchName(branches, destinationBranchId)} as a pending request.`,
+        title: "Requests sent",
+        message: `${
+          payload.items.length
+        } item(s) transferred to ${branchName(branches, destinationBranchId)} as a pending batch request.`,
       });
+      return true;
     } catch (error) {
       setToast({
         type: "error",
         title: "Send failed",
         message: error?.message || "Unable to send transfer request.",
       });
+      throw error;
     } finally {
       setSending(false);
     }
@@ -1533,6 +1633,21 @@ function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp 
     return { outgoingPending, incomingPendingCount, acceptedCount, rejectedCount };
   }, [incomingHistory.length, outgoingHistory, pendingIncoming.length, transferRows]);
 
+  const shareTabs = [
+    {
+      id: "outgoing",
+      title: "Outgoing Share",
+      subtitle: "Send inventory to another branch",
+      icon: ArrowRight,
+    },
+    {
+      id: "incoming",
+      title: "Incoming Share",
+      subtitle: "Review transfer requests",
+      icon: ArrowLeftRight,
+    },
+  ];
+
   return (
     <div className="h-full min-h-0 overflow-y-auto bg-slate-50 pb-24">
       <Toast toast={toast} />
@@ -1560,73 +1675,86 @@ function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp 
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
-          <div className="flex flex-wrap gap-2 border-b border-slate-100 px-4 py-3">
-            <button
-              type="button"
-              onClick={() => setActiveTab("outgoing")}
-              className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-                activeTab === "outgoing"
-                  ? "bg-[#1A318C] text-white shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              <ArrowRight className="h-4 w-4" />
-              Outgoing Share
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("incoming")}
-              className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-                activeTab === "incoming"
-                  ? "bg-[#1A318C] text-white shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              <ArrowLeftRight className="h-4 w-4" />
-              Incoming Share
-            </button>
-          </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-6 lg:flex-row">
+          <aside className="w-full lg:w-72 xl:w-80 shrink-0">
+            <div className="rounded-3xl border border-slate-100 bg-white p-3 shadow-sm">
+              <div className="mb-3 px-2 pt-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Share Views</p>
+                <p className="mt-1 text-sm text-slate-500">Choose the transfer workspace</p>
+              </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-4 lg:p-6">
-            {activeTab === "outgoing" ? (
-              <OutgoingShareTab
-                currentBranch={currentBranch || { id: resolvedCurrentBranchId, branch_name: currentBranchLabel }}
-                branches={destinationBranches}
-                inventoryItems={inventoryItems}
-                outgoingHistory={outgoingHistory}
-                outgoingSearch={outgoingSearch}
-                setOutgoingSearch={setOutgoingSearch}
-                outgoingCategory={outgoingCategory}
-                setOutgoingCategory={setOutgoingCategory}
-                selectedOutgoingItemId={selectedOutgoingItemId}
-                setSelectedOutgoingItemId={setSelectedOutgoingItemId}
-                transferQty={transferQty}
-                setTransferQty={setTransferQty}
-                destinationBranchId={destinationBranchId}
-                setDestinationBranchId={setDestinationBranchId}
-                transferNote={transferNote}
-                setTransferNote={setTransferNote}
-                onSendTransfer={handleSendTransfer}
-                sending={sending}
-                filteredOutgoingItems={filteredOutgoingItems}
-                loading={loading}
-              />
-            ) : (
-              <IncomingShareTab
-                currentBranchId={currentBranch?.id || currentBranch?.branch_id || ""}
-                branches={branches}
-                pendingRequests={pendingIncoming}
-                incomingHistory={incomingHistory}
-                incomingSearch={incomingSearch}
-                setIncomingSearch={setIncomingSearch}
-                acceptQuantities={acceptQuantities}
-                setAcceptQuantities={setAcceptQuantities}
-                onAcceptTransfer={handleAcceptTransfer}
-                onRejectTransfer={handleRejectTransfer}
-                loading={loading}
-              />
-            )}
+              <div className="space-y-2">
+                {shareTabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActiveTab = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full rounded-xl border p-4 text-left transition ${
+                        isActiveTab
+                          ? "border-[#1A318C] bg-[#1A318C] text-white shadow-md shadow-blue-900/20"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${
+                            isActiveTab ? "bg-white/15 text-white" : "bg-[#1A318C]/10 text-[#1A318C]"
+                          }`}
+                        >
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-bold ${isActiveTab ? "text-white" : "text-slate-800"}`}>
+                            {tab.title}
+                          </p>
+                          <p className={`mt-1 text-xs ${isActiveTab ? "text-white/80" : "text-slate-500"}`}>
+                            {tab.subtitle}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </aside>
+
+          <div className="min-h-0 flex-1 overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 lg:p-6">
+              {activeTab === "outgoing" ? (
+                <OutgoingShareTab
+                  currentBranch={currentBranch || { id: resolvedCurrentBranchId, branch_name: currentBranchLabel }}
+                  branches={destinationBranches}
+                  inventoryItems={inventoryItems}
+                  outgoingHistory={outgoingHistory}
+                  outgoingSearch={outgoingSearch}
+                  setOutgoingSearch={setOutgoingSearch}
+                  outgoingCategory={outgoingCategory}
+                  setOutgoingCategory={setOutgoingCategory}
+                  onSendTransfer={handleSendTransfer}
+                  sending={sending}
+                  filteredOutgoingItems={filteredOutgoingItems}
+                  loading={loading}
+                />
+              ) : (
+                <IncomingShareTab
+                  currentBranchId={currentBranch?.id || currentBranch?.branch_id || ""}
+                  branches={branches}
+                  pendingRequests={pendingIncoming}
+                  incomingHistory={incomingHistory}
+                  incomingSearch={incomingSearch}
+                  setIncomingSearch={setIncomingSearch}
+                  acceptQuantities={acceptQuantities}
+                  setAcceptQuantities={setAcceptQuantities}
+                  onAcceptTransfer={handleAcceptTransfer}
+                  onRejectTransfer={handleRejectTransfer}
+                  loading={loading}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>
