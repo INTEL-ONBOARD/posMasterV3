@@ -231,7 +231,7 @@ function CheckoutSummaryModal({
   stockTotal,
   onConfirmSale
 }) {
-  const [finalDiscount, setFinalDiscount] = useState(0);
+  const [finalDiscount, setFinalDiscount] = useState('0');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [cashReceived, setCashReceived] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -252,7 +252,7 @@ function CheckoutSummaryModal({
 
   useEffect(() => {
     if (isOpen) {
-      setFinalDiscount(0);
+      setFinalDiscount('0');
       setCashReceived('');
       setIsProcessing(false);
       setShowSuccess(false);
@@ -274,7 +274,8 @@ function CheckoutSummaryModal({
 
   if (!isOpen) return null;
 
-  const totalAmount = stockTotal - parseFloat(finalDiscount || 0);
+  const discountAmount = Math.max(0, Math.min(stockTotal, parseFloat(finalDiscount) || 0));
+  const totalAmount = Math.max(0, stockTotal - discountAmount);
   const cashReceivedNum = parseFloat(cashReceived) || 0;
   const balanceAmount = cashReceivedNum - totalAmount;
   const selectedMethodTheme = getPaymentMethodTheme(selectedPaymentMethod);
@@ -294,7 +295,7 @@ function CheckoutSummaryModal({
     setIsProcessing(true);
 
     const checkoutData = {
-      finalDiscount: parseFloat(finalDiscount) || 0,
+      finalDiscount: discountAmount,
       paymentMethod: selectedPaymentMethod.type,
       paymentMethodId: selectedPaymentMethod.id,
       paymentMethodName: selectedPaymentMethod.name,
@@ -329,6 +330,26 @@ function CheckoutSummaryModal({
 
   // Quick cash buttons
   const quickCashAmounts = [100, 500, 1000, 5000];
+  const discountPercentages = [10, 25, 50, 75, 100];
+
+  const handleDiscountChange = (value) => {
+    const normalized = String(value).replace(/,/g, "");
+
+    if (normalized === "") {
+      setFinalDiscount("");
+      return;
+    }
+
+    if (!/^\d*\.?\d*$/.test(normalized)) return;
+
+    const nextValue = normalized.startsWith(".") ? `0${normalized}` : normalized;
+    setFinalDiscount(nextValue);
+  };
+
+  const applyDiscountPercentage = (percentage) => {
+    const amount = (stockTotal * percentage) / 100;
+    setFinalDiscount(amount.toFixed(2));
+  };
 
   return (
     <div
@@ -464,16 +485,28 @@ function CheckoutSummaryModal({
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400/70 text-sm font-medium">Rs.</span>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         value={finalDiscount}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          setFinalDiscount(Math.max(0, Math.min(stockTotal, val)));
-                        }}
+                        onChange={(e) => handleDiscountChange(e.target.value)}
+                        onBlur={() => setFinalDiscount(String(discountAmount.toFixed(2)))}
                         disabled={isProcessing}
                         className="w-full pl-10 pr-3 py-2 bg-white/10 border border-amber-500/30 rounded-lg font-bold text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500/30 tabular-nums text-lg disabled:opacity-50"
                         placeholder="0"
                       />
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {discountPercentages.map((percentage) => (
+                        <button
+                          key={percentage}
+                          type="button"
+                          onClick={() => applyDiscountPercentage(percentage)}
+                          disabled={isProcessing}
+                          className="bg-slate-800 border border-slate-600 text-slate-300 hover:bg-emerald-500 hover:border-emerald-500 hover:text-white font-medium text-xs px-3 py-1 transition-colors rounded-md disabled:opacity-50"
+                        >
+                          {percentage}%
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>

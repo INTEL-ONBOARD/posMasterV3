@@ -8,7 +8,7 @@ import { getEffectiveSellingPrice, supportsDecimalSaleQuantity } from "../../../
 
 function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClose }) {
   const [quantity, setQuantity] = useState(1);
-  const [discount, setDiscount] = useState(0);
+  const [discount, setDiscount] = useState("0");
   const [stockEntries, setStockEntries] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [isLoadingBatches, setIsLoadingBatches] = useState(false);
@@ -29,7 +29,7 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
   useEffect(() => {
     if (item) {
       setQuantity(item.customer_quantity || 1);
-      setDiscount(item.customer_discount || 0);
+      setDiscount(String(item.customer_discount || 0));
     }
   }, [item]);
 
@@ -81,6 +81,21 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
     }
   }, [stockEntries, item]);
 
+  const unitPrice = item ? getEffectiveSellingPrice({
+    ...item,
+    ...(selectedBatch || {}),
+    uom: item.uom,
+    uom_symbol: item.uom?.symbol || item.uom_symbol
+  }) : 0;
+
+  useEffect(() => {
+    if (discount === "") return;
+    const numericDiscount = parseFloat(discount);
+    if (!Number.isNaN(numericDiscount) && numericDiscount > unitPrice) {
+      setDiscount(String(unitPrice.toFixed(2)));
+    }
+  }, [unitPrice, discount]);
+
   const fetchStockEntries = async (sku) => {
     if (!sku) return;
     setIsLoadingBatches(true);
@@ -109,15 +124,10 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
 
   if (!isOpen || !item) return null;
 
-  const unitPrice = getEffectiveSellingPrice({
-    ...item,
-    ...(selectedBatch || {}),
-    uom: item.uom,
-    uom_symbol: item.uom?.symbol || item.uom_symbol
-  });
   const maxQuantity = selectedBatch?.qty || item.quantity || 999;
   maxQuantityRef.current = maxQuantity;
-  const lineTotal = (unitPrice - discount) * quantity;
+  const discountAmount = Math.max(0, Math.min(unitPrice, parseFloat(discount) || 0));
+  const lineTotal = Math.max(0, (unitPrice - discountAmount) * quantity);
   const hasMultipleBatches = stockEntries.length > 1;
 
   const minQuantity = isDecimalQuantityUom ? 0.01 : 1;
@@ -147,6 +157,25 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
     }
   };
 
+  const handleDiscountChange = (value) => {
+    const normalized = String(value).replace(/,/g, "");
+
+    if (normalized === "") {
+      setDiscount("");
+      return;
+    }
+
+    if (!/^\d*\.?\d*$/.test(normalized)) return;
+
+    const nextValue = normalized.startsWith(".") ? `0${normalized}` : normalized;
+    setDiscount(nextValue);
+  };
+
+  const applyDiscountPercentage = (percentage) => {
+    const amount = unitPrice * (percentage / 100);
+    setDiscount(amount.toFixed(2));
+  };
+
   const handleUpdate = () => {
     onUpdate({
       ...item,
@@ -160,7 +189,7 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
       quantity: selectedBatch?.qty || item.quantity,
       expiry_date: selectedBatch?.exp_date || item.expiry_date,
       customer_quantity: quantity,
-      customer_discount: discount,
+      customer_discount: discountAmount,
       uom_symbol: item.uom?.symbol || item.uom_symbol || ""
     });
     closeModal();
@@ -380,12 +409,11 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
                 <div className="flex-1 relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">Rs.</span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={discount}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value) || 0;
-                      setDiscount(Math.max(0, Math.min(unitPrice, val)));
-                    }}
+                    onChange={(e) => handleDiscountChange(e.target.value)}
+                    onBlur={() => setDiscount(String(discountAmount.toFixed(2)))}
                     className="w-full pl-10 pr-4 py-3 bg-white border-2 border-orange-200 rounded-xl text-lg font-semibold text-orange-600 focus:outline-none focus:border-orange-400"
                     placeholder="0.00"
                   />
@@ -393,9 +421,22 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
                 <div className="text-right">
                   <p className="text-[10px] text-gray-400 uppercase">Per Unit</p>
                   <p className="text-sm font-medium text-gray-600">
-                    {discount > 0 && unitPrice > 0 ? `-${((discount / unitPrice) * 100).toFixed(0)}%` : "0%"}
+                    {discountAmount > 0 && unitPrice > 0 ? `-${((discountAmount / unitPrice) * 100).toFixed(0)}%` : "0%"}
                   </p>
                 </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mt-3">
+                {[10, 25, 50, 75, 100].map((percentage) => (
+                  <button
+                    key={percentage}
+                    type="button"
+                    onClick={() => applyDiscountPercentage(percentage)}
+                    className="px-3 py-1 text-xs font-medium rounded-md bg-white border border-orange-200 text-orange-600 hover:bg-orange-500 hover:text-white hover:border-orange-500 transition-colors"
+                  >
+                    {percentage}%
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -404,7 +445,7 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
               <div>
                 <p className="text-xs text-blue-300 uppercase tracking-wide font-medium">Line Total</p>
                 <p className="text-xs text-blue-200 mt-0.5">
-                  {quantity} {item.uom?.symbol || ''} x Rs.{(unitPrice - discount).toFixed(2)}
+                  {quantity} {item.uom?.symbol || ''} x Rs.{(unitPrice - discountAmount).toFixed(2)}
                 </p>
               </div>
               <p className="text-2xl font-bold text-white">Rs.{lineTotal.toFixed(2)}</p>
