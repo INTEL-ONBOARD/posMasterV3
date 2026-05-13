@@ -14,6 +14,7 @@ const COLLECTIONS = new Set([
     'restock_transactions',
     'restock_items',
     'return_items',
+    'inventory_transfers',
     'members',
     'sales',
     'sales_items',

@@ -10,7 +10,7 @@ import priceChangeImg from "../../assets/price_change.png";
 import disposeItemsImg from "../../assets/dispose_items.png";
 import { localAuth } from "../../api/services/localAuth";
 import { settingsApi } from "../../api/localApi";
-import { ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight, ClipboardCheck } from "lucide-react";
 
 function InventorySidebar({
   activeSection,
@@ -20,6 +20,7 @@ function InventorySidebar({
   onSupplierRegClick,
   onCheckHistoryClick,
   onShareClick,
+  onApprovalsClick,
   onConfigClick,
   onCReportClick,
   onPriceChangeClick,
@@ -116,6 +117,13 @@ function InventorySidebar({
       icon: configImg,
       onClick: onConfigClick,
       permissionKey: "inventory_configurations",
+    },
+    {
+      id: "inventory-approvals",
+      label: "Approvals",
+      reactIcon: ClipboardCheck,
+      onClick: onApprovalsClick,
+      permissionKey: "inventory_view",
     },
     {
       id: "inventory-report",

@@ -2771,6 +2771,19 @@ const onlineCollectionApi = (collection, options = {}) => ({
 });
 
 const toInventoryTransferPayload = (data = {}) => {
+    if (data.requestDetails && Array.isArray(data.items)) {
+        return {
+            status: String(data.status ?? data.requestDetails.status ?? 'pending').toLowerCase(),
+            createdAt: data.createdAt ?? data.created_at ?? null,
+            updatedAt: data.updatedAt ?? data.updated_at ?? data.createdAt ?? data.created_at ?? null,
+            requestDetails: {
+                destinationBranch: data.requestDetails.destinationBranch ?? data.requestDetails.destination_branch ?? null,
+                note: data.requestDetails.note ?? ''
+            },
+            items: data.items
+        };
+    }
+
     const requestedQty = Number(data.quantity ?? data.requestedQty ?? data.requested_qty ?? 0) || 0;
     const acceptedQty = Number(data.acceptedQty ?? data.accepted_qty ?? data.accepted_quantity ?? 0) || 0;
 
@@ -3094,7 +3107,9 @@ const installOnlineOnlyOverrides = () => {
         toOnline: toInventoryTransferPayload
     }), {
         getAll: async (query = {}) => {
-            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('inventory_transfers', query)));
+            const rawData = await onlineCall((api) => api.list('inventory_transfers', query));
+            console.log('3. API Raw DB Data:', rawData);
+            const response = normalizeCollectionResponse(rawData);
             if (Array.isArray(response?.data)) {
                 response.data = response.data.map(normalizeInventoryTransferRecord);
             }
@@ -3108,6 +3123,7 @@ const installOnlineOnlyOverrides = () => {
             return response;
         },
         create: async (data) => {
+            console.log('2. API Received for create:', data);
             const response = normalizeCollectionResponse(
                 await onlineCall((api) => api.create('inventory_transfers', toInventoryTransferPayload(data)))
             );
@@ -3142,6 +3158,14 @@ const installOnlineOnlyOverrides = () => {
             acceptedQty: 0,
             accepted_qty: 0,
             accepted_quantity: 0
+        }),
+        approveBatch: async (id, data = {}) => inventoryTransferApi.updateStatus(id, {
+            ...data,
+            status: 'accepted'
+        }),
+        rejectBatch: async (id, data = {}) => inventoryTransferApi.updateStatus(id, {
+            ...data,
+            status: 'rejected'
         })
     });
     Object.assign(memberApi, onlineCollectionApi('members'), {
