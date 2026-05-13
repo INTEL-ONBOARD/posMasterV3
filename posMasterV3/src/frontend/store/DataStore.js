@@ -32,6 +32,7 @@ import {
     itemApi,
     stockApi,
     restockApi,
+    inventoryTransferApi,
     memberApi,
     salesApi,
     paymentMethodApi,
@@ -52,6 +53,7 @@ export const TABLES = {
     STOCK: 'stock',
     STOCK_ITEMS: 'stock_items', // Combined items + stock view
     RESTOCK_TRANSACTIONS: 'restock_transactions',
+    INVENTORY_TRANSFERS: 'inventory_transfers',
     MEMBERS: 'members',
     SALES_TRANSACTIONS: 'sales_transactions',
     PAYMENT_METHODS: 'payment_methods',
@@ -72,6 +74,7 @@ const DEFAULT_FETCHERS = {
     [TABLES.STOCK]: () => stockApi.getAllWithItems().then(r => r.data || []),
     [TABLES.STOCK_ITEMS]: () => restockApi.getStockItems().then(r => r.data || []),
     [TABLES.RESTOCK_TRANSACTIONS]: () => restockApi.getAll().then(r => r.data || []),
+    [TABLES.INVENTORY_TRANSFERS]: () => inventoryTransferApi.getAll().then(r => r.data || []),
     [TABLES.MEMBERS]: () => memberApi.getAll().then(r => r.data || []),
     [TABLES.SALES_TRANSACTIONS]: () => salesApi.getAll().then(r => r.data || []),
     [TABLES.PAYMENT_METHODS]: () => paymentMethodApi.getAll().then(r => r.data || []),
@@ -94,6 +97,7 @@ const CACHE_TTL = {
     [TABLES.STOCK]: 2000,
     [TABLES.STOCK_ITEMS]: 2000,
     [TABLES.RESTOCK_TRANSACTIONS]: 2000,
+    [TABLES.INVENTORY_TRANSFERS]: 2000,
     [TABLES.MEMBERS]: 2000,
     [TABLES.SALES_TRANSACTIONS]: 2000,
     [TABLES.PAYMENT_METHODS]: 2000,
@@ -280,6 +284,8 @@ class DataStore {
             // Restocks
             'restocks': TABLES.RESTOCK_TRANSACTIONS,
             'restock_transactions': TABLES.RESTOCK_TRANSACTIONS,
+            // Inventory transfers
+            'inventory_transfers': TABLES.INVENTORY_TRANSFERS,
             // Units of measurement
             'uom': TABLES.UOM,
             'units_of_measurement': TABLES.UOM,
@@ -318,7 +324,8 @@ class DataStore {
             [TABLES.ITEMS]: [TABLES.STOCK_ITEMS, TABLES.STOCK],
             [TABLES.STOCK]: [TABLES.STOCK_ITEMS],
             [TABLES.SALES_TRANSACTIONS]: [TABLES.STOCK, TABLES.STOCK_ITEMS, TABLES.MEMBERS],
-            [TABLES.RESTOCK_TRANSACTIONS]: [TABLES.STOCK, TABLES.STOCK_ITEMS]
+            [TABLES.RESTOCK_TRANSACTIONS]: [TABLES.STOCK, TABLES.STOCK_ITEMS],
+            [TABLES.INVENTORY_TRANSFERS]: [TABLES.STOCK, TABLES.STOCK_ITEMS]
         };
 
         const relatedTables = relationships[table] || [];

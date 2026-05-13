@@ -189,6 +189,7 @@ export default function SalesView({ isActive }) {
   // Checkout summary modal state
   const [checkoutModal, setCheckoutModal] = useState(false);
   const [saleCompleted, setSaleCompleted] = useState(false);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
 
   const closeCheckoutModal = () => {
     setCheckoutModal(false);
@@ -654,6 +655,20 @@ export default function SalesView({ isActive }) {
     focusSearch();
   };
 
+  const openClearConfirm = () => {
+    if (selectedItems.length === 0) return;
+    setIsClearConfirmOpen(true);
+  };
+
+  const closeClearConfirm = () => {
+    setIsClearConfirmOpen(false);
+  };
+
+  const confirmClearCart = () => {
+    clearForm();
+    closeClearConfirm();
+  };
+
   // Handle checkout from summary modal
   // Returns a promise that resolves when sale is complete (for success animation)
   const handleConfirmSale = async (checkoutData) => {
@@ -1081,7 +1096,7 @@ const generateBillPdf = async (checkoutData) => {
                 <RefreshCw className="w-5 h-5" />
               </button>
               <button
-                onClick={clearForm}
+                onClick={openClearConfirm}
                 className="px-5 py-2.5 bg-white border-2 border-slate-200 text-slate-600 rounded-xl font-semibold hover:bg-slate-50 hover:border-slate-300 transition-all text-sm"
               >
                 Clear All
@@ -1257,7 +1272,7 @@ const generateBillPdf = async (checkoutData) => {
             {/* Clear & Hold Row */}
             <div className="flex gap-2">
               <button
-                onClick={clearForm}
+                onClick={openClearConfirm}
                 disabled={selectedItems.length === 0}
                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-red-200 text-red-500 rounded-xl font-semibold hover:bg-red-50 hover:border-red-300 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -1327,6 +1342,46 @@ const generateBillPdf = async (checkoutData) => {
         stockTotal={stockTotal}
         onConfirmSale={handleConfirmSale}
       />
+
+      {/* Clear Cart Confirmation Modal */}
+      {isClearConfirmOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
+            onClick={closeClearConfirm}
+          />
+          <div className="relative z-[61] w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-xl font-bold text-slate-900">Clear Cart?</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Are you sure you want to remove all items from the current transaction? This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button
+                  onClick={closeClearConfirm}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-semibold hover:bg-slate-50 hover:border-slate-300 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmClearCart}
+                  className="px-4 py-2.5 rounded-xl border border-red-200 bg-red-500 text-white font-semibold hover:bg-red-600 hover:border-red-600 transition-all shadow-sm"
+                >
+                  Yes, Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <StatusModal
         isOpen={statusModal.open}

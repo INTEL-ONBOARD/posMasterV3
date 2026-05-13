@@ -76,7 +76,7 @@ function Inventory() {
         onDisposedItemsClick={() => handleSectionChange("disposed-items")}
       />
 
-      <main className="flex-1 bg-[#F3F3F3] h-[calc(100vh-2rem)] relative">
+      <main className="flex-1 bg-[#F3F3F3] h-[calc(100vh-2rem)] relative overflow-y-auto">
         {/* View Inventory */}
         <div className={isVisible("view-inventory")}>
           <InventoryView isActive={activeSection === "view-inventory"} />

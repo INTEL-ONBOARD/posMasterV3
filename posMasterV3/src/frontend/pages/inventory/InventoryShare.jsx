@@ -11,8 +11,11 @@ import {
   Send,
   XCircle,
 } from "lucide-react";
+import { useBranchContext } from "../../context/BranchContext.jsx";
+import { inventoryTransferApi } from "../../api/localApi";
+import { useReactiveData, TABLES } from "../../store";
 
-const CURRENT_BRANCH_ID = "branch-1";
+const CURRENT_BRANCH_ID = null;
 
 const MOCK_BRANCHES = [
   { id: "branch-1", branch_name: "Colombo Hub", code: "CBL", city: "Colombo" },
@@ -314,10 +317,81 @@ const statusMeta = (status) => {
   }
 };
 
-const branchName = (branches, branchId) =>
-  branches.find((branch) => branch.id === branchId)?.branch_name ||
-  branches.find((branch) => branch.id === branchId)?.code ||
-  "Unknown branch";
+const branchIdValue = (branch) =>
+  String(branch?.id ?? branch?._id ?? branch?.branch_id ?? branch?.branchId ?? "").trim();
+
+const branchDisplayName = (branch) =>
+  branch?.branch_name || branch?.name || branch?.branchName || branch?.code || "Unknown branch";
+
+const branchName = (branches, branchId) => {
+  const targetId = String(branchId ?? "").trim();
+  const branch = branches.find((row) => branchIdValue(row) === targetId);
+  return branchDisplayName(branch);
+};
+
+const getCurrentBranchId = (branch, fallback = CURRENT_BRANCH_ID) =>
+  String(branch?.id ?? branch?.branch_id ?? branch?.branchId ?? fallback ?? "").trim();
+
+const getStockBranchId = (stock) =>
+  String(
+    stock?.branch_id ??
+      stock?.branchId ??
+      stock?.branchID ??
+      stock?.branch_id_value ??
+      stock?.branch?.id ??
+      stock?.branch?.branch_id ??
+      stock?.branch?.branchId ??
+      stock?.branch?.branchID ??
+      stock?.branch?.value ??
+      stock?.branch?.branch ??
+      stock?.branch?.code ??
+      stock?.branch?.name ??
+      stock?.branch_name ??
+      stock?.branchName ??
+      stock?.branch_code ??
+      stock?.branchCode ??
+      stock?.branch_id_ref ??
+      stock?.branchIdRef ??
+      stock?.item?.branch_id ??
+      stock?.item?.branchId ??
+      stock?.item?.branchID ??
+      stock?.item?.branch?.id ??
+      stock?.item?.branch?.branch_id ??
+      stock?.item?.branch?.branchId ??
+      stock?.item?.branch?.value ??
+      stock?.item?.branch_name ??
+      stock?.item?.branchName ??
+      stock?.item?.branch_code ??
+      stock?.item?.branchCode ??
+      stock?.item?.branch ??
+      ""
+  ).trim();
+
+const getTransferSourceBranchId = (transfer) =>
+  String(
+    transfer?.source_branch_id ??
+      transfer?.sourceBranchId ??
+      transfer?.fromBranchId ??
+      transfer?.from_branch_id ??
+      ""
+  ).trim();
+
+const getTransferTargetBranchId = (transfer) =>
+  String(
+    transfer?.target_branch_id ??
+      transfer?.targetBranchId ??
+      transfer?.toBranchId ??
+      transfer?.to_branch_id ??
+      transfer?.destination_branch_id ??
+      transfer?.destinationBranchId ??
+      ""
+  ).trim();
+
+const getTransferRequestedQty = (transfer) =>
+  Number(transfer?.quantity ?? transfer?.requestedQty ?? transfer?.requested_qty ?? 0) || 0;
+
+const getTransferAcceptedQty = (transfer) =>
+  Number(transfer?.acceptedQty ?? transfer?.accepted_qty ?? transfer?.accepted_quantity ?? 0) || 0;
 
 function aggregateStockRows(stockRows = []) {
   const map = new Map();
@@ -697,10 +771,12 @@ export function TransferHistoryTable({ title, rows, counterpartyLabel, branches,
               </tr>
             ) : (
               rows.map((row, index) => {
+                const requestedQty = getTransferRequestedQty(row);
+                const acceptedQty = getTransferAcceptedQty(row);
                 const quantityLabel =
-                  row.status === "accepted" && Number(row.acceptedQty) && row.acceptedQty !== row.requestedQty
-                    ? `${row.acceptedQty}/${row.requestedQty}`
-                    : `${row.requestedQty}`;
+                  String(row.status || "").toLowerCase() === "accepted" && acceptedQty && acceptedQty !== requestedQty
+                    ? `${acceptedQty}/${requestedQty}`
+                    : `${requestedQty}`;
 
                 return (
                   <tr key={row.id} className="bg-white transition hover:bg-slate-50/70">
@@ -712,10 +788,17 @@ export function TransferHistoryTable({ title, rows, counterpartyLabel, branches,
                       </div>
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">
-                      {branchName(branches, row.fromBranchId === currentBranchId ? row.toBranchId : row.fromBranchId)}
+                      {branchName(
+                        branches,
+                        getTransferSourceBranchId(row) === String(currentBranchId ?? "")
+                          ? getTransferTargetBranchId(row)
+                          : getTransferSourceBranchId(row)
+                      )}
                     </td>
                     <td className="px-5 py-4 text-sm font-semibold text-slate-800 tabular-nums">{quantityLabel}</td>
-                    <td className="px-5 py-4 text-sm text-slate-600">{formatDateOnly(row.updatedAt || row.createdAt)}</td>
+                    <td className="px-5 py-4 text-sm text-slate-600">
+                      {formatDateOnly(row.updatedAt || row.updated_at || row.createdAt || row.created_at)}
+                    </td>
                     <td className="px-5 py-4">
                       <StatusBadge status={row.status} />
                     </td>
@@ -815,12 +898,20 @@ export function OutgoingShareTab({
     [inventoryItems]
   );
 
+  useEffect(() => {
+    console.groupCollapsed("[OutgoingShareTab] Render debug");
+    console.log("currentBranch", currentBranch);
+    console.log("inventoryItems", inventoryItems);
+    console.log("filteredOutgoingItems", filteredOutgoingItems);
+    console.groupEnd();
+  }, [currentBranch, filteredOutgoingItems, inventoryItems]);
+
   return (
     <div className="space-y-5">
       <div className="grid gap-5 xl:grid-cols-[1.35fr_0.9fr]">
         <SectionShell
           title="Current Branch Inventory"
-          subtitle={`Select items from ${currentBranch.branch_name} and send them to another branch`}
+          subtitle={`Select items from ${branchDisplayName(currentBranch)} and send them to another branch`}
           icon={Package2}
           rightSlot={
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -848,28 +939,32 @@ export function OutgoingShareTab({
             </div>
           }
         >
-          {loading ? (
-            <div className="flex items-center justify-center py-24">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-[#1A318C]" />
-            </div>
-          ) : filteredOutgoingItems.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-16 text-center">
-              <Package2 className="mx-auto h-10 w-10 text-slate-300" />
-              <p className="mt-3 text-base font-semibold text-slate-700">No items found</p>
-              <p className="mt-1 text-sm text-slate-500">Try changing the search or category filter.</p>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {filteredOutgoingItems.map((item) => (
-                <ShareItemCard
-                  key={item.id}
-                  item={item}
-                  selected={item.id === selectedOutgoingItemId}
-                  onSelect={() => setSelectedOutgoingItemId(item.id)}
-                />
-              ))}
-            </div>
-          )}
+          <div className="flex max-h-[calc(100vh-380px)] min-h-0 flex-col pr-1">
+            {loading ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center py-24">
+                <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-[#1A318C]" />
+              </div>
+            ) : filteredOutgoingItems.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-16 text-center">
+                <Package2 className="mx-auto h-10 w-10 text-slate-300" />
+                <p className="mt-3 text-base font-semibold text-slate-700">No items found</p>
+                <p className="mt-1 text-sm text-slate-500">Try changing the search or category filter.</p>
+              </div>
+            ) : (
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {filteredOutgoingItems.map((item) => (
+                    <ShareItemCard
+                      key={item.id}
+                      item={item}
+                      selected={item.id === selectedOutgoingItemId}
+                      onSelect={() => setSelectedOutgoingItemId(item.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </SectionShell>
 
         <SectionShell
@@ -879,7 +974,7 @@ export function OutgoingShareTab({
           rightSlot={
             <Badge tone="blue">
               <Building2 className="mr-1.5 h-3.5 w-3.5" />
-              {currentBranch.branch_name}
+              {branchDisplayName(currentBranch)}
             </Badge>
           }
         >
@@ -940,7 +1035,7 @@ export function OutgoingShareTab({
                     .filter((branch) => branch.id !== currentBranch.id)
                     .map((branch) => (
                       <option key={branch.id} value={branch.id}>
-                        {branch.branch_name}
+                        {branchDisplayName(branch)}
                       </option>
                     ))}
                 </select>
@@ -976,7 +1071,7 @@ export function OutgoingShareTab({
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl bg-white p-3">
                   <p className="text-xs font-medium text-slate-400">Current Branch</p>
-                  <p className="mt-1 font-semibold text-slate-800">{currentBranch.branch_name}</p>
+                  <p className="mt-1 font-semibold text-slate-800">{branchDisplayName(currentBranch)}</p>
                 </div>
                 <div className="rounded-xl bg-white p-3">
                   <p className="text-xs font-medium text-slate-400">Destination</p>
@@ -995,13 +1090,14 @@ export function OutgoingShareTab({
         rows={outgoingHistory}
         counterpartyLabel="Destination Branch"
         branches={branches}
-        currentBranchId={CURRENT_BRANCH_ID}
+        currentBranchId={currentBranch?.id || currentBranch?.branch_id || ""}
       />
     </div>
   );
 }
 
 export function IncomingShareTab({
+  currentBranchId,
   branches,
   pendingRequests,
   incomingHistory,
@@ -1059,8 +1155,8 @@ export function IncomingShareTab({
               <IncomingRequestCard
                 key={request.id}
                 request={request}
-                branchLabel={branchName(branches, request.fromBranchId)}
-                acceptedQty={acceptQuantities[request.id] ?? request.requestedQty}
+                branchLabel={branchName(branches, getTransferSourceBranchId(request))}
+                acceptedQty={acceptQuantities[request.id] ?? getTransferRequestedQty(request)}
                 onQtyChange={(id, value) =>
                   setAcceptQuantities((prev) => ({ ...prev, [id]: value }))
                 }
@@ -1077,7 +1173,7 @@ export function IncomingShareTab({
         rows={incomingHistory}
         counterpartyLabel="Source Branch"
         branches={branches}
-        currentBranchId={CURRENT_BRANCH_ID}
+        currentBranchId={currentBranchId}
       />
     </div>
   );
@@ -1115,13 +1211,9 @@ function BellIcon({ type }) {
   return <Clock3 className="h-4 w-4 text-blue-600" />;
 }
 
-function InventoryShare({ isActive = true, currentBranchId = CURRENT_BRANCH_ID }) {
+function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp = CURRENT_BRANCH_ID }) {
+  const { currentBranch: activeBranch, loading: branchLoading } = useBranchContext();
   const [activeTab, setActiveTab] = useState("outgoing");
-  const [branches, setBranches] = useState([]);
-  const [inventoryItems, setInventoryItems] = useState([]);
-  const [transfers, setTransfers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
   const [selectedOutgoingItemId, setSelectedOutgoingItemId] = useState("");
   const [transferQty, setTransferQty] = useState(1);
   const [destinationBranchId, setDestinationBranchId] = useState("");
@@ -1130,81 +1222,124 @@ function InventoryShare({ isActive = true, currentBranchId = CURRENT_BRANCH_ID }
   const [outgoingCategory, setOutgoingCategory] = useState("All");
   const [incomingSearch, setIncomingSearch] = useState("");
   const [acceptQuantities, setAcceptQuantities] = useState({});
+  const [sending, setSending] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const currentBranch = useMemo(
-    () => branches.find((branch) => branch.id === currentBranchId) || branches[0] || MOCK_BRANCHES[0],
-    [branches, currentBranchId]
+  const { data: branchRows = [], loading: branchesLoading } = useReactiveData(TABLES.BRANCHES, null, {
+    enabled: isActive,
+    initialData: [],
+  });
+
+  const { data: stockRows = [], loading: stockLoading, refetch: refetchStockItems } = useReactiveData(
+    TABLES.STOCK_ITEMS,
+    null,
+    { enabled: isActive, initialData: [] }
   );
 
-  const branchMap = useMemo(() => {
-    return new Map(branches.map((branch) => [branch.id, branch]));
-  }, [branches]);
+  const { data: transferRows = [], loading: transfersLoading, refetch: refetchTransfers } = useReactiveData(
+    TABLES.INVENTORY_TRANSFERS,
+    null,
+    { enabled: isActive, initialData: [] }
+  );
+
+  const resolvedCurrentBranchId = useMemo(
+    () => getCurrentBranchId(activeBranch, currentBranchIdProp),
+    [activeBranch, currentBranchIdProp]
+  );
+
+  const branches = useMemo(
+    () => branchRows.filter((branch) => branch && branch.is_active !== false && branch.isActive !== false),
+    [branchRows]
+  );
+
+  const currentBranch = useMemo(() => {
+    return (
+      branches.find((branch) => branchIdValue(branch) === resolvedCurrentBranchId) ||
+      activeBranch ||
+      branches[0] ||
+      null
+    );
+  }, [activeBranch, branches, resolvedCurrentBranchId]);
+
+  const currentBranchLabel = branchDisplayName(currentBranch);
+
+  const destinationBranches = useMemo(
+    () => branches.filter((branch) => branchIdValue(branch) !== resolvedCurrentBranchId),
+    [branches, resolvedCurrentBranchId]
+  );
+
+  const branchStockRows = useMemo(
+    () =>
+      stockRows.filter((stock) => {
+        const stockBranchId = getStockBranchId(stock);
+        const stockBranchName = String(stock?.branch_name ?? stock?.branchName ?? stock?.branch?.name ?? stock?.item?.branch_name ?? stock?.item?.branchName ?? "").trim();
+        const currentBranchName = String(currentBranch?.branch_name ?? currentBranch?.branchName ?? currentBranch?.name ?? "").trim();
+
+        return (
+          stockBranchId === resolvedCurrentBranchId ||
+          (stockBranchName && currentBranchName && stockBranchName.toLowerCase() === currentBranchName.toLowerCase())
+        );
+      }),
+    [currentBranch, resolvedCurrentBranchId, stockRows]
+  );
+
+  const inventoryItems = useMemo(
+    () =>
+      [...branchStockRows].sort((a, b) => {
+        const nameA = String(a?.item_name || "").toLowerCase();
+        const nameB = String(b?.item_name || "").toLowerCase();
+        if (nameA !== nameB) return nameA.localeCompare(nameB);
+        const skuA = String(a?.sku || "").toLowerCase();
+        const skuB = String(b?.sku || "").toLowerCase();
+        if (skuA !== skuB) return skuA.localeCompare(skuB);
+        return String(a?.batch_code || "").localeCompare(String(b?.batch_code || ""));
+      }),
+    [branchStockRows]
+  );
+
+  useEffect(() => {
+    console.groupCollapsed("[InventoryShare] Stock debug");
+    console.log("activeBranch", activeBranch);
+    console.log("resolvedCurrentBranchId", resolvedCurrentBranchId);
+    console.log("rawStockRows", stockRows);
+    console.log("branchStockRows", branchStockRows);
+    console.log("inventoryItems", inventoryItems);
+    console.groupEnd();
+  }, [activeBranch, branchStockRows, inventoryItems, resolvedCurrentBranchId, stockRows]);
 
   const outgoingHistory = useMemo(
     () =>
-      transfers
-        .filter((transfer) => transfer.fromBranchId === currentBranchId)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
-    [currentBranchId, transfers]
+      transferRows
+        .filter((transfer) => getTransferSourceBranchId(transfer) === resolvedCurrentBranchId)
+        .sort((a, b) => new Date(b.updatedAt || b.updated_at || b.createdAt || b.created_at || 0) - new Date(a.updatedAt || a.updated_at || a.createdAt || a.created_at || 0)),
+    [resolvedCurrentBranchId, transferRows]
   );
 
   const incomingHistory = useMemo(
     () =>
-      transfers
-        .filter((transfer) => transfer.toBranchId === currentBranchId)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
-    [currentBranchId, transfers]
+      transferRows
+        .filter((transfer) => getTransferTargetBranchId(transfer) === resolvedCurrentBranchId)
+        .sort((a, b) => new Date(b.updatedAt || b.updated_at || b.createdAt || b.created_at || 0) - new Date(a.updatedAt || a.updated_at || a.createdAt || a.created_at || 0)),
+    [resolvedCurrentBranchId, transferRows]
   );
 
   const pendingIncoming = useMemo(
-    () => incomingHistory.filter((transfer) => transfer.status === "pending"),
+    () => incomingHistory.filter((transfer) => String(transfer.status || "").toLowerCase() === "pending"),
     [incomingHistory]
   );
 
   useEffect(() => {
-    if (!isActive) return;
-    let cancelled = false;
-
-    async function loadShareData() {
-      setLoading(true);
-      try {
-        const [branchData, inventoryData, transferData] = await Promise.all([
-          fetchBranches(),
-          fetchInventory(currentBranchId),
-          fetchTransfers(),
-        ]);
-
-        if (cancelled) return;
-
-        setBranches(branchData);
-        setInventoryItems(inventoryData);
-        setTransfers(transferData);
-      } catch (error) {
-        if (!cancelled) {
-          setToast({
-            type: "error",
-            title: "Load failed",
-            message: error?.message || "Unable to load inventory share data.",
-          });
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    if (!destinationBranches.length) {
+      setDestinationBranchId("");
+      return;
     }
-
-    loadShareData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentBranchId, isActive]);
-
-  useEffect(() => {
-    if (!branches.length) return;
-    const fallbackDestination = branches.find((branch) => branch.id !== currentBranchId)?.id || "";
-    setDestinationBranchId((prev) => prev || fallbackDestination);
-  }, [branches, currentBranchId]);
+    setDestinationBranchId((prev) => {
+      if (prev && destinationBranches.some((branch) => branchIdValue(branch) === String(prev))) {
+        return prev;
+      }
+      return branchIdValue(destinationBranches[0]);
+    });
+  }, [destinationBranches]);
 
   useEffect(() => {
     if (!inventoryItems.length) return;
@@ -1219,7 +1354,7 @@ function InventoryShare({ isActive = true, currentBranchId = CURRENT_BRANCH_ID }
       const next = { ...prev };
       pendingIncoming.forEach((request) => {
         if (next[request.id] == null) {
-          next[request.id] = request.requestedQty;
+          next[request.id] = getTransferRequestedQty(request);
         }
       });
       return next;
@@ -1231,6 +1366,8 @@ function InventoryShare({ isActive = true, currentBranchId = CURRENT_BRANCH_ID }
     const timer = setTimeout(() => setToast(null), 3800);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  const loading = branchLoading || branchesLoading || stockLoading || transfersLoading;
 
   const filteredOutgoingItems = useMemo(() => {
     const term = (outgoingSearch || "").toLowerCase();
@@ -1258,7 +1395,7 @@ function InventoryShare({ isActive = true, currentBranchId = CURRENT_BRANCH_ID }
       return;
     }
 
-    if (destinationBranchId === currentBranchId) {
+    if (String(destinationBranchId) === String(resolvedCurrentBranchId)) {
       setToast({ type: "error", title: "Invalid branch", message: "You cannot share inventory with the same branch." });
       return;
     }
@@ -1274,25 +1411,27 @@ function InventoryShare({ isActive = true, currentBranchId = CURRENT_BRANCH_ID }
 
     setSending(true);
     try {
-      const created = await sendTransfer({
-        fromBranchId: currentBranchId,
-        toBranchId: destinationBranchId,
+      const createdResponse = await inventoryTransferApi.create({
+        item_id: selectedItem.item_id || selectedItem.id,
         itemId: selectedItem.item_id || selectedItem.id,
         sku: selectedItem.sku,
-        itemName: selectedItem.item_name,
+        batch_code: selectedItem.batch_code,
+        source_branch_id: resolvedCurrentBranchId,
+        target_branch_id: destinationBranchId,
+        quantity: qty,
+        item_name: selectedItem.item_name,
         category: selectedItem.category,
         uom: selectedItem.uom,
         maximum_capacity: selectedItem.maximum_capacity,
         retail_price: selectedItem.retail_price,
         stock_price: selectedItem.stock_price,
         threshold_limit: selectedItem.threshold_limit,
-        quantity: qty,
         note: transferNote,
       });
 
-      const transferData = await fetchTransfers();
-      setTransfers(transferData);
-      setAcceptQuantities((prev) => ({ ...prev, [created.id]: created.requestedQty }));
+      const created = createdResponse?.data || createdResponse;
+      await Promise.all([refetchTransfers(), refetchStockItems()]);
+      setAcceptQuantities((prev) => ({ ...prev, [created.id]: created.requestedQty ?? qty }));
       setTransferQty(1);
       setTransferNote("");
       setToast({
@@ -1312,32 +1451,39 @@ function InventoryShare({ isActive = true, currentBranchId = CURRENT_BRANCH_ID }
   };
 
   const handleAcceptTransfer = async (transferId) => {
-    const request = transfers.find((row) => row.id === transferId);
+    const request = transferRows.find((row) => row.id === transferId);
     if (!request) return;
 
-    const qty = Number(acceptQuantities[transferId] ?? request.requestedQty) || 0;
-    if (qty <= 0 || qty > request.requestedQty) {
+    const requestedQty = getTransferRequestedQty(request);
+    const qty = Number(acceptQuantities[transferId] ?? requestedQty) || 0;
+    if (qty <= 0 || qty > requestedQty) {
       setToast({
         type: "error",
         title: "Invalid acceptance quantity",
-        message: `Accept between 1 and ${request.requestedQty}.`,
+        message: `Accept between 1 and ${requestedQty}.`,
       });
       return;
     }
 
     try {
-      const accepted = await acceptTransfer({ transferId, acceptedQty: qty });
-      const transferData = await fetchTransfers();
-      const inventoryData = await fetchInventory(currentBranchId);
-      setTransfers(transferData);
-      setInventoryItems(inventoryData);
+      const acceptedResponse = await inventoryTransferApi.accept(transferId, qty, {
+        source_branch_id: getTransferSourceBranchId(request),
+        target_branch_id: getTransferTargetBranchId(request),
+      });
+      const accepted = acceptedResponse?.data || acceptedResponse;
+      await Promise.all([refetchTransfers(), refetchStockItems()]);
+      setAcceptQuantities((prev) => {
+        const next = { ...prev };
+        delete next[transferId];
+        return next;
+      });
       setToast({
         type: "success",
         title: "Transfer accepted",
         message:
           accepted.acceptedQty < accepted.requestedQty
-            ? `${accepted.acceptedQty} of ${accepted.requestedQty} units accepted from ${branchName(branches, accepted.fromBranchId)}.`
-            : `${accepted.itemName} received from ${branchName(branches, accepted.fromBranchId)}.`,
+            ? `${accepted.acceptedQty} of ${accepted.requestedQty} units accepted from ${branchName(branches, accepted.sourceBranchId || accepted.fromBranchId)}.`
+            : `${accepted.itemName} received from ${branchName(branches, accepted.sourceBranchId || accepted.fromBranchId)}.`,
       });
     } catch (error) {
       setToast({
@@ -1349,16 +1495,25 @@ function InventoryShare({ isActive = true, currentBranchId = CURRENT_BRANCH_ID }
   };
 
   const handleRejectTransfer = async (transferId) => {
-    if (!transfers.some((row) => row.id === transferId)) return;
+    const request = transferRows.find((row) => row.id === transferId);
+    if (!request) return;
 
     try {
-      const rejected = await rejectTransfer({ transferId });
-      const transferData = await fetchTransfers();
-      setTransfers(transferData);
+      const rejectedResponse = await inventoryTransferApi.reject(transferId, {
+        source_branch_id: getTransferSourceBranchId(request),
+        target_branch_id: getTransferTargetBranchId(request),
+      });
+      const rejected = rejectedResponse?.data || rejectedResponse;
+      await refetchTransfers();
+      setAcceptQuantities((prev) => {
+        const next = { ...prev };
+        delete next[transferId];
+        return next;
+      });
       setToast({
         type: "info",
         title: "Transfer rejected",
-        message: `${rejected.itemName} from ${branchName(branches, rejected.fromBranchId)} was rejected.`,
+        message: `${rejected.itemName} from ${branchName(branches, rejected.sourceBranchId || rejected.fromBranchId)} was rejected.`,
       });
     } catch (error) {
       setToast({
@@ -1370,19 +1525,19 @@ function InventoryShare({ isActive = true, currentBranchId = CURRENT_BRANCH_ID }
   };
 
   const summary = useMemo(() => {
-    const outgoingPending = outgoingHistory.filter((transfer) => transfer.status === "pending").length;
+    const outgoingPending = outgoingHistory.filter((transfer) => String(transfer.status || "").toLowerCase() === "pending").length;
     const incomingPendingCount = pendingIncoming.length;
-    const acceptedCount = transfers.filter((transfer) => transfer.status === "accepted").length;
-    const rejectedCount = transfers.filter((transfer) => transfer.status === "rejected").length;
+    const acceptedCount = transferRows.filter((transfer) => String(transfer.status || "").toLowerCase() === "accepted").length;
+    const rejectedCount = transferRows.filter((transfer) => String(transfer.status || "").toLowerCase() === "rejected").length;
 
     return { outgoingPending, incomingPendingCount, acceptedCount, rejectedCount };
-  }, [incomingHistory.length, outgoingHistory, pendingIncoming.length, transfers]);
+  }, [incomingHistory.length, outgoingHistory, pendingIncoming.length, transferRows]);
 
   return (
-    <div className="min-h-full bg-slate-50">
+    <div className="h-full min-h-0 overflow-y-auto bg-slate-50 pb-24">
       <Toast toast={toast} />
 
-      <div className="mx-auto flex h-full max-w-[1800px] flex-col gap-4 p-4 lg:p-6">
+      <div className="mx-auto flex h-full min-h-0 max-w-[1800px] flex-col gap-4 p-4 pb-24 lg:p-6">
         <div className="rounded-3xl border border-slate-100 bg-white px-5 py-5 shadow-sm">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
@@ -1405,7 +1560,7 @@ function InventoryShare({ isActive = true, currentBranchId = CURRENT_BRANCH_ID }
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-100 bg-white shadow-sm">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
           <div className="flex flex-wrap gap-2 border-b border-slate-100 px-4 py-3">
             <button
               type="button"
@@ -1433,11 +1588,11 @@ function InventoryShare({ isActive = true, currentBranchId = CURRENT_BRANCH_ID }
             </button>
           </div>
 
-          <div className="p-4 lg:p-6">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 lg:p-6">
             {activeTab === "outgoing" ? (
               <OutgoingShareTab
-                currentBranch={currentBranch}
-                branches={branches}
+                currentBranch={currentBranch || { id: resolvedCurrentBranchId, branch_name: currentBranchLabel }}
+                branches={destinationBranches}
                 inventoryItems={inventoryItems}
                 outgoingHistory={outgoingHistory}
                 outgoingSearch={outgoingSearch}
@@ -1459,6 +1614,7 @@ function InventoryShare({ isActive = true, currentBranchId = CURRENT_BRANCH_ID }
               />
             ) : (
               <IncomingShareTab
+                currentBranchId={currentBranch?.id || currentBranch?.branch_id || ""}
                 branches={branches}
                 pendingRequests={pendingIncoming}
                 incomingHistory={incomingHistory}
