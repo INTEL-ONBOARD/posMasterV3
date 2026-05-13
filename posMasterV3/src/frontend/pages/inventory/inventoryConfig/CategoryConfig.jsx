@@ -226,17 +226,18 @@ function CategoryConfig() {
         </div>
 
         {/* Categories Table */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gradient-to-r from-[#1A318C] to-[#2a4ab8]">
-                <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider w-20">ID</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Category</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Brand</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider w-20">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4">
+          <div className="max-h-[300px] overflow-y-auto rounded-xl">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="sticky top-0 z-10 px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider w-20 bg-[#1A318C]">ID</th>
+                  <th className="sticky top-0 z-10 px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider bg-[#1A318C]">Category</th>
+                  <th className="sticky top-0 z-10 px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider bg-[#1A318C]">Brand</th>
+                  <th className="sticky top-0 z-10 px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider w-20 bg-[#1A318C]">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
               {isLoading ? (
                 <tr>
                   <td colSpan="4" className="px-6 py-12 text-center">
@@ -279,21 +280,23 @@ function CategoryConfig() {
                   </tr>
                 ))
               )}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Summary Table */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-700">
-                <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider w-20">#</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Category Name</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Num. of Brands</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+          <div className="max-h-[300px] overflow-y-auto rounded-xl">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="sticky top-0 z-10 px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider w-20 bg-gray-700">#</th>
+                  <th className="sticky top-0 z-10 px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider bg-gray-700">Category Name</th>
+                  <th className="sticky top-0 z-10 px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider bg-gray-700">Num. of Brands</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
               {summaryRows.length === 0 ? (
                 <tr>
                   <td colSpan="3" className="px-6 py-8 text-center text-gray-500">
@@ -311,8 +314,9 @@ function CategoryConfig() {
                   </tr>
                 ))
               )}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Summary Footer */}
