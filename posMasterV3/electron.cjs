@@ -195,15 +195,15 @@ async function loadDTOs() {
   };
 }
 
-// DISABLED: electron-reload was causing full app reloads on any file change
-// including database writes and sync operations. Vite HMR handles React hot-reload.
+// DISABLED: electron-reload was causing full app reloads on any file change.
+// Vite HMR handles React hot-reload.
 // If you need backend hot-reload, use nodemon or restart manually.
 //
 // try {
 //   if (!app.isPackaged) {
 //     require("electron-reload")(__dirname, {
 //       awaitWriteFinish: true,
-//       ignored: /node_modules|[\/\\]\.git|dist|dist-react|\.db|\.sqlite|\.json|\.log/,
+//       ignored: /node_modules|[\/\\]\.git|dist|dist-react|\.json|\.log/,
 //     });
 //     console.log("electron-reload enabled");
 //   }
@@ -910,13 +910,13 @@ app.whenReady().then(async () => {
 
   prepareBundledOnlineEnvironment();
 
-  // Now initialize backend (user sees splash during this)
-  console.log("[Electron] Starting backend initialization...");
+  // Now initialize the online-only Electron bridge (user sees splash during this)
+  console.log("[Electron] Starting online-only backend bridge initialization...");
   const backendResult = getBackend().initializeBackend(defaultFolderPath);
   if (backendResult.success) {
-    console.log("[Electron] Backend initialized:", backendResult.dbPath);
+    console.log("[Electron] Backend bridge initialized");
   } else {
-    console.error("[Electron] Backend initialization failed:", backendResult.message);
+    console.error("[Electron] Backend bridge initialization failed:", backendResult.message);
   }
 
   // Read maximize setting AFTER backend is initialized

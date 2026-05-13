@@ -29,6 +29,18 @@ const COLLECTIONS = new Set([
     'tea_coop_payments'
 ]);
 
+const BRANCH_SCOPED_COLLECTIONS = new Set([
+    'stock_batches',
+    'restock_transactions',
+    'restock_items',
+    'return_items',
+    'sales',
+    'sales_items',
+    'returned_items',
+    'disposed_items',
+    'login_history'
+]);
+
 function ensureCollection(name) {
     if (!COLLECTIONS.has(name)) {
         const err = new Error(`Unsupported collection: ${name}`);
@@ -46,7 +58,17 @@ function parseObjectId(id) {
     return new ObjectId(id);
 }
 
-function scopedQuery(auth, query = {}) {
+function assertBranchAccess(collectionName, auth, record) {
+    if (!BRANCH_SCOPED_COLLECTIONS.has(collectionName) || !auth.branchId) return;
+    const recordBranchId = record?.branchId || record?.branch_id || null;
+    if (recordBranchId && String(recordBranchId) !== String(auth.branchId)) {
+        const err = new Error('Record not found in the active branch');
+        err.statusCode = 404;
+        throw err;
+    }
+}
+
+function scopedQuery(collectionName, auth, query = {}) {
     const filter = {
         orgId: auth.orgId,
         deletedAt: null
@@ -81,6 +103,14 @@ function scopedQuery(auth, query = {}) {
         if (query[sourceKey] !== undefined && query[sourceKey] !== null && query[sourceKey] !== '') {
             filter[targetKey] = query[sourceKey];
         }
+    }
+    if (BRANCH_SCOPED_COLLECTIONS.has(collectionName) && !filter.branchId && auth.branchId) {
+        filter.branchId = auth.branchId;
+    }
+    if (filter.branchId) {
+        const branchId = filter.branchId;
+        delete filter.branchId;
+        filter.$or = [{ branchId }, { branch_id: branchId }];
     }
     return filter;
 }
@@ -167,7 +197,7 @@ async function list(collectionName, auth, query = {}) {
     const limit = Math.min(Number.parseInt(query.limit || '100', 10), 500);
     const skip = Math.max(Number.parseInt(query.skip || '0', 10), 0);
     return db.collection(collectionName)
-        .find(scopedQuery(auth, query))
+        .find(scopedQuery(collectionName, auth, query))
         .sort({ updatedAt: -1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -187,6 +217,7 @@ async function getById(collectionName, auth, id) {
         err.statusCode = 404;
         throw err;
     }
+    assertBranchAccess(collectionName, auth, record);
     return record;
 }
 
@@ -211,7 +242,8 @@ async function create(collectionName, auth, body) {
     const document = {
         ...payload,
         orgId: auth.orgId,
-        branchId: payload.branchId || payload.branch_id || auth.branchId || null,
+        branchId: auth.branchId || payload.branchId || payload.branch_id || null,
+        branch_id: auth.branchId || payload.branchId || payload.branch_id || null,
         createdAt: now,
         updatedAt: now,
         createdBy: auth.userId,
@@ -249,6 +281,7 @@ async function update(collectionName, auth, id, body) {
         err.statusCode = 404;
         throw err;
     }
+    assertBranchAccess(collectionName, auth, existing);
 
     const payload = normalizeCollectionBody(collectionName, auth, body, existing);
     if (payload.passwordHashPromise) {
@@ -273,6 +306,10 @@ async function update(collectionName, auth, id, body) {
     if (updateDoc.isActive !== undefined) updateDoc.is_active = updateDoc.isActive;
     if (updateDoc.branch_id !== undefined && updateDoc.branchId === undefined) updateDoc.branchId = updateDoc.branch_id;
     if (updateDoc.branchId !== undefined && updateDoc.branch_id === undefined) updateDoc.branch_id = updateDoc.branchId;
+    if (BRANCH_SCOPED_COLLECTIONS.has(collectionName) && auth.branchId) {
+        updateDoc.branchId = auth.branchId;
+        updateDoc.branch_id = auth.branchId;
+    }
 
     await db.collection(collectionName).updateOne({ _id }, { $set: updateDoc });
     const updated = await db.collection(collectionName).findOne({ _id });
@@ -303,6 +340,7 @@ async function softDelete(collectionName, auth, id) {
         err.statusCode = 404;
         throw err;
     }
+    assertBranchAccess(collectionName, auth, existing);
 
     const version = (existing.version || 1) + 1;
     await db.collection(collectionName).updateOne(

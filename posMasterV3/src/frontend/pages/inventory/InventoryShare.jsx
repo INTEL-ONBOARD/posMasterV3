@@ -813,13 +813,14 @@ export function TransferHistoryTable({ title, rows, counterpartyLabel, branches,
   );
 }
 
-function SectionShell({ title, subtitle, icon: Icon, rightSlot, children }) {
+function SectionShell({ title, subtitle, icon, rightSlot, children }) {
+  const IconComponent = icon;
   return (
     <div className="rounded-3xl border border-slate-100 bg-white shadow-sm">
       <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1A318C]/10 text-[#1A318C]">
-            <Icon className="h-5 w-5" />
+            {IconComponent ? <IconComponent className="h-5 w-5" /> : null}
           </div>
           <div>
             <h3 className="text-lg font-bold text-slate-800">{title}</h3>
@@ -833,7 +834,8 @@ function SectionShell({ title, subtitle, icon: Icon, rightSlot, children }) {
   );
 }
 
-function StatCard({ label, value, hint, icon: Icon, tone = "blue" }) {
+function StatCard({ label, value, hint, icon, tone = "blue" }) {
+  const IconComponent = icon;
   const tones = {
     blue: "bg-[#1A318C]/10 text-[#1A318C]",
     emerald: "bg-emerald-50 text-emerald-600",
@@ -850,7 +852,7 @@ function StatCard({ label, value, hint, icon: Icon, tone = "blue" }) {
           {hint ? <p className="mt-1 text-sm text-slate-500">{hint}</p> : null}
         </div>
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${tones[tone] || tones.blue}`}>
-          <Icon className="h-5 w-5" />
+          {IconComponent ? <IconComponent className="h-5 w-5" /> : null}
         </div>
       </div>
     </div>

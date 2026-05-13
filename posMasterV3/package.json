@@ -1,7 +1,7 @@
 {
   "name": "posmasterv3",
   "private": true,
-  "version": "1.5.7",
+  "version": "1.5.8",
   "main": "electron.cjs",
   "type": "module",
   "scripts": {
@@ -16,7 +16,6 @@
     "online:server": "node src/online-server/server.cjs",
     "online:dev": "node --watch src/online-server/server.cjs",
     "online:seed-admin": "node scripts/seed-online-admin.cjs",
-    "import:legacy-db": "node scripts/import-legacy-sqlite-to-mongo.cjs",
     "preview": "vite preview",
     "electron": "node run-electron.cjs",
     "electron-dev": "vite build && node run-electron.cjs",
@@ -31,7 +30,14 @@
       "preload.cjs",
       "electron.cjs",
       "src/main/**",
-      "src/backend/**",
+      "src/backend/backend.cjs",
+      "src/backend/controllers/index.cjs",
+      "src/backend/controllers/OnlineController.cjs",
+      "src/backend/controllers/AppSettingsController.cjs",
+      "src/backend/services/OnlineModeService.cjs",
+      "src/backend/services/AppSettingsService.cjs",
+      "src/backend/online/**",
+      "src/backend/utils/**",
       "src/online-server/**",
       "src/frontend/templates/**",
       "node_modules/**",
@@ -53,10 +59,6 @@
       {
         "from": "online-runtime-config.json",
         "to": "online-runtime-config.json"
-      },
-      {
-        "from": "node_modules/better-sqlite3",
-        "to": "node_modules/better-sqlite3"
       }
     ],
     "publish": {
@@ -72,7 +74,6 @@
     "auto-launch": "^5.0.6",
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.5.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "electron-updater": "^6.8.3",
@@ -86,7 +87,6 @@
     "jspdf": "^3.0.3",
     "lucide-react": "^0.515.0",
     "mongodb": "^7.2.0",
-    "mysql2": "^3.16.0",
     "pdf-to-printer": "^5.6.0",
     "print-js": "^1.6.0",
     "react": "^19.1.0",

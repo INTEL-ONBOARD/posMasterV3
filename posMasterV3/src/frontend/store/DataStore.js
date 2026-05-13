@@ -40,7 +40,8 @@ import {
     loginHistoryApi,
     teaCoopApi,
     offersApi,
-    disposedApi
+    disposedApi,
+    branchContextApi
 } from '../api/localApi';
 
 // Table name constants for type safety
@@ -176,17 +177,13 @@ class DataStore {
             }
         }
 
-        // Listen for branch context changes - invalidate all caches so components
-        // refetch with the correct branch filter applied
-        if (window.electronAPI.branchContext?.onBranchChanged) {
-            const cleanup = window.electronAPI.branchContext.onBranchChanged((branch) => {
-                console.log('[DataStore] Branch changed to:', branch?.name || 'none', '- invalidating all caches');
-                this.invalidateAll();
-                this._refreshStaleCaches();
-            });
-            if (typeof cleanup === 'function') {
-                this._eventCleanupFunctions.push(cleanup);
-            }
+        const cleanupOnlineBranchContext = branchContextApi.onBranchChanged((branch) => {
+            console.log('[DataStore] Online branch changed to:', branch?.name || 'none', '- invalidating all caches');
+            this.invalidateAll();
+            this._refreshStaleCaches();
+        });
+        if (typeof cleanupOnlineBranchContext === 'function') {
+            this._eventCleanupFunctions.push(cleanupOnlineBranchContext);
         }
 
         // Clear stale cache when a session kick is detected so the next user

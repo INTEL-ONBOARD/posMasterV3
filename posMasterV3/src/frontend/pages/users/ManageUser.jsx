@@ -539,6 +539,12 @@ function ManageUser() {
       return false;
     }
 
+    const branchRequiredRoles = ["cashier", "assistant", "user"];
+    if (branchRequiredRoles.includes(String(formData.roles[0] || "").toLowerCase()) && !formData.branch_id) {
+      setStatusModal({ open: true, type: 'failed', description: "Please select a branch for this role" });
+      return false;
+    }
+
     if (!formData.email?.trim()) {
       setStatusModal({ open: true, type: 'failed', description: "Please enter email" });
       return false;
@@ -605,6 +611,7 @@ function ManageUser() {
         password: formData.password,
         full_name: formData.full_name.trim(),
         roles: formData.roles,
+        branchId: formData.branch_id || null,
         branch_id: formData.branch_id || null,
       };
 
@@ -662,6 +669,7 @@ function ManageUser() {
         email: formData.email.trim().toLowerCase(),
         full_name: formData.full_name.trim(),
         roles: formData.roles,
+        branchId: formData.branch_id || null,
         branch_id: formData.branch_id || null,
         is_active: formData.is_active ? 1 : 0, // Preserve the existing numeric active flag contract
       };

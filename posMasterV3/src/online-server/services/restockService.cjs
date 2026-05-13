@@ -5,7 +5,7 @@ const { normalizeUomSymbol, getEffectiveSellingPrice } = require('../utils/uomPr
 async function createRestock(auth, restockInput = {}) {
     const db = getDb();
     const now = new Date();
-    const branchId = restockInput.branchId || restockInput.branch_id || auth.branchId || null;
+    const branchId = auth.branchId || restockInput.branchId || restockInput.branch_id || null;
 
     const addedItems = (restockInput.added_items || []).map((item) => ({
         sku: item.sku || item.SKU || '',
@@ -32,6 +32,7 @@ async function createRestock(auth, restockInput = {}) {
     const restockDoc = {
         orgId: auth.orgId,
         branchId,
+        branch_id: branchId,
         supplierId: restockInput.sup_id || restockInput.supplierId || restockInput.supplier_id || null,
         preparedBy: restockInput.prep_agent_id || restockInput.preparedBy || restockInput.prepared_by || null,
         authorizedBy: restockInput.auth_agent_id || restockInput.authorizedBy || restockInput.authorized_by || null,
@@ -121,10 +122,10 @@ async function executeRestock(db, auth, restockDoc, addedItems, branchId, now, s
 
         const batchFilter = {
             orgId: auth.orgId,
-            branchId,
             sku: item.sku,
             batchCode: item.batchCode,
-            deletedAt: null
+            deletedAt: null,
+            $or: [{ branchId }, { branch_id: branchId }]
         };
 
         if (itemId) {
@@ -152,6 +153,7 @@ async function executeRestock(db, auth, restockDoc, addedItems, branchId, now, s
                         uom_symbol: item.uomSymbol,
                         expiryDate: item.expiryDate,
                         expiry_date: item.expiryDate,
+                        branch_id: branchId,
                         updatedAt: now,
                         updatedBy: auth.userId
                     }
@@ -163,6 +165,7 @@ async function executeRestock(db, auth, restockDoc, addedItems, branchId, now, s
             const newBatch = {
                 orgId: auth.orgId,
                 branchId,
+                branch_id: branchId,
                 itemId: itemId || null,
                 item_id: itemId || null,
                 sku: item.sku,

@@ -2,10 +2,9 @@
  * App Settings Service
  *
  * Manages application-wide settings that affect system behavior.
- * Handles reading, applying, and syncing app settings.
+ * Handles reading and applying desktop-only app preferences.
  */
 
-const { AppSettingsRepository } = require('../repositories/SettingsRepository.cjs');
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -20,8 +19,9 @@ try {
 
 class AppSettingsService {
     constructor() {
-        this.appSettingsRepo = new AppSettingsRepository();
         this.autoLauncher = null;
+        this.settingsPath = path.join(app.getPath('userData'), 'app-settings.json');
+        this.settings = this._loadSettings();
 
         // Initialize auto-launcher if available
         this._initAutoLauncher();
@@ -57,12 +57,7 @@ class AppSettingsService {
      * @returns {Object} All settings as key-value pairs
      */
     getAllSettings() {
-        try {
-            return this.appSettingsRepo.getAllAsObject();
-        } catch (error) {
-            console.error('[AppSettingsService] Get all settings error:', error);
-            return this._getDefaults();
-        }
+        return { ...this._getDefaults(), ...this.settings };
     }
 
     /**
@@ -71,12 +66,7 @@ class AppSettingsService {
      * @returns {any} Setting value
      */
     getSetting(key) {
-        try {
-            return this.appSettingsRepo.get(key);
-        } catch (error) {
-            console.error(`[AppSettingsService] Get setting '${key}' error:`, error);
-            return this._getDefaults()[key];
-        }
+        return this.getAllSettings()[key];
     }
 
     /**
@@ -98,6 +88,27 @@ class AppSettingsService {
         };
     }
 
+    _loadSettings() {
+        try {
+            if (!fs.existsSync(this.settingsPath)) return {};
+            const parsed = JSON.parse(fs.readFileSync(this.settingsPath, 'utf8'));
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (error) {
+            console.warn('[AppSettingsService] Failed to load app settings, using defaults:', error.message);
+            return {};
+        }
+    }
+
+    _setSetting(key, value) {
+        this.settings = { ...this.settings, [key]: value };
+        try {
+            fs.mkdirSync(path.dirname(this.settingsPath), { recursive: true });
+            fs.writeFileSync(this.settingsPath, JSON.stringify(this.settings, null, 2), 'utf8');
+        } catch (error) {
+            console.error('[AppSettingsService] Failed to save app settings:', error.message);
+        }
+    }
+
     // ============================================
     // LOGOUT ON CLOSE FUNCTIONALITY
     // ============================================
@@ -115,7 +126,7 @@ class AppSettingsService {
      * @param {boolean} enabled - Whether to logout when app closes
      */
     setLogoutOnClose(enabled) {
-        this.appSettingsRepo.set('logout_on_close', enabled, 'boolean');
+        this._setSetting('logout_on_close', Boolean(enabled));
         console.log(`[AppSettingsService] Logout on close ${enabled ? 'enabled' : 'disabled'}`);
     }
 
@@ -130,8 +141,7 @@ class AppSettingsService {
      */
     async setRunOnStartup(enabled) {
         try {
-            // Save setting to database
-            this.appSettingsRepo.set('run_on_startup', enabled, 'boolean');
+            this._setSetting('run_on_startup', Boolean(enabled));
 
             // Apply to system if auto-launcher is available
             if (this.autoLauncher) {
@@ -165,7 +175,6 @@ class AppSettingsService {
                 console.error('[AppSettingsService] Check startup status error:', error);
             }
         }
-        // Fallback to database setting
         return this.getSetting('run_on_startup') ?? true;
     }
 
@@ -186,7 +195,7 @@ class AppSettingsService {
      * @param {boolean} enabled
      */
     setMaximizeOnStart(enabled) {
-        this.appSettingsRepo.set('maximize_window', enabled, 'boolean');
+        this._setSetting('maximize_window', Boolean(enabled));
     }
 
     // ============================================
@@ -206,7 +215,7 @@ class AppSettingsService {
      * @param {boolean} enabled
      */
     setNotificationsEnabled(enabled) {
-        this.appSettingsRepo.set('notifications', enabled, 'boolean');
+        this._setSetting('notifications', Boolean(enabled));
     }
 
     /**

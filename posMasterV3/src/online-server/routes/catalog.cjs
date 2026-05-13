@@ -34,7 +34,11 @@ router.delete('/collections/:collection/:id', asyncHandler(async (req, res) => {
 }));
 
 router.post('/sales/invoice-no', asyncHandler(async (req, res) => {
-    const invoice = await salesService.generateInvoiceNo(req.auth, req.body?.type || 'SALE');
+    const invoice = await salesService.generateInvoiceNo(
+        req.auth,
+        req.body?.type || 'SALE',
+        req.body?.branchId || req.body?.branch_id || null
+    );
     return ok(res, invoice);
 }));
 

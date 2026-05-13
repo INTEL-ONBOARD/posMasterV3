@@ -62,8 +62,8 @@ export const onlineApi = {
     return getOnlineApi().createSale(data);
   },
 
-  generateInvoiceNo(type = 'SALE') {
-    return getOnlineApi().generateInvoiceNo(type);
+  generateInvoiceNo(type = 'SALE', branchId = null) {
+    return getOnlineApi().generateInvoiceNo(type, branchId);
   },
 
   onRealtimeStatus(callback) {

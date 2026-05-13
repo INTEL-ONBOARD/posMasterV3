@@ -8,11 +8,10 @@
 
 const AppSettingsController = require('./AppSettingsController.cjs');
 const OnlineController = require('./OnlineController.cjs');
-const { branchContextService } = require('../services/BranchContextService.cjs');
 
 /**
  * Register all IPC handlers
- * Call this during app initialization after database is ready
+ * Call this during Electron backend bridge initialization.
  */
 function registerAllHandlers() {
     console.log('[Controllers] Registering all IPC handlers...');
@@ -21,19 +20,7 @@ function registerAllHandlers() {
     const appSettingsController = new AppSettingsController();
     appSettingsController.registerHandlers();
 
-    // Note: BranchContextService IPC handlers are registered in its initialize() method
-    // which is called from main.js after database is ready
-
     console.log('[Controllers] All IPC handlers registered successfully');
-}
-
-/**
- * Initialize branch context service with database
- * Call this after database is initialized
- */
-function initializeBranchContext(db) {
-    branchContextService.initialize(db);
-    return branchContextService;
 }
 
 /**
@@ -49,8 +36,6 @@ function unregisterAllHandlers() {
 module.exports = {
     registerAllHandlers,
     unregisterAllHandlers,
-    initializeBranchContext,
-    branchContextService,
     AppSettingsController,
     OnlineController
 };

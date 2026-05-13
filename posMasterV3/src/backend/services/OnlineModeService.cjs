@@ -116,8 +116,8 @@ class OnlineModeService {
         return successResponse(sale, 'Held sale completed');
     }
 
-    async generateInvoiceNo(type = 'SALE') {
-        return this.api.generateInvoiceNo(type);
+    async generateInvoiceNo(type = 'SALE', branchId = null) {
+        return this.api.generateInvoiceNo(type, branchId);
     }
 
     async getSalesSummary(startDate, endDate) {

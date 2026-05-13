@@ -298,7 +298,6 @@
  * @property {boolean} syncEnabled - Alias of autoSyncEnabled
  * @property {number} pendingCount - Compatibility count; always zero in online-only mode
  * @property {number} pendingChangesCount - Compatibility count; always zero in online-only mode
- * @property {boolean} mysqlInitialized - Whether MySQL connection is ready
  * @property {string} connectionQuality - Current connection quality
 */
 
@@ -1831,7 +1830,6 @@ export const onlineStatusApi = {
                 status: 'success',
                 data: {
                     isOnline: ready?.status === 'success',
-                    mysqlInitialized: false,
                     mongoInitialized: ready?.status === 'success',
                     autoSyncEnabled: false,
                     syncStatus: 'online-only',
@@ -2473,11 +2471,59 @@ const onlineCall = async (operation) => {
 const normalizeCollectionRecord = (record) => {
     if (!record || typeof record !== 'object') return record;
     const id = record.id ?? record._id;
+    const branchId = record.branchId ?? record.branch_id ?? null;
     return {
         ...record,
         id,
-        _id: record._id ?? id
+        _id: record._id ?? id,
+        branchId,
+        branch_id: branchId
     };
+};
+
+let currentOnlineBranch = null;
+const branchContextListeners = new Set();
+
+const getUserBranchId = (user) => user?.branchId || user?.branch_id || null;
+const getUserRoles = (user) => Array.isArray(user?.roles)
+    ? user.roles
+    : (typeof user?.roles === 'string' ? [user.roles] : [user?.role].filter(Boolean));
+const isGlobalBranchUser = (user) => getUserRoles(user)
+    .some((role) => ['admin', 'super_admin', 'superadmin'].includes(String(role || '').toLowerCase()));
+
+const getCurrentUserSafe = async () => {
+    try {
+        return await authApi.getCurrentUser();
+    } catch {
+        return null;
+    }
+};
+
+const emitBranchContextChanged = (branch) => {
+    for (const listener of branchContextListeners) {
+        try {
+            listener(branch);
+        } catch (error) {
+            console.warn('[branchContextApi] Branch change listener failed:', error);
+        }
+    }
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('branch-context-changed', { detail: branch || null }));
+    }
+};
+
+const resolveActiveBranchId = async (explicitBranchId = null) => {
+    if (explicitBranchId) return explicitBranchId;
+    const user = await getCurrentUserSafe();
+    const userBranchId = getUserBranchId(user);
+    if (userBranchId && !isGlobalBranchUser(user)) return userBranchId;
+    return currentOnlineBranch?.id || currentOnlineBranch?._id || userBranchId || null;
+};
+
+const buildBranchScopedQuery = async (query = {}) => {
+    const branchId = await resolveActiveBranchId(query.branchId || query.branch_id);
+    if (!branchId) return null;
+    return { ...query, branchId };
 };
 
 const normalizeSaleRecord = (record) => {
@@ -2605,11 +2651,6 @@ const normalizePaymentMethodRecord = (record) => {
         icon: normalized.icon ?? 'Wallet',
         color: normalized.color ?? 'teal'
     };
-};
-
-const getSelectedBranchId = () => {
-    if (typeof localStorage === 'undefined') return null;
-    return localStorage.getItem('selectedBranchId') || null;
 };
 
 const normalizeSupplierRecord = (record) => {
@@ -2963,10 +3004,14 @@ const installOnlineOnlyOverrides = () => {
     Object.assign(stockApi, onlineCollectionApi('stock_batches'), {
         getAll: async (query = {}) => {
             try {
+                const scopedQuery = await buildBranchScopedQuery(query);
+                if (!scopedQuery) {
+                    return { status: 'success', data: [], message: 'No branch selected' };
+                }
                 const [stockResponse, itemsResponse] = await Promise.all([
                     (async () => {
                         const response = normalizeCollectionResponse(
-                            await onlineCall((api) => api.list('stock_batches', query))
+                            await onlineCall((api) => api.list('stock_batches', scopedQuery))
                         );
                         if (Array.isArray(response?.data)) {
                             response.data = response.data.map(normalizeStockRecord);
@@ -3056,20 +3101,31 @@ const installOnlineOnlyOverrides = () => {
             stockApi.update(id, { stock_price: stockPrice, retail_price: retailPrice, stockPrice, retailPrice, changedBy, reason })
     });
     Object.assign(restockApi, onlineCollectionApi('restock_transactions'), {
+        getAll: async (query = {}) => {
+            const scopedQuery = await buildBranchScopedQuery(query);
+            if (!scopedQuery) {
+                return { status: 'success', data: [], message: 'No branch selected' };
+            }
+            return normalizeCollectionResponse(await onlineCall((api) => api.list('restock_transactions', scopedQuery)));
+        },
         getStockItems: async () => stockApi.getAllWithItems(),
         getStockData: async (sku, branchId = null) => {
+            const activeBranchId = await resolveActiveBranchId(branchId);
+            if (!activeBranchId) {
+                return { status: 'success', data: [], message: 'No branch selected' };
+            }
             const itemResponse = await itemApi.getBySku(sku);
             const item = Array.isArray(itemResponse?.data) ? itemResponse.data[0] : itemResponse?.data;
             const itemId = item?.id ?? item?._id ?? null;
 
             const responses = [];
             responses.push(normalizeCollectionResponse(
-                await onlineCall((api) => api.list('stock_batches', branchId ? { sku, branchId } : { sku }))
+                await onlineCall((api) => api.list('stock_batches', { sku, branchId: activeBranchId }))
             ));
 
             if ((!responses[0]?.data || responses[0].data.length === 0) && itemId != null) {
                 responses.push(normalizeCollectionResponse(
-                    await onlineCall((api) => api.list('stock_batches', branchId ? { itemId, item_id: itemId, branchId } : { itemId, item_id: itemId }))
+                    await onlineCall((api) => api.list('stock_batches', { itemId, item_id: itemId, branchId: activeBranchId }))
                 ));
             }
 
@@ -3088,7 +3144,11 @@ const installOnlineOnlyOverrides = () => {
             }
             return response;
         },
-        create: async (data) => onlineCall((api) => api.create('restock_transactions', data))
+        create: async (data) => {
+            const branchId = await resolveActiveBranchId(data?.branchId || data?.branch_id);
+            if (!branchId) return { status: 'error', message: 'Select a branch before restocking' };
+            return onlineCall((api) => api.create('restock_transactions', { ...data, branchId, branch_id: branchId }));
+        }
     });
     Object.assign(inventoryTransferApi, onlineCollectionApi('inventory_transfers', {
         toOnline: toInventoryTransferPayload
@@ -3155,7 +3215,11 @@ const installOnlineOnlyOverrides = () => {
     });
     Object.assign(salesApi, onlineCollectionApi('sales'), {
         getAll: async (query = {}) => {
-            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('sales', query)));
+            const scopedQuery = await buildBranchScopedQuery(query);
+            if (!scopedQuery) {
+                return { status: 'success', data: [], message: 'No branch selected' };
+            }
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('sales', scopedQuery)));
             if (Array.isArray(response?.data)) {
                 response.data = response.data.map(normalizeSaleRecord);
             }
@@ -3169,10 +3233,10 @@ const installOnlineOnlyOverrides = () => {
             return response;
         },
         search: async (searchTerm = '') => {
-            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('sales', {})));
+            const response = await salesApi.getAll();
             const term = String(searchTerm).toLowerCase();
             if (Array.isArray(response?.data)) {
-                response.data = response.data.map(normalizeSaleRecord).filter((row) =>
+                response.data = response.data.filter((row) =>
                     Object.values(row).some((value) =>
                         typeof value === 'string' && value.toLowerCase().includes(term)
                     )
@@ -3180,9 +3244,21 @@ const installOnlineOnlyOverrides = () => {
             }
             return response;
         },
-        generateInvoiceNo: async () => onlineCall((api) => api.generateInvoiceNo()),
-        create: async (data) => onlineCall((api) => api.createSale(data)),
-        hold: async (data) => onlineCall((api) => api.createSale({ ...data, is_held: true, isHeld: true })),
+        generateInvoiceNo: async () => {
+            const branchId = await resolveActiveBranchId();
+            if (!branchId) return { status: 'error', message: 'Select a branch before generating an invoice number' };
+            return onlineCall((api) => api.generateInvoiceNo('SALE', branchId));
+        },
+        create: async (data) => {
+            const branchId = await resolveActiveBranchId(data?.branchId || data?.branch_id);
+            if (!branchId) return { status: 'error', message: 'Select a branch before creating a sale' };
+            return onlineCall((api) => api.createSale({ ...data, branchId, branch_id: branchId }));
+        },
+        hold: async (data) => {
+            const branchId = await resolveActiveBranchId(data?.branchId || data?.branch_id);
+            if (!branchId) return { status: 'error', message: 'Select a branch before holding a sale' };
+            return onlineCall((api) => api.createSale({ ...data, branchId, branch_id: branchId, is_held: true, isHeld: true }));
+        },
         getSummary: async (startDate, endDate) => onlineCall((api) => api.getSalesSummary(startDate, endDate)),
         getDaily: async (days = 30) => onlineCall((api) => api.getSalesDaily(days)),
         getByMember: async (memberId) => {
@@ -3208,12 +3284,9 @@ const installOnlineOnlyOverrides = () => {
         getHeldOrders: async () => {
             const response = await salesApi.getAll();
             if (Array.isArray(response?.data)) {
-                const branchId = getSelectedBranchId();
                 response.data = response.data.filter((row) => {
                     const isHeld = row.is_held || row.isHeld;
-                    if (!isHeld) return false;
-                    if (!branchId) return true;
-                    return String(row.branchId || row.branch_id || '') === String(branchId);
+                    return Boolean(isHeld);
                 });
             }
             return response;
@@ -3367,7 +3440,6 @@ const installOnlineOnlyOverrides = () => {
                 status: 'success',
                 data: {
                     isOnline: ready?.status === 'success',
-                    mysqlInitialized: false,
                     mongoInitialized: ready?.status === 'success',
                     autoSyncEnabled: false,
                     syncStatus: 'online-only',
@@ -3393,22 +3465,15 @@ const installOnlineOnlyOverrides = () => {
     Object.assign(branchContextApi, {
         getCurrent: async () => {
             const user = await authApi.getCurrentUser();
-            const userBranchId = user?.branchId || user?.branch_id;
-            const roles = Array.isArray(user?.roles)
-                ? user.roles
-                : (typeof user?.roles === 'string' ? [user.roles] : []);
-            const isCashier = roles.some((role) => String(role || '').toLowerCase() === 'cashier');
+            const userBranchId = getUserBranchId(user);
 
-            if (isCashier && userBranchId) {
+            if (userBranchId && !isGlobalBranchUser(user)) {
                 const assigned = await branchApi.getById(userBranchId);
                 if (assigned?.status === 'success' && assigned?.data) return assigned;
             }
 
-            const selectedBranchId = getSelectedBranchId();
-            if (selectedBranchId) {
-                const selected = await branchApi.getById(selectedBranchId);
-                if (selected?.status === 'success' && selected?.data) return selected;
-                localStorage.removeItem('selectedBranchId');
+            if (currentOnlineBranch) {
+                return { status: 'success', data: currentOnlineBranch };
             }
 
             if (userBranchId) {
@@ -3422,22 +3487,55 @@ const installOnlineOnlyOverrides = () => {
         },
         getCurrentBranch: async () => branchContextApi.getCurrent(),
         setCurrent: async (branchId) => {
+            const user = await authApi.getCurrentUser();
+            const userBranchId = getUserBranchId(user);
+            if (userBranchId && !isGlobalBranchUser(user) && String(userBranchId) !== String(branchId)) {
+                return { status: 'error', message: 'This user is restricted to their assigned branch', data: null };
+            }
             const response = await branchApi.getById(branchId);
             if (response?.status === 'success' && response?.data) {
-                localStorage.setItem('selectedBranchId', branchId);
+                currentOnlineBranch = response.data;
+                emitBranchContextChanged(response.data);
             }
             return response;
         },
         setCurrentBranch: async (branchId) => branchContextApi.setCurrent(branchId),
         clear: async () => {
-            localStorage.removeItem('selectedBranchId');
+            currentOnlineBranch = null;
+            emitBranchContextChanged(null);
             return { status: 'success', data: null };
         },
         clearCurrentBranch: async () => branchContextApi.clear(),
         isRequired: async () => ({ status: 'success', data: { required: true } }),
-        getAvailableBranches: async () => branchApi.getActive(),
-        validateOperation: async () => ({ status: 'success', valid: true }),
-        onBranchChanged: () => () => {}
+        getAvailableBranches: async () => {
+            const user = await authApi.getCurrentUser();
+            const userBranchId = getUserBranchId(user);
+            if (userBranchId && !isGlobalBranchUser(user)) {
+                const assigned = await branchApi.getById(userBranchId);
+                return {
+                    status: 'success',
+                    data: assigned?.status === 'success' && assigned?.data ? [assigned.data] : []
+                };
+            }
+            return branchApi.getActive();
+        },
+        validateOperation: async () => {
+            const branch = await branchContextApi.getCurrent();
+            const valid = Boolean(branch?.data?.id || branch?.data?._id);
+            return {
+                status: valid ? 'success' : 'error',
+                valid,
+                data: { branch: branch?.data || null },
+                message: valid ? 'Branch context is valid' : 'Select a branch before continuing'
+            };
+        },
+        onBranchChanged: (callback) => {
+            if (typeof callback !== 'function') return () => {};
+            branchContextListeners.add(callback);
+            return () => {
+                branchContextListeners.delete(callback);
+            };
+        }
     });
     Object.assign(teaCoopApi, onlineCollectionApi('tea_coop_members'), {
         getAllMembers: async () => teaCoopApi.getAll(),

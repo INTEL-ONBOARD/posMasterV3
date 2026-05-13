@@ -107,8 +107,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
             ipcRenderer.invoke("online:delete", { collection, id }),
         createSale: (data) =>
             ipcRenderer.invoke("online:sales:create", data),
-        generateInvoiceNo: (type = "SALE") =>
-            ipcRenderer.invoke("online:sales:invoice-no", { type }),
+        generateInvoiceNo: (type = "SALE", branchId = null) =>
+            ipcRenderer.invoke("online:sales:invoice-no", { type, branchId, branch_id: branchId }),
         onRealtimeStatus: (callback) => {
             const listener = (_event, payload) => callback(payload);
             ipcRenderer.on("online:realtime-status", listener);
@@ -605,39 +605,39 @@ contextBridge.exposeInMainWorld("electronAPI", {
          * Get the currently selected branch
          * @returns {Promise<{status: string, data: {id, name, address, contact} | null}>}
          */
-        getCurrent: () => ipcRenderer.invoke("branch-context:get-current"),
+        getCurrent: () => Promise.resolve({ status: "success", data: null }),
 
         /**
          * Set the current branch context
          * @param {number} branchId - Branch ID to select
          * @returns {Promise<{status: string, data: object}>}
          */
-        setCurrent: (branchId) => ipcRenderer.invoke("branch-context:set-current", branchId),
+        setCurrent: () => Promise.resolve({ status: "error", message: "Legacy branch context is disabled in online-only mode" }),
 
         /**
          * Clear the current branch selection
          * @returns {Promise<{status: string}>}
          */
-        clear: () => ipcRenderer.invoke("branch-context:clear"),
+        clear: () => Promise.resolve({ status: "success", data: null }),
 
         /**
          * Check if branch selection is required
          * @returns {Promise<{status: string, data: {required: boolean, currentBranch: object | null}}>}
          */
-        isRequired: () => ipcRenderer.invoke("branch-context:is-required"),
+        isRequired: () => Promise.resolve({ status: "success", data: { required: true, currentBranch: null } }),
 
         /**
          * Get branches available to the current user
          * @returns {Promise<{status: string, data: array}>}
          */
-        getAvailableBranches: () => ipcRenderer.invoke("branch-context:get-available-branches"),
+        getAvailableBranches: () => Promise.resolve({ status: "success", data: [] }),
 
         /**
          * Validate if an operation can proceed (checks branch selection)
          * @param {string} operation - Operation name
          * @returns {Promise<{status: string, valid: boolean, message?: string}>}
          */
-        validateOperation: (operation) => ipcRenderer.invoke("branch-context:validate-operation", operation),
+        validateOperation: () => Promise.resolve({ status: "error", valid: false, message: "Legacy branch context is disabled in online-only mode" }),
 
         /**
          * Listen for branch context changes
@@ -645,9 +645,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
          * @returns {function} Unsubscribe function
          */
         onBranchChanged: (callback) => {
-            const handler = (event, data) => callback(data);
-            ipcRenderer.on("branch-context:changed", handler);
-            return () => ipcRenderer.removeListener("branch-context:changed", handler);
+            return () => {};
         }
     },
 

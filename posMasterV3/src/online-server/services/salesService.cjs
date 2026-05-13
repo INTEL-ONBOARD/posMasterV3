@@ -32,13 +32,14 @@ async function nextInvoiceNo(db, session, auth, type = 'SALE') {
     return `${type}-${key}-${String(counter.sequence).padStart(5, '0')}`;
 }
 
-async function generateInvoiceNo(auth, type = 'SALE') {
-    if (!auth.branchId) {
+async function generateInvoiceNo(auth, type = 'SALE', branchId = null) {
+    const activeBranchId = auth.branchId || branchId;
+    if (!activeBranchId) {
         const err = new Error('Branch is required to generate an invoice number');
         err.statusCode = 400;
         throw err;
     }
-    const invoiceNo = await nextInvoiceNo(getDb(), null, auth, type);
+    const invoiceNo = await nextInvoiceNo(getDb(), null, { ...auth, branchId: activeBranchId }, type);
     return {
         invoice_no: invoiceNo,
         invoiceNo
@@ -46,7 +47,9 @@ async function generateInvoiceNo(auth, type = 'SALE') {
 }
 
 async function createSale(auth, saleInput) {
-    if (!auth.branchId && !saleInput.branchId) {
+    const branchId = auth.branchId || saleInput.branchId || saleInput.branch_id;
+
+    if (!branchId) {
         const err = new Error('Branch is required to create a sale');
         err.statusCode = 400;
         throw err;
@@ -56,7 +59,6 @@ async function createSale(auth, saleInput) {
     const useTransactions = supportsTransactions();
     const session = useTransactions ? getMongoClient().startSession() : null;
     const querySession = useTransactions ? session : undefined;
-    const branchId = saleInput.branchId || auth.branchId;
     const isHeldSale = saleInput.is_held === true || saleInput.isHeld === true;
     let sale;
 
@@ -101,11 +103,11 @@ async function createSale(auth, saleInput) {
                     const result = await db.collection('stock_batches').updateOne(
                         {
                             orgId: auth.orgId,
-                            branchId,
                             itemId: line.itemId,
                             batchCode: line.batchCode,
                             quantity: { $gte: Number(line.quantity) },
-                            deletedAt: null
+                            deletedAt: null,
+                            $or: [{ branchId }, { branch_id: branchId }]
                         },
                         {
                             $inc: { quantity: -Number(line.quantity), version: 1 },
@@ -159,6 +161,7 @@ async function createSale(auth, saleInput) {
             sale = {
                 orgId: auth.orgId,
                 branchId,
+                branch_id: branchId,
                 invoiceNo,
                 invoice_no: invoiceNo,
                 memberId,
@@ -259,7 +262,12 @@ async function completeHeldSale(auth, saleId, updateData = {}) {
                 throw err;
             }
 
-            const branchId = updateData.branchId || existing.branchId || auth.branchId;
+            const branchId = auth.branchId || updateData.branchId || updateData.branch_id || existing.branchId;
+            if (existing.branchId && branchId !== existing.branchId) {
+                const err = new Error('Held sale branch does not match the active branch');
+                err.statusCode = 403;
+                throw err;
+            }
             const now = new Date();
             const lines = (updateData.items || existing.items || []).map((line) => {
                 const itemId = line.itemId ?? line.item_id ?? line.itemID ?? line.item?.id ?? null;
@@ -297,11 +305,11 @@ async function completeHeldSale(auth, saleId, updateData = {}) {
                     const result = await db.collection('stock_batches').updateOne(
                         {
                             orgId: auth.orgId,
-                            branchId,
                             itemId: line.itemId,
                             batchCode: line.batchCode,
                             quantity: { $gte: Number(line.quantity) },
-                            deletedAt: null
+                            deletedAt: null,
+                            $or: [{ branchId }, { branch_id: branchId }]
                         },
                         {
                             $inc: { quantity: -Number(line.quantity), version: 1 },
@@ -352,6 +360,8 @@ async function completeHeldSale(auth, saleId, updateData = {}) {
             }
 
             const updateDoc = {
+                branchId,
+                branch_id: branchId,
                 is_held: false,
                 isHeld: false,
                 status: updateData.status || existing.status || 'completed',

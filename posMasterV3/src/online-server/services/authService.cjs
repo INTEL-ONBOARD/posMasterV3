@@ -10,15 +10,36 @@ function normalizeLogin(value) {
     return String(value || '').trim().toLowerCase();
 }
 
+function normalizeBranchId(...values) {
+    for (const value of values) {
+        if (value !== undefined && value !== null && String(value).trim() !== '') {
+            return String(value);
+        }
+    }
+    return null;
+}
+
+function roleRequiresBranch(roles = []) {
+    return roles.some((role) => ['cashier', 'assistant', 'user'].includes(String(role).toLowerCase()));
+}
+
 async function register(body = {}, auth = null) {
     const db = getDb();
     const now = new Date();
     const email = normalizeLogin(body.email);
     const username = normalizeLogin(body.username || email);
     const password = body.password || body.newPassword;
+    const roles = Array.isArray(body.roles) && body.roles.length ? body.roles : ['cashier'];
+    const branchId = normalizeBranchId(body.branchId, body.branch_id, auth?.branchId, auth?.branch_id);
 
     if (!email || !username || !password) {
         const err = new Error('Email, username, and password are required');
+        err.statusCode = 400;
+        throw err;
+    }
+
+    if (roleRequiresBranch(roles) && !branchId) {
+        const err = new Error('Branch is required for cashier users');
         err.statusCode = 400;
         throw err;
     }
@@ -39,11 +60,12 @@ async function register(body = {}, auth = null) {
     const user = {
         ...body,
         orgId,
-        branchId: body.branchId || auth?.branchId || null,
+        branchId,
+        branch_id: branchId,
         email,
         username,
         passwordHash: await bcrypt.hash(password, 12),
-        roles: Array.isArray(body.roles) && body.roles.length ? body.roles : ['cashier'],
+        roles,
         isActive,
         is_active: isActive,
         createdAt: now,
@@ -103,11 +125,13 @@ async function login({ email, password, deviceInfo = null }) {
         { $set: { active: false, endedAt: new Date(), endReason: 'replaced_by_new_login' } }
     );
 
+    const branchId = normalizeBranchId(user.branchId, user.branch_id);
+
     const token = jwt.sign(
         {
             sub: String(user._id),
             orgId: user.orgId,
-            branchId: user.branchId || null,
+            branchId,
             roles: user.roles || [],
             sessionVersion
         },
@@ -118,7 +142,7 @@ async function login({ email, password, deviceInfo = null }) {
     const session = {
         userId: String(user._id),
         orgId: user.orgId,
-        branchId: user.branchId || null,
+        branchId,
         tokenHash: hashToken(token),
         active: true,
         deviceInfo,
@@ -130,13 +154,13 @@ async function login({ email, password, deviceInfo = null }) {
     await db.collection('sessions').insertOne(session);
     await db.collection('users').updateOne(
         { _id: user._id },
-        { $set: { lastLoginAt: new Date(), updatedAt: new Date() } }
+        { $set: { lastLoginAt: new Date(), updatedAt: new Date(), branchId, branch_id: branchId } }
     );
 
     await publishDomainEvent({
         event: 'session.replaced',
         orgId: user.orgId,
-        branchId: user.branchId || null,
+        branchId,
         userId: String(user._id),
         entity: 'sessions',
         operation: 'replace',
@@ -148,7 +172,7 @@ async function login({ email, password, deviceInfo = null }) {
         status: 'success',
         message: 'Login successful',
         token,
-        data: publicUser({ ...user, lastLoginAt: new Date() })
+        data: publicUser({ ...user, branchId, branch_id: branchId, lastLoginAt: new Date() })
     };
 }
 

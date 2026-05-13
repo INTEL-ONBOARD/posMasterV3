@@ -1,8 +1,8 @@
 /**
  * Backend Initialization
  *
- * Main entry point for the layered backend architecture.
- * Initializes database, runs migrations, and registers controllers.
+ * Main entry point for the Electron backend bridge.
+ * Registers online-only IPC controllers. Business data lives in MongoDB.
  *
  * Architecture Overview:
  * ┌─────────────────────────────────────────────────────────────────┐
@@ -13,71 +13,48 @@
  * │  └── AppSettingsController - Local app settings                 │
  * ├─────────────────────────────────────────────────────────────────┤
  * │  Services (Business Logic)                                      │
- * │  ├── AppSettingsService - Desktop preferences and startup       │
- * │  └── BranchContextService - Selected branch state               │
- * ├─────────────────────────────────────────────────────────────────┤
- * │  Database (SQLite with better-sqlite3)                          │
- * │  └── Migrations        - Local app settings / branch context    │
+ * │  ├── OnlineModeService - MongoDB-backed online API bridge       │
+ * │  └── AppSettingsService - Desktop preferences                   │
  * └─────────────────────────────────────────────────────────────────┘
  */
 
-const { initializeDatabase, closeDatabase, getDatabasePath } = require('./database/connection.cjs');
-const { runMigrations, getStatus } = require('./database/migrator.cjs');
-const { registerAllHandlers, unregisterAllHandlers, initializeBranchContext } = require('./controllers/index.cjs');
+const { registerAllHandlers, unregisterAllHandlers } = require('./controllers/index.cjs');
 
 let isInitialized = false;
 
 /**
- * Initialize the backend
- * @param {string} configPath - Path to store database file
+ * Initialize the backend bridge
+ * @param {string} _configPath - Kept for call-site compatibility; not used.
  * @returns {Object} Initialization result
  */
-function initializeBackend(configPath) {
+function initializeBackend(_configPath) {
     if (isInitialized) {
         console.log('[Backend] Already initialized');
         return {
             success: true,
             message: 'Backend already initialized',
-            dbPath: getDatabasePath()
+            onlineOnly: true
         };
     }
 
-    console.log('[Backend] Initializing backend...');
+    console.log('[Backend] Initializing online-only backend bridge...');
 
     try {
-        // Step 1: Initialize database connection
-        console.log('[Backend] Step 1: Initializing database connection...');
-        initializeDatabase(configPath);
-
-        // Step 2: Run migrations
-        console.log('[Backend] Step 2: Running database migrations...');
-        const migrationResult = runMigrations(require('./database/connection.cjs').getDatabase());
-
-        if (migrationResult.errors.length > 0) {
-            console.error('[Backend] Migration errors:', migrationResult.errors);
-        }
-
-        // Step 3: Register IPC handlers
-        console.log('[Backend] Step 4: Registering IPC handlers...');
+        console.log('[Backend] Registering online-only IPC handlers...');
         registerAllHandlers();
-
-        // Step 4: Initialize branch context service
-        console.log('[Backend] Step 4b: Initializing branch context service...');
-        initializeBranchContext(require('./database/connection.cjs').getDatabase());
 
         isInitialized = true;
 
-        console.log('[Backend] ✓ Backend initialized successfully');
+        console.log('[Backend] Online-only backend bridge initialized successfully');
 
         return {
             success: true,
-            message: 'Backend initialized successfully',
-            dbPath: getDatabasePath(),
-            migrations: migrationResult
+            message: 'Online-only backend bridge initialized successfully',
+            onlineOnly: true
         };
 
     } catch (error) {
-        console.error('[Backend] ✗ Initialization failed:', error.message);
+        console.error('[Backend] Initialization failed:', error.message);
         return {
             success: false,
             message: 'Backend initialization failed: ' + error.message
@@ -95,12 +72,9 @@ async function shutdownBackend() {
         // Unregister IPC handlers
         unregisterAllHandlers();
 
-        // Close database
-        closeDatabase();
-
         isInitialized = false;
 
-        console.log('[Backend] ✓ Backend shutdown complete');
+        console.log('[Backend] Backend bridge shutdown complete');
         return { success: true };
 
     } catch (error) {
@@ -121,21 +95,11 @@ function getBackendStatus() {
         };
     }
 
-    try {
-        const migrationStatus = getStatus(require('./database/connection.cjs').getDatabase());
-
-        return {
-            initialized: true,
-            dbPath: getDatabasePath(),
-            migrations: migrationStatus
-        };
-
-    } catch (error) {
-        return {
-            initialized: isInitialized,
-            error: error.message
-        };
-    }
+    return {
+        initialized: true,
+        onlineOnly: true,
+        message: 'Online-only backend bridge initialized'
+    };
 }
 
 /**

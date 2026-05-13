@@ -162,10 +162,10 @@ class OnlineApiClient {
         });
     }
 
-    generateInvoiceNo(type = 'SALE') {
+    generateInvoiceNo(type = 'SALE', branchId = null) {
         return this.request('/sales/invoice-no', {
             method: 'POST',
-            body: { type }
+            body: { type, branchId, branch_id: branchId }
         });
     }
 }

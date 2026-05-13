@@ -17,7 +17,7 @@ import CartItemEditModal from "./modals/CartItemEditModal.jsx";
 import CheckoutSummaryModal from "./modals/CheckoutSummaryModal.jsx";
 import { useScannerSearch } from "../../hooks/useScannerSearch";
 import { useBranchContext } from "../../context/BranchContext.jsx";
-import { getEffectiveSellingPrice, supportsDecimalSaleQuantity } from "../../util/common/uomPricing";
+import { getEffectiveSellingPrice } from "../../util/common/uomPricing";
 
 // Default guest user
 const GUEST_USER = {
@@ -447,6 +447,10 @@ export default function SalesView({ isActive }) {
   // Generate invoice number
   const [invoiceNo, setInvoiceNo] = useState("");
   const generateNewInvoice = useCallback(async () => {
+    if (!resolvedBranchId) {
+      setInvoiceNo("");
+      return;
+    }
     try {
       const result = await salesApi.generateInvoiceNo();
       if (result?.data?.invoice_no) {
@@ -465,7 +469,7 @@ export default function SalesView({ isActive }) {
       }
       setInvoiceNo(fallback);
     }
-  }, []);
+  }, [resolvedBranchId]);
 
   useEffect(() => {
     generateNewInvoice();
@@ -554,7 +558,7 @@ export default function SalesView({ isActive }) {
     branch_id: resolvedBranchId,
     member_id: getSelectedMemberId(),
     member_name: selectedMember?.is_guest ? null : (selectedMember?.full_name || null),
-    cashier_id: currentUser?.id || null,
+    cashier_id: currentUser?.id || currentUser?._id || currentUser?.userId || null,
     cashier_name: currentUser?.username || currentUser?.name || null,
     payment_method: paymentMethod,
     credit_duration: creditMonths ? `${creditMonths} months` : null,
@@ -675,6 +679,15 @@ export default function SalesView({ isActive }) {
     const { finalDiscount, paymentMethod, creditMonths, cashAmount, totalAmount, changeAmount } = checkoutData;
 
     try {
+      if (!resolvedBranchId) {
+        setStatusModal({
+          open: true,
+          type: 'failed',
+          description: 'Select a branch before processing a sale'
+        });
+        return { success: false };
+      }
+
       const liveStockBySku = new Map();
 
       // Validate cart items before sending to backend
@@ -720,20 +733,25 @@ export default function SalesView({ isActive }) {
         const currentStock = liveBatches.find((stock) =>
           String(stock?.stock_id ?? stock?.id ?? stock?.stockId ?? '') === String(stockId) ||
           String(stock?.batch_code ?? stock?.batchCode ?? '') === String(item.batch_code || item.batchCode || '')
-        ) || inventoryItems.find((stock) =>
-          String(stock?.stock_id ?? stock?.id ?? '') === String(stockId)
         );
 
-        if (currentStock) {
-          const availableQty = Number(currentStock.qty ?? currentStock.quantity ?? 0);
-          if (availableQty < Number(qty)) {
-            setStatusModal({
-              open: true,
-              type: 'failed',
-              description: `Insufficient stock for "${item.item_name || 'unknown'}". Available: ${availableQty}, requested: ${qty}`
-            });
-            return { success: false };
-          }
+        if (!currentStock) {
+          setStatusModal({
+            open: true,
+            type: 'failed',
+            description: `Stock batch for "${item.item_name || 'unknown'}" was not found in the selected branch`
+          });
+          return { success: false };
+        }
+
+        const availableQty = Number(currentStock.qty ?? currentStock.quantity ?? 0);
+        if (availableQty < Number(qty)) {
+          setStatusModal({
+            open: true,
+            type: 'failed',
+            description: `Insufficient stock for "${item.item_name || 'unknown'}". Available: ${availableQty}, requested: ${qty}`
+          });
+          return { success: false };
         }
       }
 
@@ -754,7 +772,7 @@ export default function SalesView({ isActive }) {
 
       if (releasedHeldOrder) {
         const heldMember = getHeldSaleMember(releasedHeldOrder);
-        const heldBranchId = releasedHeldOrder.branchId || releasedHeldOrder.branch_id || currentUser?.branchId || currentUser?.branch_id || null;
+        const heldBranchId = releasedHeldOrder.branchId || releasedHeldOrder.branch_id || resolvedBranchId || currentUser?.branchId || currentUser?.branch_id || null;
         const heldCashierId = releasedHeldOrder.cashierId || releasedHeldOrder.cashier_id || currentUser?.id || currentUser?._id || null;
         const heldCashierName = releasedHeldOrder.cashierName || releasedHeldOrder.cashier_name || currentUser?.username || currentUser?.name || null;
 

@@ -108,15 +108,6 @@ function InventoryRestock({ isActive }) {
     setSearchLoading
   });
 
-  //helper method for item availability filtering
-  const interpretAvailability = (item) => {
-    // handle boolean, string, numeric types defensively
-    const a = item?.availability;
-    if (typeof a === "boolean") return a;
-    if (typeof a === "string") return a.toLowerCase() === "true";
-    return Boolean(a); // numbers (1/0) or other truthy/falsy
-  };
-
   // Aggregate stock batches by SKU so the add panel can show the same
   // branch-aware quantity totals as the inventory view.
   const stockSummaryBySku = useMemo(() => {

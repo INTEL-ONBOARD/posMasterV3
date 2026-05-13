@@ -76,7 +76,7 @@ function registerHandlers() {
     }));
 
     ipcMain.handle('online:sales:invoice-no', wrapIpcHandler(async (event, payload) => {
-        return service.generateInvoiceNo(payload?.type || 'SALE');
+        return service.generateInvoiceNo(payload?.type || 'SALE', payload?.branchId || payload?.branch_id || null);
     }));
 
     ipcMain.handle('online:sales:get-summary', wrapIpcHandler(async (event, payload) => {
