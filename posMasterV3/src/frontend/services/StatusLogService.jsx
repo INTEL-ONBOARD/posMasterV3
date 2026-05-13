@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 
 // Status types for different message categories
@@ -43,6 +44,8 @@ export function StatusLogProvider({ children }) {
       });
       return () => unsubscribe?.();
     }
+  // `log` is stable for runtime behavior here; this listener is registered once.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Check network status

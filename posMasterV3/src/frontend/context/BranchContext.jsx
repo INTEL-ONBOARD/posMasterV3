@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { branchContextApi } from '../api/localApi';
 import { localAuth } from '../api/services/localAuth';
@@ -39,19 +40,6 @@ export function BranchProvider({ children }) {
     const [currentBranch, setCurrentBranch] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showSelectionModal, setShowSelectionModal] = useState(false);
-
-    // Load current branch on mount
-    useEffect(() => {
-        loadCurrentBranch();
-
-        // Subscribe to branch changes from backend
-        const unsubscribe = branchContextApi.onBranchChanged((branch) => {
-            console.log('[BranchContext] Branch changed:', branch?.name || 'none');
-            setCurrentBranch(branch);
-        });
-
-        return () => unsubscribe();
-    }, []);
 
     // Load current branch from backend
     const loadCurrentBranch = useCallback(async () => {
@@ -95,6 +83,19 @@ export function BranchProvider({ children }) {
             setLoading(false);
         }
     }, []);
+
+    // Load current branch on mount
+    useEffect(() => {
+        loadCurrentBranch();
+
+        // Subscribe to branch changes from backend
+        const unsubscribe = branchContextApi.onBranchChanged((branch) => {
+            console.log('[BranchContext] Branch changed:', branch?.name || 'none');
+            setCurrentBranch(branch);
+        });
+
+        return () => unsubscribe();
+    }, [loadCurrentBranch]);
 
     // Set current branch
     const setBranch = useCallback(async (branchId) => {

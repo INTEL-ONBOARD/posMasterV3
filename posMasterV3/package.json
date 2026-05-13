@@ -1,7 +1,7 @@
 {
   "name": "posmasterv3",
   "private": true,
-  "version": "1.5.9",
+  "version": "1.6.0",
   "main": "electron.cjs",
   "type": "module",
   "scripts": {
@@ -20,7 +20,8 @@
     "electron": "node run-electron.cjs",
     "electron-dev": "vite build && node run-electron.cjs",
     "postinstall": "electron-rebuild",
-    "rebuild": "electron-rebuild"
+    "rebuild": "electron-rebuild",
+    "verify:online": "node scripts/verify-online-runtime.cjs"
   },
   "build": {
     "appId": "com.posmaster.app",

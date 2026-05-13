@@ -208,9 +208,10 @@ function ManageRole() {
 
   // Cleanup timer on unmount
   useEffect(() => {
+    const timer = timerRef.current;
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
+      if (timer) {
+        clearTimeout(timer);
       }
     };
   }, []);

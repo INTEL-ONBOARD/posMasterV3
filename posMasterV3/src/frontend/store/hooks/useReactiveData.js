@@ -30,7 +30,7 @@
  *   });
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { dataStore, TABLES } from '../DataStore';
 
 /**
@@ -216,18 +216,20 @@ export function useDataChangeSubscription(table, onDataChange) {
 export function usePreloadData(tables) {
     const [isPreloading, setIsPreloading] = useState(true);
     const [preloadError, setPreloadError] = useState(null);
+    const tablesKey = Array.isArray(tables) ? tables.join(',') : '';
+    const stableTables = useMemo(() => (tablesKey ? tablesKey.split(',') : []), [tablesKey]);
 
     useEffect(() => {
         setIsPreloading(true);
         setPreloadError(null);
 
-        dataStore.preload(tables)
+        dataStore.preload(stableTables)
             .then(() => setIsPreloading(false))
             .catch(err => {
                 setPreloadError(err);
                 setIsPreloading(false);
             });
-    }, [tables.join(',')]); // Only re-run if tables array changes
+    }, [stableTables]);
 
     return { isPreloading, preloadError };
 }

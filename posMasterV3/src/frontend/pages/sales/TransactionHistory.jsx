@@ -37,6 +37,14 @@ export default function TransactionHistory({ isActive }) {
     setDetailModalOpen(true);
   };
 
+  const getSaleLineKey = (item = {}, index = 0) => String(
+    item.id ||
+    item._id ||
+    item.sale_item_id ||
+    item.saleItemId ||
+    `${item.item_id || item.itemId || 'item'}:${item.batch_code || item.batchCode || 'batch'}:${index}`
+  );
+
   const handleOpenReturn = async (e, transaction) => {
     e.stopPropagation();
     setReturnError("");
@@ -49,7 +57,7 @@ export default function TransactionHistory({ isActive }) {
         setReturnTransaction(res.data);
         // Initialize return quantities to 0
         const init = {};
-        (res.data.items || []).forEach(item => { init[item.id] = 0; });
+        (res.data.items || []).forEach((item, index) => { init[getSaleLineKey(item, index)] = 0; });
         setReturnItems(init);
         setReturnModalOpen(true);
       }
@@ -60,13 +68,14 @@ export default function TransactionHistory({ isActive }) {
 
   const handleSubmitReturn = async () => {
     const itemsToReturn = (returnTransaction?.items || [])
-      .filter(item => (returnItems[item.id] || 0) > 0)
-      .map(item => ({
-        sale_item_id: item.id,
-        stock_id: item.stock_id,
-        item_id: item.item_id,
-        batch_code: item.batch_code,
-        quantity: returnItems[item.id],
+      .map((item, index) => ({ item, key: getSaleLineKey(item, index) }))
+      .filter(({ key }) => (returnItems[key] || 0) > 0)
+      .map(({ item, key }) => ({
+        sale_item_id: key,
+        stock_id: item.stock_id || item.stockId,
+        item_id: item.item_id || item.itemId,
+        batch_code: item.batch_code || item.batchCode,
+        quantity: returnItems[key],
         unit_price: item.unit_price
       }));
 
@@ -437,8 +446,10 @@ export default function TransactionHistory({ isActive }) {
 
             {/* Items list with quantity inputs */}
             <div className="space-y-3 mb-4">
-              {(returnTransaction.items || []).map(item => (
-                <div key={item.id} className="flex items-center justify-between gap-4 p-3 bg-gray-50 rounded-lg">
+              {(returnTransaction.items || []).map((item, index) => {
+                const itemKey = getSaleLineKey(item, index);
+                return (
+                <div key={itemKey} className="flex items-center justify-between gap-4 p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-800 truncate">{item.item_name || item.item_id}</p>
                     <p className="text-xs text-gray-400">Batch: {item.batch_code} · Sold: {item.quantity}</p>
@@ -447,19 +458,19 @@ export default function TransactionHistory({ isActive }) {
                     <button
                       onClick={() => setReturnItems(prev => ({
                         ...prev,
-                        [item.id]: Math.max(0, (prev[item.id] || 0) - 1)
+                        [itemKey]: Math.max(0, (prev[itemKey] || 0) - 1)
                       }))}
                       className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
                     >
                       <Minus className="w-3 h-3 text-gray-600" />
                     </button>
                     <span className="text-sm font-semibold text-gray-800 w-8 text-center tabular-nums">
-                      {returnItems[item.id] || 0}
+                      {returnItems[itemKey] || 0}
                     </span>
                     <button
                       onClick={() => setReturnItems(prev => ({
                         ...prev,
-                        [item.id]: Math.min(item.quantity, (prev[item.id] || 0) + 1)
+                        [itemKey]: Math.min(item.quantity, (prev[itemKey] || 0) + 1)
                       }))}
                       className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors"
                     >
@@ -467,7 +478,8 @@ export default function TransactionHistory({ isActive }) {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="mb-4">

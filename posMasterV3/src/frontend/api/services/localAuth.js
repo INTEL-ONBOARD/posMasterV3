@@ -17,6 +17,8 @@
  * await localAuth.logout();
  */
 
+import { resetSyncModuleState } from '../../hooks/useRealTimeSync';
+
 // Check if running in Electron
 const isElectron = () => {
     return typeof window !== 'undefined' && window.electronAPI;
@@ -27,14 +29,8 @@ function notifyAuthChange() {
     window.dispatchEvent(new Event('auth-changed'));
 }
 
-// Lazy import to avoid circular deps — useRealTimeSync imports nothing from auth
-let _resetSyncModuleState = null;
 async function getResetSyncFn() {
-    if (!_resetSyncModuleState) {
-        const mod = await import('../../hooks/useRealTimeSync');
-        _resetSyncModuleState = mod.resetSyncModuleState;
-    }
-    return _resetSyncModuleState;
+    return resetSyncModuleState;
 }
 
 /**

@@ -27,6 +27,8 @@ import Sales from './frontend/pages/sales/Sales.jsx';
 import Startup from './frontend/pages/Startup.jsx';
 import Users from './frontend/pages/users/users.jsx';
 import OnlineConnectionOverlay from './frontend/components/OnlineConnectionOverlay.jsx';
+import { localAuth } from './frontend/api/services/localAuth.js';
+import { settingsApi } from './frontend/api/localApi.js';
 
 // Reactive Data Store Provider
 import { DataStoreProvider } from './frontend/store';
@@ -54,9 +56,6 @@ function PermissionRoute({ requiredPermissions = [], anyRole = [] }) {
 
     async function check() {
       try {
-        const { localAuth } = await import('./frontend/api/services/localAuth.js');
-        const { settingsApi } = await import('./frontend/api/localApi.js');
-
         const currentUser = await localAuth.getCurrentUser();
         if (!currentUser) {
           if (!cancelled) setAllowed(false);

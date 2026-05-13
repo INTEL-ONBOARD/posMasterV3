@@ -162,6 +162,41 @@ class OnlineApiClient {
         });
     }
 
+    completeHeldSale(id, data = {}) {
+        return this.request(`/sales/${id}/complete-held`, {
+            method: 'POST',
+            body: data
+        });
+    }
+
+    cancelSale(id, data = {}) {
+        return this.request(`/sales/${id}/cancel`, {
+            method: 'POST',
+            body: data
+        });
+    }
+
+    returnSaleItems(id, data = {}) {
+        return this.request(`/sales/${id}/return-items`, {
+            method: 'POST',
+            body: data
+        });
+    }
+
+    acceptInventoryTransfer(id, data = {}) {
+        return this.request(`/inventory-transfers/${id}/accept`, {
+            method: 'POST',
+            body: data
+        });
+    }
+
+    rejectInventoryTransfer(id, data = {}) {
+        return this.request(`/inventory-transfers/${id}/reject`, {
+            method: 'POST',
+            body: data
+        });
+    }
+
     generateInvoiceNo(type = 'SALE', branchId = null) {
         return this.request('/sales/invoice-no', {
             method: 'POST',

@@ -309,26 +309,6 @@ export default function SalesView({ isActive }) {
   const [selectedItems, setSelectedItems] = useState([]);
   const [lastScannedCode, setLastScannedCode] = useState("");
 
-  // Barcode scanner handler - finds item by SKU and adds to cart
-  const handleBarcodeScan = useCallback((scannedCode) => {
-    // Find item by SKU (case-insensitive)
-    const item = inventoryItems.find(
-      (i) => i.sku?.toLowerCase() === scannedCode.toLowerCase()
-    );
-
-    if (item) {
-      loadItemtoList(item);
-      setLastScannedCode(scannedCode);
-      // Clear the visual indicator after 2 seconds
-      setTimeout(() => setLastScannedCode(""), 2000);
-    } else {
-      setLastScannedCode("");
-    }
-  }, [inventoryItems]);
-
-  // Enable barcode scanner when this view is active
-  useBarcodeScanner(handleBarcodeScan, isActive);
-
   const removeItemFromList = (id) => {
     setSelectedItems(prev => prev.filter(item => item.id !== id));
   };
@@ -399,6 +379,26 @@ export default function SalesView({ isActive }) {
     });
   };
 
+  // Barcode scanner handler - finds item by SKU and adds to cart
+  const handleBarcodeScan = useCallback((scannedCode) => {
+    const item = inventoryItems.find(
+      (i) => i.sku?.toLowerCase() === scannedCode.toLowerCase()
+    );
+
+    if (item) {
+      loadItemtoList(item);
+      setLastScannedCode(scannedCode);
+      setTimeout(() => setLastScannedCode(""), 2000);
+    } else {
+      setLastScannedCode("");
+    }
+  // loadItemtoList uses functional state updates, so this handler only needs the latest inventory list.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inventoryItems]);
+
+  // Enable barcode scanner when this view is active
+  useBarcodeScanner(handleBarcodeScan, isActive);
+
   // Calculate totals
   const stockTotal = selectedItems.reduce((total, item) => {
     const discountedPrice = getCartUnitPrice(item) - (item.customer_discount || 0);
@@ -461,13 +461,13 @@ export default function SalesView({ isActive }) {
         setInvoiceNo(result);
       }
     } catch (error) {
-      console.warn("[SalesView] Invoice number generation failed, using local fallback:", error);
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      let fallback = 'INV';
-      for (let i = 0; i < 8; i++) {
-        fallback += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      setInvoiceNo(fallback);
+      console.error("[SalesView] Invoice number generation failed:", error);
+      setInvoiceNo("");
+      setStatusModal({
+        open: true,
+        type: "failed",
+        description: error?.message || "Online invoice generation failed. Check the backend connection before processing sales."
+      });
     }
   }, [resolvedBranchId]);
 
@@ -685,6 +685,16 @@ export default function SalesView({ isActive }) {
           type: 'failed',
           description: 'Select a branch before processing a sale'
         });
+        return { success: false };
+      }
+
+      if (!invoiceNo) {
+        setStatusModal({
+          open: true,
+          type: 'failed',
+          description: 'Online invoice number is required before processing a sale'
+        });
+        await generateNewInvoice();
         return { success: false };
       }
 

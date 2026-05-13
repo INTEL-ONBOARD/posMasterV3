@@ -321,6 +321,8 @@ function UserSettings() {
     };
 
     fetchUserData();
+  // Load once on mount; helper functions only read static role metadata.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleInputChange = (e) => {

@@ -39,7 +39,6 @@ function SuccessAnimation({ saleData, onClose, formatCurrency }) {
       timers.forEach(clearTimeout);
       clearTimeout(autoCloseTimer);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Press Enter to close the success screen
@@ -49,7 +48,6 @@ function SuccessAnimation({ saleData, onClose, formatCurrency }) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

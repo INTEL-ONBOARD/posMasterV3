@@ -43,6 +43,36 @@ const BRANCH_SCOPED_COLLECTIONS = new Set([
     'login_history'
 ]);
 
+const SEARCH_FIELDS = {
+    branches: ['name', 'branch_name', 'address', 'contact'],
+    categories: ['type', 'brand', 'name', 'category_name'],
+    units_of_measurement: ['symbol', 'unit_name', 'unitName', 'name'],
+    suppliers: ['supplier_name', 'contact', 'type', 'supplier_address'],
+    items: ['item_name', 'name', 'sku', 'item_code', 'product_code', 'category_type', 'category_brand'],
+    stock_batches: ['sku', 'batchCode', 'batch_code', 'item_name'],
+    restock_transactions: ['invoiceNo', 'invoice_no', 'billNo', 'bill_no', 'supplier_name'],
+    inventory_transfers: ['sku', 'batchCode', 'batch_code', 'item_name', 'status'],
+    members: ['member_no', 'memberNo', 'full_name', 'member_name', 'name', 'contact'],
+    sales: ['invoiceNo', 'invoice_no', 'memberName', 'member_name', 'cashierName', 'cashier_name', 'paymentMethod', 'payment_method', 'status'],
+    users: ['email', 'username', 'full_name', 'name'],
+    payment_methods: ['name', 'description', 'type'],
+    login_history: ['email', 'username', 'deviceName', 'device_name', 'status'],
+    offers: ['name', 'description', 'code'],
+    disposed_items: ['sku', 'batchCode', 'batch_code', 'item_name']
+};
+
+const USER_SECRET_FIELDS = [
+    'password',
+    'newPassword',
+    'confirmPassword',
+    'passwordHash',
+    'resetToken',
+    'resetTokenHash',
+    'tokenHash',
+    'sessionToken',
+    'apiKey'
+];
+
 function ensureCollection(name) {
     if (!COLLECTIONS.has(name)) {
         const err = new Error(`Unsupported collection: ${name}`);
@@ -58,6 +88,73 @@ function parseObjectId(id) {
         throw err;
     }
     return new ObjectId(id);
+}
+
+function escapeRegex(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function parseLimit(query = {}) {
+    const raw = Number.parseInt(query.limit || query.pageSize || '100', 10);
+    if (!Number.isFinite(raw) || raw <= 0) return 100;
+    return Math.min(raw, 500);
+}
+
+function parseSkip(query = {}) {
+    const explicitSkip = query.skip ?? query.offset;
+    if (explicitSkip !== undefined) {
+        const parsed = Number.parseInt(explicitSkip, 10);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    }
+    const page = Number.parseInt(query.page || '1', 10);
+    const limit = parseLimit(query);
+    return Number.isFinite(page) && page > 1 ? (page - 1) * limit : 0;
+}
+
+function applySearchFilter(collectionName, filter, query = {}) {
+    const searchTerm = query.q ?? query.search ?? query.searchTerm ?? query.term ?? '';
+    const trimmed = String(searchTerm || '').trim();
+    if (!trimmed) return filter;
+
+    const fields = SEARCH_FIELDS[collectionName] || ['name', 'title', 'sku', 'code', 'type', 'status'];
+    const regex = { $regex: escapeRegex(trimmed), $options: 'i' };
+    const searchClause = {
+        $or: fields.map((field) => ({ [field]: regex }))
+    };
+
+    if (filter.$and) {
+        filter.$and.push(searchClause);
+    } else if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, searchClause];
+        delete filter.$or;
+    } else {
+        Object.assign(filter, searchClause);
+    }
+
+    return filter;
+}
+
+function sanitizeRecord(collectionName, record) {
+    if (!record || typeof record !== 'object') return record;
+    const sanitized = { ...record };
+
+    if (collectionName === 'users') {
+        for (const field of USER_SECRET_FIELDS) {
+            delete sanitized[field];
+        }
+    }
+
+    if (collectionName === 'sessions') {
+        delete sanitized.tokenHash;
+    }
+
+    return sanitized;
+}
+
+function sanitizeRecords(collectionName, records) {
+    return Array.isArray(records)
+        ? records.map((record) => sanitizeRecord(collectionName, record))
+        : sanitizeRecord(collectionName, records);
 }
 
 function getTransferBranchIds(record = {}) {
@@ -287,14 +384,16 @@ function normalizeCollectionBody(collectionName, auth, body = {}, existing = nul
 async function list(collectionName, auth, query = {}) {
     ensureCollection(collectionName);
     const db = getDb();
-    const limit = Math.min(Number.parseInt(query.limit || '100', 10), 500);
-    const skip = Math.max(Number.parseInt(query.skip || '0', 10), 0);
-    return db.collection(collectionName)
-        .find(scopedQuery(collectionName, auth, query))
+    const limit = parseLimit(query);
+    const skip = parseSkip(query);
+    const filter = applySearchFilter(collectionName, scopedQuery(collectionName, auth, query), query);
+    const records = await db.collection(collectionName)
+        .find(filter)
         .sort({ updatedAt: -1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .toArray();
+    return sanitizeRecords(collectionName, records);
 }
 
 async function getById(collectionName, auth, id) {
@@ -311,7 +410,7 @@ async function getById(collectionName, auth, id) {
         throw err;
     }
     assertBranchAccess(collectionName, auth, record);
-    return record;
+    return sanitizeRecord(collectionName, record);
 }
 
 async function create(collectionName, auth, body) {
@@ -332,11 +431,14 @@ async function create(collectionName, auth, body) {
         delete payload.password;
         delete payload.newPassword;
     }
+    const documentBranchId = collectionName === 'inventory_transfers'
+        ? (payload.branchId || payload.branch_id || auth.branchId || null)
+        : (auth.branchId || payload.branchId || payload.branch_id || null);
     const document = {
         ...payload,
         orgId: auth.orgId,
-        branchId: auth.branchId || payload.branchId || payload.branch_id || null,
-        branch_id: auth.branchId || payload.branchId || payload.branch_id || null,
+        branchId: documentBranchId,
+        branch_id: documentBranchId,
         createdAt: now,
         updatedAt: now,
         createdBy: auth.userId,
@@ -357,7 +459,7 @@ async function create(collectionName, auth, body) {
         version: inserted.version,
         changedBy: auth.userId
     });
-    return inserted;
+    return sanitizeRecord(collectionName, inserted);
 }
 
 async function update(collectionName, auth, id, body) {
@@ -416,7 +518,7 @@ async function update(collectionName, auth, id, body) {
         version: updated.version,
         changedBy: auth.userId
     });
-    return updated;
+    return sanitizeRecord(collectionName, updated);
 }
 
 async function softDelete(collectionName, auth, id) {

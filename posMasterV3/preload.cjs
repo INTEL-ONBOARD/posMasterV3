@@ -95,6 +95,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
             ipcRenderer.invoke("online:sales:get-daily", { days }),
         completeHeldSale: (id, data) =>
             ipcRenderer.invoke("online:sales:complete-held", { id, ...data }),
+        cancelSale: (id, data = {}) =>
+            ipcRenderer.invoke("online:sales:cancel", { id, ...data }),
+        returnSaleItems: (id, data = {}) =>
+            ipcRenderer.invoke("online:sales:return-items", { id, ...data }),
+        acceptInventoryTransfer: (id, data = {}) =>
+            ipcRenderer.invoke("online:inventory-transfers:accept", { id, ...data }),
+        rejectInventoryTransfer: (id, data = {}) =>
+            ipcRenderer.invoke("online:inventory-transfers:reject", { id, ...data }),
         list: (collection, query = {}) =>
             ipcRenderer.invoke("online:list", { collection, query }),
         get: (collection, id) =>
@@ -343,13 +351,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
         getHeldOrders: () => ipcRenderer.invoke("sales:get-held-orders"),
         create: (data) => ipcRenderer.invoke("sales:create", data),
         hold: (data) => ipcRenderer.invoke("sales:hold", data),
-        completeHeld: (id, updateData) => ipcRenderer.invoke("sales:complete-held", id, updateData),
-        cancel: (id) => ipcRenderer.invoke("sales:cancel", id),
-        return: (saleId, data) => ipcRenderer.invoke("sales:return", saleId, data),
+        completeHeld: (id, updateData) => ipcRenderer.invoke("online:sales:complete-held", { id, ...(updateData || {}) }),
+        cancel: (id, data = {}) => ipcRenderer.invoke("online:sales:cancel", { id, ...data }),
+        return: (saleId, data) => ipcRenderer.invoke("online:sales:return-items", { id: saleId, ...(data || {}) }),
         getSummary: (startDate, endDate) =>
             ipcRenderer.invoke("online:sales:get-summary", { startDate, endDate }),
         getDaily: (days) => ipcRenderer.invoke("online:sales:get-daily", { days }),
-        generateInvoiceNo: () => ipcRenderer.invoke("sales:generate-invoice-no")
+        generateInvoiceNo: (type = "SALE", branchId = null) =>
+            ipcRenderer.invoke("online:sales:invoice-no", { type, branchId, branch_id: branchId })
     },
 
     // ============================================
@@ -358,19 +367,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
     sync: {
         getStatus: () =>
-            ipcRenderer.invoke("sync:status"),
+            Promise.resolve({ status: "success", data: { onlineOnly: true, status: "online-only", pendingCount: 0 } }),
         checkConnectivity: () =>
-            ipcRenderer.invoke("sync:check-connectivity"),
+            ipcRenderer.invoke("online:ready"),
         processQueue: (token) =>
-            ipcRenderer.invoke("sync:process-queue", { token }),
+            Promise.resolve({ status: "success", data: { processed: 0, onlineOnly: true } }),
         pull: (entityType, token) =>
-            ipcRenderer.invoke("sync:pull", { entityType, token }),
+            Promise.resolve({ status: "success", data: { entityType, pulled: 0, onlineOnly: true } }),
         retryFailed: () =>
-            ipcRenderer.invoke("sync:retry-failed"),
+            Promise.resolve({ status: "success", data: { retried: 0, onlineOnly: true } }),
         cleanup: (daysOld = 7) =>
-            ipcRenderer.invoke("sync:cleanup", { daysOld }),
+            Promise.resolve({ status: "success", data: { cleaned: 0, daysOld, onlineOnly: true } }),
         setCloudUrl: (url) =>
-            ipcRenderer.invoke("sync:set-cloud-url", { url }),
+            Promise.resolve({ status: "success", data: { url, onlineOnly: true } }),
         onStatusChange: (callback) => {
             const handler = (_event, status) => callback(status);
             ipcRenderer.on('sync:status-changed', handler);
@@ -395,27 +404,27 @@ contextBridge.exposeInMainWorld("electronAPI", {
     settings: {
         // User settings
         getUserSettings: (userId) =>
-            ipcRenderer.invoke("settings:get-user-settings", userId),
+            ipcRenderer.invoke("online:list", { collection: "user_settings", query: { userId } }),
         getCurrentUserWithSettings: (userId) =>
-            ipcRenderer.invoke("settings:get-current-user-with-settings", userId),
+            ipcRenderer.invoke("online:list", { collection: "user_settings", query: { userId } }),
         updateUserProfile: (userId, profileData) =>
-            ipcRenderer.invoke("settings:update-user-profile", { userId, profileData }),
+            ipcRenderer.invoke("online:update", { collection: "users", id: userId, data: profileData }),
         updateUserPermissions: (userId, permissions) =>
-            ipcRenderer.invoke("settings:update-user-permissions", { userId, permissions }),
+            ipcRenderer.invoke("online:create", { collection: "user_settings", data: { userId, user_id: userId, settings: { permissions }, permissions } }),
         updateProfileImage: (userId, profileImage) =>
-            ipcRenderer.invoke("settings:update-profile-image", { userId, profileImage }),
+            ipcRenderer.invoke("online:create", { collection: "user_settings", data: { userId, user_id: userId, settings: { profile_image: profileImage, profileImage }, profile_image: profileImage, profileImage } }),
 
         // App settings
         getAppSettings: () =>
-            ipcRenderer.invoke("settings:get-app-settings"),
+            ipcRenderer.invoke("online:list", { collection: "app_settings", query: {} }),
         getAppSetting: (key) =>
-            ipcRenderer.invoke("settings:get-app-setting", key),
+            ipcRenderer.invoke("online:list", { collection: "app_settings", query: { key, setting_key: key } }),
         updateAppSettings: (settings) =>
-            ipcRenderer.invoke("settings:update-app-settings", settings),
+            ipcRenderer.invoke("online:create", { collection: "app_settings", data: { key: "app_settings", setting_key: "app_settings", value: settings, setting_value: settings, settings } }),
         updateAppSetting: (key, value) =>
-            ipcRenderer.invoke("settings:update-app-setting", { key, value }),
+            ipcRenderer.invoke("online:create", { collection: "app_settings", data: { key, setting_key: key, value, setting_value: value } }),
         resetAppSettings: () =>
-            ipcRenderer.invoke("settings:reset-app-settings")
+            Promise.resolve({ status: "success", data: { onlineOnly: true } })
     },
 
     // ============================================

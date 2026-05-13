@@ -1090,7 +1090,7 @@ function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp 
     const rejectedCount = transferRows.filter((transfer) => String(transfer.status || "").toLowerCase() === "rejected").length;
 
     return { outgoingPending, incomingPendingCount, acceptedCount, rejectedCount };
-  }, [incomingHistory.length, outgoingHistory, pendingIncoming.length, transferRows]);
+  }, [outgoingHistory, pendingIncoming.length, transferRows]);
 
   return (
     <div className="h-full min-h-0 overflow-y-auto bg-slate-50 pb-24">

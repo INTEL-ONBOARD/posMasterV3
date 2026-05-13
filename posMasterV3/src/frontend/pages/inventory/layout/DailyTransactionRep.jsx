@@ -35,18 +35,16 @@ const MAIN_SECTIONS = [
 ];
 
 const CUSTOMER_TYPES = ["Member", "Staff", "Guest"];
+const DUMMY_COUNTS = {
+  "06 Months": { Member: 6, Staff: 3, Guest: 0 },
+  "03 Months": { Member: 2, Staff: 2, Guest: 0 },
+  "02 Months": { Member: 4, Staff: 4, Guest: 0 },
+  "01 Months": { Member: 1, Staff: 1, Guest: 0 },
+  "B.O.G": { Member: 3, Staff: 3, Guest: 0 },
+  "Cash": { Member: 5, Staff: 2, Guest: 2 },
+};
 
 export default function DailyTransactionReportPaginated({ maxHeight = "calc(100vh - 160px)" }) {
-  // Dummy counts per section & customer type (modify to test pagination)
-  const dummyCounts = {
-    "06 Months": { Member: 6, Staff: 3, Guest: 0 },
-    "03 Months": { Member: 2, Staff: 2, Guest: 0 },
-    "02 Months": { Member: 4, Staff: 4, Guest: 0 },
-    "01 Months": { Member: 1, Staff: 1, Guest: 0 },
-    "B.O.G": { Member: 3, Staff: 3, Guest: 0 },
-    "Cash": { Member: 5, Staff: 2, Guest: 2 }, // only Cash has Guest
-  };
-
   // Build flattened rows and include explicit customer-header rows so pagination is accurate.
   const flattened = useMemo(() => {
     const out = [];
@@ -64,7 +62,7 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
         // explicit header row for this customer's mini-table (counts as a visible row)
         out.push({ type: "custHeader", title: cust, parent: sec });
 
-        const count = (dummyCounts[sec] && dummyCounts[sec][cust]) || 0;
+        const count = (DUMMY_COUNTS[sec] && DUMMY_COUNTS[sec][cust]) || 0;
         if (count > 0) {
           const rows = makeRows(count, globalDataIdx);
           rows.forEach((r) => {
@@ -79,7 +77,7 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
     });
 
     return out;
-  }, [dummyCounts]);
+  }, []);
 
   // paginate by flattened visible rows
   const pages = useMemo(() => {

@@ -13,7 +13,24 @@ export default defineConfig({
     // Override VITE_VERSION_NUMBER with the version from package.json
     'import.meta.env.VITE_VERSION_NUMBER': JSON.stringify(version),
   },
-  // build: {
-  //   outDir: 'dist-react',
-  // },
+  build: {
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+            return 'vendor-react';
+          }
+          if (id.includes('lucide-react') || id.includes('framer-motion')) {
+            return 'vendor-ui';
+          }
+          if (id.includes('@react-pdf') || id.includes('jspdf') || id.includes('html2canvas')) {
+            return 'vendor-docs';
+          }
+          return 'vendor';
+        }
+      }
+    }
+  },
 })

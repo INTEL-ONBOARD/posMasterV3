@@ -514,9 +514,10 @@ function AddItem({ isActive }) {
   // keep the timer ID so we can clear it if the component unmounts early
   const timerRef = useRef(null);
   useEffect(() => {
+    const timer = timerRef.current;
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
+      if (timer) {
+        clearTimeout(timer);
       }
     };
   }, []);

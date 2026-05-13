@@ -102,9 +102,10 @@ function ManageUser() {
 
   // Cleanup timer on unmount
   useEffect(() => {
+    const timer = timerRef.current;
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
+      if (timer) {
+        clearTimeout(timer);
       }
     };
   }, []);
@@ -112,6 +113,8 @@ function ManageUser() {
   // Initial data load - just load role permissions, data is handled by reactive hooks
   useEffect(() => {
     loadRolePermissions();
+    // Load once on mount; role permission refresh is triggered by explicit saves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Search handler with debounce

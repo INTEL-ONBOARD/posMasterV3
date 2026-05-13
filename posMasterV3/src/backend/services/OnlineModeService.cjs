@@ -2,7 +2,6 @@ const { OnlineApiClient } = require('../online/OnlineApiClient.cjs');
 const { OnlineRealtimeClient } = require('../online/OnlineRealtimeClient.cjs');
 const { config } = require('../../online-server/config.cjs');
 const { connectMongo, getDb } = require('../../online-server/db/mongo.cjs');
-const { successResponse } = require('../utils/helpers.cjs');
 
 async function getConnectedDb() {
     try {
@@ -103,17 +102,23 @@ class OnlineModeService {
     }
 
     async completeHeldSale(saleId, updateData = {}) {
-        const { completeHeldSale } = require('../../online-server/services/salesService.cjs');
-        const session = await this.api.validateSession();
-        const claims = session?.data || {};
-        const auth = {
-            orgId: claims.orgId || config.defaultOrgId,
-            branchId: claims.branchId || updateData.branchId || updateData.branch_id || null,
-            userId: claims.userId || claims.sub || updateData.updatedBy || updateData.updated_by || null,
-            roles: claims.roles || []
-        };
-        const sale = await completeHeldSale(auth, saleId, updateData);
-        return successResponse(sale, 'Held sale completed');
+        return this.api.completeHeldSale(saleId, updateData);
+    }
+
+    async cancelSale(saleId, data = {}) {
+        return this.api.cancelSale(saleId, data);
+    }
+
+    async returnSaleItems(saleId, data = {}) {
+        return this.api.returnSaleItems(saleId, data);
+    }
+
+    async acceptInventoryTransfer(transferId, data = {}) {
+        return this.api.acceptInventoryTransfer(transferId, data);
+    }
+
+    async rejectInventoryTransfer(transferId, data = {}) {
+        return this.api.rejectInventoryTransfer(transferId, data);
     }
 
     async generateInvoiceNo(type = 'SALE', branchId = null) {

@@ -255,17 +255,21 @@ class DataStore {
             return;
         }
 
-        // Invalidate cache for this table
-        this.invalidate(normalizedTable);
+        const tablesToRefresh = new Set([
+            normalizedTable,
+            ...this._getRelatedTables(normalizedTable)
+        ]);
 
-        // If there are active subscribers, refetch immediately
-        const subscribers = this.subscribers.get(normalizedTable);
-        if (subscribers && subscribers.size > 0) {
-            // Track refresh time
+        for (const tableName of tablesToRefresh) {
+            this.invalidate(tableName);
+            const subscribers = this.subscribers.get(tableName);
+            if (!subscribers || subscribers.size === 0) continue;
+
             if (!this._lastRefreshTime) this._lastRefreshTime = new Map();
-            this._lastRefreshTime.set(normalizedTable, Date.now());
-
-            this.refetch(normalizedTable);
+            this._lastRefreshTime.set(tableName, Date.now());
+            this.refetch(tableName).catch((error) => {
+                console.warn(`[DataStore] Realtime refetch failed for ${tableName}:`, error?.message || error);
+            });
         }
     }
 
@@ -315,20 +319,25 @@ class DataStore {
     /**
      * Update related tables when a table changes
      */
-    _updateRelatedTables(table) {
-        // Define relationships between tables
+    _getRelatedTables(table) {
         const relationships = {
             [TABLES.ITEMS]: [TABLES.STOCK_ITEMS, TABLES.STOCK],
             [TABLES.STOCK]: [TABLES.STOCK_ITEMS],
-            [TABLES.SALES_TRANSACTIONS]: [TABLES.STOCK, TABLES.STOCK_ITEMS, TABLES.MEMBERS],
+            [TABLES.STOCK_ITEMS]: [TABLES.STOCK],
+            [TABLES.SALES_TRANSACTIONS]: [TABLES.STOCK, TABLES.STOCK_ITEMS, TABLES.MEMBERS, TABLES.PAYMENT_METHODS],
             [TABLES.RESTOCK_TRANSACTIONS]: [TABLES.STOCK, TABLES.STOCK_ITEMS],
-            [TABLES.INVENTORY_TRANSFERS]: [TABLES.STOCK, TABLES.STOCK_ITEMS]
+            [TABLES.INVENTORY_TRANSFERS]: [TABLES.STOCK, TABLES.STOCK_ITEMS],
+            [TABLES.CATEGORIES]: [TABLES.ITEMS, TABLES.STOCK_ITEMS],
+            [TABLES.UOM]: [TABLES.ITEMS, TABLES.STOCK_ITEMS],
+            [TABLES.BRANCHES]: [TABLES.STOCK, TABLES.STOCK_ITEMS, TABLES.SALES_TRANSACTIONS],
+            [TABLES.PAYMENT_METHODS]: [TABLES.SALES_TRANSACTIONS]
         };
 
-        const relatedTables = relationships[table] || [];
+        return relationships[table] || [];
+    }
 
-        for (const relatedTable of relatedTables) {
-            // Invalidate related table cache (don't refetch immediately)
+    _updateRelatedTables(table) {
+        for (const relatedTable of this._getRelatedTables(table)) {
             this.invalidate(relatedTable);
         }
     }

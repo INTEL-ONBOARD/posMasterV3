@@ -2770,12 +2770,44 @@ const normalizeCollectionResponse = (response) => {
     return response;
 };
 
+const COLLECTION_PAGE_SIZE = 500;
+
+const fetchCollectionPage = async (collection, query = {}) => normalizeCollectionResponse(
+    await onlineCall((api) => api.list(collection, query))
+);
+
+const fetchAllCollection = async (collection, query = {}) => {
+    if (query.limit || query.skip || query.offset || query.page) {
+        return fetchCollectionPage(collection, query);
+    }
+
+    const all = [];
+    let skip = 0;
+    for (let page = 0; page < 20; page += 1) {
+        const response = await fetchCollectionPage(collection, {
+            ...query,
+            limit: COLLECTION_PAGE_SIZE,
+            skip
+        });
+        if (response?.status !== 'success' || !Array.isArray(response.data)) return response;
+        all.push(...response.data);
+        if (response.data.length < COLLECTION_PAGE_SIZE) {
+            return { ...response, data: all };
+        }
+        skip += COLLECTION_PAGE_SIZE;
+    }
+
+    return {
+        status: 'error',
+        message: `Collection ${collection} exceeded the safe fetch limit`,
+        data: all
+    };
+};
+
 const onlineCollectionApi = (collection, options = {}) => ({
-    getAll: async (query = {}) => normalizeCollectionResponse(
-        await onlineCall((api) => api.list(collection, query))
-    ),
+    getAll: async (query = {}) => fetchAllCollection(collection, query),
     getActive: async () => {
-        const response = normalizeCollectionResponse(await onlineCall((api) => api.list(collection, {})));
+        const response = await fetchAllCollection(collection, {});
         if (Array.isArray(response?.data)) {
             response.data = response.data.filter((row) => row.is_active !== false && row.isActive !== false && row.status !== false);
         }
@@ -2785,7 +2817,14 @@ const onlineCollectionApi = (collection, options = {}) => ({
         await onlineCall((api) => api.get(collection, id))
     ),
     search: async (searchTerm = '') => {
-        const response = normalizeCollectionResponse(await onlineCall((api) => api.list(collection, {})));
+        const term = String(searchTerm || '').trim();
+        const response = term
+            ? await fetchAllCollection(collection, { search: term })
+            : await fetchAllCollection(collection, {});
+        return response;
+    },
+    searchLocal: async (searchTerm = '') => {
+        const response = await fetchAllCollection(collection, {});
         const term = String(searchTerm).toLowerCase();
         if (Array.isArray(response?.data) && term) {
             response.data = response.data.filter((row) =>
@@ -2857,7 +2896,7 @@ const installOnlineOnlyOverrides = () => {
     Object.assign(branchApi, onlineCollectionApi('branches'));
     Object.assign(supplierApi, onlineCollectionApi('suppliers'), {
         getAll: async () => {
-            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('suppliers', {})));
+            const response = await fetchAllCollection('suppliers', {});
             if (Array.isArray(response?.data)) {
                 response.data = response.data.map(normalizeSupplierRecord);
             }
@@ -2990,9 +3029,9 @@ const installOnlineOnlyOverrides = () => {
         },
         getBySku: async (sku) => {
             try {
-                const response = await itemApi.getAllExtended();
+                const response = await fetchAllCollection('items', { sku, limit: 1 });
                 if (Array.isArray(response?.data)) {
-                    return { status: 'success', data: response.data.find((row) => row?.sku === sku) || null };
+                    return { status: 'success', data: response.data[0] || null };
                 }
                 return response;
             } catch (err) {
@@ -3010,9 +3049,7 @@ const installOnlineOnlyOverrides = () => {
                 }
                 const [stockResponse, itemsResponse] = await Promise.all([
                     (async () => {
-                        const response = normalizeCollectionResponse(
-                            await onlineCall((api) => api.list('stock_batches', scopedQuery))
-                        );
+                        const response = await fetchAllCollection('stock_batches', scopedQuery);
                         if (Array.isArray(response?.data)) {
                             response.data = response.data.map(normalizeStockRecord);
                         }
@@ -3106,7 +3143,7 @@ const installOnlineOnlyOverrides = () => {
             if (!scopedQuery) {
                 return { status: 'success', data: [], message: 'No branch selected' };
             }
-            return normalizeCollectionResponse(await onlineCall((api) => api.list('restock_transactions', scopedQuery)));
+            return fetchAllCollection('restock_transactions', scopedQuery);
         },
         getStockItems: async () => stockApi.getAllWithItems(),
         getStockData: async (sku, branchId = null) => {
@@ -3119,14 +3156,10 @@ const installOnlineOnlyOverrides = () => {
             const itemId = item?.id ?? item?._id ?? null;
 
             const responses = [];
-            responses.push(normalizeCollectionResponse(
-                await onlineCall((api) => api.list('stock_batches', { sku, branchId: activeBranchId }))
-            ));
+            responses.push(await fetchAllCollection('stock_batches', { sku, branchId: activeBranchId }));
 
             if ((!responses[0]?.data || responses[0].data.length === 0) && itemId != null) {
-                responses.push(normalizeCollectionResponse(
-                    await onlineCall((api) => api.list('stock_batches', { itemId, item_id: itemId, branchId: activeBranchId }))
-                ));
+                responses.push(await fetchAllCollection('stock_batches', { itemId, item_id: itemId, branchId: activeBranchId }));
             }
 
             const batches = responses.flatMap((response) => Array.isArray(response?.data) ? response.data : [])
@@ -3154,7 +3187,7 @@ const installOnlineOnlyOverrides = () => {
         toOnline: toInventoryTransferPayload
     }), {
         getAll: async (query = {}) => {
-            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('inventory_transfers', query)));
+            const response = await fetchAllCollection('inventory_transfers', query);
             if (Array.isArray(response?.data)) {
                 response.data = response.data.map(normalizeInventoryTransferRecord);
             }
@@ -3189,20 +3222,21 @@ const installOnlineOnlyOverrides = () => {
             return response;
         },
         updateStatus: async (id, data = {}) => inventoryTransferApi.update(id, data),
-        accept: async (id, acceptedQty, data = {}) => inventoryTransferApi.updateStatus(id, {
-            ...data,
-            status: 'accepted',
-            acceptedQty,
-            accepted_qty: acceptedQty,
-            accepted_quantity: acceptedQty
-        }),
-        reject: async (id, data = {}) => inventoryTransferApi.updateStatus(id, {
-            ...data,
-            status: 'rejected',
-            acceptedQty: 0,
-            accepted_qty: 0,
-            accepted_quantity: 0
-        })
+        accept: async (id, acceptedQty, data = {}) => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.acceptInventoryTransfer(id, {
+                ...data,
+                acceptedQty,
+                accepted_qty: acceptedQty,
+                accepted_quantity: acceptedQty
+            })));
+            if (response?.data) response.data = normalizeInventoryTransferRecord(response.data);
+            return response;
+        },
+        reject: async (id, data = {}) => {
+            const response = normalizeCollectionResponse(await onlineCall((api) => api.rejectInventoryTransfer(id, data)));
+            if (response?.data) response.data = normalizeInventoryTransferRecord(response.data);
+            return response;
+        }
     });
     Object.assign(memberApi, onlineCollectionApi('members'), {
         getByMemberNo: async (memberNo) => {
@@ -3219,7 +3253,7 @@ const installOnlineOnlyOverrides = () => {
             if (!scopedQuery) {
                 return { status: 'success', data: [], message: 'No branch selected' };
             }
-            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('sales', scopedQuery)));
+            const response = await fetchAllCollection('sales', scopedQuery);
             if (Array.isArray(response?.data)) {
                 response.data = response.data.map(normalizeSaleRecord);
             }
@@ -3292,12 +3326,14 @@ const installOnlineOnlyOverrides = () => {
             return response;
         },
         completeHeld: async (id, data = {}) => onlineCall((api) => api.completeHeldSale(id, data)),
-        cancelSale: async (id) => salesApi.update(id, { status: 'cancelled' }),
-        returnSaleItems: async (id, items, reason) => salesApi.update(id, { returned_items: items, returnReason: reason })
+        cancel: async (id, data = {}) => onlineCall((api) => api.cancelSale(id, data)),
+        cancelSale: async (id, data = {}) => onlineCall((api) => api.cancelSale(id, data)),
+        returnItems: async (id, data = {}) => onlineCall((api) => api.returnSaleItems(id, data)),
+        returnSaleItems: async (id, items, reason) => onlineCall((api) => api.returnSaleItems(id, { items, reason }))
     });
     Object.assign(paymentMethodApi, onlineCollectionApi('payment_methods'), {
         getAll: async () => {
-            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('payment_methods', {})));
+            const response = await fetchAllCollection('payment_methods', {});
             if (Array.isArray(response?.data)) {
                 response.data = response.data.map(normalizePaymentMethodRecord);
             }
@@ -3381,9 +3417,73 @@ const installOnlineOnlyOverrides = () => {
             return stored ? JSON.parse(stored) : null;
         }
     });
+    const upsertUserSettings = async (userId, settingsPatch = {}) => onlineCall(async (api) => {
+        if (!userId) {
+            return { status: 'error', message: 'User ID is required' };
+        }
+        const current = normalizeCollectionResponse(await api.list('user_settings', { userId }));
+        const records = Array.isArray(current?.data) ? current.data : [];
+        const existing = records[0];
+        const existingSettings = existing?.settings && typeof existing.settings === 'object'
+            ? existing.settings
+            : {};
+        const nextSettings = {
+            ...existingSettings,
+            ...settingsPatch
+        };
+        const payload = {
+            userId,
+            user_id: userId,
+            settings: nextSettings,
+            ...nextSettings
+        };
+        if (existing?.id || existing?._id) {
+            return api.update('user_settings', existing.id || existing._id, payload);
+        }
+        return api.create('user_settings', payload);
+    });
+
+    const getUserId = (user) => user?.id || user?._id || user?.userId || null;
+    const branchStorageKey = (userId) => `posmaster:selected-branch:${userId}`;
+    const readPersistedBranchId = async (userId) => {
+        if (!userId) return null;
+
+        const stored = typeof localStorage !== 'undefined'
+            ? localStorage.getItem(branchStorageKey(userId))
+            : null;
+
+        const response = normalizeCollectionResponse(await onlineCall((api) =>
+            api.list('user_settings', { userId, limit: 1 })
+        ));
+        const record = Array.isArray(response?.data) ? response.data[0] : null;
+        const settings = record?.settings && typeof record.settings === 'object' ? record.settings : record;
+        return settings?.selected_branch_id
+            || settings?.selectedBranchId
+            || settings?.branchId
+            || stored
+            || null;
+    };
+    const persistBranchSelection = async (userId, branch = null) => {
+        if (!userId) return;
+        const branchId = branch?.id || branch?._id || branch?.branchId || branch?.branch_id || null;
+        if (typeof localStorage !== 'undefined') {
+            if (branchId) {
+                localStorage.setItem(branchStorageKey(userId), String(branchId));
+            } else {
+                localStorage.removeItem(branchStorageKey(userId));
+            }
+        }
+        await upsertUserSettings(userId, {
+            selected_branch_id: branchId,
+            selectedBranchId: branchId,
+            selected_branch_name: branch?.name || branch?.branch_name || null,
+            selectedBranchName: branch?.name || branch?.branch_name || null
+        });
+    };
+
     Object.assign(settingsApi, onlineCollectionApi('user_settings'), {
         getUserSettings: async (userId) => {
-            const response = normalizeCollectionResponse(await onlineCall((api) => api.list('user_settings', { userId })));
+            const response = await fetchAllCollection('user_settings', { userId });
             if (response?.status !== 'success' || !Array.isArray(response.data)) return response;
             const settingsRecord = response.data[0] || {};
             return {
@@ -3394,9 +3494,30 @@ const installOnlineOnlyOverrides = () => {
                 }
             };
         },
-        getCurrentUserWithSettings: async () => authApi.getCurrentUser(),
+        getCurrentUserWithSettings: async () => {
+            const user = await authApi.getCurrentUser();
+            const userId = user?.id || user?._id || user?.userId || null;
+            const settings = userId ? await settingsApi.getUserSettings(userId) : { status: 'success', data: { settings: {} } };
+            return {
+                status: 'success',
+                data: {
+                    user,
+                    settings: settings?.data?.settings || {}
+                }
+            };
+        },
+        updateUserProfile: async (userId, profileData = {}) => onlineCall((api) => api.update('users', userId, {
+            ...profileData,
+            fullName: profileData.fullName || profileData.full_name,
+            full_name: profileData.full_name || profileData.fullName
+        })),
+        updateUserPermissions: async (userId, permissions = {}) => upsertUserSettings(userId, { permissions }),
+        updateProfileImage: async (userId, profileImage = '') => upsertUserSettings(userId, {
+            profile_image: profileImage,
+            profileImage
+        }),
         getAppSettings: async () => mergeAppSettingsResponse(
-            normalizeCollectionResponse(await onlineCall((api) => api.list('app_settings', {})))
+            await fetchAllCollection('app_settings', {})
         ),
         getAppSetting: async (key) => {
             const response = mergeAppSettingsResponse(await settingsApi.getAppSettings());
@@ -3428,7 +3549,21 @@ const installOnlineOnlyOverrides = () => {
                 return api.update('app_settings', existing.id || existing._id, payload);
             }
             return api.create('app_settings', payload);
-        })
+        }),
+        resetAppSettings: async () => {
+            const defaults = {
+                logout_on_close: true,
+                notifications: true,
+                temp_system: false,
+                run_on_startup: true,
+                maximize_window: true,
+                default_outlet: ''
+            };
+            const response = await settingsApi.updateAppSettings(defaults);
+            return response?.status === 'success'
+                ? { ...response, data: defaults }
+                : response;
+        }
     });
     Object.assign(appSettingsApi, {
         getAll: async () => ({ status: 'success', data: { online_only: true } })
@@ -3465,6 +3600,7 @@ const installOnlineOnlyOverrides = () => {
     Object.assign(branchContextApi, {
         getCurrent: async () => {
             const user = await authApi.getCurrentUser();
+            const userId = getUserId(user);
             const userBranchId = getUserBranchId(user);
 
             if (userBranchId && !isGlobalBranchUser(user)) {
@@ -3474,6 +3610,17 @@ const installOnlineOnlyOverrides = () => {
 
             if (currentOnlineBranch) {
                 return { status: 'success', data: currentOnlineBranch };
+            }
+
+            if (isGlobalBranchUser(user)) {
+                const persistedBranchId = await readPersistedBranchId(userId);
+                if (persistedBranchId) {
+                    const persisted = await branchApi.getById(persistedBranchId);
+                    if (persisted?.status === 'success' && persisted?.data) {
+                        currentOnlineBranch = persisted.data;
+                        return persisted;
+                    }
+                }
             }
 
             if (userBranchId) {
@@ -3488,6 +3635,7 @@ const installOnlineOnlyOverrides = () => {
         getCurrentBranch: async () => branchContextApi.getCurrent(),
         setCurrent: async (branchId) => {
             const user = await authApi.getCurrentUser();
+            const userId = getUserId(user);
             const userBranchId = getUserBranchId(user);
             if (userBranchId && !isGlobalBranchUser(user) && String(userBranchId) !== String(branchId)) {
                 return { status: 'error', message: 'This user is restricted to their assigned branch', data: null };
@@ -3495,12 +3643,15 @@ const installOnlineOnlyOverrides = () => {
             const response = await branchApi.getById(branchId);
             if (response?.status === 'success' && response?.data) {
                 currentOnlineBranch = response.data;
+                await persistBranchSelection(userId, response.data);
                 emitBranchContextChanged(response.data);
             }
             return response;
         },
         setCurrentBranch: async (branchId) => branchContextApi.setCurrent(branchId),
         clear: async () => {
+            const user = await authApi.getCurrentUser();
+            await persistBranchSelection(getUserId(user), null);
             currentOnlineBranch = null;
             emitBranchContextChanged(null);
             return { status: 'success', data: null };
@@ -3541,7 +3692,7 @@ const installOnlineOnlyOverrides = () => {
         getAllMembers: async () => teaCoopApi.getAll(),
         getMemberById: async (memberId) => teaCoopApi.getById(memberId),
         searchMembers: async (term) => teaCoopApi.search(term),
-        getPaymentHistory: async (memberId) => normalizeCollectionResponse(await onlineCall((api) => api.list('tea_coop_payments', { memberId }))),
+        getPaymentHistory: async (memberId) => fetchAllCollection('tea_coop_payments', { memberId }),
         syncMembers: async () => ({ status: 'error', message: 'Tea Coop sync must run in the online backend, not the desktop client' }),
         syncPayments: async () => ({ status: 'error', message: 'Tea Coop sync must run in the online backend, not the desktop client' }),
         refreshMember: async (memberId) => teaCoopApi.getMemberById(memberId),

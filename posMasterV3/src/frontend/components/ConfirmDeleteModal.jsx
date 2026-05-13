@@ -50,7 +50,7 @@ export default function ConfirmDeleteModal({ open, item, onCancel, onSuccess }) 
 
       return () => clearTimeout(timer);
     }
-  }, [status]);
+  }, [status, onCancel]);
 
   return open && item ? (
     <div className="fixed z-50 inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm" style={{ left: '12.5%' }}>

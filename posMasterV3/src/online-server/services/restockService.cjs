@@ -2,10 +2,32 @@ const { getDb, getMongoClient, supportsTransactions } = require('../db/mongo.cjs
 const { publishDomainEvent } = require('./domainEvents.cjs');
 const { normalizeUomSymbol, getEffectiveSellingPrice } = require('../utils/uomPricing.cjs');
 
+function assertTransactionSupport() {
+    if (!supportsTransactions()) {
+        const err = new Error('MongoDB transactions are required for restock mutations. Use MongoDB Atlas or a replica-set MongoDB deployment.');
+        err.statusCode = 503;
+        throw err;
+    }
+}
+
+function assertFiniteNumber(value, label, { positive = false } = {}) {
+    if (!Number.isFinite(value) || (positive ? value <= 0 : value < 0)) {
+        const err = new Error(`${label} must be a ${positive ? 'positive' : 'non-negative'} number`);
+        err.statusCode = 400;
+        throw err;
+    }
+}
+
 async function createRestock(auth, restockInput = {}) {
     const db = getDb();
     const now = new Date();
     const branchId = auth.branchId || restockInput.branchId || restockInput.branch_id || null;
+
+    if (!branchId) {
+        const err = new Error('Branch is required to create a restock transaction');
+        err.statusCode = 400;
+        throw err;
+    }
 
     const addedItems = (restockInput.added_items || []).map((item) => ({
         sku: item.sku || item.SKU || '',
@@ -26,6 +48,19 @@ async function createRestock(auth, restockInput = {}) {
         const err = new Error('Restock must contain at least one added item');
         err.statusCode = 400;
         throw err;
+    }
+
+    for (const item of addedItems) {
+        if (!item.sku || !item.batchCode) {
+            const err = new Error(`Restock item is missing SKU or batch code: sku=${item.sku} batch=${item.batchCode}`);
+            err.statusCode = 400;
+            throw err;
+        }
+        assertFiniteNumber(item.quantity, `Quantity for SKU ${item.sku}`, { positive: true });
+        assertFiniteNumber(item.stockPrice, `Stock price for SKU ${item.sku}`);
+        assertFiniteNumber(item.retailPrice, `Retail price for SKU ${item.sku}`);
+        assertFiniteNumber(item.sellingPricePerKg, `Selling price per kg for SKU ${item.sku}`);
+        assertFiniteNumber(item.sellingPricePerLiter, `Selling price per liter for SKU ${item.sku}`);
     }
 
     // Build restock transaction document
@@ -63,17 +98,14 @@ async function createRestock(auth, restockInput = {}) {
 
     let restock;
 
-    if (supportsTransactions()) {
-        const session = getMongoClient().startSession();
-        try {
-            await session.withTransaction(async () => {
-                restock = await executeRestock(db, auth, restockDoc, addedItems, branchId, now, session);
-            });
-        } finally {
-            await session.endSession();
-        }
-    } else {
-        restock = await executeRestock(db, auth, restockDoc, addedItems, branchId, now);
+    assertTransactionSupport();
+    const session = getMongoClient().startSession();
+    try {
+        await session.withTransaction(async () => {
+            restock = await executeRestock(db, auth, restockDoc, addedItems, branchId, now, session);
+        });
+    } finally {
+        await session.endSession();
     }
 
     await publishDomainEvent({
@@ -106,12 +138,6 @@ async function executeRestock(db, auth, restockDoc, addedItems, branchId, now, s
 
     // Upsert stock batches for each added item
     for (const item of addedItems) {
-        if (!item.sku || !item.batchCode) {
-            const err = new Error(`Restock item is missing SKU or batch code: sku=${item.sku} batch=${item.batchCode}`);
-            err.statusCode = 400;
-            throw err;
-        }
-
         // Find the item by SKU to get its MongoDB _id
         const product = await db.collection('items').findOne(
             { orgId: auth.orgId, sku: item.sku, deletedAt: null },
@@ -120,17 +146,27 @@ async function executeRestock(db, auth, restockDoc, addedItems, branchId, now, s
 
         const itemId = product?._id ? String(product._id) : null;
 
+        const identityClauses = [
+            { sku: item.sku, batchCode: item.batchCode },
+            { sku: item.sku, batch_code: item.batchCode }
+        ];
+        if (itemId) {
+            identityClauses.push(
+                { itemId, batchCode: item.batchCode },
+                { item_id: itemId, batch_code: item.batchCode },
+                { itemId, batch_code: item.batchCode },
+                { item_id: itemId, batchCode: item.batchCode }
+            );
+        }
+
         const batchFilter = {
             orgId: auth.orgId,
-            sku: item.sku,
-            batchCode: item.batchCode,
             deletedAt: null,
-            $or: [{ branchId }, { branch_id: branchId }]
+            $and: [
+                { $or: [{ branchId }, { branch_id: branchId }] },
+                { $or: identityClauses }
+            ]
         };
-
-        if (itemId) {
-            batchFilter.itemId = itemId;
-        }
 
         const existing = await db.collection('stock_batches').findOne(batchFilter, session ? { session } : {});
 

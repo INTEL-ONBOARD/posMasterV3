@@ -62,6 +62,26 @@ export const onlineApi = {
     return getOnlineApi().createSale(data);
   },
 
+  completeHeldSale(id, data = {}) {
+    return getOnlineApi().completeHeldSale(id, data);
+  },
+
+  cancelSale(id, data = {}) {
+    return getOnlineApi().cancelSale(id, data);
+  },
+
+  returnSaleItems(id, data = {}) {
+    return getOnlineApi().returnSaleItems(id, data);
+  },
+
+  acceptInventoryTransfer(id, data = {}) {
+    return getOnlineApi().acceptInventoryTransfer(id, data);
+  },
+
+  rejectInventoryTransfer(id, data = {}) {
+    return getOnlineApi().rejectInventoryTransfer(id, data);
+  },
+
   generateInvoiceNo(type = 'SALE', branchId = null) {
     return getOnlineApi().generateInvoiceNo(type, branchId);
   },

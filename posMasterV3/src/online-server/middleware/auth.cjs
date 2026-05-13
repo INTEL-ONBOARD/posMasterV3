@@ -47,7 +47,151 @@ function requireOrgScope(req, res, next) {
     return next();
 }
 
+const ADMIN_ROLES = new Set(['admin', 'superadmin', 'super_admin', 'owner']);
+const MANAGER_ROLES = new Set(['manager', 'admin', 'superadmin', 'super_admin', 'owner']);
+const SALES_ROLES = new Set(['cashier', 'sales', 'manager', 'admin', 'superadmin', 'super_admin', 'owner']);
+const INVENTORY_ROLES = new Set(['inventory', 'stock_manager', 'manager', 'admin', 'superadmin', 'super_admin', 'owner']);
+
+function hasAnyRole(auth, allowedRoles) {
+    const roles = Array.isArray(auth?.roles) ? auth.roles : [];
+    return roles.some((role) => allowedRoles.has(String(role || '').toLowerCase()));
+}
+
+function ownsUserScopedBody(req) {
+    const targetUserId = req.body?.userId || req.body?.user_id || req.params?.id || req.query?.userId || req.query?.user_id;
+    return targetUserId && String(targetUserId) === String(req.auth?.userId);
+}
+
+function requireCatalogReadPermission(req, res, next) {
+    const collection = req.params.collection;
+    if (!collection) return next();
+    if (hasAnyRole(req.auth, ADMIN_ROLES)) return next();
+
+    const managerOnlyCollections = new Set([
+        'users',
+        'app_settings',
+        'login_history'
+    ]);
+    const inventoryCollections = new Set([
+        'categories',
+        'units_of_measurement',
+        'suppliers',
+        'items',
+        'stock_batches',
+        'restock_transactions',
+        'restock_items',
+        'return_items',
+        'inventory_transfers',
+        'disposed_items'
+    ]);
+    const salesCollections = new Set([
+        'sales',
+        'sales_items',
+        'returned_items',
+        'members',
+        'offers',
+        'payment_methods',
+        'tea_coop_members',
+        'tea_coop_payments'
+    ]);
+
+    if (collection === 'user_settings') {
+        if (ownsUserScopedBody(req) || hasAnyRole(req.auth, MANAGER_ROLES)) return next();
+        return res.status(403).json({ status: 'error', message: 'You can only read your own settings' });
+    }
+
+    if (collection === 'branches') {
+        if (hasAnyRole(req.auth, MANAGER_ROLES) || req.auth?.branchId) return next();
+        return res.status(403).json({ status: 'error', message: 'Branch access requires an assigned branch' });
+    }
+
+    if (managerOnlyCollections.has(collection) && !hasAnyRole(req.auth, MANAGER_ROLES)) {
+        return res.status(403).json({ status: 'error', message: 'This data requires manager access' });
+    }
+
+    if (inventoryCollections.has(collection) && !hasAnyRole(req.auth, INVENTORY_ROLES)) {
+        return res.status(403).json({ status: 'error', message: 'This data requires inventory access' });
+    }
+
+    if (salesCollections.has(collection) && !hasAnyRole(req.auth, SALES_ROLES)) {
+        return res.status(403).json({ status: 'error', message: 'This data requires sales access' });
+    }
+
+    return next();
+}
+
+function requireCatalogPermission(req, res, next) {
+    if (req.method === 'GET') return next();
+
+    const collection = req.params.collection;
+    if (!collection) return next();
+    if (hasAnyRole(req.auth, ADMIN_ROLES)) return next();
+
+    const sensitiveCollections = new Set([
+        'users',
+        'app_settings',
+        'branches',
+        'payment_methods'
+    ]);
+    const inventoryCollections = new Set([
+        'categories',
+        'units_of_measurement',
+        'suppliers',
+        'items',
+        'stock_batches',
+        'restock_transactions',
+        'restock_items',
+        'return_items',
+        'inventory_transfers',
+        'disposed_items'
+    ]);
+    const salesCollections = new Set([
+        'sales',
+        'sales_items',
+        'returned_items',
+        'members',
+        'offers'
+    ]);
+
+    if (collection === 'user_settings') {
+        if (ownsUserScopedBody(req) || hasAnyRole(req.auth, MANAGER_ROLES)) return next();
+        return res.status(403).json({ status: 'error', message: 'You can only update your own settings' });
+    }
+
+    if (collection === 'users' && ownsUserScopedBody(req) && req.method === 'PATCH') {
+        return next();
+    }
+
+    if (sensitiveCollections.has(collection) && !hasAnyRole(req.auth, MANAGER_ROLES)) {
+        return res.status(403).json({ status: 'error', message: 'This action requires manager access' });
+    }
+
+    if (inventoryCollections.has(collection) && !hasAnyRole(req.auth, INVENTORY_ROLES)) {
+        return res.status(403).json({ status: 'error', message: 'This action requires inventory access' });
+    }
+
+    if (salesCollections.has(collection) && !hasAnyRole(req.auth, SALES_ROLES)) {
+        return res.status(403).json({ status: 'error', message: 'This action requires sales access' });
+    }
+
+    return next();
+}
+
+function requireSalesPermission(req, res, next) {
+    if (hasAnyRole(req.auth, SALES_ROLES)) return next();
+    return res.status(403).json({ status: 'error', message: 'This action requires sales access' });
+}
+
+function requireInventoryPermission(req, res, next) {
+    if (hasAnyRole(req.auth, INVENTORY_ROLES)) return next();
+    return res.status(403).json({ status: 'error', message: 'This action requires inventory access' });
+}
+
 module.exports = {
     requireAuth,
-    requireOrgScope
+    requireOrgScope,
+    requireCatalogReadPermission,
+    requireCatalogPermission,
+    requireSalesPermission,
+    requireInventoryPermission
 };

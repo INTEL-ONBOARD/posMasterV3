@@ -281,8 +281,9 @@ async function resetPassword(auth, targetUserId, newPassword) {
         throw err;
     }
 
-    const allowed = Array.isArray(auth?.roles) && (auth.roles.includes('admin') || auth.roles.includes('manager'));
-    if (!allowed && String(auth?.userId) !== String(targetUserId)) {
+    const roles = Array.isArray(auth?.roles) ? auth.roles.map((role) => String(role).toLowerCase()) : [];
+    const allowed = roles.some((role) => ['admin', 'manager', 'superadmin', 'super_admin', 'owner'].includes(role));
+    if (!allowed) {
         const err = new Error('Not authorized to reset this password');
         err.statusCode = 403;
         throw err;

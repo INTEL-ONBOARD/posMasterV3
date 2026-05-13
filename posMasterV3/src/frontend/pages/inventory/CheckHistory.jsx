@@ -47,7 +47,7 @@ function CheckHistory({ isActive }) {
   };
 
   // Safe access to transaction data
-  const safeTransData = transData || [];
+  const safeTransData = useMemo(() => transData || [], [transData]);
 
   // Build unique supplier list for dropdown
   const uniqueSuppliers = useMemo(() => {

@@ -257,14 +257,14 @@ function PriceChange() {
   };
 
   // Form validation
-  const validateStockForm = () => {
+  const validateStockForm = useCallback(() => {
     const errors = {};
     if (!formDataStock.batch_code.trim()) errors.batch_code = "Batch code is required";
     if (!formDataPriceChange.new_price.toString().trim()) errors.new_price = "New price is required";
     if (isNaN(parseFloat(formDataPriceChange.new_price)) || parseFloat(formDataPriceChange.new_price) < 0) errors.new_price = "Enter a valid price";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+  }, [formDataStock.batch_code, formDataPriceChange.new_price]);
 
   // Form submission
   const handleStockSubmit = useCallback(async () => {
@@ -305,7 +305,7 @@ function PriceChange() {
         setSubmitLoading(false);
       }
     }
-  }, [formDataStock, formDataPriceChange, selectedItemForDetails]);
+  }, [formDataStock, formDataPriceChange, selectedItemForDetails, validateStockForm]);
 
   // Reset forms
   const resetForms = useCallback(() => {
