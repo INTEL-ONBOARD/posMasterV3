@@ -63,7 +63,7 @@ export default function RestockRep({maxHeight="calc(100vh - 300px)"}) {
 
         return (
           <div
-            key={pageIndex}
+            key={`restock-page-${pageIndex}`}
             // restock-page is used by query selector for printing these pages via querySelector
             className="restock-page"
             style={{ ...styles.page, pageBreakAfter: "always" }}
@@ -126,7 +126,7 @@ export default function RestockRep({maxHeight="calc(100vh - 300px)"}) {
                   }
 
                   return (
-                    <React.Fragment key={item.id + "-" + globalIndex}>
+                    <React.Fragment key={`${item.id || item.code || "restock-item"}-${globalIndex}`}>
                       {showSectionHeading ? (
                         <tr>
                           <td style={{ ...styles.sectionRow }} colSpan={7}>{sectionLabel}</td>

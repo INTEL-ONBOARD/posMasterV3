@@ -220,7 +220,7 @@ function ViewItemModal({ isOpen, closeModal, item }) {
                   ) : (
                     stockEntries.map((s, i) => (
                       <div
-                        key={s.batch_code + i}
+                        key={`${s.batch_code || s.code || "batch"}-${i}`}
                         className="bg-white rounded-lg px-3 py-2.5 border border-gray-100"
                       >
                         <div className="flex items-center justify-between mb-1">

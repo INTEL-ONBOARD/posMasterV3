@@ -282,9 +282,9 @@ const PrintableGrid = forwardRef(({ value, count }, ref) => {
         boxSizing: 'border-box',
       }}
     >
-      {slots.map((val) => (
+      {slots.map((val, index) => (
         <div
-          key={val}
+          key={`${val || "slot"}-${index}`}
           style={{
             display: 'flex',
             justifyContent: 'center',

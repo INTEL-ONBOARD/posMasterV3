@@ -11,6 +11,8 @@ import SupplierReg from "./SupplierReg.jsx";
 import CheckHistory from "./CheckHistory.jsx";
 import PriceChange from "./PriceChange.jsx";
 import DisposedItemsView from "./DisposedItemsView.jsx";
+import ManagerApprovalTab from "./ManagerApprovalTab.jsx";
+import { useReactiveData, TABLES } from "../../store";
 import { useStatusLog } from "../../services/StatusLogService.jsx";
 
 // Section labels for status bar
@@ -22,6 +24,7 @@ const sectionLabels = {
   "price-change": "Price Change",
   "check-history": "Check History",
   "inventory-config": "Inventory Configuration",
+  "inventory-approvals": "Approvals",
   "inventory-report": "Inventory Report",
   "inventory-share": "Inventory Share",
   "disposed-items": "Disposed Items",
@@ -33,11 +36,17 @@ function Inventory() {
   const navigate = useNavigate();
   const [activeSection, setLocalActiveSection] = useState("view-inventory");
   const statusLog = useStatusLog();
+  const { data: branchRows = [] } = useReactiveData(TABLES.BRANCHES, null, { initialData: [] });
+
+  const branches = branchRows.filter((branch) => branch && branch.is_active !== false && branch.isActive !== false);
 
   useEffect(() => {
     if (location.pathname.endsWith("/share")) {
       setLocalActiveSection("inventory-share");
       setActiveSection("inventory-share");
+    } else if (location.pathname.endsWith("/approvals")) {
+      setLocalActiveSection("inventory-approvals");
+      setActiveSection("inventory-approvals");
     }
   }, [location.pathname, setActiveSection]);
 
@@ -52,6 +61,8 @@ function Inventory() {
     statusLog.info(`Inventory: ${sectionLabels[section] || section}`);
     if (section === "inventory-share") {
       navigate("/dashboard/inventory/share", { replace: true });
+    } else if (section === "inventory-approvals") {
+      navigate("/dashboard/inventory/approvals", { replace: true });
     }
   };
 
@@ -71,6 +82,7 @@ function Inventory() {
         onPriceChangeClick={() => handleSectionChange("price-change")}
         onCheckHistoryClick={() => handleSectionChange("check-history")}
         onShareClick={() => handleSectionChange("inventory-share")}
+        onApprovalsClick={() => handleSectionChange("inventory-approvals")}
         onConfigClick={() => handleSectionChange("inventory-config")}
         onCReportClick={() => handleSectionChange("inventory-report")}
         onDisposedItemsClick={() => handleSectionChange("disposed-items")}
@@ -113,6 +125,10 @@ function Inventory() {
         {/* Inventory Share */}
         <div className={isVisible("inventory-share")}>
           <InventoryShare isActive={activeSection === "inventory-share"} />
+        </div>
+        {/* Approvals */}
+        <div className={isVisible("inventory-approvals")}>
+          <ManagerApprovalTab branches={branches} />
         </div>
         {/* Disposed Items */}
         <div className={isVisible("disposed-items")}>

@@ -39,7 +39,7 @@ function BreadCrumb({ activeSection }) {
           const routeTo = '/' + pathnames.slice(0, idx + 1).join('/');
           const isLast = idx === pathnames.length - 1;
           return (
-            <li key={routeTo} className="flex items-center space-x-2">
+            <li key={`${routeTo}-${idx}`} className="flex items-center space-x-2">
               {/* Arrow icon */}
               <svg className="w-4 h-4 text-[#1A318C] mx-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />

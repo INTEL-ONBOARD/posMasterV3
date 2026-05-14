@@ -145,7 +145,7 @@ export default function TransactionB5Rep() {
 
             <tbody>
               {rows.map((r, idx) => (
-                <tr key={idx}>
+                <tr key={`row-${idx}`}>
                   <td style={styles.tdLeft}>{r.description}</td>
                   <td style={styles.td}>{r.totalSales}</td>
                   <td style={styles.td}>{r.bop}</td>
@@ -183,7 +183,7 @@ export default function TransactionB5Rep() {
             </thead>
             <tbody>
               {receivedRows.map((row, i) => (
-                <tr key={i}>
+                <tr key={`received-${i}`}>
                   <td style={styles.tdSmall}>{row.prev}</td>
                   <td style={styles.tdLeftSmall}>{row.description}</td>
                   <td style={styles.tdSmall}>{row.date}</td>
@@ -209,7 +209,7 @@ export default function TransactionB5Rep() {
             </thead>
             <tbody>
               {expensesRows.map((row, i) => (
-                <tr key={i}>
+                <tr key={`expense-${i}`}>
                   <td style={styles.tdSmall}>{row.prev}</td>
 
                   {/* Invoice cell: render once with rowSpan=11 */}

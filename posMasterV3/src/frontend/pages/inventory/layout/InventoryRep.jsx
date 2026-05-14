@@ -185,7 +185,7 @@ const InventoryRep = React.forwardRef(function InventoryRep(
           const endIndex = startIndex + pageItems.length;
 
           return (
-            <div key={pageIndex} className="report-page" style={styles.page}>
+            <div key={`inventory-page-${pageIndex}`} className="report-page" style={styles.page}>
               {/* Header */}
               <div style={styles.header}>
                 <h1 style={styles.companySinhala}>මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමූපකාර සමිතිය</h1>
@@ -238,7 +238,7 @@ const InventoryRep = React.forwardRef(function InventoryRep(
 
                       return (
                         <tr
-                          key={item.id ?? globalIndex}
+                          key={`${item.id ?? item.sku ?? "inventory-item"}-${globalIndex}`}
                           onClick={() => onRowClick && onRowClick(item)}
                           style={{ cursor: onRowClick ? "pointer" : "default" }}
                         >

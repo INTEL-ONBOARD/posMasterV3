@@ -1160,7 +1160,7 @@ const generateBillPdf = async (checkoutData) => {
             ) : (
               selectedItems.map((item, index) => (
                 <div
-                  key={item.id}
+                  key={`${item.id || item.sku || "selected-item"}-${index}`}
                   onClick={() => handleTableRowClick(item)}
                   className="grid grid-cols-12 gap-4 px-6 py-4 items-center cursor-pointer transition-all border-b border-slate-100 hover:bg-gradient-to-r hover:from-teal-50/50 hover:to-transparent group"
                 >
@@ -1246,8 +1246,8 @@ const generateBillPdf = async (checkoutData) => {
                 className="w-full px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition-all"
               >
                 <option value="All">All Categories</option>
-                {uniqueCategoryTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
+                {uniqueCategoryTypes.map((type, index) => (
+                  <option key={`${type || "category"}-${index}`} value={type}>{type}</option>
                 ))}
               </select>
             </div>
@@ -1269,8 +1269,8 @@ const generateBillPdf = async (checkoutData) => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {filteredItems.map((item) => (
-                    <SalesItemCard key={item.id ?? item._id} item={item} onOpen={() => handleItemCardClick(item)} />
+                  {filteredItems.map((item, index) => (
+                    <SalesItemCard key={`${item.id ?? item._id ?? item.sku ?? "item"}-${index}`} item={item} onOpen={() => handleItemCardClick(item)} />
                   ))}
                 </div>
               )}

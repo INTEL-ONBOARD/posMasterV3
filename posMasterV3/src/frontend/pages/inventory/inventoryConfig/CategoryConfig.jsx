@@ -164,8 +164,8 @@ function CategoryConfig() {
                 className="h-12 pl-4 pr-10 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer min-w-[180px]"
               >
                 <option value="All">All Categories</option>
-                {uniqueCategoryTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
+                {uniqueCategoryTypes.map((type, index) => (
+                  <option key={`${type || "category"}-${index}`} value={type}>{type}</option>
                 ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -260,9 +260,9 @@ function CategoryConfig() {
                   </td>
                 </tr>
               ) : (
-                filteredCategories.map((category) => (
+                filteredCategories.map((category, index) => (
                   <tr
-                    key={category.id}
+                    key={`${category.id || category.name || "category"}-${index}`}
                     onClick={() => handleRowClick(category)}
                     className={`cursor-pointer transition-colors ${editingId === category.id ? 'bg-[#1A318C]/5 ring-2 ring-inset ring-[#1A318C]' : 'hover:bg-gray-50'}`}
                   >
@@ -304,8 +304,8 @@ function CategoryConfig() {
                   </td>
                 </tr>
               ) : (
-                summaryRows.map(({ idx, type, count }) => (
-                  <tr key={type} className="hover:bg-gray-50 transition-colors">
+                summaryRows.map(({ idx, type, count }, index) => (
+                  <tr key={`${type || "category"}-${index}`} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-3 text-sm text-gray-600">{idx}</td>
                     <td className="px-6 py-3 text-sm font-medium text-gray-800">{type}</td>
                     <td className="px-6 py-3 text-center">

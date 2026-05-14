@@ -226,12 +226,12 @@ function SalesConfig({ isActive }) {
           {/* Navigation Items */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="p-3 space-y-2">
-              {sections.map((section) => {
+              {sections.map((section, index) => {
                 const Icon = section.icon;
                 const isSelected = selectedSection === section.id;
                 return (
                   <button
-                    key={section.id}
+                    key={`${section.id || section.title || "section"}-${index}`}
                     onClick={() => setSelectedSection(section.id)}
                     className={`w-full text-left p-3 rounded-xl transition-all duration-200 ${
                       isSelected
@@ -337,12 +337,12 @@ function SalesConfig({ isActive }) {
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
-                {paymentMethods.map((method) => {
+                {paymentMethods.map((method, index) => {
                   const IconComponent = getMethodIcon(method.icon);
                   const colors = colorClasses[method.color] || colorClasses.gray;
-                  return (
-                    <div
-                      key={method.id}
+                return (
+                  <div
+                      key={`${method.id || method.name || "method"}-${index}`}
                       className={`bg-white rounded-xl border shadow-sm p-5 transition-all hover:shadow-lg hover:scale-[1.01] ${
                         method.is_active ? 'border-gray-100' : 'border-gray-200 opacity-60'
                       }`}
@@ -477,8 +477,8 @@ function SalesConfig({ isActive }) {
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                       >
                         <option value="">-- Select a payment method --</option>
-                        {paymentMethods.filter(m => m.is_active).map(method => (
-                          <option key={method.id} value={method.id}>
+                        {paymentMethods.filter(m => m.is_active).map((method, index) => (
+                          <option key={`${method.id || method.name || "method"}-${index}`} value={method.id}>
                             {method.name} ({method.type === 'credit' ? `Credit ${method.credit_months}M` : method.type === 'cash' ? 'Cash' : 'Special'})
                           </option>
                         ))}

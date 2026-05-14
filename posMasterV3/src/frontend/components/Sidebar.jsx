@@ -167,12 +167,12 @@ function Sidebar() {
             },
           ]
             .filter((item) => item.alwaysVisible || hasAccess(item.permissionKey))
-            .map((item) => {
+            .map((item, index) => {
               const isActive = item.to.startsWith('/')
                 ? currentPath === item.to
                 : currentPath.startsWith(`/dashboard/${item.to}`);
               return (
-                <li key={item.to} className="relative group">
+                <li key={`${item.to || item.label || "sidebar-item"}-${index}`} className="relative group">
                   <Link
                     to={item.to}
                     className={`relative w-28 h-28 flex flex-col items-center justify-center rounded-xl transition-all duration-300 ${

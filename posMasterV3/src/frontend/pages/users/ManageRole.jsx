@@ -599,10 +599,10 @@ function ManageRole() {
               {(openPermissions && !openRoleInfo) && (
                 <div className="px-5 pb-5 border-t border-gray-100">
                   <div className="space-y-4 max-h-[30rem] overflow-y-auto pt-4">
-                    {Object.entries(permissions).map(([category, perms]) => {
+                    {Object.entries(permissions).map(([category, perms], index) => {
                       const allEnabled = Object.values(perms).every(v => v);
                       return (
-                        <div key={category} className="bg-gray-50 rounded-lg p-3">
+                        <div key={`${category || "category"}-${index}`} className="bg-gray-50 rounded-lg p-3">
                           <div className="flex items-center justify-between py-2 mb-2">
                             <span
                               className="font-semibold text-gray-700 text-xs uppercase tracking-wide cursor-pointer"
@@ -621,8 +621,8 @@ function ManageRole() {
                             </label>
                           </div>
                           <div className="space-y-1">
-                            {Object.entries(perms).map(([perm, value]) => (
-                              <div key={perm} className="flex items-center justify-between py-2 px-2 bg-white rounded-md">
+                            {Object.entries(perms).map(([perm, value], permIndex) => (
+                              <div key={`${perm || "perm"}-${permIndex}`} className="flex items-center justify-between py-2 px-2 bg-white rounded-md">
                                 <span className="text-sm text-gray-600">
                                   {perm.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                                 </span>
@@ -760,7 +760,7 @@ function ManageRole() {
                   const userCount = userStats.roleBreakdown[role.id] || 0;
                   return (
                     <div
-                      key={role.id}
+                      key={`${role.id || role.name || "role"}-${index}`}
                       className={`grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
                         formData.id === role.id ? "bg-[#1A318C]/5 border-l-4 border-l-[#1A318C]" : ""
                       }`}
@@ -856,13 +856,13 @@ function ManageRole() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex-1">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Users by Role</p>
           <div className="space-y-2">
-            {Object.entries(userStats.roleBreakdown).map(([role, count]) => {
+            {Object.entries(userStats.roleBreakdown).map(([role, count], index) => {
               // Find friendly name from predefined roles or custom roles list
               const predefined = predefinedRoles.find(r => r.id === role);
               const custom = rolesList.find(r => r.id === role);
               const friendlyName = predefined?.name || custom?.name || role;
               return (
-                <div key={role} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-lg">
+                <div key={`${role || "role"}-${index}`} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-lg">
                   <span className="text-sm text-gray-600 font-medium">{friendlyName}</span>
                   <span className="text-sm font-bold text-gray-800 tabular-nums">{count}</span>
                 </div>

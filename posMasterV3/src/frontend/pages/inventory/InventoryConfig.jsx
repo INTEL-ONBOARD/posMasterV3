@@ -58,12 +58,12 @@ export default function InventoryConfig() {
           {/* Navigation Items */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="p-3 space-y-2">
-              {sections.map((section) => {
+              {sections.map((section, index) => {
                 const Icon = section.icon;
                 const isSelected = selectedSection === section.id;
                 return (
                   <button
-                    key={section.id}
+                    key={`${section.id || section.label || "section"}-${index}`}
                     onClick={() => setSelectedSection(section.id)}
                     className={`w-full text-left p-3 rounded-xl transition-all duration-200 ${
                       isSelected
@@ -110,9 +110,9 @@ export default function InventoryConfig() {
 
       {/* Right Panel - Content Area */}
       <div className="flex-1 h-full overflow-hidden">
-        {sections.map((section) => (
+        {sections.map((section, index) => (
           <div
-            key={section.id}
+            key={`${section.id || section.label || "section"}-${index}`}
             className={selectedSection === section.id ? "h-full" : "hidden"}
           >
             {section.component}

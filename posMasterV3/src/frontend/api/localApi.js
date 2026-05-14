@@ -2867,6 +2867,19 @@ const onlineCollectionApi = (collection, options = {}) => ({
 });
 
 const toInventoryTransferPayload = (data = {}) => {
+    if (data.requestDetails && Array.isArray(data.items)) {
+        return {
+            status: String(data.status ?? data.requestDetails.status ?? 'pending').toLowerCase(),
+            createdAt: data.createdAt ?? data.created_at ?? null,
+            updatedAt: data.updatedAt ?? data.updated_at ?? data.createdAt ?? data.created_at ?? null,
+            requestDetails: {
+                destinationBranch: data.requestDetails.destinationBranch ?? data.requestDetails.destination_branch ?? null,
+                note: data.requestDetails.note ?? ''
+            },
+            items: data.items
+        };
+    }
+
     const requestedQty = Number(data.quantity ?? data.requestedQty ?? data.requested_qty ?? 0) || 0;
     const acceptedQty = Number(data.acceptedQty ?? data.accepted_qty ?? data.accepted_quantity ?? 0) || 0;
 
@@ -3217,6 +3230,7 @@ const installOnlineOnlyOverrides = () => {
             return response;
         },
         create: async (data) => {
+            console.log('2. API Received for create:', data);
             const response = normalizeCollectionResponse(
                 await onlineCall((api) => api.create('inventory_transfers', toInventoryTransferPayload(data)))
             );

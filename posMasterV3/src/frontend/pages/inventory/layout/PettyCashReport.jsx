@@ -128,14 +128,14 @@ export default function PettyCashReportGrouped({ maxHeight = "calc(100vh - 120px
 
           <tbody>
             {computed.mains.map((main, mIdx) => (
-              <React.Fragment key={mIdx}>
+              <React.Fragment key={`main-${mIdx}`}>
                 {/* Main section heading */}
                 <tr>
                   <td style={{ ...styles.mainRow }} colSpan={6}>{main.title}</td>
                 </tr>
 
                 {main.subsections.map((sub, sIdx) => (
-                  <React.Fragment key={sIdx}>
+                  <React.Fragment key={`sub-${sIdx}`}>
                     {/* Sub-section heading */}
                     <tr>
                       <td style={{ ...styles.subRow }} colSpan={6}>{sub.title}</td>
@@ -143,7 +143,7 @@ export default function PettyCashReportGrouped({ maxHeight = "calc(100vh - 120px
 
                     {/* Items */}
                     {sub.items.map((it, iIdx) => (
-                      <tr key={iIdx}>
+                      <tr key={`item-${iIdx}`}>
                         <td style={{ ...styles.td, textAlign: "left", whiteSpace: "normal" }}>{it.desc}</td>
                         <td style={{ ...styles.td, textAlign: "center" }}>{it.formNo}</td>
                         <td style={{ ...styles.td, textAlign: "center" }}>{it.sub}</td>

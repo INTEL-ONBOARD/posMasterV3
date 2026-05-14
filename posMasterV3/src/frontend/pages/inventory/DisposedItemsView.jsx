@@ -170,7 +170,7 @@ export default function DisposedItemsView({ isActive }) {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((d, i) => (
-                  <tr key={d.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={`${d.id || d.name || "disposed"}-${i}`} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-4 text-sm text-gray-400">{i + 1}</td>
                     <td className="px-5 py-4">
                       <div>
@@ -228,9 +228,9 @@ export default function DisposedItemsView({ isActive }) {
                 {stockSearching && <p className="text-xs text-gray-400 mt-1">Searching...</p>}
                 {stockResults.length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
-                    {stockResults.map(s => (
+                    {stockResults.map((s, index) => (
                       <button
-                        key={s.id}
+                        key={`${s.id || s.sku || "stock"}-${index}`}
                         onClick={() => handleSelectStock(s)}
                         className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center justify-between gap-3 transition-colors"
                       >

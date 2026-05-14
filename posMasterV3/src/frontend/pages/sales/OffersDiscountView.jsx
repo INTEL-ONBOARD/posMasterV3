@@ -186,7 +186,7 @@ export default function OffersDiscountView() {
                     const typeBadge = getTypeBadge(discount.type);
                     const TypeIcon = typeBadge.icon;
                     return (
-                      <tr key={discount.id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={`${discount.id || discount.name || "discount"}-${index}`} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
                         <td className="px-6 py-4 text-sm font-medium text-gray-800">{discount.name}</td>
                         <td className="px-6 py-4">

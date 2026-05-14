@@ -179,10 +179,11 @@ function App() {
               <Route path="startup" element={<Startup />} />
               <Route path="login" element={<Login />} />
 
-              <Route path="dashboard" element={<PrivateRoute />}>
-                <Route element={<Dashboard />}>
+              <Route element={<PrivateRoute />}>
+                <Route path="dashboard" element={<Dashboard />}>
                   <Route index element={<Notification />} />
                   <Route path="inventory/share" element={<Inventory />} />
+                  <Route path="inventory/approvals" element={<Inventory />} />
                   <Route path="inventory/*" element={<Inventory />} />
                   <Route path="inventory-config" element={<InventoryConfig />} />
                   <Route path="settings/*" element={<Settings />} />

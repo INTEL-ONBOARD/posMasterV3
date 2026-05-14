@@ -277,14 +277,14 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
               </div>
             ) : (
               <div className="space-y-2">
-                {filteredMembers.map((member) => {
+                {filteredMembers.map((member, index) => {
                   // Use member_no as the unique identifier since id/_id may be undefined
                   const memberId = member.member_no || member.id || member._id;
                   const selectedId = selectedMember?.member_no || selectedMember?.id || selectedMember?._id;
                   const isSelected = selectedMember && memberId && selectedId && memberId === selectedId;
                   return (
                     <button
-                      key={memberId}
+                      key={`${memberId || member.full_name || "member"}-${index}`}
                       onClick={() => handleSelectMember(member)}
                       className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 ${
                         isSelected
@@ -462,7 +462,7 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
                                            (parseFloat(payment.net_amount) || 0) > 0;
                             return (
                               <tr
-                                key={payment.id || index}
+                                key={`${payment.id || payment.month || "payment"}-${index}`}
                                 className={`hover:bg-gray-50 transition-colors ${!hasData ? "opacity-50" : ""}`}
                               >
                                 <td className="py-2.5 px-4">
