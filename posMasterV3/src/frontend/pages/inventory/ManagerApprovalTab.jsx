@@ -407,21 +407,24 @@ export default function ManagerApprovalTab({ branches = [] }) {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-slate-50 p-6">
-      <div className="mb-6 rounded-3xl border border-slate-100 bg-white px-5 py-5 shadow-sm">
-        <div className="flex items-start gap-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#1A318C]">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Manager Approvals</h1>
-            <p className="mt-1 text-sm text-slate-500">Review, approve, or reject branch stock transfer requests</p>
-          </div>
-        </div>
-      </div>
-
+    <div className="flex min-h-screen w-full flex-col overflow-hidden bg-slate-50 px-6 pb-6 pt-0">
       <div className="grid min-h-0 flex-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 p-4">
+            <div className="rounded-3xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1A318C]/10 text-[#1A318C]">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Manager Approvals</p>
+                  <h2 className="text-base font-bold text-slate-900">Manager Approvals</h2>
+                  <p className="text-xs text-slate-500">Manage transfer requests</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="border-b border-slate-100 px-5 py-4">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
@@ -494,7 +497,7 @@ export default function ManagerApprovalTab({ branches = [] }) {
           </div>
         </aside>
 
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           {selectedBatch ? (
             <div className="flex h-full min-h-0 flex-col">
               <div className="border-b border-slate-100 px-5 py-4">

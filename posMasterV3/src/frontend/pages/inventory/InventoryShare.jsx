@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeftRight,
   ArrowRight,
-  Building2,
   CheckCircle2,
   Clock3,
   Package2,
@@ -803,31 +802,36 @@ function SectionShell({
   icon,
   rightSlot,
   children,
+  showHeader = true,
+  bodyClassName = "p-5",
+  className = "",
   headerClassName = "flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4",
   titleClassName = "text-base font-semibold text-slate-800",
   subtitleClassName = "text-xs leading-tight text-slate-500",
 }) {
   const IconComponent = icon;
   return (
-    <div className="rounded-3xl border border-slate-100 bg-white shadow-sm">
-      <div className={headerClassName}>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1A318C]/10 text-[#1A318C]">
-            {IconComponent ? <IconComponent className="h-5 w-5" /> : null}
+    <div className={`rounded-3xl border border-slate-100 bg-white shadow-sm ${className}`.trim()}>
+      {showHeader ? (
+        <div className={headerClassName}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1A318C]/10 text-[#1A318C]">
+              {IconComponent ? <IconComponent className="h-5 w-5" /> : null}
+            </div>
+            <div>
+              <h3 className={titleClassName}>{title}</h3>
+              <p className={subtitleClassName}>{subtitle}</p>
+            </div>
           </div>
-          <div>
-            <h3 className={titleClassName}>{title}</h3>
-            <p className={subtitleClassName}>{subtitle}</p>
-          </div>
+          {rightSlot}
         </div>
-        {rightSlot}
-      </div>
-      <div className="p-5">{children}</div>
+      ) : null}
+      <div className={bodyClassName}>{children}</div>
     </div>
   );
 }
 
-function StatCard({ label, value, hint, icon, tone = "blue" }) {
+function StatCard({ label, value, hint, icon, tone = "blue", compact = false }) {
   const IconComponent = icon;
   const tones = {
     blue: "bg-[#1A318C]/10 text-[#1A318C]",
@@ -837,14 +841,14 @@ function StatCard({ label, value, hint, icon, tone = "blue" }) {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
+    <div className={`rounded-2xl border border-slate-100 bg-white shadow-sm ${compact ? "p-3" : "p-4"}`}>
+      <div className={`flex items-start justify-between gap-3 ${compact ? "" : ""}`}>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-          <p className="mt-1 text-2xl font-bold text-slate-800 tabular-nums">{value}</p>
+          <p className={`font-semibold uppercase tracking-wide text-slate-400 ${compact ? "text-[10px]" : "text-xs"}`}>{label}</p>
+          <p className={`font-bold text-slate-800 tabular-nums ${compact ? "mt-1 text-xl" : "mt-1 text-2xl"}`}>{value}</p>
           {hint ? <p className="mt-1 text-sm text-slate-500">{hint}</p> : null}
         </div>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${tones[tone] || tones.blue}`}>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tones[tone] || tones.blue}`}>
           {IconComponent ? <IconComponent className="h-5 w-5" /> : null}
         </div>
       </div>
@@ -1005,17 +1009,16 @@ export function OutgoingShareTab({
   };
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-5 xl:grid-cols-[1.35fr_0.9fr]">
+    <div className="flex h-full min-h-0 flex-col gap-5">
+      <div className="grid min-h-0 flex-1 gap-5 xl:grid-cols-[1.35fr_0.9fr]">
         <SectionShell
-          title="Current Branch Inventory"
-          subtitle={`Select items from ${branchDisplayName(currentBranch)} and send them to another branch`}
-          icon={Package2}
-          titleClassName="text-base font-semibold text-slate-800"
-          subtitleClassName="text-xs leading-tight text-slate-500"
-          rightSlot={
+          showHeader={false}
+          bodyClassName="p-4"
+          className="flex h-full min-h-0 flex-col"
+        >
+          <div className="flex min-h-0 flex-1 flex-col gap-4 pr-1">
             <div className="flex flex-col gap-2 sm:flex-row">
-              <div className="relative min-w-[260px]">
+              <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   value={outgoingSearch}
@@ -1037,51 +1040,42 @@ export function OutgoingShareTab({
                 ))}
               </select>
             </div>
-          }
-        >
-          <div className="flex max-h-[calc(100vh-380px)] min-h-0 flex-col pr-1">
-            {loading ? (
-              <div className="flex min-h-0 flex-1 items-center justify-center py-24">
-                <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-[#1A318C]" />
-              </div>
-            ) : filteredOutgoingItems.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-16 text-center">
-                <Package2 className="mx-auto h-10 w-10 text-slate-300" />
-                <p className="mt-3 text-base font-semibold text-slate-700">No items found</p>
-                <p className="mt-1 text-sm text-slate-500">Try changing the search or category filter.</p>
-              </div>
-            ) : (
-              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                <div className="grid gap-4 md:grid-cols-2">
-                  {filteredOutgoingItems.map((item, index) => (
-                    <ShareItemCard
-                      key={`${item.id || item.sku || item.batch_code || "item"}-${index}`}
-                      item={item}
-                      isAdded={selectedItemIds.has(String(item.id))}
-                      onAdd={addItemToCart}
-                    />
-                  ))}
+
+            <div className="min-h-0 flex-1 overflow-hidden">
+              {loading ? (
+                <div className="flex min-h-0 h-full items-center justify-center py-24">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-[#1A318C]" />
                 </div>
-              </div>
-            )}
+              ) : filteredOutgoingItems.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-16 text-center">
+                  <Package2 className="mx-auto h-10 w-10 text-slate-300" />
+                  <p className="mt-3 text-base font-semibold text-slate-700">No items found</p>
+                  <p className="mt-1 text-sm text-slate-500">Try changing the search or category filter.</p>
+                </div>
+              ) : (
+                <div className="h-full min-h-0 overflow-y-auto pb-4 pr-1 [scrollbar-gutter:stable]">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {filteredOutgoingItems.map((item, index) => (
+                      <ShareItemCard
+                        key={`${item.id || item.sku || item.batch_code || "item"}-${index}`}
+                        item={item}
+                        isAdded={selectedItemIds.has(String(item.id))}
+                        onAdd={addItemToCart}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </SectionShell>
 
         <SectionShell
-          title="Send Share Request"
-          subtitle="Choose the destination branch and quantity"
-          icon={Send}
-          headerClassName="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4"
-          titleClassName="text-base font-semibold text-slate-800"
-          subtitleClassName="text-xs leading-tight text-slate-500"
-          rightSlot={
-            <Badge tone="blue">
-              <Building2 className="mr-1.5 h-3.5 w-3.5" />
-              {branchDisplayName(currentBranch)}
-            </Badge>
-          }
+          showHeader={false}
+          bodyClassName="p-4"
+          className="flex h-full min-h-0 flex-col"
         >
-          <div className="space-y-4">
+          <div className="flex h-full min-h-0 flex-col space-y-4">
             {cartError ? (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
                 {cartError}
@@ -1778,32 +1772,23 @@ function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp 
     <div className="h-full min-h-0 overflow-y-auto bg-slate-50 pb-24">
       <Toast toast={toast} />
 
-      <div className="mx-auto flex h-full min-h-0 max-w-[1800px] flex-col gap-4 p-4 pb-24 lg:p-6">
-        <div className="rounded-3xl border border-slate-100 bg-white px-5 py-5 shadow-sm">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#1A318C]/10 bg-[#1A318C]/5 px-3 py-1.5 text-xs font-semibold text-[#1A318C]">
-                <ArrowLeftRight className="h-3.5 w-3.5" />
-                Inventory Share
-              </div>
-              <h1 className="mt-3 text-3xl font-black text-slate-900">Inventory Share</h1>
-              <p className="mt-1 text-sm text-slate-500">
-                Move inventory safely between branches with outgoing requests, incoming approvals, and full transfer history.
-              </p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard label="Outgoing Pending" value={summary.outgoingPending} icon={Send} tone="blue" />
-              <StatCard label="Incoming Pending" value={summary.incomingPendingCount} icon={ArrowLeftRight} tone="amber" />
-              <StatCard label="Accepted" value={summary.acceptedCount} icon={CheckCircle2} tone="emerald" />
-              <StatCard label="Rejected" value={summary.rejectedCount} icon={XCircle} tone="rose" />
-            </div>
-          </div>
-        </div>
-
+      <div className="mx-auto flex h-full min-h-0 max-w-[1800px] flex-col gap-4 px-4 pb-24 pt-0 lg:px-6 lg:pt-0">
         <div className="flex min-h-0 flex-1 flex-col gap-6 lg:flex-row">
           <aside className="w-full lg:w-72 xl:w-80 shrink-0">
             <div className="rounded-3xl border border-slate-100 bg-white p-3 shadow-sm">
+              <div className="mb-3 rounded-2xl border border-slate-100 bg-white px-3 py-3 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1A318C]/10 text-[#1A318C]">
+                    <ArrowLeftRight className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Inventory Share</p>
+                    <h2 className="text-base font-bold text-slate-900">Inventory Share</h2>
+                    <p className="text-xs text-slate-500">Manage inventory transfers</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="mb-3 px-2 pt-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Share Views</p>
                 <p className="mt-1 text-sm text-slate-500">Choose the transfer workspace</p>
@@ -1842,9 +1827,16 @@ function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp 
                         </div>
                       </div>
                     </button>
-                  );
-                })}
+                );
+              })}
               </div>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <StatCard label="Outgoing Pending" value={summary.outgoingPending} icon={Send} tone="blue" compact />
+              <StatCard label="Incoming Pending" value={summary.incomingPendingCount} icon={ArrowLeftRight} tone="amber" compact />
+              <StatCard label="Accepted" value={summary.acceptedCount} icon={CheckCircle2} tone="emerald" compact />
+              <StatCard label="Rejected" value={summary.rejectedCount} icon={XCircle} tone="rose" compact />
             </div>
           </aside>
 
