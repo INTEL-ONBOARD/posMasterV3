@@ -293,6 +293,7 @@ function AddItem({ isActive }) {
     }
 
     try {
+      const trackingMode = formData.tracking_mode || formData.trackingMode || "quantity";
       const requestData = {
         item_name: formData.item_name,
         item_code: formData.item_code || null,
@@ -303,6 +304,8 @@ function AddItem({ isActive }) {
         uom_id: formUOMData,
         category_id: selectedCategory.id, // look up id
         availability: formData.availability,
+        tracking_mode: trackingMode,
+        trackingMode,
       };
       const response = await registerItemService.registerItem(requestData);
       if (response.status === "success") {
@@ -377,6 +380,7 @@ function AddItem({ isActive }) {
     }
 
     try {
+      const trackingMode = formData.tracking_mode || formData.trackingMode || "quantity";
       const requestData = {
         item_name: formData.item_name,
         item_code: formData.item_code || null,
@@ -387,6 +391,8 @@ function AddItem({ isActive }) {
         uom_id: formUOMData,
         category_id: selectedCategory.id, // look up id
         availability: formData.availability,
+        tracking_mode: trackingMode,
+        trackingMode,
       };
 
       const response = await registerItemService.updateItem(formData.id, requestData);
@@ -448,7 +454,13 @@ function AddItem({ isActive }) {
     const selectedUomId = item.uom?.id || item.uom_id || item.uomId || null;
     setFormUOMData(selectedUomId);
     // and keep formData.uom_id correct:
-    setFormData(fd => ({ ...fd, uom_id: selectedUomId, uom: item.uom }));
+    setFormData(fd => ({
+      ...fd,
+      uom_id: selectedUomId,
+      uom: item.uom,
+      tracking_mode: item.tracking_mode || item.trackingMode || "quantity",
+      trackingMode: item.trackingMode || item.tracking_mode || "quantity"
+    }));
   };
 
 
@@ -761,6 +773,24 @@ function AddItem({ isActive }) {
                       </select>
                     </div>
                   </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                      Tracking Mode
+                    </label>
+                    <select
+                      name="tracking_mode"
+                      value={formData.tracking_mode || formData.trackingMode || "quantity"}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFormData(prev => ({ ...prev, tracking_mode: value, trackingMode: value }));
+                      }}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="quantity">Quantity only</option>
+                      <option value="batch">Batch tracked</option>
+                      <option value="unit">Unit tracked</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             )}
@@ -1050,5 +1080,7 @@ const INITIAL_FORM_DATA = {
     __v: 0
   },
   inventory: null,
-  availability: true
+  availability: true,
+  tracking_mode: "quantity",
+  trackingMode: "quantity"
 };

@@ -41,6 +41,8 @@ import {
     teaCoopApi,
     offersApi,
     disposedApi,
+    inventoryUnitApi,
+    stockMovementApi,
     branchContextApi
 } from '../api/localApi';
 
@@ -62,7 +64,9 @@ export const TABLES = {
     LOGIN_HISTORY: 'login_history',
     TEA_COOP_MEMBERS: 'tea_coop_members',
     OFFERS_DISCOUNTS: 'offers_discounts',
-    DISPOSED_ITEMS: 'disposed_items'
+    DISPOSED_ITEMS: 'disposed_items',
+    INVENTORY_UNITS: 'inventory_units',
+    STOCK_MOVEMENTS: 'stock_movements'
 };
 
 // Default fetch functions for each table
@@ -83,7 +87,9 @@ const DEFAULT_FETCHERS = {
     [TABLES.LOGIN_HISTORY]: () => loginHistoryApi.getAll().then(r => r.data || []),
     [TABLES.TEA_COOP_MEMBERS]: () => teaCoopApi.getAllMembers().then(r => r.data || []),
     [TABLES.OFFERS_DISCOUNTS]: () => offersApi.getAll().then(r => r.data || []),
-    [TABLES.DISPOSED_ITEMS]: () => disposedApi.getAll().then(r => r.data || [])
+    [TABLES.DISPOSED_ITEMS]: () => disposedApi.getAll().then(r => r.data || []),
+    [TABLES.INVENTORY_UNITS]: () => inventoryUnitApi.getAll().then(r => r.data || []),
+    [TABLES.STOCK_MOVEMENTS]: () => stockMovementApi.getAll().then(r => r.data || [])
 };
 
 // Cache TTL in milliseconds (how long before data is considered stale)
@@ -295,6 +301,8 @@ class DataStore {
             'stock_batches': TABLES.STOCK,
             'stock_with_items': TABLES.STOCK_ITEMS,
             'stock_items': TABLES.STOCK_ITEMS,
+            'inventory_units': TABLES.INVENTORY_UNITS,
+            'stock_movements': TABLES.STOCK_MOVEMENTS,
             // Items
             'items': TABLES.ITEMS,
             // Members
@@ -324,9 +332,11 @@ class DataStore {
             [TABLES.ITEMS]: [TABLES.STOCK_ITEMS, TABLES.STOCK],
             [TABLES.STOCK]: [TABLES.STOCK_ITEMS],
             [TABLES.STOCK_ITEMS]: [TABLES.STOCK],
-            [TABLES.SALES_TRANSACTIONS]: [TABLES.STOCK, TABLES.STOCK_ITEMS, TABLES.MEMBERS, TABLES.PAYMENT_METHODS],
-            [TABLES.RESTOCK_TRANSACTIONS]: [TABLES.STOCK, TABLES.STOCK_ITEMS],
-            [TABLES.INVENTORY_TRANSFERS]: [TABLES.STOCK, TABLES.STOCK_ITEMS],
+            [TABLES.INVENTORY_UNITS]: [TABLES.STOCK, TABLES.STOCK_ITEMS],
+            [TABLES.STOCK_MOVEMENTS]: [TABLES.STOCK, TABLES.STOCK_ITEMS],
+            [TABLES.SALES_TRANSACTIONS]: [TABLES.STOCK, TABLES.STOCK_ITEMS, TABLES.INVENTORY_UNITS, TABLES.STOCK_MOVEMENTS, TABLES.MEMBERS, TABLES.PAYMENT_METHODS],
+            [TABLES.RESTOCK_TRANSACTIONS]: [TABLES.STOCK, TABLES.STOCK_ITEMS, TABLES.INVENTORY_UNITS, TABLES.STOCK_MOVEMENTS],
+            [TABLES.INVENTORY_TRANSFERS]: [TABLES.STOCK, TABLES.STOCK_ITEMS, TABLES.INVENTORY_UNITS, TABLES.STOCK_MOVEMENTS],
             [TABLES.CATEGORIES]: [TABLES.ITEMS, TABLES.STOCK_ITEMS],
             [TABLES.UOM]: [TABLES.ITEMS, TABLES.STOCK_ITEMS],
             [TABLES.BRANCHES]: [TABLES.STOCK, TABLES.STOCK_ITEMS, TABLES.SALES_TRANSACTIONS],

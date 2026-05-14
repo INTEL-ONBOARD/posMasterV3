@@ -82,6 +82,8 @@ function requireCatalogReadPermission(req, res, next) {
         'restock_items',
         'return_items',
         'inventory_transfers',
+        'inventory_units',
+        'stock_movements',
         'disposed_items'
     ]);
     const salesCollections = new Set([
@@ -143,6 +145,8 @@ function requireCatalogPermission(req, res, next) {
         'restock_items',
         'return_items',
         'inventory_transfers',
+        'inventory_units',
+        'stock_movements',
         'disposed_items'
     ]);
     const salesCollections = new Set([

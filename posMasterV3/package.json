@@ -21,7 +21,8 @@
     "electron-dev": "vite build && node run-electron.cjs",
     "postinstall": "electron-rebuild",
     "rebuild": "electron-rebuild",
-    "verify:online": "node scripts/verify-online-runtime.cjs"
+    "verify:online": "node scripts/verify-online-runtime.cjs",
+    "inventory:units:backfill": "node scripts/backfill-inventory-units.cjs"
   },
   "build": {
     "appId": "com.posmaster.app",

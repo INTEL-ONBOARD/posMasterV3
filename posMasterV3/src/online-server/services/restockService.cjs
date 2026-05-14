@@ -1,6 +1,13 @@
 const { getDb, getMongoClient, supportsTransactions } = require('../db/mongo.cjs');
 const { publishDomainEvent } = require('./domainEvents.cjs');
 const { normalizeUomSymbol, getEffectiveSellingPrice } = require('../utils/uomPricing.cjs');
+const {
+    assertWholeUnits,
+    createUnitsForRestock,
+    isUnitTracked,
+    returnUnitsToSupplier,
+    writeStockMovement
+} = require('./inventoryTrackingService.cjs');
 
 function assertTransactionSupport() {
     if (!supportsTransactions()) {
@@ -63,6 +70,22 @@ async function createRestock(auth, restockInput = {}) {
         assertFiniteNumber(item.sellingPricePerLiter, `Selling price per liter for SKU ${item.sku}`);
     }
 
+    const returnItems = (restockInput.return_items || []).map((item) => ({
+        sku: item.sku || item.SKU || '',
+        batchCode: item.batch_code || item.batchCode || '',
+        quantity: Number(item.qty || item.quantity || 0),
+        description: item.description || item.reason || ''
+    }));
+
+    for (const item of returnItems) {
+        if (!item.sku || !item.batchCode) {
+            const err = new Error(`Return item is missing SKU or batch code: sku=${item.sku} batch=${item.batchCode}`);
+            err.statusCode = 400;
+            throw err;
+        }
+        assertFiniteNumber(item.quantity, `Return quantity for SKU ${item.sku}`, { positive: true });
+    }
+
     // Build restock transaction document
     const restockDoc = {
         orgId: auth.orgId,
@@ -82,12 +105,7 @@ async function createRestock(auth, restockInput = {}) {
         executionLevel: restockInput.exe_level || restockInput.executionLevel || restockInput.execution_level || 'medium',
         status: restockInput.status || 'completed',
         addedItems,
-        returnItems: (restockInput.return_items || []).map((item) => ({
-            sku: item.sku || item.SKU || '',
-            batchCode: item.batch_code || item.batchCode || '',
-            quantity: Number(item.qty || item.quantity || 0),
-            description: item.description || ''
-        })),
+        returnItems,
         createdAt: now,
         updatedAt: now,
         createdBy: auth.userId,
@@ -102,7 +120,7 @@ async function createRestock(auth, restockInput = {}) {
     const session = getMongoClient().startSession();
     try {
         await session.withTransaction(async () => {
-            restock = await executeRestock(db, auth, restockDoc, addedItems, branchId, now, session);
+            restock = await executeRestock(db, auth, restockDoc, addedItems, returnItems, branchId, now, session);
         });
     } finally {
         await session.endSession();
@@ -128,10 +146,28 @@ async function createRestock(auth, restockInput = {}) {
         changedBy: auth.userId
     });
 
+    await publishDomainEvent({
+        event: 'inventory_units.updated',
+        orgId: auth.orgId,
+        branchId,
+        entity: 'inventory_units',
+        operation: 'update',
+        changedBy: auth.userId
+    });
+
+    await publishDomainEvent({
+        event: 'stock_movements.created',
+        orgId: auth.orgId,
+        branchId,
+        entity: 'stock_movements',
+        operation: 'create',
+        changedBy: auth.userId
+    });
+
     return restock;
 }
 
-async function executeRestock(db, auth, restockDoc, addedItems, branchId, now, session = null) {
+async function executeRestock(db, auth, restockDoc, addedItems, returnItems, branchId, now, session = null) {
     // Insert restock transaction
     const insertResult = await db.collection('restock_transactions').insertOne(restockDoc, session ? { session } : {});
     const restock = { ...restockDoc, _id: insertResult.insertedId };
@@ -141,10 +177,13 @@ async function executeRestock(db, auth, restockDoc, addedItems, branchId, now, s
         // Find the item by SKU to get its MongoDB _id
         const product = await db.collection('items').findOne(
             { orgId: auth.orgId, sku: item.sku, deletedAt: null },
-            session ? { session, projection: { _id: 1, sku: 1 } } : { projection: { _id: 1, sku: 1 } }
+            session ? { session, projection: { _id: 1, sku: 1, tracking_mode: 1, trackingMode: 1 } } : { projection: { _id: 1, sku: 1, tracking_mode: 1, trackingMode: 1 } }
         );
 
         const itemId = product?._id ? String(product._id) : null;
+        if (isUnitTracked(product)) {
+            assertWholeUnits(item.quantity, `Restock quantity for SKU ${item.sku}`);
+        }
 
         const identityClauses = [
             { sku: item.sku, batchCode: item.batchCode },
@@ -169,6 +208,7 @@ async function executeRestock(db, auth, restockDoc, addedItems, branchId, now, s
         };
 
         const existing = await db.collection('stock_batches').findOne(batchFilter, session ? { session } : {});
+        let stockBatch;
 
         if (existing) {
             // Update existing stock batch - increment quantity, update prices
@@ -196,6 +236,22 @@ async function executeRestock(db, auth, restockDoc, addedItems, branchId, now, s
                 },
                 session ? { session } : {}
             );
+            stockBatch = {
+                ...existing,
+                itemId: existing.itemId || existing.item_id || itemId || null,
+                item_id: existing.item_id || existing.itemId || itemId || null,
+                batchCode: existing.batchCode || existing.batch_code || item.batchCode,
+                batch_code: existing.batch_code || existing.batchCode || item.batchCode,
+                quantity: Number(existing.quantity || 0) + item.quantity,
+                stockPrice: item.stockPrice,
+                stock_price: item.stockPrice,
+                retailPrice: item.retailPrice,
+                retail_price: item.retailPrice,
+                uomSymbol: item.uomSymbol,
+                uom_symbol: item.uomSymbol,
+                updatedAt: now,
+                updatedBy: auth.userId
+            };
         } else {
             // Create new stock batch
             const newBatch = {
@@ -230,8 +286,124 @@ async function executeRestock(db, auth, restockDoc, addedItems, branchId, now, s
                 version: 1,
                 deletedAt: null
             };
-            await db.collection('stock_batches').insertOne(newBatch, session ? { session } : {});
+            const insert = await db.collection('stock_batches').insertOne(newBatch, session ? { session } : {});
+            stockBatch = { ...newBatch, _id: insert.insertedId };
         }
+
+        const units = await createUnitsForRestock(db, auth, {
+            item: product,
+            stockBatch,
+            restock,
+            restockItem: item,
+            branchId,
+            now
+        }, session);
+        const unitCodes = units.map((unit) => unit.unitCode || unit.unit_code).filter(Boolean);
+
+        await writeStockMovement(db, auth, {
+            movementType: 'restock',
+            movement_type: 'restock',
+            direction: 'in',
+            branchId,
+            itemId: itemId || stockBatch.itemId || stockBatch.item_id || null,
+            item_id: itemId || stockBatch.item_id || stockBatch.itemId || null,
+            stockBatchId: String(stockBatch._id),
+            stock_batch_id: String(stockBatch._id),
+            restockId: String(restock._id),
+            restock_id: String(restock._id),
+            sku: item.sku,
+            batchCode: item.batchCode,
+            batch_code: item.batchCode,
+            quantity: item.quantity,
+            unitCount: unitCodes.length,
+            unit_count: unitCodes.length,
+            unitCodes,
+            unit_codes: unitCodes,
+            stockPrice: item.stockPrice,
+            stock_price: item.stockPrice,
+            retailPrice: item.retailPrice,
+            retail_price: item.retailPrice,
+            referenceType: 'restock_transactions',
+            reference_type: 'restock_transactions',
+            referenceId: String(restock._id),
+            reference_id: String(restock._id)
+        }, session);
+    }
+
+    for (const item of returnItems) {
+        const returnFilter = {
+            orgId: auth.orgId,
+            deletedAt: null,
+            $and: [
+                { $or: [{ branchId }, { branch_id: branchId }] },
+                {
+                    $or: [
+                        { sku: item.sku, batchCode: item.batchCode },
+                        { sku: item.sku, batch_code: item.batchCode }
+                    ]
+                }
+            ],
+            quantity: { $gte: item.quantity }
+        };
+        const stockBatch = await db.collection('stock_batches').findOne(returnFilter, session ? { session } : {});
+        if (!stockBatch) {
+            const err = new Error(`Cannot return supplier stock for SKU ${item.sku} / batch ${item.batchCode}: not enough stock`);
+            err.statusCode = 409;
+            throw err;
+        }
+
+        const product = await db.collection('items').findOne(
+            { orgId: auth.orgId, sku: item.sku, deletedAt: null },
+            session ? { session, projection: { _id: 1, sku: 1, tracking_mode: 1, trackingMode: 1 } } : { projection: { _id: 1, sku: 1, tracking_mode: 1, trackingMode: 1 } }
+        );
+        if (isUnitTracked(product)) {
+            assertWholeUnits(item.quantity, `Return quantity for SKU ${item.sku}`);
+        }
+
+        const units = await returnUnitsToSupplier(db, auth, {
+            stockBatch,
+            branchId,
+            quantity: item.quantity,
+            restockId: restock._id,
+            reason: item.description,
+            now
+        }, session);
+        const unitCodes = units.map((unit) => unit.unitCode || unit.unit_code).filter(Boolean);
+
+        await db.collection('stock_batches').updateOne(
+            { _id: stockBatch._id, orgId: auth.orgId },
+            {
+                $inc: { quantity: -item.quantity, version: 1 },
+                $set: { updatedAt: now, updated_at: now, updatedBy: auth.userId }
+            },
+            session ? { session } : {}
+        );
+
+        await writeStockMovement(db, auth, {
+            movementType: 'supplier_return',
+            movement_type: 'supplier_return',
+            direction: 'out',
+            branchId,
+            itemId: stockBatch.itemId || stockBatch.item_id || product?._id?.toString() || null,
+            item_id: stockBatch.item_id || stockBatch.itemId || product?._id?.toString() || null,
+            stockBatchId: String(stockBatch._id),
+            stock_batch_id: String(stockBatch._id),
+            restockId: String(restock._id),
+            restock_id: String(restock._id),
+            sku: item.sku,
+            batchCode: item.batchCode,
+            batch_code: item.batchCode,
+            quantity: item.quantity,
+            unitCount: unitCodes.length,
+            unit_count: unitCodes.length,
+            unitCodes,
+            unit_codes: unitCodes,
+            referenceType: 'restock_transactions',
+            reference_type: 'restock_transactions',
+            referenceId: String(restock._id),
+            reference_id: String(restock._id),
+            reason: item.description || null
+        }, session);
     }
 
     return restock;

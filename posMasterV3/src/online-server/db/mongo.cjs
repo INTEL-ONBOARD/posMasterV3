@@ -73,16 +73,26 @@ async function detectTransactionSupport(database) {
 
 async function ensureIndexes(database) {
     const activeOnly = { deletedAt: null };
+    const listIndexesSafe = async (collection) => {
+        try {
+            return await collection.indexes();
+        } catch (error) {
+            if (error?.code === 26 || error?.codeName === 'NamespaceNotFound') {
+                return [];
+            }
+            throw error;
+        }
+    };
     const dropLegacyIndex = async (collectionName, name) => {
         const collection = database.collection(collectionName);
-        const existing = await collection.indexes();
+        const existing = await listIndexesSafe(collection);
         if (existing.some((index) => index.name === name)) {
             await collection.dropIndex(name);
         }
     };
     const ensureUniqueActiveIndex = async (collectionName, keys, name, partialFilterExpression = activeOnly) => {
         const collection = database.collection(collectionName);
-        const existing = await collection.indexes();
+        const existing = await listIndexesSafe(collection);
         const current = existing.find((index) => index.name === name);
         if (current) {
             const samePartial = JSON.stringify(current.partialFilterExpression || {}) === JSON.stringify(partialFilterExpression || {});
@@ -126,6 +136,10 @@ async function ensureIndexes(database) {
             deletedAt: null,
             branchId: { $type: 'string' },
             invoiceNo: { $type: 'string' }
+        }),
+        ensureUniqueActiveIndex('inventory_units', { orgId: 1, unitCode: 1 }, 'unique_active_inventory_unit_code', {
+            deletedAt: null,
+            unitCode: { $type: 'string' }
         })
     ]);
 
@@ -137,7 +151,17 @@ async function ensureIndexes(database) {
             { unique: true }
         ),
         database.collection('audit_events').createIndex({ orgId: 1, createdAt: -1 }),
-        database.collection('domain_events').createIndex({ orgId: 1, createdAt: -1 })
+        database.collection('domain_events').createIndex({ orgId: 1, createdAt: -1 }),
+        database.collection('inventory_counters').createIndex(
+            { orgId: 1, type: 1, sku: 1 },
+            { unique: true }
+        ),
+        database.collection('inventory_units').createIndex({ orgId: 1, branchId: 1, status: 1 }),
+        database.collection('inventory_units').createIndex({ orgId: 1, itemId: 1, stockBatchId: 1 }),
+        database.collection('inventory_units').createIndex({ orgId: 1, sku: 1, batchCode: 1, status: 1 }),
+        database.collection('stock_movements').createIndex({ orgId: 1, itemId: 1, createdAt: -1 }),
+        database.collection('stock_movements').createIndex({ orgId: 1, branchId: 1, createdAt: -1 }),
+        database.collection('stock_movements').createIndex({ orgId: 1, referenceType: 1, referenceId: 1 })
     ]);
 }
 

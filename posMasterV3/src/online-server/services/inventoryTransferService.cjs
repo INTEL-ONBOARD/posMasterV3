@@ -1,6 +1,10 @@
 const { ObjectId } = require('mongodb');
 const { getDb, getMongoClient, supportsTransactions } = require('../db/mongo.cjs');
 const { publishDomainEvent } = require('./domainEvents.cjs');
+const {
+    transferUnits,
+    writeStockMovement
+} = require('./inventoryTrackingService.cjs');
 
 function toObjectId(id) {
     return ObjectId.isValid(id) ? new ObjectId(id) : id;
@@ -40,6 +44,7 @@ function buildSourceStockFilter(auth, transfer, sourceBranchId) {
     const itemId = transfer.itemId || transfer.item_id || null;
     const batchCode = transfer.batchCode || transfer.batch_code || null;
     const stockId = transfer.stockId || transfer.stock_id || null;
+    const sku = transfer.sku || null;
     const clauses = [];
 
     if (stockId && ObjectId.isValid(stockId)) clauses.push({ _id: new ObjectId(stockId) });
@@ -47,6 +52,9 @@ function buildSourceStockFilter(auth, transfer, sourceBranchId) {
     if (itemId && batchCode) {
         clauses.push({ itemId, batchCode });
         clauses.push({ item_id: itemId, batch_code: batchCode });
+    }
+    if (sku && batchCode) {
+        clauses.push({ sku, batchCode }, { sku, batch_code: batchCode });
     }
 
     if (clauses.length === 0) {
@@ -147,6 +155,7 @@ async function acceptTransfer(auth, transferId, body = {}) {
                 ]
             };
             const targetStock = await db.collection('stock_batches').findOne(targetFilter, { session: querySession });
+            let targetStockDoc;
             if (targetStock) {
                 await db.collection('stock_batches').updateOne(
                     { _id: targetStock._id },
@@ -156,6 +165,7 @@ async function acceptTransfer(auth, transferId, body = {}) {
                     },
                     { session: querySession }
                 );
+                targetStockDoc = { ...targetStock, quantity: Number(targetStock.quantity || 0) + acceptedQty, updatedAt: now };
             } else {
                 const clonedStock = {
                     ...sourceStock,
@@ -175,8 +185,70 @@ async function acceptTransfer(auth, transferId, body = {}) {
                     transferred_from_branch_id: sourceBranchId
                 };
                 delete clonedStock._id;
-                await db.collection('stock_batches').insertOne(clonedStock, { session: querySession });
+                const insert = await db.collection('stock_batches').insertOne(clonedStock, { session: querySession });
+                targetStockDoc = { ...clonedStock, _id: insert.insertedId };
             }
+
+            const units = await transferUnits(db, auth, {
+                sourceStock,
+                targetStock: targetStockDoc,
+                sourceBranchId,
+                targetBranchId,
+                quantity: acceptedQty,
+                transferId: existing._id,
+                now
+            }, querySession);
+            const unitCodes = units.map((unit) => unit.unitCode || unit.unit_code).filter(Boolean);
+
+            await writeStockMovement(db, auth, {
+                movementType: 'transfer_out',
+                movement_type: 'transfer_out',
+                direction: 'out',
+                branchId: sourceBranchId,
+                itemId: sourceStock.itemId || sourceStock.item_id || null,
+                item_id: sourceStock.item_id || sourceStock.itemId || null,
+                stockBatchId: String(sourceStock._id),
+                stock_batch_id: String(sourceStock._id),
+                transferId: String(existing._id),
+                transfer_id: String(existing._id),
+                sku: sourceStock.sku || null,
+                batchCode: sourceStock.batchCode || sourceStock.batch_code || null,
+                batch_code: sourceStock.batch_code || sourceStock.batchCode || null,
+                quantity: acceptedQty,
+                unitCount: unitCodes.length,
+                unit_count: unitCodes.length,
+                unitCodes,
+                unit_codes: unitCodes,
+                referenceType: 'inventory_transfers',
+                reference_type: 'inventory_transfers',
+                referenceId: String(existing._id),
+                reference_id: String(existing._id)
+            }, querySession);
+
+            await writeStockMovement(db, auth, {
+                movementType: 'transfer_in',
+                movement_type: 'transfer_in',
+                direction: 'in',
+                branchId: targetBranchId,
+                itemId: targetStockDoc.itemId || targetStockDoc.item_id || null,
+                item_id: targetStockDoc.item_id || targetStockDoc.itemId || null,
+                stockBatchId: String(targetStockDoc._id),
+                stock_batch_id: String(targetStockDoc._id),
+                transferId: String(existing._id),
+                transfer_id: String(existing._id),
+                sku: targetStockDoc.sku || null,
+                batchCode: targetStockDoc.batchCode || targetStockDoc.batch_code || null,
+                batch_code: targetStockDoc.batch_code || targetStockDoc.batchCode || null,
+                quantity: acceptedQty,
+                unitCount: unitCodes.length,
+                unit_count: unitCodes.length,
+                unitCodes,
+                unit_codes: unitCodes,
+                referenceType: 'inventory_transfers',
+                reference_type: 'inventory_transfers',
+                referenceId: String(existing._id),
+                reference_id: String(existing._id)
+            }, querySession);
 
             const updateDoc = {
                 status: 'accepted',
@@ -230,6 +302,30 @@ async function acceptTransfer(auth, transferId, body = {}) {
         branchId: transfer.targetBranchId || transfer.target_branch_id || auth.branchId || null,
         entity: 'stock_batches',
         operation: 'update',
+        changedBy: auth.userId
+    });
+    await publishDomainEvent({
+        event: 'stock_batches.updated',
+        orgId: auth.orgId,
+        branchId: transfer.sourceBranchId || transfer.source_branch_id || null,
+        entity: 'stock_batches',
+        operation: 'update',
+        changedBy: auth.userId
+    });
+    await publishDomainEvent({
+        event: 'inventory_units.updated',
+        orgId: auth.orgId,
+        branchId: transfer.targetBranchId || transfer.target_branch_id || auth.branchId || null,
+        entity: 'inventory_units',
+        operation: 'update',
+        changedBy: auth.userId
+    });
+    await publishDomainEvent({
+        event: 'stock_movements.created',
+        orgId: auth.orgId,
+        branchId: transfer.targetBranchId || transfer.target_branch_id || auth.branchId || null,
+        entity: 'stock_movements',
+        operation: 'create',
         changedBy: auth.userId
     });
 

@@ -2434,6 +2434,22 @@ export const disposedApi = {
     }
 };
 
+export const inventoryUnitApi = {
+    getAll: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.online?.list ? api.online.list('inventory_units') : { status: 'error', message: 'Online API is not available' };
+    }
+};
+
+export const stockMovementApi = {
+    getAll: async () => {
+        const api = getElectronAPI();
+        if (!api) return { status: 'error', message: 'Not in Electron environment' };
+        return api.online?.list ? api.online.list('stock_movements') : { status: 'error', message: 'Online API is not available' };
+    }
+};
+
 // ============================================
 // ONLINE-ONLY OVERRIDES
 // ============================================
@@ -3712,6 +3728,8 @@ const installOnlineOnlyOverrides = () => {
             return response;
         }
     });
+    Object.assign(inventoryUnitApi, onlineCollectionApi('inventory_units'));
+    Object.assign(stockMovementApi, onlineCollectionApi('stock_movements'));
 };
 
 installOnlineOnlyOverrides();

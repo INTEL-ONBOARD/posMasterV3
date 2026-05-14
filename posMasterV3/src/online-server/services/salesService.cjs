@@ -1,6 +1,11 @@
 const { ObjectId } = require('mongodb');
 const { getDb, getMongoClient, supportsTransactions } = require('../db/mongo.cjs');
 const { publishDomainEvent } = require('./domainEvents.cjs');
+const {
+    markUnitsSold,
+    restoreSoldUnits,
+    writeStockMovement
+} = require('./inventoryTrackingService.cjs');
 
 function dateKey(date = new Date()) {
     return date.toISOString().slice(0, 10).replaceAll('-', '');
@@ -92,6 +97,10 @@ function buildStockIdentityFilter(auth, branchId, line) {
         clauses.push({ itemId: line.itemId, batchCode: line.batchCode });
         clauses.push({ item_id: line.itemId, batch_code: line.batchCode });
     }
+    if (line.sku && line.batchCode) {
+        clauses.push({ sku: line.sku, batchCode: line.batchCode });
+        clauses.push({ sku: line.sku, batch_code: line.batchCode });
+    }
 
     if (clauses.length === 0) {
         const err = new Error(`Sale line is missing item or batch identity: item ${line.itemId || 'undefined'} / batch ${line.batchCode || 'undefined'}`);
@@ -109,15 +118,33 @@ function buildStockIdentityFilter(auth, branchId, line) {
     };
 }
 
-async function decrementStock(db, auth, branchId, line, now, session) {
+async function decrementStock(db, auth, branchId, line, now, session, context = {}) {
+    const stockBatch = await db.collection('stock_batches').findOne({
+        ...buildStockIdentityFilter(auth, branchId, line),
+        quantity: { $gte: Number(line.quantity) }
+    }, { session });
+
+    if (!stockBatch) {
+        const err = new Error(`Insufficient stock for item ${line.itemId} / batch ${line.batchCode}`);
+        err.statusCode = 409;
+        throw err;
+    }
+
+    const units = await markUnitsSold(db, auth, {
+        stockBatch,
+        branchId,
+        quantity: line.quantity,
+        saleId: context.saleId,
+        invoiceNo: context.invoiceNo,
+        now
+    }, session);
+    const unitCodes = units.map((unit) => unit.unitCode || unit.unit_code).filter(Boolean);
+
     const result = await db.collection('stock_batches').updateOne(
-        {
-            ...buildStockIdentityFilter(auth, branchId, line),
-            quantity: { $gte: Number(line.quantity) }
-        },
+        { _id: stockBatch._id, orgId: auth.orgId, quantity: { $gte: Number(line.quantity) } },
         {
             $inc: { quantity: -Number(line.quantity), version: 1 },
-            $set: { updatedAt: now, updatedBy: auth.userId }
+            $set: { updatedAt: now, updated_at: now, updatedBy: auth.userId }
         },
         { session }
     );
@@ -127,14 +154,60 @@ async function decrementStock(db, auth, branchId, line, now, session) {
         err.statusCode = 409;
         throw err;
     }
+
+    await writeStockMovement(db, auth, {
+        movementType: 'sale',
+        movement_type: 'sale',
+        direction: 'out',
+        branchId,
+        itemId: line.itemId || stockBatch.itemId || stockBatch.item_id || null,
+        item_id: line.itemId || stockBatch.item_id || stockBatch.itemId || null,
+        stockBatchId: String(stockBatch._id),
+        stock_batch_id: String(stockBatch._id),
+        saleId: context.saleId ? String(context.saleId) : null,
+        sale_id: context.saleId ? String(context.saleId) : null,
+        invoiceNo: context.invoiceNo || null,
+        invoice_no: context.invoiceNo || null,
+        sku: line.sku || stockBatch.sku || null,
+        batchCode: line.batchCode || stockBatch.batchCode || stockBatch.batch_code || null,
+        batch_code: line.batchCode || stockBatch.batch_code || stockBatch.batchCode || null,
+        quantity: Number(line.quantity),
+        unitCount: unitCodes.length,
+        unit_count: unitCodes.length,
+        unitCodes,
+        unit_codes: unitCodes,
+        referenceType: 'sales',
+        reference_type: 'sales',
+        referenceId: context.saleId ? String(context.saleId) : null,
+        reference_id: context.saleId ? String(context.saleId) : null
+    }, session);
 }
 
-async function restoreStock(db, auth, branchId, line, quantity, now, session) {
-    const result = await db.collection('stock_batches').updateOne(
+async function restoreStock(db, auth, branchId, line, quantity, now, session, context = {}) {
+    const stockBatch = await db.collection('stock_batches').findOne(
         buildStockIdentityFilter(auth, branchId, line),
+        { session }
+    );
+    if (!stockBatch) {
+        const err = new Error(`Stock batch for item ${line.itemId || 'undefined'} / batch ${line.batchCode || 'undefined'} was not found`);
+        err.statusCode = 404;
+        throw err;
+    }
+
+    const units = await restoreSoldUnits(db, auth, {
+        stockBatch,
+        branchId,
+        quantity,
+        saleId: context.saleId,
+        now
+    }, session);
+    const unitCodes = units.map((unit) => unit.unitCode || unit.unit_code).filter(Boolean);
+
+    const result = await db.collection('stock_batches').updateOne(
+        { _id: stockBatch._id, orgId: auth.orgId },
         {
             $inc: { quantity: Number(quantity), version: 1 },
-            $set: { updatedAt: now, updatedBy: auth.userId }
+            $set: { updatedAt: now, updated_at: now, updatedBy: auth.userId }
         },
         { session }
     );
@@ -144,6 +217,33 @@ async function restoreStock(db, auth, branchId, line, quantity, now, session) {
         err.statusCode = 404;
         throw err;
     }
+
+    await writeStockMovement(db, auth, {
+        movementType: context.movementType || 'sale_restore',
+        movement_type: context.movementType || 'sale_restore',
+        direction: 'in',
+        branchId,
+        itemId: line.itemId || stockBatch.itemId || stockBatch.item_id || null,
+        item_id: line.itemId || stockBatch.item_id || stockBatch.itemId || null,
+        stockBatchId: String(stockBatch._id),
+        stock_batch_id: String(stockBatch._id),
+        saleId: context.saleId ? String(context.saleId) : null,
+        sale_id: context.saleId ? String(context.saleId) : null,
+        invoiceNo: context.invoiceNo || null,
+        invoice_no: context.invoiceNo || null,
+        sku: line.sku || stockBatch.sku || null,
+        batchCode: line.batchCode || stockBatch.batchCode || stockBatch.batch_code || null,
+        batch_code: line.batchCode || stockBatch.batch_code || stockBatch.batchCode || null,
+        quantity: Number(quantity),
+        unitCount: unitCodes.length,
+        unit_count: unitCodes.length,
+        unitCodes,
+        unit_codes: unitCodes,
+        referenceType: context.referenceType || 'sales',
+        reference_type: context.referenceType || 'sales',
+        referenceId: context.referenceId ? String(context.referenceId) : context.saleId ? String(context.saleId) : null,
+        reference_id: context.referenceId ? String(context.referenceId) : context.saleId ? String(context.saleId) : null
+    }, session);
 }
 
 async function nextInvoiceNo(db, session, auth, type = 'SALE') {
@@ -204,6 +304,7 @@ async function createSale(auth, saleInput) {
 
     try {
         const executeCreateSale = async () => {
+            const saleObjectId = new ObjectId();
             const invoiceNo = saleInput.invoiceNo || saleInput.invoice_no || await nextInvoiceNo(db, querySession, { ...auth, branchId });
             const now = new Date();
             const lines = (saleInput.items || []).map(normalizeSaleLine);
@@ -211,7 +312,10 @@ async function createSale(auth, saleInput) {
 
             if (!isHeldSale) {
                 for (const line of lines) {
-                    await decrementStock(db, auth, branchId, line, now, querySession);
+                    await decrementStock(db, auth, branchId, line, now, querySession, {
+                        saleId: saleObjectId,
+                        invoiceNo
+                    });
                 }
             }
 
@@ -250,6 +354,7 @@ async function createSale(auth, saleInput) {
             }
 
             sale = {
+                _id: saleObjectId,
                 orgId: auth.orgId,
                 branchId,
                 branch_id: branchId,
@@ -291,8 +396,7 @@ async function createSale(auth, saleInput) {
                 deletedAt: null
             };
 
-            const insert = await db.collection('sales').insertOne(sale, { session: querySession });
-            sale._id = insert.insertedId;
+            await db.collection('sales').insertOne(sale, { session: querySession });
         };
 
         await session.withTransaction(executeCreateSale);
@@ -320,6 +424,22 @@ async function createSale(auth, saleInput) {
             branchId,
             entity: 'stock_batches',
             operation: 'update',
+            changedBy: auth.userId
+        });
+        await publishDomainEvent({
+            event: 'inventory_units.updated',
+            orgId: auth.orgId,
+            branchId,
+            entity: 'inventory_units',
+            operation: 'update',
+            changedBy: auth.userId
+        });
+        await publishDomainEvent({
+            event: 'stock_movements.created',
+            orgId: auth.orgId,
+            branchId,
+            entity: 'stock_movements',
+            operation: 'create',
             changedBy: auth.userId
         });
     }
@@ -360,7 +480,10 @@ async function completeHeldSale(auth, saleId, updateData = {}) {
             validateSaleLines(lines);
 
             for (const line of lines) {
-                await decrementStock(db, auth, branchId, line, now, querySession);
+                await decrementStock(db, auth, branchId, line, now, querySession, {
+                    saleId: existing._id,
+                    invoiceNo: existing.invoiceNo || existing.invoice_no
+                });
             }
 
             // Resolve IDs using both naming conventions
@@ -471,6 +594,22 @@ async function completeHeldSale(auth, saleId, updateData = {}) {
         operation: 'update',
         changedBy: auth.userId
     });
+    await publishDomainEvent({
+        event: 'inventory_units.updated',
+        orgId: auth.orgId,
+        branchId: sale.branchId || auth.branchId || null,
+        entity: 'inventory_units',
+        operation: 'update',
+        changedBy: auth.userId
+    });
+    await publishDomainEvent({
+        event: 'stock_movements.created',
+        orgId: auth.orgId,
+        branchId: sale.branchId || auth.branchId || null,
+        entity: 'stock_movements',
+        operation: 'create',
+        changedBy: auth.userId
+    });
 
     return sale;
 }
@@ -521,7 +660,11 @@ async function cancelSale(auth, saleId, body = {}) {
                     const line = normalizeSaleLine(rawLine);
                     const remainingQty = Math.max(Number(line.quantity || 0) - (returnedByKey.get(saleLineKey(line)) || 0), 0);
                     if (remainingQty > 0) {
-                        await restoreStock(db, auth, branchId, line, remainingQty, now, querySession);
+                        await restoreStock(db, auth, branchId, line, remainingQty, now, querySession, {
+                            saleId: existing._id,
+                            invoiceNo: existing.invoiceNo || existing.invoice_no,
+                            movementType: 'sale_cancel_restore'
+                        });
                         stockChanged = true;
                     }
                 }
@@ -570,6 +713,22 @@ async function cancelSale(auth, saleId, body = {}) {
             branchId: sale.branchId || sale.branch_id || auth.branchId || null,
             entity: 'stock_batches',
             operation: 'update',
+            changedBy: auth.userId
+        });
+        await publishDomainEvent({
+            event: 'inventory_units.updated',
+            orgId: auth.orgId,
+            branchId: sale.branchId || sale.branch_id || auth.branchId || null,
+            entity: 'inventory_units',
+            operation: 'update',
+            changedBy: auth.userId
+        });
+        await publishDomainEvent({
+            event: 'stock_movements.created',
+            orgId: auth.orgId,
+            branchId: sale.branchId || sale.branch_id || auth.branchId || null,
+            entity: 'stock_movements',
+            operation: 'create',
             changedBy: auth.userId
         });
     }
@@ -656,7 +815,11 @@ async function returnSaleItems(auth, saleId, body = {}) {
                     throw err;
                 }
 
-                await restoreStock(db, auth, branchId, matchingLine, returnQty, now, querySession);
+                await restoreStock(db, auth, branchId, matchingLine, returnQty, now, querySession, {
+                    saleId: existing._id,
+                    invoiceNo: existing.invoiceNo || existing.invoice_no,
+                    movementType: 'sale_return_restore'
+                });
                 alreadyReturned.set(key, previousQty + returnQty);
 
                 returnDocs.push({
@@ -747,6 +910,22 @@ async function returnSaleItems(auth, saleId, body = {}) {
         orgId: auth.orgId,
         branchId: sale.branchId || sale.branch_id || auth.branchId || null,
         entity: 'returned_items',
+        operation: 'create',
+        changedBy: auth.userId
+    });
+    await publishDomainEvent({
+        event: 'inventory_units.updated',
+        orgId: auth.orgId,
+        branchId: sale.branchId || sale.branch_id || auth.branchId || null,
+        entity: 'inventory_units',
+        operation: 'update',
+        changedBy: auth.userId
+    });
+    await publishDomainEvent({
+        event: 'stock_movements.created',
+        orgId: auth.orgId,
+        branchId: sale.branchId || sale.branch_id || auth.branchId || null,
+        entity: 'stock_movements',
         operation: 'create',
         changedBy: auth.userId
     });
