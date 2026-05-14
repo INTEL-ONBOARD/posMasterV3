@@ -23,6 +23,91 @@ const INITIAL_PRICE_CHANGE_FORM = {
   price_change_description: "",
 };
 
+const normalizePriceChangeItem = (stockRow = {}, index = 0) => {
+  const nested = stockRow?.item && typeof stockRow.item === "object" ? stockRow.item : {};
+  const nestedCategory = nested?.category && typeof nested.category === "object" ? nested.category : {};
+  const topLevelCategory = stockRow?.category && typeof stockRow.category === "object" ? stockRow.category : {};
+  const nestedUom = nested?.uom && typeof nested.uom === "object" ? nested.uom : {};
+  const topLevelUom = stockRow?.uom && typeof stockRow.uom === "object" ? stockRow.uom : {};
+
+  const displayName =
+    nested.item_name ??
+    nested.itemName ??
+    nested.name ??
+    stockRow.item_name ??
+    stockRow.itemName ??
+    stockRow.name ??
+    "Unknown Item";
+
+  const displaySku =
+    nested.sku ??
+    nested.item_sku ??
+    nested.itemCode ??
+    stockRow.sku ??
+    stockRow.item_sku ??
+    stockRow.itemCode ??
+    `SKU_${index + 1}`;
+
+  const displayCategory = {
+    ...topLevelCategory,
+    ...nestedCategory,
+    type:
+      nestedCategory.type ??
+      nestedCategory.category_type ??
+      topLevelCategory.type ??
+      stockRow.category_type ??
+      stockRow.categoryType ??
+      "Unknown",
+    brand:
+      nestedCategory.brand ??
+      nestedCategory.category_brand ??
+      topLevelCategory.brand ??
+      stockRow.category_brand ??
+      stockRow.categoryBrand ??
+      "Unknown",
+  };
+
+  const displayUom = {
+    ...topLevelUom,
+    ...nestedUom,
+    symbol:
+      nestedUom.symbol ??
+      topLevelUom.symbol ??
+      stockRow.uom_symbol ??
+      stockRow.uomSymbol ??
+      "pcs",
+  };
+
+  const quantity = Number(stockRow.quantity ?? stockRow.current_qty ?? nested.quantity ?? 0);
+  const stockPrice = Number(stockRow.stock_price ?? stockRow.stockPrice ?? nested.stock_price ?? 0);
+  const retailPrice = Number(stockRow.retail_price ?? stockRow.retailPrice ?? nested.retail_price ?? stockPrice ?? 0);
+
+  return {
+    ...stockRow,
+    ...nested,
+    id: stockRow.id ?? stockRow._id ?? nested.id ?? nested._id ?? index + 1,
+    _id: stockRow._id ?? nested._id ?? `stock_${index + 1}`,
+    item_id: stockRow.item_id ?? stockRow.itemId ?? nested.id ?? nested._id ?? null,
+    item_name: displayName,
+    sku: displaySku,
+    item_image_url: stockRow.item_image_url ?? nested.item_image_url ?? stockRow.image ?? nested.image ?? "",
+    maximum_capacity: Number(stockRow.maximum_capacity ?? nested.maximum_capacity ?? 100),
+    threshold_limit: Number(stockRow.threshold_limit ?? stockRow.thresholdLimit ?? nested.threshold_limit ?? 20),
+    availability: stockRow.availability !== undefined ? stockRow.availability : nested.availability !== undefined ? nested.availability : true,
+    quantity,
+    current_qty: quantity,
+    stock_price: stockPrice,
+    retail_price: retailPrice,
+    batch_code: stockRow.batch_code ?? nested.batch_code ?? `BATCH_${displaySku}`,
+    expire_date: stockRow.expiry_date ?? stockRow.expire_date ?? nested.expiry_date ?? nested.expire_date ?? null,
+    status: (stockRow.availability !== undefined ? stockRow.availability : nested.availability !== undefined ? nested.availability : true)
+      ? "In Stock"
+      : "Out of Stock",
+    uom: displayUom,
+    category: displayCategory,
+  };
+};
+
 function PriceChange() {
   const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
 
@@ -47,29 +132,7 @@ function PriceChange() {
   //   expiry_date, availability, item: { id, sku, item_name, item_image_url, category, uom } }
   const items = useMemo(() => {
     if (!rawItems || rawItems.length === 0) return [];
-    return rawItems.map((stockRow, index) => {
-      const nested = stockRow.item || {};
-      return {
-        id: stockRow.id || index + 1,
-        _id: stockRow._id || `stock_${index + 1}`,
-        item_id: nested.id || stockRow.item_id,
-        item_name: nested.item_name || "Unknown Item",
-        item_image_url: nested.item_image_url || "",
-        sku: nested.sku || `SKU_${index + 1}`,
-        maximum_capacity: nested.maximum_capacity || 100,
-        threshold_limit: stockRow.threshold_limit || 20,
-        uom: nested.uom || { symbol: "pcs", unit_name: "Pieces" },
-        category: nested.category || { brand: "Unknown", type: "General" },
-        availability: stockRow.availability !== undefined ? stockRow.availability : true,
-        quantity: stockRow.quantity || 0,
-        current_qty: stockRow.quantity || 0,
-        stock_price: stockRow.stock_price || 0,
-        retail_price: stockRow.retail_price || 0,
-        batch_code: stockRow.batch_code || `BATCH_${nested.sku || index + 1}`,
-        expire_date: stockRow.expiry_date || null,
-        status: stockRow.availability ? "In Stock" : "Out of Stock",
-      };
-    });
+    return rawItems.map((stockRow, index) => normalizePriceChangeItem(stockRow, index));
   }, [rawItems]);
 
   // Separate states for different sections
@@ -156,9 +219,11 @@ function PriceChange() {
   // Filtered items for right section
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
+      const displayName = item.item_name || item.itemName || item.name || "Unknown Item";
+      const displaySku = item.sku || item.item_sku || item.itemCode || "SKU";
       const matchesSearch = searchTerm === "" ||
-        item.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.sku.toLowerCase().includes(searchTerm.toLowerCase());
+        displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        displaySku.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesCategory = selectedCategory === "" || item.category?.type === selectedCategory;
 
@@ -173,9 +238,11 @@ function PriceChange() {
   // Filtered table items for mid section
   const filteredTableItems = useMemo(() => {
     return selectedItemsForTable.filter((item) => {
+      const displayName = item.item_name || item.itemName || item.name || "Unknown Item";
+      const displaySku = item.sku || item.item_sku || item.itemCode || "SKU";
       return tableSearchTerm === "" ||
-        item.item_name.toLowerCase().includes(tableSearchTerm.toLowerCase()) ||
-        item.sku.toLowerCase().includes(tableSearchTerm.toLowerCase());
+        displayName.toLowerCase().includes(tableSearchTerm.toLowerCase()) ||
+        displaySku.toLowerCase().includes(tableSearchTerm.toLowerCase());
     });
   }, [tableSearchTerm, selectedItemsForTable]);
 
@@ -325,13 +392,15 @@ function PriceChange() {
   }, []);
 
   // Get display item for left section
-  const displayItem = selectedItemForDetails || {
-    sku: "N/A",
-    item_name: "N/A",
-    category: { type: "N/A" },
-    current_qty: "N/A",
-    uom: { symbol: "" },
-  };
+  const displayItem = selectedItemForDetails
+    ? normalizePriceChangeItem(selectedItemForDetails)
+    : {
+        sku: "N/A",
+        item_name: "N/A",
+        category: { type: "N/A", brand: "N/A" },
+        current_qty: "N/A",
+        uom: { symbol: "" },
+      };
 
   return (
     <div className="flex bg-gray-50 w-full h-[calc(100vh-2rem)]">
@@ -691,6 +760,9 @@ function PriceChange() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {filteredTableItems.map((item, index) => {
+                    const displayName = item.item_name || item.itemName || item.name || "Unknown Item";
+                    const displaySku = item.sku || item.item_sku || item.itemCode || `SKU_${index + 1}`;
+                    const displayStatus = item.status || (item.availability ? "In Stock" : "Out of Stock");
                     const isSelected = selectedItemForDetails?.id === item.id;
                     return (
                       <tr
@@ -700,26 +772,26 @@ function PriceChange() {
                       >
                         <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
                         <td className="px-6 py-4">
-                          <span className="text-sm font-mono text-gray-600">{item.sku}</span>
+                          <span className="text-sm font-mono text-gray-600">{displaySku}</span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm font-medium text-gray-800">{item.item_name}</span>
+                          <span className="text-sm font-medium text-gray-800">{displayName}</span>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${item.availability ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
-                            {item.status}
+                            {displayStatus}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className="text-sm font-semibold text-gray-800 tabular-nums">
-                            {item.current_qty} <span className="text-gray-400 font-normal">{item.uom?.symbol}</span>
+                            {item.current_qty} <span className="text-gray-400 font-normal">{item.uom?.symbol || "pcs"}</span>
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <span className="text-sm text-gray-600 tabular-nums">Rs.{item.stock_price}</span>
+                          <span className="text-sm text-gray-600 tabular-nums">Rs.{Number(item.stock_price || 0).toFixed(2)}</span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <span className="text-sm font-bold text-[#1A318C] tabular-nums">Rs.{item.retail_price}</span>
+                          <span className="text-sm font-bold text-[#1A318C] tabular-nums">Rs.{Number(item.retail_price || 0).toFixed(2)}</span>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <button
@@ -809,8 +881,8 @@ function PriceChange() {
                   {filteredItems.map((item, index) => (
                     <SalesItemCard
                       key={`${item.id ?? item._id ?? item.sku ?? "item"}-${index}`}
-                      item={item}
-                      onOpen={() => addItemToTable(item)}
+                      item={normalizePriceChangeItem(item, index)}
+                      onOpen={() => addItemToTable(normalizePriceChangeItem(item, index))}
                     />
                   ))}
                 </div>

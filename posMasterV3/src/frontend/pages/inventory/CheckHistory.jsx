@@ -82,6 +82,11 @@ function CheckHistory({ isActive }) {
     null,
     { enabled: isActive }
   );
+  const { data: suppliersData } = useReactiveData(
+    TABLES.SUPPLIERS,
+    null,
+    { enabled: isActive }
+  );
 
   // Force refetch when component becomes active to ensure fresh data
   useEffect(() => {
@@ -112,13 +117,56 @@ function CheckHistory({ isActive }) {
 
   // Safe access to transaction data
   const safeTransData = useMemo(() => transData || [], [transData]);
+  const safeSuppliers = useMemo(() => suppliersData || [], [suppliersData]);
+
+  const supplierNameById = useMemo(() => {
+    const map = new Map();
+    for (const supplier of safeSuppliers) {
+      const id = String(supplier?.id ?? supplier?._id ?? supplier?.supplier_id ?? supplier?.supplierId ?? '');
+      if (!id) continue;
+      const name =
+        supplier?.basic_info?.supplier_name ||
+        supplier?.supplier_name ||
+        supplier?.supplierName ||
+        supplier?.name ||
+        supplier?.basicInfo?.supplier_name ||
+        `Supplier #${id}`;
+      map.set(id, name);
+    }
+    return map;
+  }, [safeSuppliers]);
+
+  const resolveSupplierName = (transaction) => {
+    const directName =
+      transaction?.supplier?.basic_info?.supplier_name ||
+      transaction?.supplier?.supplier_name ||
+      transaction?.supplier_name ||
+      transaction?.supplierName ||
+      transaction?.supplier?.name ||
+      transaction?.supplier?.basicInfo?.supplier_name ||
+      null;
+
+    if (directName) return directName;
+
+    const supplierId =
+      transaction?.supplier_id ??
+      transaction?.supplierId ??
+      transaction?.supplier?.id ??
+      transaction?.supplier?._id ??
+      null;
+
+    if (supplierId == null || supplierId === "") return "Unknown Supplier";
+
+    const lookup = supplierNameById.get(String(supplierId));
+    return lookup || `Supplier #${supplierId}`;
+  };
 
   // Build unique supplier list for dropdown
   const uniqueSuppliers = useMemo(() => {
     const seen = new Set();
     const list = [];
     for (const t of safeTransData) {
-      const name = getTransactionSupplierName(t);
+      const name = resolveSupplierName(t);
       const id = String(t.supplier_id ?? t.supplierId ?? t.supplier?.id ?? t.supplier?._id ?? '');
       const key = name || id;
       if (key && !seen.has(key)) {
@@ -127,7 +175,7 @@ function CheckHistory({ isActive }) {
       }
     }
     return list.sort((a, b) => a.name.localeCompare(b.name));
-  }, [safeTransData]);
+  }, [safeTransData, supplierNameById]);
 
   // Filter transactions
   const filteredTransactions = useMemo(() => {
@@ -140,7 +188,7 @@ function CheckHistory({ isActive }) {
     return safeTransData.filter((t) => {
       // Search
       const searchTerm = search.toLowerCase();
-      const supplierName = getTransactionSupplierName(t) || '';
+      const supplierName = resolveSupplierName(t) || '';
       const invoiceNo = getTransactionInvoiceNo(t);
       const matchesSearch = searchTerm === "" ||
         invoiceNo.toLowerCase().includes(searchTerm) ||
@@ -172,7 +220,7 @@ function CheckHistory({ isActive }) {
 
       return matchesSearch && matchesSupplier && matchesDate && matchesAmount;
     });
-  }, [safeTransData, search, filterSupplier, filterDate, filterAmount]);
+  }, [safeTransData, search, filterSupplier, filterDate, filterAmount, supplierNameById]);
 
   // Sort transactions
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
@@ -306,7 +354,7 @@ function CheckHistory({ isActive }) {
                                 <User className="w-4 h-4 text-[#1A318C]" />
                               </div>
                               <span className="text-sm text-gray-700">
-                                {getTransactionSupplierName(t) || `Supplier #${t.supplier_id ?? t.supplierId ?? 'N/A'}`}
+                                {resolveSupplierName(t)}
                               </span>
                             </div>
                           </td>
@@ -435,7 +483,7 @@ function CheckHistory({ isActive }) {
                   <div>
                     <p className="text-sm text-gray-500">Supplier</p>
                     <p className="text-base font-semibold text-gray-800">
-                      {getTransactionSupplierName(selectedTrans) || `Supplier #${selectedTrans.supplier_id ?? selectedTrans.supplierId ?? 'N/A'}`}
+                      {resolveSupplierName(selectedTrans)}
                     </p>
                   </div>
                   <div>
