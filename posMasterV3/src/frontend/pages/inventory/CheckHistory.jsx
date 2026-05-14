@@ -68,6 +68,43 @@ const formatTransactionAmount = (transaction) => {
   return `Rs.${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 };
 
+const getTransactionItemsList = (transaction) => {
+  const candidates = [
+    transaction?.items,
+    transaction?.transaction_items,
+    transaction?.transactionItems,
+    transaction?.added_items,
+    transaction?.addedItems,
+    transaction?.details,
+    transaction?.details_items,
+    transaction?.stock_items,
+    transaction?.stockItems
+  ];
+  const firstArray = candidates.find((value) => Array.isArray(value));
+  return firstArray || [];
+};
+
+const normalizeTransactionItem = (item = {}, index = 0) => {
+  const quantity = Number(item.quantity ?? item.qty ?? item.requested_qty ?? item.requestedQty ?? 0);
+  const stockPrice = Number(item.stock_price ?? item.stockPrice ?? item.unit_price ?? item.unitPrice ?? 0);
+  const retailPrice = Number(item.retail_price ?? item.retailPrice ?? item.total_price ?? item.totalPrice ?? 0);
+
+  return {
+    ...item,
+    id: item.id ?? item._id ?? `${item.sku || item.item_sku || "item"}-${index}`,
+    sku: item.sku ?? item.item_sku ?? item.itemCode ?? item.code ?? `SKU-${index + 1}`,
+    batch_code: item.batch_code ?? item.batchCode ?? item.batch ?? item.batch_no ?? item.batchNo ?? "",
+    expiry_date: item.expiry_date ?? item.exp_date ?? item.expiryDate ?? item.expiry ?? null,
+    quantity,
+    qty: quantity,
+    stock_price: stockPrice,
+    retail_price: retailPrice,
+    stock_total: item.stock_total ?? item.stockTotal ?? stockPrice * quantity,
+    retail_total: item.retail_total ?? item.retailTotal ?? retailPrice * quantity,
+    description: item.description ?? item.note ?? item.remark ?? "",
+  };
+};
+
 function CheckHistory({ isActive }) {
   // View state
   const [activeView, setActiveView] = useState("transactions"); // "transactions" | "items"
@@ -84,6 +121,11 @@ function CheckHistory({ isActive }) {
   );
   const { data: suppliersData } = useReactiveData(
     TABLES.SUPPLIERS,
+    null,
+    { enabled: isActive }
+  );
+  const { data: usersData } = useReactiveData(
+    TABLES.USERS,
     null,
     { enabled: isActive }
   );
@@ -118,6 +160,7 @@ function CheckHistory({ isActive }) {
   // Safe access to transaction data
   const safeTransData = useMemo(() => transData || [], [transData]);
   const safeSuppliers = useMemo(() => suppliersData || [], [suppliersData]);
+  const safeUsers = useMemo(() => usersData || [], [usersData]);
 
   const supplierNameById = useMemo(() => {
     const map = new Map();
@@ -159,6 +202,45 @@ function CheckHistory({ isActive }) {
 
     const lookup = supplierNameById.get(String(supplierId));
     return lookup || `Supplier #${supplierId}`;
+  };
+
+  const userNameById = useMemo(() => {
+    const map = new Map();
+    for (const user of safeUsers) {
+      const id = String(user?.id ?? user?._id ?? user?.user_id ?? user?.userId ?? '');
+      if (!id) continue;
+      const fullName = `${user?.firstName || user?.first_name || ''} ${user?.lastName || user?.last_name || ''}`.trim();
+      const name =
+        user?.name ||
+        user?.full_name ||
+        user?.fullName ||
+        user?.username ||
+        fullName ||
+        user?.email ||
+        `User #${id}`;
+      map.set(id, name);
+    }
+    return map;
+  }, [safeUsers]);
+
+  const resolveUserName = (userRef) => {
+    if (!userRef) return 'N/A';
+
+    if (typeof userRef === 'object') {
+      const id = userRef.id ?? userRef._id ?? userRef.user_id ?? userRef.userId ?? null;
+      const directName =
+        userRef.name ||
+        userRef.full_name ||
+        userRef.fullName ||
+        userRef.username ||
+        `${userRef.firstName || userRef.first_name || ''} ${userRef.lastName || userRef.last_name || ''}`.trim();
+      if (directName) return directName;
+      if (id) return userNameById.get(String(id)) || `User #${id}`;
+      return 'Unknown User';
+    }
+
+    const id = String(userRef);
+    return userNameById.get(id) || `User #${id}`;
   };
 
   // Build unique supplier list for dropdown
@@ -262,6 +344,34 @@ function CheckHistory({ isActive }) {
     setActiveView("transactions");
     setSelectedTrans(null);
   };
+
+  const preparedBySource = selectedTrans?.prepared_by
+    ?? selectedTrans?.preparedBy
+    ?? selectedTrans?.created_by
+    ?? selectedTrans?.createdBy
+    ?? selectedTrans?.prepared_by_user
+    ?? selectedTrans?.preparedByUser
+    ?? selectedTrans?.created_by_user
+    ?? selectedTrans?.createdByUser
+    ?? selectedTrans?.prepared_by_name
+    ?? selectedTrans?.preparedByName
+    ?? selectedTrans?.created_by_name
+    ?? selectedTrans?.createdByName
+    ?? null;
+
+  const authorizedBySource = selectedTrans?.authorized_by
+    ?? selectedTrans?.authorizedBy
+    ?? selectedTrans?.approved_by
+    ?? selectedTrans?.approvedBy
+    ?? selectedTrans?.authorized_by_user
+    ?? selectedTrans?.authorizedByUser
+    ?? selectedTrans?.approved_by_user
+    ?? selectedTrans?.approvedByUser
+    ?? selectedTrans?.authorized_by_name
+    ?? selectedTrans?.authorizedByName
+    ?? selectedTrans?.approved_by_name
+    ?? selectedTrans?.approvedByName
+    ?? null;
 
   return (
     <div className="flex flex-row bg-gray-50 h-[calc(100vh-2rem)]">
@@ -488,11 +598,15 @@ function CheckHistory({ isActive }) {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Prepared By</p>
-                    <p className="text-base font-semibold text-gray-800">{selectedTrans.prepared_by_name || selectedTrans.prepared_by || 'N/A'}</p>
+                    <p className="text-base font-semibold text-gray-800">
+                      {resolveUserName(preparedBySource)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Authorized By</p>
-                    <p className="text-base font-semibold text-gray-800">{selectedTrans.authorized_by_name || selectedTrans.authorized_by || 'N/A'}</p>
+                    <p className="text-base font-semibold text-gray-800">
+                      {resolveUserName(authorizedBySource)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Payment Method</p>
@@ -502,17 +616,17 @@ function CheckHistory({ isActive }) {
               </div>
 
               {/* Items Table */}
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Package className="w-5 h-5 text-[#1A318C]" />
-                    <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Added Items</h3>
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Package className="w-5 h-5 text-[#1A318C]" />
+                      <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Added Items</h3>
+                    </div>
+                    <span className="px-3 py-1 bg-[#1A318C]/10 text-[#1A318C] rounded-full text-xs font-semibold">
+                    {getTransactionItemsList(selectedTrans).length} items
+                    </span>
                   </div>
-                  <span className="px-3 py-1 bg-[#1A318C]/10 text-[#1A318C] rounded-full text-xs font-semibold">
-                    {selectedTrans.added_items?.length || 0} items
-                  </span>
-                </div>
-                <table className="w-full">
+                  <table className="w-full">
                   <thead>
                     <tr className="bg-gray-50">
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
@@ -527,19 +641,20 @@ function CheckHistory({ isActive }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {selectedTrans.added_items?.map((item, index) => {
-                      const qty = item.quantity || item.qty || 0;
+                    {getTransactionItemsList(selectedTrans).map((item, index) => {
+                      const normalizedItem = normalizeTransactionItem(item, index);
+                      const qty = normalizedItem.quantity || normalizedItem.qty || 0;
                       return (
-                        <tr key={item.id || `${item.sku}-${item.batch_code}-${index}`} className="hover:bg-gray-50 transition-colors">
+                        <tr key={normalizedItem.id || `${normalizedItem.sku}-${normalizedItem.batch_code}-${index}`} className="hover:bg-gray-50 transition-colors">
                           <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
-                          <td className="px-6 py-4 text-sm font-medium text-gray-800 font-mono">{item.sku}</td>
-                          <td className="px-6 py-4 text-sm text-gray-600">{item.batch_code}</td>
-                          <td className="px-6 py-4 text-sm text-gray-600">{extractDateOnly(item.expiry_date || item.exp_date)}</td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-800 font-mono">{normalizedItem.sku}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{normalizedItem.batch_code || 'N/A'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{normalizedItem.expiry_date ? extractDateOnly(normalizedItem.expiry_date) : 'N/A'}</td>
                           <td className="px-6 py-4 text-sm text-gray-800 text-center font-semibold">{qty}</td>
-                          <td className="px-6 py-4 text-sm text-gray-600 text-right tabular-nums">Rs.{item.stock_price}</td>
-                          <td className="px-6 py-4 text-sm text-gray-800 text-right font-semibold tabular-nums">Rs.{(item.stock_price * qty).toFixed(2)}</td>
-                          <td className="px-6 py-4 text-sm text-gray-600 text-right tabular-nums">Rs.{item.retail_price}</td>
-                          <td className="px-6 py-4 text-sm text-gray-800 text-right font-semibold tabular-nums">Rs.{(item.retail_price * qty).toFixed(2)}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600 text-right tabular-nums">Rs.{Number(normalizedItem.stock_price || 0).toFixed(2)}</td>
+                          <td className="px-6 py-4 text-sm text-gray-800 text-right font-semibold tabular-nums">Rs.{Number(normalizedItem.stock_total || (normalizedItem.stock_price * qty) || 0).toFixed(2)}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600 text-right tabular-nums">Rs.{Number(normalizedItem.retail_price || 0).toFixed(2)}</td>
+                          <td className="px-6 py-4 text-sm text-gray-800 text-right font-semibold tabular-nums">Rs.{Number(normalizedItem.retail_total || (normalizedItem.retail_price * qty) || 0).toFixed(2)}</td>
                         </tr>
                       );
                     })}

@@ -110,6 +110,22 @@ const getTransferSourceBranchId = (transfer) =>
       transfer?.sourceBranchId ??
       transfer?.fromBranchId ??
       transfer?.from_branch_id ??
+      transfer?.requestDetails?.sourceBranch?.id ??
+      transfer?.requestDetails?.sourceBranch?.branch_id ??
+      transfer?.requestDetails?.sourceBranch?.branchId ??
+      transfer?.requestDetails?.sourceBranch?.branchID ??
+      transfer?.requestDetails?.sourceBranchId ??
+      transfer?.requestDetails?.source_branch_id ??
+      transfer?.sourceBranch?.id ??
+      transfer?.sourceBranch?.branch_id ??
+      transfer?.sourceBranch?.branchId ??
+      transfer?.sourceBranch?.branchID ??
+      transfer?.sourceBranchId ??
+      transfer?.source_branch_id ??
+      transfer?.source_branch?.id ??
+      transfer?.source_branch?.branch_id ??
+      transfer?.source_branch?.branchId ??
+      transfer?.requestDetails?.sourceBranchId ??
       ""
   ).trim();
 
@@ -121,6 +137,22 @@ const getTransferTargetBranchId = (transfer) =>
       transfer?.to_branch_id ??
       transfer?.destination_branch_id ??
       transfer?.destinationBranchId ??
+      transfer?.requestDetails?.destinationBranch?.id ??
+      transfer?.requestDetails?.destinationBranch?.branch_id ??
+      transfer?.requestDetails?.destinationBranch?.branchId ??
+      transfer?.requestDetails?.destinationBranch?.branchID ??
+      transfer?.requestDetails?.destinationBranchId ??
+      transfer?.requestDetails?.destination_branch_id ??
+      transfer?.destinationBranch?.id ??
+      transfer?.destinationBranch?.branch_id ??
+      transfer?.destinationBranch?.branchId ??
+      transfer?.destinationBranch?.branchID ??
+      transfer?.destinationBranchId ??
+      transfer?.destination_branch_id ??
+      transfer?.destination_branch?.id ??
+      transfer?.destination_branch?.branch_id ??
+      transfer?.destination_branch?.branchId ??
+      transfer?.requestDetails?.destinationBranchId ??
       ""
   ).trim();
 
@@ -129,6 +161,231 @@ const getTransferRequestedQty = (transfer) =>
 
 const getTransferAcceptedQty = (transfer) =>
   Number(transfer?.acceptedQty ?? transfer?.accepted_qty ?? transfer?.accepted_quantity ?? 0) || 0;
+
+const getTransferItems = (transfer) => {
+  const candidates = [
+    transfer?.items,
+    transfer?.transfer_items,
+    transfer?.transferItems,
+    transfer?.details,
+    transfer?.requestDetails?.items,
+    transfer?.request_details?.items,
+    transfer?.stock_items,
+    transfer?.stockItems
+  ];
+  for (const value of candidates) {
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === "object") {
+      const looksLikeItem =
+        value.item_name ||
+        value.itemName ||
+        value.name ||
+        value.sku ||
+        value.batch_code ||
+        value.batchCode ||
+        value.quantity != null ||
+        value.qty != null ||
+        value.transferQty != null ||
+        value.requestedQty != null ||
+        value.requested_qty != null;
+      if (looksLikeItem) return [value];
+    }
+  }
+  return [];
+};
+
+const getTransferItemName = (transfer, fallbackIndex = 0) => {
+  const items = getTransferItems(transfer);
+  const primaryItem = items[0] || {};
+  const itemName =
+    primaryItem.item_name ||
+    primaryItem.itemName ||
+    primaryItem.name ||
+    transfer?.item_name ||
+    transfer?.itemName ||
+    transfer?.name ||
+    transfer?.requestDetails?.item_name ||
+    transfer?.requestDetails?.itemName ||
+    transfer?.requestDetails?.item?.item_name ||
+    transfer?.requestDetails?.item?.itemName ||
+    transfer?.requestDetails?.item?.name ||
+    transfer?.item?.item_name ||
+    transfer?.item?.itemName ||
+    transfer?.item?.name ||
+    transfer?.requestDetails?.item?.item_name ||
+    transfer?.requestDetails?.item?.itemName ||
+    transfer?.requestDetails?.item?.name;
+
+  if (itemName) return itemName;
+  if (items.length > 1) return `${items.length} Items`;
+  if (primaryItem.sku || transfer?.sku) return `SKU ${primaryItem.sku || transfer?.sku}`;
+  return `Unknown Item${fallbackIndex ? ` #${fallbackIndex + 1}` : ""}`;
+};
+
+const getTransferBatchItemNames = (transfer, fallbackIndex = 0, maxVisible = 2) => {
+  const items = getTransferItems(transfer);
+  const itemNames = items
+    .map((item) =>
+      item?.item_name ||
+      item?.itemName ||
+      item?.name ||
+      item?.product_name ||
+      item?.productName ||
+      item?.sku ||
+      "Unknown Item"
+    )
+    .filter(Boolean);
+
+  if (itemNames.length === 0) {
+    return getTransferItemName(transfer, fallbackIndex);
+  }
+
+  if (itemNames.length <= maxVisible) {
+    return itemNames.join(", ");
+  }
+
+  const remaining = itemNames.length - maxVisible;
+  return `${itemNames.slice(0, maxVisible).join(", ")} (+${remaining} more)`;
+};
+
+const getTransferBatchQuantityLabel = (transfer) => {
+  const items = getTransferItems(transfer);
+  if (!items.length) {
+    const fallbackQty = getTransferQuantityLabel(transfer);
+    return fallbackQty || 0;
+  }
+
+  const totalQuantity = items.reduce((sum, item) => {
+    const qty = Number(
+      item?.transferQty ??
+      item?.transfer_qty ??
+      item?.quantity ??
+      item?.qty ??
+      item?.requestedQty ??
+      item?.requested_qty ??
+      item?.acceptedQty ??
+      item?.accepted_qty ??
+      0
+    ) || 0;
+    return sum + qty;
+  }, 0);
+
+  if (totalQuantity > 0) return totalQuantity;
+  return items.length;
+};
+
+const getTransferDestinationBranchLabel = (transfer, branches, currentBranchId) => {
+  const branchId =
+    transfer?.target_branch_id ??
+    transfer?.targetBranchId ??
+    transfer?.toBranchId ??
+    transfer?.to_branch_id ??
+    transfer?.destination_branch_id ??
+    transfer?.destinationBranchId ??
+    transfer?.requestDetails?.destinationBranch?.id ??
+    transfer?.requestDetails?.destinationBranch?.branch_id ??
+    transfer?.requestDetails?.destinationBranch?.branchId ??
+    transfer?.requestDetails?.destinationBranchId ??
+    transfer?.destinationBranch?.id ??
+    transfer?.destinationBranch?.branch_id ??
+    transfer?.destinationBranch?.branchId ??
+    "";
+
+  const branchNameFromLookup = branchName(branches, branchId);
+  if (branchNameFromLookup && branchNameFromLookup !== "Unknown branch") return branchNameFromLookup;
+
+  return (
+    transfer?.requestDetails?.destinationBranch?.name ||
+    transfer?.requestDetails?.destinationBranch?.branch_name ||
+    transfer?.requestDetails?.destinationBranch?.branchName ||
+    transfer?.requestDetails?.destinationBranch?.displayName ||
+    transfer?.requestDetails?.destination_branch?.name ||
+    transfer?.requestDetails?.destination_branch?.branch_name ||
+    transfer?.requestDetails?.destination_branch?.branchName ||
+    transfer?.requestDetails?.destination_branch?.displayName ||
+    transfer?.requestDetails?.destination_branch_name ||
+    transfer?.requestDetails?.destinationBranchName ||
+    transfer?.destinationBranch?.name ||
+    transfer?.destinationBranch?.branch_name ||
+    transfer?.destinationBranch?.branchName ||
+    transfer?.destinationBranch?.displayName ||
+    transfer?.destination_branch?.name ||
+    transfer?.destination_branch?.branch_name ||
+    transfer?.destination_branch?.branchName ||
+    transfer?.destination_branch?.displayName ||
+    transfer?.destination_branch_name ||
+    transfer?.destinationBranchName ||
+    branchNameFromLookup ||
+    "Unknown branch"
+  );
+};
+
+const getTransferQuantityLabel = (transfer) => {
+  const items = getTransferItems(transfer);
+  const primaryItem = items[0] || {};
+  return Number(
+    transfer?.quantity ??
+      transfer?.requestedQty ??
+      transfer?.requested_qty ??
+      primaryItem.transferQty ??
+      primaryItem.quantity ??
+      primaryItem.qty ??
+      primaryItem.requestedQty ??
+      primaryItem.requested_qty ??
+      primaryItem.transfer_qty ??
+      primaryItem.transfer_quantity ??
+      transfer?.requestDetails?.requestedQty ??
+      transfer?.requestDetails?.requested_qty ??
+      transfer?.requestDetails?.quantity ??
+      transfer?.requestDetails?.qty ??
+      transfer?.requestDetails?.item?.quantity ??
+      transfer?.requestDetails?.item?.qty ??
+      transfer?.requestDetails?.item?.requestedQty ??
+      transfer?.requestDetails?.item?.requested_qty ??
+      0
+  ) || 0;
+};
+
+const normalizeTransferRecord = (transfer = {}, branches = [], currentBranchId = "") => {
+  const items = getTransferItems(transfer);
+  const primaryItem = items[0] || {};
+  const itemName = getTransferItemName(transfer);
+  const requestedQty = getTransferQuantityLabel(transfer);
+  const acceptedQty = getTransferAcceptedQty(transfer);
+  const destinationBranchLabel = getTransferDestinationBranchLabel(transfer, branches, currentBranchId);
+
+  return {
+    ...transfer,
+    itemName,
+    sku:
+      primaryItem.sku ||
+      primaryItem.item_sku ||
+      transfer?.sku ||
+      transfer?.requestDetails?.sku ||
+      transfer?.requestDetails?.item?.sku ||
+      "",
+    destinationBranchLabel,
+    destinationBranchName: destinationBranchLabel,
+    requestedQty,
+    quantity: requestedQty,
+    acceptedQty,
+    sourceBranchId:
+      getTransferSourceBranchId(transfer) ||
+      transfer?.requestDetails?.sourceBranch?.id ||
+      transfer?.requestDetails?.sourceBranch?.branch_id ||
+      transfer?.sourceBranch?.id ||
+      transfer?.sourceBranch?.branch_id ||
+      "",
+    targetBranchId:
+      getTransferTargetBranchId(transfer) ||
+      transfer?.requestDetails?.destinationBranch?.id ||
+      transfer?.requestDetails?.destinationBranch?.branch_id ||
+      transfer?.destinationBranch?.id ||
+      transfer?.destinationBranch?.branch_id ||
+      "",
+    updatedAt: transfer?.updatedAt || transfer?.updated_at || transfer?.createdAt || transfer?.created_at || null,
+  };
+};
 
 function Badge({ children, tone = "slate" }) {
   const tones = {
@@ -337,30 +594,22 @@ export function TransferHistoryTable({ title, rows, counterpartyLabel, branches,
               </tr>
             ) : (
               rows.map((row, index) => {
-                const requestedQty = getTransferRequestedQty(row);
-                const acceptedQty = getTransferAcceptedQty(row);
-                const quantityLabel =
-                  String(row.status || "").toLowerCase() === "accepted" && acceptedQty && acceptedQty !== requestedQty
-                    ? `${acceptedQty}/${requestedQty}`
-                    : `${requestedQty}`;
+                const requestedQty = getTransferBatchQuantityLabel(row);
+                const itemName = getTransferBatchItemNames(row, index);
+                const destinationBranchLabel = row.destinationBranchLabel || getTransferDestinationBranchLabel(row, branches, currentBranchId);
+                const quantityLabel = String(requestedQty);
                 const rowKey = `${row.id || row.sku || "transfer"}-${index}`;
 
                 return (
                   <tr key={rowKey} className="bg-white transition hover:bg-slate-50/70">
                     <td className="px-5 py-4 text-sm font-medium text-slate-500">{index + 1}</td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-4 align-middle">
                       <div className="min-w-0">
-                        <p className="truncate font-semibold text-slate-800">{row.itemName}</p>
-                        <p className="text-xs text-slate-400">{row.sku}</p>
+                        <p className="truncate font-semibold text-slate-800">{itemName}</p>
                       </div>
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">
-                      {branchName(
-                        branches,
-                        getTransferSourceBranchId(row) === String(currentBranchId ?? "")
-                          ? getTransferTargetBranchId(row)
-                          : getTransferSourceBranchId(row)
-                      )}
+                      {destinationBranchLabel}
                     </td>
                     <td className="px-5 py-4 text-sm font-semibold text-slate-800 tabular-nums">{quantityLabel}</td>
                     <td className="px-5 py-4 text-sm text-slate-600">
@@ -1006,6 +1255,11 @@ function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp 
     [branchStockRows]
   );
 
+  const normalizedTransferRows = useMemo(
+    () => transferRows.map((transfer) => normalizeTransferRecord(transfer, branches, resolvedCurrentBranchId)),
+    [branches, resolvedCurrentBranchId, transferRows]
+  );
+
   useEffect(() => {
     console.groupCollapsed("[InventoryShare] Stock debug");
     console.log("activeBranch", activeBranch);
@@ -1018,18 +1272,18 @@ function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp 
 
   const outgoingHistory = useMemo(
     () =>
-      transferRows
-        .filter((transfer) => getTransferSourceBranchId(transfer) === resolvedCurrentBranchId)
+      normalizedTransferRows
+        .filter((transfer) => getTransferSourceBranchId(transfer) === resolvedCurrentBranchId || String(transfer?.sourceBranchId || "") === resolvedCurrentBranchId)
         .sort((a, b) => new Date(b.updatedAt || b.updated_at || b.createdAt || b.created_at || 0) - new Date(a.updatedAt || a.updated_at || a.createdAt || a.created_at || 0)),
-    [resolvedCurrentBranchId, transferRows]
+    [normalizedTransferRows, resolvedCurrentBranchId]
   );
 
   const incomingHistory = useMemo(
     () =>
-      transferRows
-        .filter((transfer) => getTransferTargetBranchId(transfer) === resolvedCurrentBranchId)
+      normalizedTransferRows
+        .filter((transfer) => getTransferTargetBranchId(transfer) === resolvedCurrentBranchId || String(transfer?.targetBranchId || "") === resolvedCurrentBranchId)
         .sort((a, b) => new Date(b.updatedAt || b.updated_at || b.createdAt || b.created_at || 0) - new Date(a.updatedAt || a.updated_at || a.createdAt || a.created_at || 0)),
-    [resolvedCurrentBranchId, transferRows]
+    [normalizedTransferRows, resolvedCurrentBranchId]
   );
 
   const pendingIncoming = useMemo(
