@@ -211,9 +211,9 @@ function UnitOfMeassurement() {
                   </td>
                 </tr>
               ) : (
-                units.map((unit) => (
+                units.map((unit, index) => (
                   <tr
-                    key={unit.id}
+                    key={`${unit.id || unit.unit_name || "unit"}-${index}`}
                     onClick={() => handleRowClick(unit)}
                     className={`cursor-pointer transition-colors ${editingId === unit.id ? 'bg-[#1A318C]/5 ring-2 ring-inset ring-[#1A318C]' : 'hover:bg-gray-50'}`}
                   >

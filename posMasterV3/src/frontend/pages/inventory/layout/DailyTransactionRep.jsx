@@ -125,7 +125,7 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
 
         return (
           <div
-            key={pageIndex}
+            key={`daily-page-${pageIndex}`}
             // daily-page is used by query selector for printing these pages via querySelector
             className="daily-page"
             style={{ ...styles.page, pageBreakAfter: "always" }}
@@ -260,17 +260,17 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
             </tr>
           </thead>
           <tbody>
-            {MAIN_SECTIONS.map((sec) => {
+            {MAIN_SECTIONS.map((sec, secIndex) => {
               const sectionTotal = totalsPerSection[sec] || 0;
               const customersForSection = sec === "Cash" ? CUSTOMER_TYPES : CUSTOMER_TYPES.filter((c) => c !== "Guest");
               const rowSpanCount = customersForSection.length;
 
               return (
-                <React.Fragment key={`totblock-${sec}`}>
+                <React.Fragment key={`totblock-${sec}-${secIndex}`}>
                   {customersForSection.map((cust, i) => {
                     const custAmount = computeSubtotal(sec, cust);
                     return (
-                      <tr key={`${sec}-${cust}`}>
+                      <tr key={`${sec}-${cust}-${i}`}>
                         {/* Payment Type cell only on first of rowsForSection. verticalAlign: 'top' */}
                         {i === 0 ? (
                           <td
@@ -301,7 +301,7 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
                       - leave first 2 columns empty
                       - draw a top border spanning columns 3 and 4
                   */}
-                  <tr key={`sep-${sec}`}>
+                  <tr key={`sep-${sec}-${secIndex}`}>
                     <td colSpan={2} style={styles.sepCell}></td>
                     <td colSpan={2} style={styles.sepLine}></td>
                   </tr>

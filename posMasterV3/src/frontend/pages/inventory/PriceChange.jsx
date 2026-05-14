@@ -517,7 +517,7 @@ function PriceChange() {
                       ) : (
                         stockEntries.map((s, i) => (
                           <div
-                            key={s.code + i}
+                            key={`${s.code || s.batch_code || "batch"}-${i}`}
                             onClick={() => selectedItemForDetails && handleBatchCodeSelect(s)}
                             className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
                               s.code === formDataStock.batch_code
@@ -694,7 +694,7 @@ function PriceChange() {
                     const isSelected = selectedItemForDetails?.id === item.id;
                     return (
                       <tr
-                        key={item.id}
+                        key={`${item.id || item.sku || "item"}-${index}`}
                         onClick={() => selectItemForDetails(item)}
                         className={`cursor-pointer transition-colors ${isSelected ? "bg-[#1A318C]/5 ring-2 ring-inset ring-[#1A318C]" : "hover:bg-gray-50"}`}
                       >
@@ -776,8 +776,8 @@ function PriceChange() {
               className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
             >
               <option value="">{loadingData ? "Loading..." : "All Categories"}</option>
-              {uniqueCategoryTypes.map((category) => (
-                <option key={category} value={category}>{category}</option>
+              {uniqueCategoryTypes.map((category, index) => (
+                <option key={`${category || "category"}-${index}`} value={category}>{category}</option>
               ))}
             </select>
             <select
@@ -806,9 +806,9 @@ function PriceChange() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {filteredItems.map((item) => (
+                  {filteredItems.map((item, index) => (
                     <SalesItemCard
-                      key={item.id ?? item._id}
+                      key={`${item.id ?? item._id ?? item.sku ?? "item"}-${index}`}
                       item={item}
                       onOpen={() => addItemToTable(item)}
                     />

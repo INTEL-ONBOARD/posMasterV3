@@ -96,7 +96,7 @@ const SimpleDocument = ({ barcodeDataUrl }) => {
     <Document>
       <Page size="A4" style={styles.page}>
         {barcodes.map((_, index) => (
-          <View key={index} style={styles.barcodeContainer}>
+          <View key={`barcode-${index}`} style={styles.barcodeContainer}>
             <Image 
               style={styles.barcodeImage} 
               src={barcodeDataUrl} 

@@ -56,7 +56,7 @@ function StatusModal({ isOpen, closeModal, type, description }) {
             <div className={`absolute inset-0 transition-opacity duration-500 ${step >= 2 ? 'opacity-100' : 'opacity-0'}`}>
               {[...Array(8)].map((_, i) => (
                 <div
-                  key={i}
+                  key={`status-dot-${i}`}
                   className="absolute animate-ping"
                   style={{
                     left: `${10 + (i * 12) % 80}%`,

@@ -736,8 +736,8 @@ function UserSettings() {
                 )}
 
                 <div className="space-y-4 max-h-[30rem] overflow-y-auto">
-                  {Object.entries(permissions).map(([category, perms]) => (
-                    <div key={category} className="bg-gray-50 rounded-lg p-3">
+                  {Object.entries(permissions).map(([category, perms], index) => (
+                    <div key={`${category || "category"}-${index}`} className="bg-gray-50 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-3">
                         <span className="font-semibold text-gray-700 text-xs uppercase tracking-wide">
                           {category.replace("Access", " Access")}
@@ -749,8 +749,8 @@ function UserSettings() {
                         </span>
                       </div>
                       <div className="space-y-2">
-                        {Object.entries(perms).map(([perm, value]) => (
-                          <div key={perm} className="flex items-center justify-between py-1.5 px-2 bg-white rounded-md">
+                        {Object.entries(perms).map(([perm, value], permIndex) => (
+                          <div key={`${perm || "perm"}-${permIndex}`} className="flex items-center justify-between py-1.5 px-2 bg-white rounded-md">
                             <span className="text-sm text-gray-600">{formatPermissionLabel(perm)}</span>
                             <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${value ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'}`}>
                               {value ? 'Enabled' : 'Disabled'}

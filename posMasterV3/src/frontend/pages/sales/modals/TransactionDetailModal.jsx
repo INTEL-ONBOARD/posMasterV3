@@ -224,7 +224,7 @@ function TransactionDetailModal({ isOpen, closeModal, transaction }) {
 
                       {/* Table Body */}
                       {items.map((item, index) => (
-                        <div key={item.id || index} className="grid grid-cols-12 gap-4 px-5 py-3 items-center hover:bg-gray-50">
+                        <div key={`${item.id || item.sku || "transaction-item"}-${index}`} className="grid grid-cols-12 gap-4 px-5 py-3 items-center hover:bg-gray-50">
                           <div className="col-span-1">
                             <span className="w-6 h-6 rounded-md bg-gray-200 text-gray-600 text-xs font-bold flex items-center justify-center">
                               {index + 1}

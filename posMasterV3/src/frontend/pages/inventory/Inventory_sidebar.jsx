@@ -10,7 +10,7 @@ import priceChangeImg from "../../assets/price_change.png";
 import disposeItemsImg from "../../assets/dispose_items.png";
 import { localAuth } from "../../api/services/localAuth";
 import { settingsApi } from "../../api/localApi";
-import { ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight, ClipboardCheck } from "lucide-react";
 
 function InventorySidebar({
   activeSection,
@@ -20,6 +20,7 @@ function InventorySidebar({
   onSupplierRegClick,
   onCheckHistoryClick,
   onShareClick,
+  onApprovalsClick,
   onConfigClick,
   onCReportClick,
   onPriceChangeClick,
@@ -118,6 +119,13 @@ function InventorySidebar({
       permissionKey: "inventory_configurations",
     },
     {
+      id: "inventory-approvals",
+      label: "Approvals",
+      reactIcon: ClipboardCheck,
+      onClick: onApprovalsClick,
+      permissionKey: "inventory_view",
+    },
+    {
       id: "inventory-report",
       label: "Inventory report",
       icon: reportImg,
@@ -143,10 +151,10 @@ function InventorySidebar({
   return (
     <aside className="bg-white border-r z-20 border-gray-100 h-screen shadow-sm">
       <div className="flex flex-col py-2 overflow-y-auto h-full">
-        {sidebarItems.map((item) => {
+        {sidebarItems.map((item, index) => {
           const isActive = activeSection === item.id;
           return (
-            <div key={item.id} className="relative group px-2 py-1">
+            <div key={`${item.id || item.label || "inventory-item"}-${index}`} className="relative group px-2 py-1">
               <button
                 onClick={item.onClick}
                 className={`relative w-24 h-24 flex flex-col items-center justify-center rounded-xl transition-all duration-300 ${

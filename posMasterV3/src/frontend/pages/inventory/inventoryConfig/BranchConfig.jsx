@@ -236,9 +236,9 @@ function BranchConfig() {
                   </td>
                 </tr>
               ) : (
-                branches.map((branch) => (
+                branches.map((branch, index) => (
                   <tr
-                    key={branch.id}
+                    key={`${branch.id || branch.name || "branch"}-${index}`}
                     onClick={() => handleRowClick(branch)}
                     className={`cursor-pointer transition-colors ${editingId === branch.id ? 'bg-[#1A318C]/5 ring-2 ring-inset ring-[#1A318C]' : 'hover:bg-gray-50'}`}
                   >

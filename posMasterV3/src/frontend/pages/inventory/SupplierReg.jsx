@@ -677,7 +677,7 @@ function SupplierReg() {
 
                   return (
                     <div
-                      key={supplier.id || supplier._id || index}
+                      key={`${supplier.id || supplier._id || supplier.supplier_name || "supplier"}-${index}`}
                       onClick={() => loadSupplier(supplier)}
                       className={`grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
                         formData.id === supplier.id ? "bg-[#1A318C]/5 border-l-4 border-l-[#1A318C]" : ""

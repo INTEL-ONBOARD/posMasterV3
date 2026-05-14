@@ -218,9 +218,9 @@ function InventoryView({ isActive }) {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {sortedItems.map((item) => (
+              {sortedItems.map((item, index) => (
                 <ItemCard
-                  key={item.id || item.sku}
+                  key={`${item.id || item.sku || "item"}-${index}`}
                   item={item}
                   onOpen={() => {
                     setModal(true);
@@ -263,8 +263,8 @@ function InventoryView({ isActive }) {
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                     >
                       <option value="All">All Categories</option>
-                      {uniqueCategoryTypes.map(type => (
-                        <option key={type} value={type}>{type}</option>
+                      {uniqueCategoryTypes.map((type, index) => (
+                        <option key={`${type || "category"}-${index}`} value={type}>{type}</option>
                       ))}
                     </select>
                   </div>

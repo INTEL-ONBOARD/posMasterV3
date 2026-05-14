@@ -179,12 +179,12 @@ export default function BranchSelectionModal({
                     {/* Branch list */}
                     {!loading && !error && branches.length > 0 && (
                         <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                            {branches.map((branch) => (
+                            {branches.map((branch, index) => (
                                 <button
-                                    key={branch.id}
+                                    key={`${branch.id || branch.branch_id || branch.code || "branch"}-${index}`}
                                     onClick={() => setSelectedBranchId(branch.id)}
                                     className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                                        selectedBranchId === branch.id
+                                      selectedBranchId === branch.id 
                                             ? 'border-[#1A318C] bg-[#1A318C]/5 shadow-md'
                                             : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                     }`}

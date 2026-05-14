@@ -135,7 +135,7 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
   const getBatchRowKey = (batch, index) => {
     const stableId = batch?.id ?? batch?.stock_id ?? batch?.stockId;
     if (stableId !== undefined && stableId !== null && stableId !== "") {
-      return `batch-${stableId}`;
+      return `batch-${stableId}-${index}`;
     }
 
     const batchCode = batch?.batch_code || "batch";
@@ -427,9 +427,9 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
               </div>
 
               <div className="flex flex-wrap gap-2 mt-3">
-                {[10, 25, 50, 75, 100].map((percentage) => (
+                {[10, 25, 50, 75, 100].map((percentage, index) => (
                   <button
-                    key={percentage}
+                    key={`discount-${percentage}-${index}`}
                     type="button"
                     onClick={() => applyDiscountPercentage(percentage)}
                     className="px-3 py-1 text-xs font-medium rounded-md bg-white border border-orange-200 text-orange-600 hover:bg-orange-500 hover:text-white hover:border-orange-500 transition-colors"

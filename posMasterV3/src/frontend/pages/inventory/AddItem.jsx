@@ -682,8 +682,8 @@ function AddItem({ isActive }) {
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                       >
                         <option value="">Select category</option>
-                        {uniqueCategoryTypes.map(type => (
-                          <option key={type} value={type}>
+                        {uniqueCategoryTypes.map((type, index) => (
+                          <option key={`${type || "category"}-${index}`} value={type}>
                             {type}
                           </option>
                         ))}
@@ -701,8 +701,8 @@ function AddItem({ isActive }) {
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <option value="">Select brand</option>
-                        {brandOptions.map(brand => (
-                          <option key={brand} value={brand}>
+                        {brandOptions.map((brand, index) => (
+                          <option key={`${brand || "brand"}-${index}`} value={brand}>
                             {brand}
                           </option>
                         ))}
@@ -750,8 +750,8 @@ function AddItem({ isActive }) {
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                       >
                         <option value="">Select unit</option>
-                        {(uoms || []).map(uom => (
-                          <option key={uom.id} value={uom.id}>
+                        {(uoms || []).map((uom, index) => (
+                          <option key={`${uom.id || uom.unit_name || "uom"}-${index}`} value={uom.id}>
                             {uom.unit_name} ({uom.symbol})
                           </option>
                         ))}
@@ -913,9 +913,9 @@ function AddItem({ isActive }) {
                   <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
                 </div>
               ) : (
-                filteredItems.map((item) => (
+                filteredItems.map((item, index) => (
                   <AddItemCard
-                    key={item.id}
+                    key={`${item.id || item.sku || "item"}-${index}`}
                     item={item}
                     onOpen={() => loadItem(item)}
                     onRemove={() => handleRemoveClick(item.id)}
@@ -957,8 +957,8 @@ function AddItem({ isActive }) {
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                     >
                       <option value="All">All Categories</option>
-                      {uniqueCategoryTypes.map(type => (
-                        <option key={type} value={type}>
+                      {uniqueCategoryTypes.map((type, index) => (
+                        <option key={`${type || "category"}-${index}`} value={type}>
                           {type}
                         </option>
                       ))}

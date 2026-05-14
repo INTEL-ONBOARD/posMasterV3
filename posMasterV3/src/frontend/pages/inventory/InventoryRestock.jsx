@@ -15,6 +15,82 @@ import { validateReturnForm, validateStockForm } from "../../util/inventory/vali
 import StatusModal from "../../components/StatusModal.jsx";
 import { getEffectiveSellingPrice, isKgUom, isLiterUom, normalizeUomSymbol } from "../../util/common/uomPricing";
 
+const buildDisposeDisplayItem = (stock = {}) => {
+  const nestedItem = stock?.item && typeof stock.item === "object" ? stock.item : {};
+  const nestedCategory = nestedItem.category && typeof nestedItem.category === "object" ? nestedItem.category : {};
+  const topLevelCategory = stock?.category && typeof stock.category === "object" ? stock.category : {};
+  const nestedUom = nestedItem.uom && typeof nestedItem.uom === "object" ? nestedItem.uom : {};
+  const topLevelUom = stock?.uom && typeof stock.uom === "object" ? stock.uom : {};
+
+  const displayName =
+    nestedItem.item_name ??
+    nestedItem.itemName ??
+    nestedItem.name ??
+    stock.item_name ??
+    stock.itemName ??
+    stock.name ??
+    "Unknown Item";
+
+  const displaySku =
+    nestedItem.sku ??
+    nestedItem.item_sku ??
+    nestedItem.itemCode ??
+    stock.sku ??
+    stock.item_sku ??
+    stock.itemCode ??
+    "Unknown SKU";
+
+  const displayCategory = {
+    ...topLevelCategory,
+    ...nestedCategory,
+    type:
+      nestedCategory.type ??
+      nestedCategory.category_type ??
+      topLevelCategory.type ??
+      topLevelCategory.category_type ??
+      stock.category_type ??
+      stock.categoryType ??
+      "Unknown",
+    brand:
+      nestedCategory.brand ??
+      nestedCategory.category_brand ??
+      topLevelCategory.brand ??
+      topLevelCategory.category_brand ??
+      stock.category_brand ??
+      stock.categoryBrand ??
+      "Unknown",
+  };
+
+  const displayUom = {
+    ...topLevelUom,
+    ...nestedUom,
+    symbol:
+      nestedUom.symbol ??
+      topLevelUom.symbol ??
+      stock.uom_symbol ??
+      stock.uomSymbol ??
+      "unit",
+  };
+
+  return {
+    ...stock,
+    ...nestedItem,
+    id: stock.id ?? stock._id ?? stock.stock_id ?? nestedItem.id ?? nestedItem._id ?? nestedItem.stock_id ?? null,
+    stock_id: stock.stock_id ?? stock.id ?? stock._id ?? nestedItem.stock_id ?? nestedItem.id ?? nestedItem._id ?? null,
+    sku: displaySku,
+    item_name: displayName,
+    category: displayCategory,
+    uom: displayUom,
+    quantity: stock.quantity ?? nestedItem.quantity ?? 0,
+    batch_code: stock.batch_code ?? nestedItem.batch_code ?? "",
+    item_image_url: stock.item_image_url ?? nestedItem.item_image_url ?? stock.image ?? nestedItem.image ?? "",
+    retail_price: stock.retail_price ?? nestedItem.retail_price ?? stock.stock_price ?? nestedItem.stock_price ?? 0,
+    stock_price: stock.stock_price ?? nestedItem.stock_price ?? 0,
+    threshold_limit: stock.threshold_limit ?? nestedItem.threshold_limit ?? 0,
+    maximum_capacity: stock.maximum_capacity ?? nestedItem.maximum_capacity ?? 100,
+  };
+};
+
 function InventoryRestock({ isActive }) {
   const statusLog = useStatusLog();
 
@@ -241,18 +317,95 @@ function InventoryRestock({ isActive }) {
       });
   }, [inventoryItems, stockSummaryBySku, searchCategory, search]);
 
+  const buildDisposeDisplayItem = (stock = {}) => {
+    const nestedItem = stock?.item && typeof stock.item === "object" ? stock.item : {};
+    const nestedCategory = nestedItem.category && typeof nestedItem.category === "object" ? nestedItem.category : {};
+    const topLevelCategory = stock?.category && typeof stock.category === "object" ? stock.category : {};
+    const nestedUom = nestedItem.uom && typeof nestedItem.uom === "object" ? nestedItem.uom : {};
+    const topLevelUom = stock?.uom && typeof stock.uom === "object" ? stock.uom : {};
+
+    const displayName =
+      nestedItem.item_name ??
+      nestedItem.itemName ??
+      nestedItem.name ??
+      stock.item_name ??
+      stock.itemName ??
+      stock.name ??
+      "Unknown Item";
+
+    const displaySku =
+      nestedItem.sku ??
+      nestedItem.item_sku ??
+      nestedItem.itemCode ??
+      stock.sku ??
+      stock.item_sku ??
+      stock.itemCode ??
+      "Unknown SKU";
+
+    const displayCategory = {
+      ...topLevelCategory,
+      ...nestedCategory,
+      type:
+        nestedCategory.type ??
+        nestedCategory.category_type ??
+        topLevelCategory.type ??
+        topLevelCategory.category_type ??
+        stock.category_type ??
+        stock.categoryType ??
+        "Unknown",
+      brand:
+        nestedCategory.brand ??
+        nestedCategory.category_brand ??
+        topLevelCategory.brand ??
+        topLevelCategory.category_brand ??
+        stock.category_brand ??
+        stock.categoryBrand ??
+        "Unknown",
+    };
+
+    const displayUom = {
+      ...topLevelUom,
+      ...nestedUom,
+      symbol:
+        nestedUom.symbol ??
+        topLevelUom.symbol ??
+        stock.uom_symbol ??
+        stock.uomSymbol ??
+        "unit",
+    };
+
+    return {
+      ...stock,
+      ...nestedItem,
+      id: stock.id ?? stock._id ?? stock.stock_id ?? nestedItem.id ?? nestedItem._id ?? nestedItem.stock_id ?? null,
+      stock_id: stock.stock_id ?? stock.id ?? stock._id ?? nestedItem.stock_id ?? nestedItem.id ?? nestedItem._id ?? null,
+      sku: displaySku,
+      item_name: displayName,
+      category: displayCategory,
+      uom: displayUom,
+      quantity: stock.quantity ?? nestedItem.quantity ?? 0,
+      batch_code: stock.batch_code ?? nestedItem.batch_code ?? "",
+      item_image_url: stock.item_image_url ?? nestedItem.item_image_url ?? stock.image ?? nestedItem.image ?? "",
+      retail_price: stock.retail_price ?? nestedItem.retail_price ?? stock.stock_price ?? nestedItem.stock_price ?? 0,
+      stock_price: stock.stock_price ?? nestedItem.stock_price ?? 0,
+      threshold_limit: stock.threshold_limit ?? nestedItem.threshold_limit ?? 0,
+      maximum_capacity: stock.maximum_capacity ?? nestedItem.maximum_capacity ?? 100,
+    };
+  };
+
   // Stock batches for restock (add) mode — items that have existing stock records
   const filteredRestockItems = useMemo(() => {
     if (!stockItems || stockItems.length === 0) return [];
     const searchTerm = (search || "").toLowerCase();
     return stockItems.filter((stock) => {
+      const displayItem = buildDisposeDisplayItem(stock);
       const matchesCategory =
         searchCategory === "All" ||
-        (stock.item?.category?.type === searchCategory);
+        (displayItem.category?.type === searchCategory);
       const matchesSearch =
-        (stock.item?.item_name || "").toLowerCase().includes(searchTerm) ||
-        (stock.batch_code || "").toLowerCase().includes(searchTerm) ||
-        (stock.item?.sku || "").toLowerCase().includes(searchTerm);
+        (displayItem.item_name || "").toLowerCase().includes(searchTerm) ||
+        (displayItem.batch_code || "").toLowerCase().includes(searchTerm) ||
+        (displayItem.sku || "").toLowerCase().includes(searchTerm);
       return matchesCategory && matchesSearch;
     });
   }, [stockItems, searchCategory, search]);
@@ -262,14 +415,15 @@ function InventoryRestock({ isActive }) {
     if (!stockItems || stockItems.length === 0) return [];
     const searchTerm = (search || "").toLowerCase();
     return stockItems.filter((stock) => {
-      if ((stock.quantity ?? 0) <= 0) return false;
+      const displayItem = buildDisposeDisplayItem(stock);
+      if ((displayItem.quantity ?? 0) <= 0) return false;
       const matchesCategory =
         searchCategory === "All" ||
-        (stock.item?.category?.type === searchCategory);
+        (displayItem.category?.type === searchCategory);
       const matchesSearch =
-        (stock.item?.item_name || "").toLowerCase().includes(searchTerm) ||
-        (stock.batch_code || "").toLowerCase().includes(searchTerm) ||
-        (stock.item?.sku || "").toLowerCase().includes(searchTerm);
+        (displayItem.item_name || "").toLowerCase().includes(searchTerm) ||
+        (displayItem.batch_code || "").toLowerCase().includes(searchTerm) ||
+        (displayItem.sku || "").toLowerCase().includes(searchTerm);
       return matchesCategory && matchesSearch;
     });
   }, [stockItems, searchCategory, search]);
@@ -1066,24 +1220,25 @@ function InventoryRestock({ isActive }) {
   const loadItemtoList = (item) => {
     // Use consistent ID (prefer id, fallback to _id)
     const itemId = item.id ?? item._id;
+    const displayItem = buildDisposeDisplayItem(item);
 
     // Handle dispose mode separately
     if (rightActiveSection === "dispose") {
-      console.log("Loading dispose item to form:", item.item_name);
+      console.log("Loading dispose item to form:", displayItem.item_name);
       setFormDataRegItem(prev => ({
         ...prev,
-        sku: item.sku,
-        _id: item._id,
-        id: itemId,
-        item_name: item.item_name,
-        item_image_url: item.item_image_url,
-        category: item.category,
-        uom: item.uom,
+        sku: displayItem.sku,
+        _id: displayItem._id,
+        id: displayItem.id ?? itemId,
+        item_name: displayItem.item_name,
+        item_image_url: displayItem.item_image_url,
+        category: displayItem.category,
+        uom: displayItem.uom,
       }));
       setFormDataDisposeItem({
-        stock_id: item.stock_id,
-        batch_code: item.batch_code,
-        available_qty: item.quantity,
+        stock_id: displayItem.stock_id,
+        batch_code: displayItem.batch_code,
+        available_qty: displayItem.quantity,
         quantity: "",
         reason: "",
       });
@@ -1102,41 +1257,41 @@ function InventoryRestock({ isActive }) {
         return next;
       });
 
-      const itemUomId = item.uom_id ?? item.uom?.id ?? item.uom?._id ?? "";
-      const itemCategoryId = item.category_id ?? item.category?.id ?? item.category?._id ?? "";
+      const itemUomId = displayItem.uom_id ?? displayItem.uom?.id ?? displayItem.uom?._id ?? "";
+      const itemCategoryId = displayItem.category_id ?? displayItem.category?.id ?? displayItem.category?._id ?? "";
 
-      console.log("Loading registered item to form:", item.item_name);
+      console.log("Loading registered item to form:", displayItem.item_name);
 
       // Populate form data for regular item
       setFormDataRegItem({
-        sku: item.sku,
-        _id: item._id,
-        id: itemId,
-        stock_trace: item.stock_trace,
-        item_name: item.item_name,
-        item_image_url: item.item_image_url,
-        maximum_capacity: item.maximum_capacity,
+        sku: displayItem.sku,
+        _id: displayItem._id,
+        id: displayItem.id ?? itemId,
+        stock_trace: displayItem.stock_trace,
+        item_name: displayItem.item_name,
+        item_image_url: displayItem.item_image_url,
+        maximum_capacity: displayItem.maximum_capacity,
         uom_id: itemUomId,
         category_id: itemCategoryId,
-        inventory_id: item.inventory_id,
-        item_update_datetime: item.item_update_datetime,
-        item_created_datetime: item.item_created_datetime,
-        __v: item.__v,
+        inventory_id: displayItem.inventory_id,
+        item_update_datetime: displayItem.item_update_datetime,
+        item_created_datetime: displayItem.item_created_datetime,
+        __v: displayItem.__v,
         uom: {
-          _id: item.uom?._id ?? itemUomId,
-          id: item.uom?.id ?? itemUomId,
-          symbol: item.uom?.symbol,
-          unit_name: item.uom?.unit_name,
-          __v: item.uom?.__v,
+          _id: displayItem.uom?._id ?? itemUomId,
+          id: displayItem.uom?.id ?? itemUomId,
+          symbol: displayItem.uom?.symbol,
+          unit_name: displayItem.uom?.unit_name,
+          __v: displayItem.uom?.__v,
         },
         category: {
-          _id: item.category?._id ?? itemCategoryId,
-          id: item.category?.id ?? itemCategoryId,
-          brand: item.category?.brand,
-          type: item.category?.type,
-          __v: item.category?.__v,
+          _id: displayItem.category?._id ?? itemCategoryId,
+          id: displayItem.category?.id ?? itemCategoryId,
+          brand: displayItem.category?.brand,
+          type: displayItem.category?.type,
+          __v: displayItem.category?.__v,
         },
-        inventory: item.inventory,
+        inventory: displayItem.inventory,
         availability: true
       });
 
@@ -1155,45 +1310,45 @@ function InventoryRestock({ isActive }) {
       }));
 
       // Fetch existing stock entries for this SKU
-      fetchStockEntries(item.sku);
+      fetchStockEntries(displayItem.sku);
 
       // Hide return section
       setReturnItemSelected(false);
     }
     //item is added to the form as a return item
     else {
-      console.log("Loading return item to form:", item.item_name);
+      console.log("Loading return item to form:", displayItem.item_name);
 
       // Populate form data for return item
       setFormDataRegItem({
-        sku: item.sku,
-        _id: item._id,
-        id: itemId,
-        stock_trace: item.stock_trace,
-        item_name: item.item_name,
-        item_image_url: item.item_image_url,
-        maximum_capacity: item.maximum_capacity,
-        uom_id: item.uom_id,
-        category_id: item.category_id,
-        inventory_id: item.inventory_id,
-        item_update_datetime: item.item_update_datetime,
-        item_created_datetime: item.item_created_datetime,
-        __v: item.__v,
+        sku: displayItem.sku,
+        _id: displayItem._id,
+        id: displayItem.id ?? itemId,
+        stock_trace: displayItem.stock_trace,
+        item_name: displayItem.item_name,
+        item_image_url: displayItem.item_image_url,
+        maximum_capacity: displayItem.maximum_capacity,
+        uom_id: displayItem.uom_id,
+        category_id: displayItem.category_id,
+        inventory_id: displayItem.inventory_id,
+        item_update_datetime: displayItem.item_update_datetime,
+        item_created_datetime: displayItem.item_created_datetime,
+        __v: displayItem.__v,
         uom: {
-          _id: item.uom?._id,
-          id: item.uom?.id ?? item.uom?._id,
-          symbol: item.uom?.symbol,
-          unit_name: item.uom?.unit_name,
-          __v: item.uom?.__v,
+          _id: displayItem.uom?._id,
+          id: displayItem.uom?.id ?? displayItem.uom?._id,
+          symbol: displayItem.uom?.symbol,
+          unit_name: displayItem.uom?.unit_name,
+          __v: displayItem.uom?.__v,
         },
         category: {
-          _id: item.category?._id,
-          id: item.category?.id ?? item.category?._id,
-          brand: item.category?.brand,
-          type: item.category?.type,
-          __v: item.category?.__v,
+          _id: displayItem.category?._id,
+          id: displayItem.category?.id ?? displayItem.category?._id,
+          brand: displayItem.category?.brand,
+          type: displayItem.category?.type,
+          __v: displayItem.category?.__v,
         },
-        inventory: item.inventory,
+        inventory: displayItem.inventory,
         availability: true
       });
 
@@ -1208,7 +1363,7 @@ function InventoryRestock({ isActive }) {
       });
 
       // Fetch existing stock entries for this SKU
-      fetchStockEntries(item.sku);
+      fetchStockEntries(displayItem.sku);
 
       // Show return section
       setReturnItemSelected(true);
@@ -1384,8 +1539,8 @@ function InventoryRestock({ isActive }) {
                       }`}
                     >
                       <option value="">Select supplier</option>
-                      {(suppliers || []).map(supplier => (
-                        <option key={supplier.id} value={supplier?.basic_info?.supplier_name}>
+                      {(suppliers || []).map((supplier, index) => (
+                        <option key={`${supplier.id || supplier._id || supplier?.basic_info?.supplier_name || "supplier"}-${index}`} value={supplier?.basic_info?.supplier_name}>
                           {supplier?.basic_info?.supplier_name}
                         </option>
                       ))}
@@ -1738,7 +1893,7 @@ function InventoryRestock({ isActive }) {
                       ) : (
                         stockEntries.map((s, i) => (
                           <div
-                            key={s.batch_code + i}
+                            key={`${s.batch_code || s.code || "batch"}-${i}`}
                             onClick={() => setStockBatchCodeFromEntry(s)}
                             className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
                               s.batch_code === formDataStock.batch_code
@@ -1821,7 +1976,7 @@ function InventoryRestock({ isActive }) {
                       <div className="text-gray-500">No batches available</div>
                     ) : (
                       stockEntries.map((s, i) => (
-                        <div key={s.batch_code + i} className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]"
+                        <div key={`${s.batch_code || s.code || "batch"}-${i}`} className="flex flex-row items-center justify-between bg-[#F6F6F6] px-2 py-1 text-sm text-black w-[380px]"
                         onClick={()=>_setReturnBatchCodeFromEntry(s.batch_code)}>
                           <div className="flex flex-col">
                             <span className="text-md font-bold">SKU:</span>
@@ -1987,8 +2142,8 @@ function InventoryRestock({ isActive }) {
                     }`}
                   >
                     <option value="">Select employee</option>
-                    {(users || []).map(user => (
-                      <option key={user.id || user._id} value={user.username}>
+                    {(users || []).map((user, index) => (
+                      <option key={`${user.id || user._id || user.username || "user"}-${index}`} value={user.username}>
                         {user.username}
                       </option>
                     ))}
@@ -2024,8 +2179,8 @@ function InventoryRestock({ isActive }) {
                     }`}
                   >
                     <option value="">Select employee</option>
-                    {(users || []).map(user => (
-                      <option key={user.id || user._id} value={user.username}>
+                    {(users || []).map((user, index) => (
+                      <option key={`${user.id || user._id || user.username || "user"}-${index}`} value={user.username}>
                         {user.username}
                       </option>
                     ))}
@@ -2108,7 +2263,7 @@ function InventoryRestock({ isActive }) {
                   onClick={() => {
                     addRegItemToForm(item);
                   }}
-                  key={itemId || generateUniqueString()}
+                  key={`${itemId || generateUniqueString()}-${index}`}
                   className={`${itemId === formId && item.item_name === formDataRegItem.item_name && !returnItemSelected ? 'bg-[#1A318C]/5 ring-2 ring-[#1A318C] ring-inset' : ''} hover:bg-gray-50 cursor-pointer transition-all`}
                 >
                   <td className="px-4 py-3 text-sm text-gray-600 tabular-nums">
@@ -2161,7 +2316,7 @@ function InventoryRestock({ isActive }) {
                   onClick={() => {
                     addReturnItemToForm(item);
                   }}
-                  key={itemId}
+                  key={`${itemId || item.item_name || "item"}-${index}`}
                   className={`${itemId === formId && item.item_name === formDataRegItem.item_name && returnItemSelected ? 'ring-2 ring-red-400 ring-inset' : ''} bg-red-50 hover:bg-red-100 cursor-pointer transition-all`}
                 >
                   <td className="px-4 py-3 text-sm text-red-600 tabular-nums">
@@ -2383,8 +2538,8 @@ function InventoryRestock({ isActive }) {
                   className="flex-1 h-10 px-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                 >
                   <option value="All">All Categories</option>
-                  {uniqueCategoryTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
+                  {uniqueCategoryTypes.map((type, index) => (
+                    <option key={`${type || "category"}-${index}`} value={type}>{type}</option>
                   ))}
                 </select>
                 <select
@@ -2431,34 +2586,21 @@ function InventoryRestock({ isActive }) {
                     <p className="text-sm text-gray-500 mt-1">{rightActiveSection === "dispose" ? "No stock available to dispose" : "Try adjusting your search"}</p>
                   </div>
                 ) : rightActiveSection === "dispose" || rightActiveSection === "return" ? (
-                  filteredDisposeItems.map((stock) => (
-                    <SalesItemCard
-                      key={stock.id}
-                      item={{
-                        ...stock.item,
-                        quantity: stock.quantity,
-                        batch_code: stock.batch_code,
-                        stock_id: stock.id,
-                        retail_price: stock.retail_price,
-                        stock_price: stock.stock_price,
-                        threshold_limit: stock.threshold_limit,
-                      }}
-                      onOpen={() => loadItemtoList({
-                        ...stock.item,
-                        quantity: stock.quantity,
-                        batch_code: stock.batch_code,
-                        stock_id: stock.id,
-                        retail_price: stock.retail_price,
-                        stock_price: stock.stock_price,
-                        threshold_limit: stock.threshold_limit,
-                      })}
-                      label={rightActiveSection === "return" ? "Return Item" : "Dispose"}
-                    />
-                  ))
+                  filteredDisposeItems.map((stock, index) => {
+                    const displayItem = buildDisposeDisplayItem(stock);
+                    return (
+                      <SalesItemCard
+                        key={`${displayItem.id || displayItem.stock_id || displayItem.sku || "stock"}-${index}`}
+                        item={displayItem}
+                        onOpen={() => loadItemtoList(displayItem)}
+                        label={rightActiveSection === "return" ? "Return Item" : "Dispose"}
+                      />
+                    );
+                  })
                 ) : (
-                  filteredAddItems.map((item) => (
+                  filteredAddItems.map((item, index) => (
                     <SalesItemCard
-                      key={item.id ?? item._id}
+                      key={`${item.id ?? item._id ?? item.sku ?? "item"}-${index}`}
                       item={item}
                       onOpen={() => loadItemtoList(item)}
                       label="Add Item"

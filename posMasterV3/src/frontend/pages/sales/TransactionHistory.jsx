@@ -43,7 +43,7 @@ export default function TransactionHistory({ isActive }) {
     item.sale_item_id ||
     item.saleItemId ||
     `${item.item_id || item.itemId || 'item'}:${item.batch_code || item.batchCode || 'batch'}:${index}`
-  );
+  ) + `-${index}`;
 
   const handleOpenReturn = async (e, transaction) => {
     e.stopPropagation();
@@ -233,7 +233,7 @@ export default function TransactionHistory({ isActive }) {
                     const paymentBadge = getPaymentBadge(transaction.payment_method);
                     return (
                       <tr
-                        key={transaction.id || index}
+                        key={`${transaction.id || transaction.invoice_no || "transaction"}-${index}`}
                         className={`hover:bg-gray-50 transition-colors cursor-pointer ${
                           selectedTransaction?.id === transaction.id ? "bg-[#1A318C]/5" : ""
                         }`}

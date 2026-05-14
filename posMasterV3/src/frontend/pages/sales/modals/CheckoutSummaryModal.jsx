@@ -63,7 +63,7 @@ function SuccessAnimation({ saleData, onClose, formatCurrency }) {
       <div className={`absolute inset-0 transition-opacity duration-500 ${step >= 2 ? 'opacity-100' : 'opacity-0'}`}>
         {[...Array(12)].map((_, i) => (
           <div
-            key={i}
+            key={`sparkle-${i}`}
             className="absolute animate-ping"
             style={{
               left: `${15 + (i * 7) % 70}%`,
@@ -449,7 +449,7 @@ function CheckoutSummaryModal({
                 </div>
                 <div className="flex-1 overflow-y-auto">
                   {selectedItems.map((item, index) => (
-                    <div key={item.id} className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 last:border-0">
+                    <div key={`${item.id || item.sku || "selected-item"}-${index}`} className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 last:border-0">
                       <div className="flex items-center gap-3">
                         <span className="w-6 h-6 rounded-md bg-gray-200 text-gray-600 text-xs font-bold flex items-center justify-center">
                           {index + 1}
@@ -494,9 +494,9 @@ function CheckoutSummaryModal({
                       />
                     </div>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {discountPercentages.map((percentage) => (
+                      {discountPercentages.map((percentage, index) => (
                         <button
-                          key={percentage}
+                          key={`discount-${percentage}-${index}`}
                           type="button"
                           onClick={() => applyDiscountPercentage(percentage)}
                           disabled={isProcessing}
@@ -534,14 +534,14 @@ function CheckoutSummaryModal({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {activePaymentMethods.map((method) => {
+                    {activePaymentMethods.map((method, index) => {
                       const theme = getPaymentMethodTheme(method);
                       const Icon = theme.icon;
                       const isSelected = String(selectedPaymentMethod?.id) === String(method?.id);
 
                       return (
                         <button
-                          key={method.id}
+                          key={`${method.id || method.name || "payment-method"}-${index}`}
                           type="button"
                           onClick={() => setSelectedPaymentMethod(method)}
                           disabled={isProcessing}
@@ -602,9 +602,9 @@ function CheckoutSummaryModal({
                         />
                       </div>
                       <div className="flex gap-2 mt-2">
-                        {quickCashAmounts.map((amount) => (
+                        {quickCashAmounts.map((amount, index) => (
                           <button
-                            key={amount}
+                            key={`cash-${amount}-${index}`}
                             onClick={() => setCashReceived(amount.toString())}
                             disabled={isProcessing}
                             className="flex-1 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"

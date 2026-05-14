@@ -449,8 +449,8 @@ function Dashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {recentSales.map((sale, idx) => (
-                        <tr key={sale.id || idx} className="hover:bg-gray-50">
+                    {recentSales.map((sale, idx) => (
+                        <tr key={`${sale.id || sale.invoice_no || "sale"}-${idx}`} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-sm font-mono text-gray-800">{sale.invoice_no}</td>
                           <td className="px-4 py-3 text-sm font-semibold text-emerald-600">{formatCurrency(sale.total_amount)}</td>
                           <td className="px-4 py-3">
@@ -502,7 +502,7 @@ function Dashboard() {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {lowStockList.map((item, idx) => (
-                        <tr key={item.id || idx} className="hover:bg-amber-50">
+                        <tr key={`${item.id || item.sku || "item"}-${idx}`} className="hover:bg-amber-50">
                           <td className="px-4 py-3 text-sm font-medium text-gray-800 truncate max-w-[150px]">{item.item_name}</td>
                           <td className="px-4 py-3 text-xs font-mono text-gray-500">{item.sku}</td>
                           <td className="px-4 py-3">
@@ -537,7 +537,7 @@ function Dashboard() {
                 ) : (
                   <div className="space-y-3">
                     {recentLogins.map((login, idx) => (
-                      <div key={login.id || idx} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50">
+                      <div key={`${login.id || login.username || "login"}-${idx}`} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50">
                         <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
                           <User className="w-4 h-4 text-gray-600" />
                         </div>
@@ -578,9 +578,9 @@ function Dashboard() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {notifications.map((n) => (
+                    {notifications.map((n, index) => (
                       <NotificationCard
-                        key={n.id}
+                        key={`${n.id || n.title || "notification"}-${index}`}
                         title={n.title}
                         description={n.description}
                         date={n.date}
@@ -774,9 +774,9 @@ function Dashboard() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {notifications.map((n) => (
+                  {notifications.map((n, index) => (
                     <NotificationCard
-                      key={n.id}
+                      key={`${n.id || n.title || "notification"}-${index}`}
                       title={n.title}
                       description={n.description}
                       date={n.date}

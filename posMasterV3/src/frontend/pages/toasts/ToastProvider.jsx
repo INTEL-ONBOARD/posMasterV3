@@ -75,13 +75,13 @@ function ToastProvider({ children }) {
     <ToastContext.Provider value={{ open, close: handleClose }}>
       {children}
       <div className="space-y-2 fixed right-6 top-24 z-50">
-        {toasts.map((toast) => {
+        {toasts.map((toast, index) => {
           const { bg, border, text } = statusStyleMap[toast.status] || statusStyleMap.success;
           const icon = statusIconMap[toast.status] || statusIconMap.success;
 
           return (
             <div
-              key={toast.id}
+              key={`${toast.id || toast.title || "toast"}-${index}`}
               className={`transition-all duration-500 ease-in-out transform ${exiting[toast.id] ? 'animate-slide-out-right' : 'animate-slide-in-right'
                 }`}
             >

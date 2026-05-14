@@ -6,20 +6,54 @@ import { getEffectiveSellingPrice } from "../util/common/uomPricing";
 export default function SalesItemCard({ item, onOpen, label = "Add to Cart" }) {
   const nameRef = useRef(null);
   const [overflowing, setOverflowing] = useState(false);
-  const imageSrc = item.item_image_url || placeholderImg;
+  const sourceItem = item?.item && typeof item.item === "object" ? item.item : item || {};
+  const displayName =
+    sourceItem.item_name ??
+    sourceItem.itemName ??
+    sourceItem.name ??
+    item?.item_name ??
+    item?.itemName ??
+    item?.name ??
+    "Unknown Item";
+  const displaySku =
+    sourceItem.sku ??
+    sourceItem.item_sku ??
+    sourceItem.itemCode ??
+    item?.sku ??
+    item?.item_sku ??
+    item?.itemCode ??
+    "Unknown SKU";
+  const displayCategoryType =
+    sourceItem.category?.type ??
+    sourceItem.categoryType ??
+    sourceItem.category_type ??
+    item?.category?.type ??
+    item?.categoryType ??
+    item?.category_type ??
+    "Unknown";
+  const displayCategoryBrand =
+    sourceItem.category?.brand ??
+    sourceItem.categoryBrand ??
+    sourceItem.category_brand ??
+    item?.category?.brand ??
+    item?.categoryBrand ??
+    item?.category_brand ??
+    "Unknown";
+  const imageSrc = sourceItem.item_image_url || item?.item_image_url || item?.image || placeholderImg;
+  const displayUomSymbol = sourceItem.uom?.symbol || item?.uom?.symbol || "unit";
 
   // Check if the item name overflows its container
   useEffect(() => {
     const el = nameRef.current;
     if (!el) return;
     setOverflowing(el.scrollWidth > el.clientWidth);
-  }, [item.item_name]);
+  }, [displayName]);
 
   // Get safe values with defaults
-  const quantity = item.quantity || 0;
-  const maxCapacity = item.maximum_capacity || 100; // Default to 100 if not set
-  const thresholdLimit = item.threshold_limit || 20; // Default to 20%
-  const retailPrice = getEffectiveSellingPrice(item);
+  const quantity = Number(item?.quantity ?? sourceItem.quantity ?? 0);
+  const maxCapacity = Number(item?.maximum_capacity ?? sourceItem.maximum_capacity ?? 100); // Default to 100 if not set
+  const thresholdLimit = Number(item?.threshold_limit ?? sourceItem.threshold_limit ?? 20); // Default to 20%
+  const retailPrice = getEffectiveSellingPrice({ ...sourceItem, ...item });
 
   // Calculate status color based on quantity
   const percentFull = maxCapacity > 0 ? (quantity / maxCapacity) * 100 : 0;
@@ -59,7 +93,7 @@ export default function SalesItemCard({ item, onOpen, label = "Add to Cart" }) {
       <div className="relative h-28 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
         <img
           src={imageSrc}
-          alt={item.item_name}
+          alt={displayName}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
         {/* Stock Progress Bar */}
@@ -76,7 +110,7 @@ export default function SalesItemCard({ item, onOpen, label = "Add to Cart" }) {
         {/* SKU */}
         <div className="flex items-center gap-2 mb-1.5">
           <img src={barcodeImg} alt="Barcode" className="h-3 object-contain opacity-40" />
-          <span className="text-[9px] font-medium text-gray-400 uppercase tracking-wide">{item.sku}</span>
+          <span className="text-[9px] font-medium text-gray-400 uppercase tracking-wide">{displaySku}</span>
         </div>
 
         {/* Item Name */}
@@ -85,17 +119,17 @@ export default function SalesItemCard({ item, onOpen, label = "Add to Cart" }) {
             ref={nameRef}
             className={`text-sm font-bold text-gray-800 whitespace-nowrap ${overflowing ? "marquee" : ""}`}
           >
-            {item.item_name}
+            {displayName}
           </h3>
         </div>
 
         {/* Category Tags */}
         <div className="flex items-center gap-1.5 mb-2">
           <span className="text-[9px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-            {item.category?.type || 'Unknown'}
+            {displayCategoryType}
           </span>
           <span className="text-[9px] font-semibold text-[#1A318C] bg-blue-50 px-1.5 py-0.5 rounded">
-            {item.category?.brand || 'Unknown'}
+            {displayCategoryBrand}
           </span>
         </div>
 
@@ -104,7 +138,7 @@ export default function SalesItemCard({ item, onOpen, label = "Add to Cart" }) {
           <div>
             <p className="text-lg font-bold text-gray-800 tabular-nums">
               Rs.{retailPrice > 0 ? retailPrice.toFixed(2) : '0.00'}
-              <span className="text-[10px] font-medium text-gray-400 ml-0.5">/{item.uom?.symbol || 'unit'}</span>
+              <span className="text-[10px] font-medium text-gray-400 ml-0.5">/{displayUomSymbol}</span>
             </p>
           </div>
           <div className={`text-[10px] font-bold ${statusConfig.text} tabular-nums`}>

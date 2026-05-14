@@ -465,8 +465,8 @@ function AppSettings() {
                 </p>
 
                 <div className="space-y-3">
-                  {toggleItems.map(({ label, description, key }) => (
-                    <div key={key} className="flex items-center justify-between py-2.5 px-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  {toggleItems.map(({ label, description, key }, index) => (
+                    <div key={`${key || label || "toggle"}-${index}`} className="flex items-center justify-between py-2.5 px-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                       <div>
                         <p className="text-sm font-medium text-gray-700">{label}</p>
                         <p className="text-xs text-gray-400">{description}</p>
@@ -527,8 +527,8 @@ function AppSettings() {
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                   >
                     <option value="">Select Branch</option>
-                    {(branches || []).map((branch) => (
-                      <option key={branch.id} value={branch.name}>
+                    {(branches || []).map((branch, index) => (
+                      <option key={`${branch.id || branch.name || "branch"}-${index}`} value={branch.name}>
                         {branch.name}
                       </option>
                     ))}
@@ -541,9 +541,9 @@ function AppSettings() {
                   <div className="mt-4">
                     <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">Available Branches</label>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {(branches || []).map((branch) => (
+                      {(branches || []).map((branch, index) => (
                         <div
-                          key={branch.id}
+                          key={`${branch.id || branch.name || "branch"}-${index}`}
                           className={`flex items-center justify-between py-2 px-3 rounded-lg transition-colors ${
                             paths.default_outlet === branch.name ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50'
                           }`}

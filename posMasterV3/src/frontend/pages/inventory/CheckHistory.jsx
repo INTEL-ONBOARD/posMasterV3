@@ -4,6 +4,70 @@ import { restockApi } from '../../api/localApi';
 import { extractDateOnly } from '../../util/common/date';
 import { useReactiveData, TABLES } from '../../store';
 
+const getTransactionSupplierName = (transaction) => {
+  return transaction?.supplier?.basic_info?.supplier_name
+    || transaction?.supplier?.supplier_name
+    || transaction?.supplier_name
+    || transaction?.supplierName
+    || transaction?.supplier?.name
+    || transaction?.supplier?.basicInfo?.supplier_name
+    || null;
+};
+
+const getTransactionInvoiceNo = (transaction) => {
+  return transaction?.invoice_no
+    || transaction?.invoiceNo
+    || transaction?.bill_no
+    || transaction?.billNo
+    || transaction?.transaction_no
+    || transaction?.transactionNo
+    || 'N/A';
+};
+
+const getTransactionPaymentMethod = (transaction) => {
+  return transaction?.payment_method
+    || transaction?.paymentMethod
+    || transaction?.payment_method_name
+    || transaction?.paymentMethodName
+    || 'N/A';
+};
+
+const getTransactionAmount = (transaction) => {
+  const rawAmount = transaction?.total_amount ?? transaction?.totalAmount ?? transaction?.amount ?? 0;
+  const amount = Number(rawAmount);
+  return Number.isFinite(amount) ? amount : 0;
+};
+
+const getTransactionDateValue = (transaction) => {
+  return transaction?.created_at
+    || transaction?.createdAt
+    || transaction?.transaction_date
+    || transaction?.transactionDate
+    || transaction?.date
+    || transaction?.bill_date
+    || transaction?.billDate
+    || null;
+};
+
+const formatTransactionDate = (transaction) => {
+  const rawDate = getTransactionDateValue(transaction);
+  if (!rawDate) return 'N/A';
+  const parsed = new Date(rawDate);
+  if (Number.isNaN(parsed.getTime())) {
+    return extractDateOnly(rawDate);
+  }
+  return parsed.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit'
+  });
+};
+
+const formatTransactionAmount = (transaction) => {
+  const amount = getTransactionAmount(transaction);
+  return `Rs.${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+};
+
 function CheckHistory({ isActive }) {
   // View state
   const [activeView, setActiveView] = useState("transactions"); // "transactions" | "items"
@@ -54,12 +118,12 @@ function CheckHistory({ isActive }) {
     const seen = new Set();
     const list = [];
     for (const t of safeTransData) {
-      const name = t.supplier?.basic_info?.supplier_name;
-      const id = String(t.supplier_id);
+      const name = getTransactionSupplierName(t);
+      const id = String(t.supplier_id ?? t.supplierId ?? t.supplier?.id ?? t.supplier?._id ?? '');
       const key = name || id;
       if (key && !seen.has(key)) {
         seen.add(key);
-        list.push({ id, name: name || `Supplier #${id}` });
+        list.push({ id, name: name || (id && id !== 'undefined' ? `Supplier #${id}` : 'Unknown Supplier') });
       }
     }
     return list.sort((a, b) => a.name.localeCompare(b.name));
@@ -76,28 +140,31 @@ function CheckHistory({ isActive }) {
     return safeTransData.filter((t) => {
       // Search
       const searchTerm = search.toLowerCase();
+      const supplierName = getTransactionSupplierName(t) || '';
+      const invoiceNo = getTransactionInvoiceNo(t);
       const matchesSearch = searchTerm === "" ||
-        t.invoice_no?.toLowerCase().includes(searchTerm) ||
-        t.bill_no?.toLowerCase().includes(searchTerm) ||
-        String(t.supplier_id).includes(searchTerm) ||
-        t.supplier?.basic_info?.supplier_name?.toLowerCase().includes(searchTerm);
+        invoiceNo.toLowerCase().includes(searchTerm) ||
+        String(t.bill_no ?? t.billNo ?? '').toLowerCase().includes(searchTerm) ||
+        String(t.supplier_id ?? t.supplierId ?? '').includes(searchTerm) ||
+        supplierName.toLowerCase().includes(searchTerm);
 
       // Supplier
       const matchesSupplier = filterSupplier === "all" ||
-        String(t.supplier_id) === filterSupplier ||
-        t.supplier?.basic_info?.supplier_name === filterSupplier;
+        String(t.supplier_id ?? t.supplierId ?? t.supplier?.id ?? t.supplier?._id ?? '') === filterSupplier ||
+        supplierName === filterSupplier;
 
       // Date range
       let matchesDate = true;
-      if (filterDate !== "all" && t.created_at) {
-        const txDate = new Date(t.created_at);
+      const txDateValue = getTransactionDateValue(t);
+      if (filterDate !== "all" && txDateValue) {
+        const txDate = new Date(txDateValue);
         if (filterDate === "today") matchesDate = txDate >= startOfDay;
         else if (filterDate === "week") matchesDate = txDate >= startOfWeek;
         else if (filterDate === "month") matchesDate = txDate >= startOfMonth;
       }
 
       // Amount range
-      const amount = t.total_amount || 0;
+      const amount = getTransactionAmount(t);
       let matchesAmount = true;
       if (filterAmount === "low") matchesAmount = amount < 5000;
       else if (filterAmount === "medium") matchesAmount = amount >= 5000 && amount <= 20000;
@@ -109,15 +176,17 @@ function CheckHistory({ isActive }) {
 
   // Sort transactions
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+    const aDate = new Date(getTransactionDateValue(a) || 0);
+    const bDate = new Date(getTransactionDateValue(b) || 0);
     switch (sortOrder) {
       case "recent":
-        return new Date(b.created_at) - new Date(a.created_at);
+        return bDate - aDate;
       case "oldest":
-        return new Date(a.created_at) - new Date(b.created_at);
+        return aDate - bDate;
       case "amount_high":
-        return b.total_amount - a.total_amount;
+        return getTransactionAmount(b) - getTransactionAmount(a);
       case "amount_low":
-        return a.total_amount - b.total_amount;
+        return getTransactionAmount(a) - getTransactionAmount(b);
       default:
         return 0;
     }
@@ -224,12 +293,12 @@ function CheckHistory({ isActive }) {
                     <tbody className="divide-y divide-gray-100">
                       {sortedTransactions.map((t, index) => (
                         <tr
-                          key={t.id || index}
+                          key={`${t.id || t.transaction_no || "transaction"}-${index}`}
                           className="hover:bg-gray-50 transition-colors"
                         >
                           <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
                           <td className="px-6 py-4">
-                            <span className="text-sm font-medium text-gray-800">{t.invoice_no}</span>
+                            <span className="text-sm font-medium text-gray-800">{getTransactionInvoiceNo(t)}</span>
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
@@ -237,28 +306,30 @@ function CheckHistory({ isActive }) {
                                 <User className="w-4 h-4 text-[#1A318C]" />
                               </div>
                               <span className="text-sm text-gray-700">
-                                {t.supplier?.basic_info?.supplier_name || `Supplier #${t.supplier_id}`}
+                                {getTransactionSupplierName(t) || `Supplier #${t.supplier_id ?? t.supplierId ?? 'N/A'}`}
                               </span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <Calendar className="w-4 h-4 text-gray-400" />
-                              {extractDateOnly(t.created_at)}
+                              {formatTransactionDate(t)}
                             </div>
                           </td>
                           <td className="px-6 py-4">
                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              t.payment_method === 'cash'
+                              String(getTransactionPaymentMethod(t)).toLowerCase() === 'cash'
                                 ? 'bg-emerald-100 text-emerald-700'
                                 : 'bg-blue-100 text-blue-700'
                             }`}>
-                              {t.payment_method ? t.payment_method.charAt(0).toUpperCase() + t.payment_method.slice(1) : 'N/A'}
+                              {getTransactionPaymentMethod(t) !== 'N/A'
+                                ? String(getTransactionPaymentMethod(t)).charAt(0).toUpperCase() + String(getTransactionPaymentMethod(t)).slice(1)
+                                : 'N/A'}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
                             <span className="text-sm font-bold text-gray-800 tabular-nums">
-                              Rs.{t.total_amount?.toLocaleString() || '0'}
+                              {formatTransactionAmount(t)}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-center">
@@ -293,7 +364,7 @@ function CheckHistory({ isActive }) {
                 </button>
                 <div>
                   <h2 className="text-lg font-bold text-gray-800">Transaction Details</h2>
-                  <p className="text-sm text-gray-500">Invoice: {selectedTrans.invoice_no}</p>
+                  <p className="text-sm text-gray-500">Invoice: {getTransactionInvoiceNo(selectedTrans)}</p>
                 </div>
               </div>
             </nav>
@@ -310,7 +381,7 @@ function CheckHistory({ isActive }) {
                     </div>
                     <div>
                       <p className="text-xs text-gray-400 uppercase tracking-wide">Invoice No</p>
-                      <p className="text-lg font-bold text-gray-800">{selectedTrans.invoice_no}</p>
+                      <p className="text-lg font-bold text-gray-800">{getTransactionInvoiceNo(selectedTrans)}</p>
                     </div>
                   </div>
                 </div>
@@ -323,7 +394,7 @@ function CheckHistory({ isActive }) {
                     </div>
                     <div>
                       <p className="text-xs text-gray-400 uppercase tracking-wide">Date</p>
-                      <p className="text-lg font-bold text-gray-800">{extractDateOnly(selectedTrans.created_at)}</p>
+                      <p className="text-lg font-bold text-gray-800">{formatTransactionDate(selectedTrans)}</p>
                     </div>
                   </div>
                 </div>
@@ -336,7 +407,7 @@ function CheckHistory({ isActive }) {
                     </div>
                     <div>
                       <p className="text-xs text-gray-400 uppercase tracking-wide">Total Amount</p>
-                      <p className="text-lg font-bold text-gray-800">Rs.{selectedTrans.total_amount?.toLocaleString()}</p>
+                      <p className="text-lg font-bold text-gray-800">{formatTransactionAmount(selectedTrans)}</p>
                     </div>
                   </div>
                 </div>
@@ -364,7 +435,7 @@ function CheckHistory({ isActive }) {
                   <div>
                     <p className="text-sm text-gray-500">Supplier</p>
                     <p className="text-base font-semibold text-gray-800">
-                      {selectedTrans.supplier?.basic_info?.supplier_name || `Supplier #${selectedTrans.supplier_id}`}
+                      {getTransactionSupplierName(selectedTrans) || `Supplier #${selectedTrans.supplier_id ?? selectedTrans.supplierId ?? 'N/A'}`}
                     </p>
                   </div>
                   <div>
@@ -377,7 +448,7 @@ function CheckHistory({ isActive }) {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Payment Method</p>
-                    <p className="text-base font-semibold text-gray-800 capitalize">{selectedTrans.payment_method || 'N/A'}</p>
+                    <p className="text-base font-semibold text-gray-800 capitalize">{getTransactionPaymentMethod(selectedTrans)}</p>
                   </div>
                 </div>
               </div>
@@ -502,8 +573,8 @@ function CheckHistory({ isActive }) {
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all appearance-none cursor-pointer"
                     >
                       <option value="all">All Suppliers</option>
-                      {uniqueSuppliers.map((s) => (
-                        <option key={s.id} value={s.name}>{s.name}</option>
+                      {uniqueSuppliers.map((s, index) => (
+                        <option key={`${s.id || s.name || "supplier"}-${index}`} value={s.name}>{s.name}</option>
                       ))}
                     </select>
                   </div>
@@ -587,7 +658,7 @@ function CheckHistory({ isActive }) {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Total Amount</span>
                 <span className="text-sm font-bold text-[#1A318C]">
-                  Rs.{safeTransData.reduce((sum, t) => sum + (t.total_amount || 0), 0).toLocaleString()}
+                  {formatTransactionAmount({ total_amount: safeTransData.reduce((sum, t) => sum + getTransactionAmount(t), 0) })}
                 </span>
               </div>
             </div>

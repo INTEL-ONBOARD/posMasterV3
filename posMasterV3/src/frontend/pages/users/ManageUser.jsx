@@ -924,8 +924,8 @@ function ManageUser() {
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                       >
                         <option value="">Select Branch</option>
-                        {(branchList || []).map((branch) => (
-                          <option key={branch.id} value={branch.id}>
+                        {(branchList || []).map((branch, index) => (
+                          <option key={`${branch.id || branch.name || "branch"}-${index}`} value={branch.id}>
                             {branch.name}
                           </option>
                         ))}
@@ -968,8 +968,8 @@ function ManageUser() {
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1A318C]/20 focus:border-[#1A318C] transition-all"
                     >
                       <option value="" disabled>Choose a role</option>
-                      {rolesList.map((role) => (
-                        <option key={role.value} value={role.value}>
+                      {rolesList.map((role, index) => (
+                        <option key={`${role.value || role.label || "role"}-${index}`} value={role.value}>
                           {role.label}
                         </option>
                       ))}
@@ -983,14 +983,14 @@ function ManageUser() {
                       </svg>
                       Permissions are based on the selected role
                     </p>
-                    {Object.entries(permissions).map(([category, perms]) => (
-                      <div key={category} className="bg-gray-50 rounded-lg p-3">
+                    {Object.entries(permissions).map(([category, perms], index) => (
+                      <div key={`${category || "category"}-${index}`} className="bg-gray-50 rounded-lg p-3">
                         <div className="font-semibold text-gray-700 text-xs mb-3 uppercase tracking-wide">
                           {category.replace("Access", " Access")}
                         </div>
                         <div className="space-y-2">
-                          {Object.entries(perms).map(([perm, value]) => (
-                            <div key={perm} className="flex items-center justify-between py-1.5 px-2 bg-white rounded-md">
+                          {Object.entries(perms).map(([perm, value], permIndex) => (
+                            <div key={`${perm || "perm"}-${permIndex}`} className="flex items-center justify-between py-1.5 px-2 bg-white rounded-md">
                               <span className="text-sm text-gray-600">
                                 {formatPermissionLabel(perm)}
                               </span>
@@ -1090,8 +1090,8 @@ function ManageUser() {
             className="w-40 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#1A318C] transition-colors"
           >
             <option value="All">All Roles</option>
-            {rolesList.map((role) => (
-              <option key={role.value} value={role.value}>
+            {rolesList.map((role, index) => (
+              <option key={`${role.value || role.label || "role"}-${index}`} value={role.value}>
                 {role.label}
               </option>
             ))}
@@ -1164,7 +1164,7 @@ function ManageUser() {
               ) : (
                 filteredUsers.map((user, index) => (
                   <div
-                    key={user.id}
+                    key={`${user.id || user.username || "user"}-${index}`}
                     className={`grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
                       formData.id === user.id ? "bg-[#1A318C]/5 border-l-4 border-l-[#1A318C]" : ""
                     }`}

@@ -168,7 +168,7 @@ export default function Intro() {
             >
               {[0, 1, 2].map((i) => (
                 <Motion.span
-                  key={i}
+                  key={`intro-dot-${i}`}
                   className="block rounded-full"
                   style={{ width: 5, height: 5, background: "#1A318C" }}
                   animate={{ opacity: [0.25, 1, 0.25], scale: [0.8, 1, 0.8] }}
