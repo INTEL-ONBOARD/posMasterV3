@@ -11,6 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { inventoryTransferApi } from "../../api/localApi";
+import { dataStore, TABLES } from "../../store/DataStore";
 
 function formatDate(value) {
   if (!value) return "Unknown date";
@@ -108,9 +109,88 @@ function getBatchRequestedQty(batch) {
   return Number(batch?.requestedQty ?? batch?.requested_qty ?? batch?.quantity ?? batch?.items?.[0]?.transferQty ?? batch?.items?.[0]?.quantity ?? 0) || 0;
 }
 
-function BatchCard({ batch, isSelected, onClick, branches }) {
+function getBatchStatus(batch) {
+  return String(batch?.status ?? batch?.requestDetails?.status ?? batch?.request_details?.status ?? "").trim().toLowerCase();
+}
+
+function getBatchDateValue(batch) {
+  return (
+    batch?.updatedAt ||
+    batch?.updated_at ||
+    batch?.createdAt ||
+    batch?.created_at ||
+    batch?.requestDetails?.updatedAt ||
+    batch?.requestDetails?.updated_at ||
+    batch?.requestDetails?.createdAt ||
+    batch?.requestDetails?.created_at ||
+    0
+  );
+}
+
+function getBatchSortTime(batch) {
+  const value = new Date(getBatchDateValue(batch)).getTime();
+  return Number.isFinite(value) ? value : 0;
+}
+
+function sortByNewestDate(rows = []) {
+  return [...rows].sort((a, b) => getBatchSortTime(b) - getBatchSortTime(a));
+}
+
+function normalizeTransferBatch(batch) {
+  if (!batch) return batch;
+
+  const status = getBatchStatus(batch) || "pending";
+  return {
+    ...batch,
+    status,
+  };
+}
+
+function segregateTransferBatches(rows = []) {
+  const normalizedRows = rows.map(normalizeTransferBatch);
+  const pending = sortByNewestDate(normalizedRows.filter((row) => getBatchStatus(row) === "pending"));
+  const history = sortByNewestDate(
+    normalizedRows.filter((row) => {
+      const status = getBatchStatus(row);
+      return status === "approved_by_manager" || status === "rejected_by_manager";
+    })
+  );
+
+  return {
+    pending,
+    history,
+  };
+}
+
+function getStatusMeta(status) {
+  const normalized = String(status || "").toLowerCase();
+
+  if (normalized === "approved_by_manager") {
+    return {
+      label: "Approved",
+      className: "border-sky-200 bg-sky-50 text-sky-700",
+    };
+  }
+
+  if (normalized === "rejected_by_manager") {
+    return {
+      label: "Rejected",
+      className: "border-rose-200 bg-rose-50 text-rose-700",
+    };
+  }
+
+  return {
+    label: "Pending",
+    className: "border-amber-200 bg-amber-50 text-amber-700",
+  };
+}
+
+function BatchCard({ batch, isSelected, onClick, branches, viewMode }) {
   const { requestDetails, items } = getBatchDetails(batch);
   const destinationLabel = resolveBranchLabel(branches, requestDetails.destinationBranch ?? batch.targetBranchId ?? batch.toBranchId);
+  const status = getBatchStatus(batch);
+  const isHistory = viewMode === "history";
+  const statusMeta = getStatusMeta(status);
 
   return (
     <button
@@ -125,11 +205,11 @@ function BatchCard({ batch, isSelected, onClick, branches }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className={`text-xs font-semibold uppercase tracking-wide ${isSelected ? "text-white/75" : "text-slate-400"}`}>
-            Pending batch
+            {isHistory ? "Transfer history" : "Pending batch"}
           </p>
           <div className="mt-2 flex items-center gap-2">
             <CalendarDays className={`h-4 w-4 shrink-0 ${isSelected ? "text-white/80" : "text-slate-400"}`} />
-            <span className="text-sm font-semibold">{formatDate(batch.createdAt || batch.created_at || batch.updatedAt)}</span>
+            <span className="text-sm font-semibold">{formatDate(getBatchDateValue(batch))}</span>
           </div>
           <div className="mt-2 flex items-center gap-2">
             <Building2 className={`h-4 w-4 shrink-0 ${isSelected ? "text-white/80" : "text-slate-400"}`} />
@@ -137,8 +217,15 @@ function BatchCard({ batch, isSelected, onClick, branches }) {
           </div>
         </div>
 
-        <div className={`rounded-full px-2.5 py-1 text-xs font-semibold ${isSelected ? "bg-white/15 text-white" : "bg-slate-100 text-slate-700"}`}>
-          {items.length} item(s)
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <div className={`rounded-full px-2.5 py-1 text-xs font-semibold ${isSelected ? "bg-white/15 text-white" : "bg-slate-100 text-slate-700"}`}>
+            {items.length} item(s)
+          </div>
+          {isHistory ? (
+            <div className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusMeta.className}`}>
+              {statusMeta.label}
+            </div>
+          ) : null}
         </div>
       </div>
     </button>
@@ -164,7 +251,7 @@ function BatchItemsTable({ items }) {
                 No items in this batch.
               </td>
             </tr>
-        ) : (
+          ) : (
             items.map((item, index) => (
               <tr key={`${item.id || item.sku || "batch-item"}-${index}`} className="hover:bg-slate-50/70">
                 <td className="px-4 py-3">
@@ -175,9 +262,7 @@ function BatchItemsTable({ items }) {
                 </td>
                 <td className="px-4 py-3 text-sm text-slate-600">{item.sku || "N/A"}</td>
                 <td className="px-4 py-3 text-sm font-semibold text-slate-800">{item.transferQty ?? item.quantity ?? item.requestedQty ?? 1}</td>
-                <td className="px-4 py-3 text-sm text-slate-600">
-                  {item.category?.type || item.categoryType || item.category_name || "N/A"}
-                </td>
+                <td className="px-4 py-3 text-sm text-slate-600">{item.category?.type || item.categoryType || item.category_name || "N/A"}</td>
               </tr>
             ))
           )}
@@ -189,68 +274,65 @@ function BatchItemsTable({ items }) {
 
 export default function ManagerApprovalTab({ branches = [] }) {
   const [pendingBatches, setPendingBatches] = useState([]);
+  const [historyBatches, setHistoryBatches] = useState([]);
   const [selectedBatchId, setSelectedBatchId] = useState("");
+  const [activeView, setActiveView] = useState("pending");
   const [loading, setLoading] = useState(true);
   const [savingAction, setSavingAction] = useState("");
   const [error, setError] = useState("");
 
-  const loadPendingBatches = async () => {
+  const loadTransferBatches = async () => {
     setLoading(true);
     setError("");
 
     try {
-      const response = await inventoryTransferApi.getAll();
-      const rows = Array.isArray(response?.data) ? response.data : [];
-      console.log("4. ManagerTab received raw rows:", response.data);
-      const pending = rows.filter((row) => {
-        const status = String(row?.status ?? row?.requestDetails?.status ?? row?.request_details?.status ?? "").toLowerCase();
-        return status === "pending";
-      });
-      const sorted = [...pending].sort(
-        (a, b) =>
-          new Date(
-            b.createdAt ||
-              b.created_at ||
-              b.updatedAt ||
-              b.updated_at ||
-              b.requestDetails?.createdAt ||
-              b.requestDetails?.created_at ||
-              0
-          ) -
-          new Date(
-            a.createdAt ||
-              a.created_at ||
-              a.updatedAt ||
-              a.updated_at ||
-              a.requestDetails?.createdAt ||
-              a.requestDetails?.created_at ||
-              0
-          )
-      );
+      const rows = await dataStore.refetch(TABLES.INVENTORY_TRANSFERS);
+      const { pending, history } = segregateTransferBatches(Array.isArray(rows) ? rows : []);
 
-      setPendingBatches(sorted);
-      console.log("5. ManagerTab filtered pending rows:", sorted);
-      setSelectedBatchId((prev) => prev || sorted[0]?.id || "");
+      setPendingBatches(pending);
+      setHistoryBatches(history);
+
+      setSelectedBatchId((currentId) => {
+        const combined = [...pending, ...history];
+        const stillExists = combined.some((row) => String(row?.id) === String(currentId));
+        if (stillExists) return currentId;
+        return pending[0]?.id || history[0]?.id || "";
+      });
     } catch (err) {
-      setError(err?.message || "Unable to load pending transfer batches.");
+      setError(err?.message || "Unable to load transfer batches.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadPendingBatches();
+    loadTransferBatches();
   }, []);
 
+  const allBatches = useMemo(() => [...pendingBatches, ...historyBatches], [pendingBatches, historyBatches]);
   const selectedBatch = useMemo(
-    () => pendingBatches.find((row) => String(row.id) === String(selectedBatchId)) || pendingBatches[0] || null,
-    [pendingBatches, selectedBatchId]
+    () => allBatches.find((row) => String(row?.id) === String(selectedBatchId)) || null,
+    [allBatches, selectedBatchId]
   );
 
   const selectedBatchDetails = useMemo(() => getBatchDetails(selectedBatch), [selectedBatch]);
+  const selectedBatchStatus = getBatchStatus(selectedBatch);
+  const isHistorySelection = selectedBatchStatus === "approved_by_manager" || selectedBatchStatus === "rejected_by_manager";
+  const visibleBatches = activeView === "history" ? historyBatches : pendingBatches;
+  const viewTitle = activeView === "history" ? "Transfer Request History" : "Pending Batches";
+  const viewSubtitle =
+    activeView === "history"
+      ? `${historyBatches.length} processed request(s)`
+      : `${pendingBatches.length} request batch(es)`;
+  const emptyTitle = activeView === "history" ? "No processed batches" : "No pending batches";
+  const emptySubtitle =
+    activeView === "history"
+      ? "Manager-approved and manager-rejected requests will appear here."
+      : "New transfer requests will appear here.";
+  const selectedStatusMeta = getStatusMeta(selectedBatchStatus);
 
   const handleAction = async (action) => {
-    if (!selectedBatch) return;
+    if (!selectedBatch || isHistorySelection) return;
 
     setSavingAction(action);
     setError("");
@@ -260,22 +342,64 @@ export default function ManagerApprovalTab({ branches = [] }) {
       const sourceBranchId = getBatchSourceBranchId(selectedBatch);
       const acceptedQty = Math.max(1, getBatchRequestedQty(selectedBatch));
 
+      let response;
+
       if (action === "approve") {
-        await inventoryTransferApi.accept(selectedBatch.id, acceptedQty, {
+        response = await inventoryTransferApi.accept(selectedBatch.id, acceptedQty, {
           sourceBranchId,
           source_branch_id: sourceBranchId,
           targetBranchId,
           target_branch_id: targetBranchId,
         });
       } else {
-        await inventoryTransferApi.reject(selectedBatch.id, {
+        response = await inventoryTransferApi.reject(selectedBatch.id, {
           targetBranchId,
           target_branch_id: targetBranchId,
         });
       }
 
-      await loadPendingBatches();
+      console.log("[ManagerApprovalTab] transfer mutation response:", response);
+
+      const responseStatus = String(response?.status ?? response?.data?.status ?? "").trim().toLowerCase();
+      const successFlag = response?.success ?? response?.data?.success;
+      const failureFlag = response?.success === false || response?.data?.success === false || responseStatus === "error" || responseStatus === "failed";
+
+      if (failureFlag || (responseStatus && responseStatus !== "success" && responseStatus !== "ok")) {
+        console.error("[ManagerApprovalTab] transfer mutation rejected by backend:", response);
+        throw new Error(response?.message || response?.data?.message || `Backend did not confirm ${action} for this batch.`);
+      }
+
+      if (successFlag === false) {
+        console.error("[ManagerApprovalTab] transfer mutation returned explicit failure flag:", response);
+        throw new Error(response?.message || response?.data?.message || `Backend reported ${action} failure for this batch.`);
+      }
+
+      const freshRows = await dataStore.refetch(TABLES.INVENTORY_TRANSFERS);
+      console.log("[ManagerApprovalTab] refetched inventory transfers:", freshRows);
+
+      const { pending, history } = segregateTransferBatches(Array.isArray(freshRows) ? freshRows : []);
+      setPendingBatches(pending);
+      setHistoryBatches(history);
+
+      const refreshedSelected =
+        history.find((row) => String(row?.id) === String(selectedBatch.id)) ||
+        pending.find((row) => String(row?.id) === String(selectedBatch.id)) ||
+        null;
+
+      setActiveView(
+        refreshedSelected && getBatchStatus(refreshedSelected) !== "pending"
+          ? "history"
+          : pending.length > 0
+            ? "pending"
+            : "history"
+      );
+      setSelectedBatchId(refreshedSelected?.id || pending[0]?.id || history[0]?.id || "");
     } catch (err) {
+      console.error(`[ManagerApprovalTab] Unable to ${action} transfer batch`, {
+        batchId: selectedBatch?.id,
+        action,
+        error: err,
+      });
       setError(err?.message || `Unable to ${action} this batch.`);
     } finally {
       setSavingAction("");
@@ -297,20 +421,49 @@ export default function ManagerApprovalTab({ branches = [] }) {
       </div>
 
       <div className="grid min-h-0 flex-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <aside className="min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-            <div>
-              <h2 className="text-lg font-bold text-slate-800">Pending Batches</h2>
-              <p className="text-sm text-slate-500">{pendingBatches.length} request batch(es)</p>
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold text-slate-800">{viewTitle}</h2>
+                <p className="text-sm text-slate-500">{viewSubtitle}</p>
+              </div>
+              <button
+                type="button"
+                onClick={loadTransferBatches}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+                aria-label="Refresh transfer batches"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={loadPendingBatches}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"
-              aria-label="Refresh pending batches"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            </button>
+
+            <div className="mt-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => setActiveView("pending")}
+                className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                  activeView === "pending" ? "bg-white text-[#1A318C] shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Pending
+                <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+                  {pendingBatches.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView("history")}
+                className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                  activeView === "history" ? "bg-white text-[#1A318C] shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                History
+                <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+                  {historyBatches.length}
+                </span>
+              </button>
+            </div>
           </div>
 
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
@@ -320,18 +473,19 @@ export default function ManagerApprovalTab({ branches = [] }) {
               </div>
             ) : error ? (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
-            ) : pendingBatches.length === 0 ? (
+            ) : visibleBatches.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center">
                 <Clock3 className="mx-auto h-10 w-10 text-[#1A318C]" />
-                <p className="mt-3 text-sm font-semibold text-slate-700">No pending batches</p>
-                <p className="mt-1 text-xs text-slate-500">New transfer requests will appear here.</p>
+                <p className="mt-3 text-sm font-semibold text-slate-700">{emptyTitle}</p>
+                <p className="mt-1 text-xs text-slate-500">{emptySubtitle}</p>
               </div>
             ) : (
-              pendingBatches.map((batch, index) => (
+              visibleBatches.map((batch, index) => (
                 <BatchCard
                   key={`${batch.id || batch.sku || "batch"}-${index}`}
                   batch={batch}
                   branches={branches}
+                  viewMode={activeView}
                   isSelected={String(batch.id) === String(selectedBatchId)}
                   onClick={() => setSelectedBatchId(batch.id)}
                 />
@@ -340,7 +494,7 @@ export default function ManagerApprovalTab({ branches = [] }) {
           </div>
         </aside>
 
-        <section className="min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           {selectedBatch ? (
             <div className="flex h-full min-h-0 flex-col">
               <div className="border-b border-slate-100 px-5 py-4">
@@ -376,9 +530,7 @@ export default function ManagerApprovalTab({ branches = [] }) {
                   </div>
                   <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Created At</p>
-                    <p className="mt-2 text-lg font-bold text-slate-800">
-                      {formatDate(selectedBatch.createdAt || selectedBatch.created_at || selectedBatch.updatedAt)}
-                    </p>
+                    <p className="mt-2 text-lg font-bold text-slate-800">{formatDate(getBatchDateValue(selectedBatch))}</p>
                   </div>
                 </div>
 
@@ -404,30 +556,38 @@ export default function ManagerApprovalTab({ branches = [] }) {
               </div>
 
               <div className="border-t border-slate-100 bg-slate-50 px-5 py-4">
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    disabled={savingAction === "reject"}
-                    onClick={() => handleAction("reject")}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {savingAction === "reject" ? <RefreshCw className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                    Reject Transfer
-                  </button>
-                  <button
-                    type="button"
-                    disabled={savingAction === "approve"}
-                    onClick={() => handleAction("approve")}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {savingAction === "approve" ? (
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
-                    )}
-                    Approve Transfer
-                  </button>
-                </div>
+                {isHistorySelection ? (
+                  <div className="flex justify-end">
+                    <span className={`inline-flex items-center rounded-2xl border px-4 py-3 text-sm font-semibold ${selectedStatusMeta.className}`}>
+                      {selectedStatusMeta.label}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      disabled={savingAction === "reject"}
+                      onClick={() => handleAction("reject")}
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {savingAction === "reject" ? <RefreshCw className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                      Reject Transfer
+                    </button>
+                    <button
+                      type="button"
+                      disabled={savingAction === "approve"}
+                      onClick={() => handleAction("approve")}
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {savingAction === "approve" ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4" />
+                      )}
+                      Approve Transfer
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -436,7 +596,9 @@ export default function ManagerApprovalTab({ branches = [] }) {
                 <Package2 className="mx-auto h-12 w-12 text-[#1A318C]" />
                 <h3 className="mt-4 text-xl font-bold text-slate-800">Select a batch to review</h3>
                 <p className="mt-2 text-sm text-slate-500">
-                  Pending transfer batches will appear on the left. Choose one to inspect the destination, note, and item list.
+                  {activeView === "history"
+                    ? "Processed transfer requests will appear on the left. Choose one to inspect the final status, note, and item list."
+                    : "Pending transfer batches will appear on the left. Choose one to inspect the destination, note, and item list."}
                 </p>
               </div>
             </div>

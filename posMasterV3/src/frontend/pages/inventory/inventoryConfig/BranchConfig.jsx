@@ -215,7 +215,6 @@ function BranchConfig() {
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-[#1A318C] to-[#2a4ab8]">
-                <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider w-20">ID</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Branch Name</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Location</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Contact</th>
@@ -225,7 +224,7 @@ function BranchConfig() {
             <tbody className="divide-y divide-gray-100">
               {branches.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center">
+                  <td colSpan="4" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center">
                       <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
                         <MapPin className="w-8 h-8 text-gray-300" />
@@ -242,7 +241,6 @@ function BranchConfig() {
                     onClick={() => handleRowClick(branch)}
                     className={`cursor-pointer transition-colors ${editingId === branch.id ? 'bg-[#1A318C]/5 ring-2 ring-inset ring-[#1A318C]' : 'hover:bg-gray-50'}`}
                   >
-                    <td className="px-6 py-4 text-sm text-gray-600">{branch.id}</td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-800">{branch.name}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{branch.address}</td>
                     <td className="px-6 py-4 text-sm text-gray-600 font-mono">{branch.contact}</td>
