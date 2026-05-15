@@ -706,12 +706,22 @@ function IncomingRequestCard({
   );
 }
 
-export function TransferHistoryTable({ title, rows, counterpartyLabel, branches, currentBranchId, statusOverride }) {
+export function TransferHistoryTable({
+  title,
+  rows,
+  counterpartyLabel,
+  branches,
+  currentBranchId,
+  statusOverride,
+  className = "",
+  bodyClassName = "",
+}) {
   const isIncomingHistory = counterpartyLabel === "Source Branch";
   const isOutgoingHistory = counterpartyLabel === "Destination Branch";
+  const containerClassName = className || "rounded-3xl border border-slate-100 bg-white shadow-sm";
 
   return (
-    <div className="rounded-3xl border border-slate-100 bg-white shadow-sm">
+    <div className={containerClassName}>
       <div className="flex flex-col gap-2 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-lg font-bold text-slate-800">{title}</h3>
@@ -723,7 +733,7 @@ export function TransferHistoryTable({ title, rows, counterpartyLabel, branches,
         </Badge>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className={`overflow-x-auto ${bodyClassName}`.trim()}>
         <table className="min-w-full divide-y divide-slate-100">
           <thead className="bg-[#1A318C] text-white">
             <tr>
@@ -1209,22 +1219,13 @@ export function OutgoingShareTab({
         </SectionShell>
       </div>
 
-      <TransferHistoryTable
-        title="Outgoing Share History"
-        rows={outgoingHistory}
-        counterpartyLabel="Destination Branch"
-        branches={branches}
-        currentBranchId={currentBranch?.id || currentBranch?.branch_id || ""}
-      />
     </div>
   );
 }
 
 export function IncomingShareTab({
-  currentBranchId,
   branches,
   pendingRequests,
-  incomingHistory,
   incomingSearch,
   setIncomingSearch,
   acceptQuantities,
@@ -1298,13 +1299,6 @@ export function IncomingShareTab({
         )}
       </SectionShell>
 
-      <TransferHistoryTable
-        title="Incoming Share History"
-        rows={incomingHistory}
-        counterpartyLabel="Source Branch"
-        branches={branches}
-        currentBranchId={currentBranchId}
-      />
     </div>
   );
 }
@@ -1344,6 +1338,7 @@ function BellIcon({ type }) {
 function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp = CURRENT_BRANCH_ID }) {
   const { currentBranch: activeBranch, loading: branchLoading } = useBranchContext();
   const [activeTab, setActiveTab] = useState("outgoing");
+  const [showHistory, setShowHistory] = useState(false);
   const [outgoingSearch, setOutgoingSearch] = useState("");
   const [outgoingCategory, setOutgoingCategory] = useState("All");
   const [incomingSearch, setIncomingSearch] = useState("");
@@ -1768,6 +1763,15 @@ function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp 
     }
   }, [activeTab, shareTabs]);
 
+  useEffect(() => {
+    setShowHistory(false);
+  }, [activeTab]);
+
+  const historyTitle = activeTab === "outgoing" ? "Outgoing Share History" : "Incoming Share History";
+  const historyCounterpartyLabel = activeTab === "outgoing" ? "Destination Branch" : "Source Branch";
+  const historyRows = activeTab === "outgoing" ? outgoingHistory : incomingHistory;
+  const historyCurrentBranchId = currentBranch?.id || currentBranch?.branch_id || resolvedCurrentBranchId || "";
+
   return (
     <div className="h-full min-h-0 overflow-y-auto bg-slate-50 pb-24">
       <Toast toast={toast} />
@@ -1838,11 +1842,34 @@ function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp 
               <StatCard label="Accepted" value={summary.acceptedCount} icon={CheckCircle2} tone="emerald" compact />
               <StatCard label="Rejected" value={summary.rejectedCount} icon={XCircle} tone="rose" compact />
             </div>
+
+            <button
+              type="button"
+              onClick={() => setShowHistory((prev) => !prev)}
+              className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                showHistory
+                  ? "border-[#1A318C] bg-[#1A318C] text-white shadow-md shadow-blue-900/20 hover:bg-[#152a79]"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-[#1A318C]/30 hover:bg-slate-50"
+              }`}
+            >
+              <Clock3 className="h-4 w-4" />
+              {historyTitle}
+            </button>
           </aside>
 
           <div className="min-h-0 flex-1 overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 lg:p-6">
-              {activeTab === "outgoing" ? (
+            <div className={`min-h-0 flex-1 ${showHistory ? "h-full" : "overflow-y-auto p-4 lg:p-6"}`}>
+              {showHistory ? (
+                <TransferHistoryTable
+                  title={historyTitle}
+                  rows={historyRows}
+                  counterpartyLabel={historyCounterpartyLabel}
+                  branches={branches}
+                  currentBranchId={historyCurrentBranchId}
+                  className="h-full flex flex-col overflow-hidden rounded-none border-0 shadow-none"
+                  bodyClassName="flex-1 overflow-auto"
+                />
+              ) : activeTab === "outgoing" ? (
                 <OutgoingShareTab
                   currentBranch={currentBranch || { id: resolvedCurrentBranchId, branch_name: currentBranchLabel }}
                   branches={destinationBranches}
@@ -1859,10 +1886,8 @@ function InventoryShare({ isActive = true, currentBranchId: currentBranchIdProp 
                 />
               ) : (
                 <IncomingShareTab
-                  currentBranchId={currentBranch?.id || currentBranch?.branch_id || ""}
                   branches={branches}
                   pendingRequests={pendingIncomingBatches}
-                  incomingHistory={incomingHistory}
                   incomingSearch={incomingSearch}
                   setIncomingSearch={setIncomingSearch}
                   acceptQuantities={acceptQuantities}
