@@ -497,9 +497,9 @@ export default function ManagerApprovalTab({ branches = [] }) {
           </div>
         </aside>
 
-        <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <section className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
           {selectedBatch ? (
-            <div className="flex h-full min-h-0 flex-col">
+            <div className="flex flex-col">
               <div className="border-b border-slate-100 px-5 py-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -516,7 +516,7 @@ export default function ManagerApprovalTab({ branches = [] }) {
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+              <div className="space-y-5 p-5">
                 {error ? (
                   <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
                 ) : null}
@@ -547,50 +547,52 @@ export default function ManagerApprovalTab({ branches = [] }) {
                   </p>
                 </div>
 
-                <div>
-                  <div className="mb-3 flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-slate-800">Batch Items</h3>
-                    <span className="rounded-full bg-[#1A318C]/5 px-3 py-1 text-xs font-semibold text-[#1A318C]">
-                      {selectedBatchDetails.items.length} item(s)
-                    </span>
+                <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+                  <div className="p-5">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-slate-800">Batch Items</h3>
+                      <span className="rounded-full bg-[#1A318C]/5 px-3 py-1 text-xs font-semibold text-[#1A318C]">
+                        {selectedBatchDetails.items.length} item(s)
+                      </span>
+                    </div>
+                    <BatchItemsTable items={selectedBatchDetails.items} />
                   </div>
-                  <BatchItemsTable items={selectedBatchDetails.items} />
-                </div>
-              </div>
 
-              <div className="border-t border-slate-100 bg-slate-50 px-5 py-4">
-                {isHistorySelection ? (
-                  <div className="flex justify-end">
-                    <span className={`inline-flex items-center rounded-2xl border px-4 py-3 text-sm font-semibold ${selectedStatusMeta.className}`}>
-                      {selectedStatusMeta.label}
-                    </span>
+                  <div className="border-t border-slate-100 px-5 py-4">
+                    {isHistorySelection ? (
+                      <div className="flex justify-end">
+                        <span className={`inline-flex items-center rounded-2xl border px-4 py-3 text-sm font-semibold ${selectedStatusMeta.className}`}>
+                          {selectedStatusMeta.label}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end gap-4">
+                        <button
+                          type="button"
+                          disabled={savingAction === "reject"}
+                          onClick={() => handleAction("reject")}
+                          className="inline-flex w-auto items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white px-6 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          {savingAction === "reject" ? <RefreshCw className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                          Reject Transfer
+                        </button>
+                        <button
+                          type="button"
+                          disabled={savingAction === "approve"}
+                          onClick={() => handleAction("approve")}
+                          className="inline-flex w-auto items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          {savingAction === "approve" ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4" />
+                          )}
+                          Approve Transfer
+                        </button>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <button
-                      type="button"
-                      disabled={savingAction === "reject"}
-                      onClick={() => handleAction("reject")}
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      {savingAction === "reject" ? <RefreshCw className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                      Reject Transfer
-                    </button>
-                    <button
-                      type="button"
-                      disabled={savingAction === "approve"}
-                      onClick={() => handleAction("approve")}
-                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      {savingAction === "approve" ? (
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="h-4 w-4" />
-                      )}
-                      Approve Transfer
-                    </button>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
           ) : (
