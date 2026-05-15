@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import SalesItemCard from "../../components/SalesItemCard";
 import { salesApi } from "../../api/localApi";
-import { ChevronDown, User, Package, ShoppingCart, X, DollarSign, RefreshCw, Pause, Play, Trash2, ScanLine } from "lucide-react";
+import { ChevronDown, User, Package, ShoppingCart, X, DollarSign, RefreshCw, Pause, Play, Trash2, ScanLine, Receipt } from "lucide-react";
 import StatusModal from "../../components/StatusModal.jsx";
 import { localAuth } from "../../api/services/localAuth";
 import { restockApi } from "../../api/localApi";
@@ -30,6 +30,97 @@ const GUEST_USER = {
   credit_limit: 0,
   is_guest: true
 };
+
+// Thermal roll print settings. 80mm printers usually expose 576 printable dots.
+// The rendered receipt is converted to a monochrome ESC/POS raster image so
+// Sinhala text and the current receipt layout print without relying on fonts.
+const THERMAL_ROLL_WIDTH_MM = 80;
+const THERMAL_PAGE_HEIGHT_MM = 297;
+const THERMAL_SIDE_MARGIN_PT = 4;
+const THERMAL_PRINT_WIDTH_DOTS = 576;
+const THERMAL_RASTER_CHUNK_HEIGHT = 256;
+const THERMAL_IMAGE_THRESHOLD = 190;
+const THERMAL_TRAILING_FEED_LINES = 5;
+const RECEIPT_CANVAS_SCALE = 2;
+const MM_TO_PT = 2.83465;
+
+const waitForBrowserPaint = () =>
+  new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  });
+
+function appendBytes(target, bytes) {
+  for (const byte of bytes) target.push(byte);
+}
+
+function buildEscposRasterCommand(sourceCanvas) {
+  if (!sourceCanvas || sourceCanvas.width <= 0 || sourceCanvas.height <= 0) {
+    throw new Error("Receipt image is empty");
+  }
+
+  const targetWidth = THERMAL_PRINT_WIDTH_DOTS;
+  const targetHeight = Math.max(
+    1,
+    Math.ceil((sourceCanvas.height * targetWidth) / sourceCanvas.width)
+  );
+  const rasterCanvas = document.createElement("canvas");
+  rasterCanvas.width = targetWidth;
+  rasterCanvas.height = targetHeight;
+
+  const rasterCtx = rasterCanvas.getContext("2d", { willReadFrequently: true });
+  if (!rasterCtx) throw new Error("Failed to create receipt raster context");
+  rasterCtx.fillStyle = "#ffffff";
+  rasterCtx.fillRect(0, 0, targetWidth, targetHeight);
+  rasterCtx.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
+
+  const { data } = rasterCtx.getImageData(0, 0, targetWidth, targetHeight);
+  const widthBytes = Math.ceil(targetWidth / 8);
+  const raster = new Uint8Array(widthBytes * targetHeight);
+
+  for (let y = 0; y < targetHeight; y += 1) {
+    for (let x = 0; x < targetWidth; x += 1) {
+      const pixelIndex = (y * targetWidth + x) * 4;
+      const alpha = data[pixelIndex + 3];
+      if (alpha < 128) continue;
+
+      const red = data[pixelIndex];
+      const green = data[pixelIndex + 1];
+      const blue = data[pixelIndex + 2];
+      const luminance = red * 0.299 + green * 0.587 + blue * 0.114;
+
+      if (luminance < THERMAL_IMAGE_THRESHOLD) {
+        const byteIndex = y * widthBytes + (x >> 3);
+        raster[byteIndex] |= 0x80 >> (x & 7);
+      }
+    }
+  }
+
+  const command = [];
+  appendBytes(command, [0x1b, 0x40]); // Initialize printer
+  appendBytes(command, [0x1b, 0x61, 0x01]); // Center raster image
+
+  for (let y = 0; y < targetHeight; y += THERMAL_RASTER_CHUNK_HEIGHT) {
+    const chunkHeight = Math.min(THERMAL_RASTER_CHUNK_HEIGHT, targetHeight - y);
+    const xL = widthBytes & 0xff;
+    const xH = (widthBytes >> 8) & 0xff;
+    const yL = chunkHeight & 0xff;
+    const yH = (chunkHeight >> 8) & 0xff;
+
+    appendBytes(command, [0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
+
+    const start = y * widthBytes;
+    const end = start + chunkHeight * widthBytes;
+    for (let index = start; index < end; index += 1) {
+      command.push(raster[index]);
+    }
+  }
+
+  appendBytes(command, [0x1b, 0x61, 0x00]); // Left align after image
+  appendBytes(command, Array(THERMAL_TRAILING_FEED_LINES).fill(0x0a));
+  appendBytes(command, [0x1d, 0x56, 0x00]); // Full cut where supported
+
+  return new Uint8Array(command);
+}
 
 /**
  * Custom hook for barcode scanner input
@@ -109,6 +200,10 @@ export default function SalesView({ isActive }) {
   const searchInputRef = useRef(null);
   const proceedBtnRef = useRef(null);
   const [statusModal, setStatusModal] = useState({ open: false, type: null, description: "" });
+  const [receiptCheckoutData, setReceiptCheckoutData] = useState(null);
+  const [isReceiptPreviewOpen, setIsReceiptPreviewOpen] = useState(false);
+  const [receiptPreviewData, setReceiptPreviewData] = useState(null);
+  const [lastReceiptData, setLastReceiptData] = useState(null);
   const { currentBranch } = useBranchContext();
 
   const focusSearch = () => {
@@ -806,9 +901,10 @@ export default function SalesView({ isActive }) {
         : await salesApi.create(saleData);
 
       if (response.status === "success") {
+        setLastReceiptData(buildBillDataSnapshot(checkoutData));
         // Generate and print bill
         try {
-            await generateBillPdf(checkoutData);
+            await printReceipt(checkoutData);
         } catch (printError) {
             console.error('[SalesView] Bill generation failed:', printError);
             setStatusModal({ open: true, type: 'failed', description: 'Sale saved but bill printing failed' });
@@ -929,28 +1025,38 @@ export default function SalesView({ isActive }) {
   const checkoutDataRef = useRef(null);
 
 
-// Thermal roll print settings. 80mm is the standard POS receipt width; change
-// THERMAL_ROLL_WIDTH_MM to 58 for 58mm rolls if that is what the store uses.
-const THERMAL_ROLL_WIDTH_MM = 80;
-const THERMAL_PAGE_HEIGHT_MM = 297; // virtual page height used for slicing long bills
-const THERMAL_SIDE_MARGIN_PT = 4;
-const MM_TO_PT = 2.83465;
-
-const generateBillPdf = async (checkoutData) => {
-  try {
-    if (!billRef.current) return;
+const captureReceiptCanvas = async (checkoutData) => {
+    if (!billRef.current) throw new Error("Receipt content is not ready");
     checkoutDataRef.current = checkoutData;
+    setReceiptCheckoutData(checkoutData);
+    await waitForBrowserPaint();
 
-    const html2canvasScale = 2;
-
-    const canvas = await html2canvas(billRef.current, {
-      scale: html2canvasScale,
+    return html2canvas(billRef.current, {
+      scale: RECEIPT_CANVAS_SCALE,
       useCORS: true,
       backgroundColor: "#ffffff"
     });
+};
 
-    // Build a PDF page that matches the thermal roll width directly, so the
-    // printer driver prints 1:1 instead of downscaling a half-A4 image.
+const printReceiptToThermalPrinter = async (canvas) => {
+    if (!window.electronAPI?.printThermalReceipt) {
+      throw new Error("Thermal printer IPC is not available");
+    }
+
+    const commands = buildEscposRasterCommand(canvas);
+    const response = await window.electronAPI.printThermalReceipt({
+      data: commands.buffer,
+      timeoutMs: 8000
+    });
+
+    if (response?.status !== "success") {
+      throw new Error(response?.message || "Thermal receipt print failed");
+    }
+
+    return response;
+};
+
+const printReceiptPdfFallback = async (canvas) => {
     const rollWidthPt = THERMAL_ROLL_WIDTH_MM * MM_TO_PT;
     const rollPageHeightPt = THERMAL_PAGE_HEIGHT_MM * MM_TO_PT;
 
@@ -966,7 +1072,7 @@ const generateBillPdf = async (checkoutData) => {
     const printableHeight = pageHeight;
 
     // Canvas px -> PDF pt.
-    const pxToPt = 0.75 / html2canvasScale;
+    const pxToPt = 0.75 / RECEIPT_CANVAS_SCALE;
     const imgWidthPt = canvas.width * pxToPt;
     const scaleToRoll = printableWidth / imgWidthPt;
 
@@ -1017,10 +1123,21 @@ const generateBillPdf = async (checkoutData) => {
     }
 
     const arrayBuffer = doc.output("arraybuffer");
+    if (!window.electronAPI?.sendPrintSilent) {
+      throw new Error("System print IPC is not available");
+    }
     window.electronAPI.sendPrintSilent(arrayBuffer);
-  } catch (error) {
-    console.error("generatePdf error:", error);
-  }
+};
+
+const printReceipt = async (checkoutData) => {
+    const canvas = await captureReceiptCanvas(checkoutData);
+
+    if (window.electronAPI?.printThermalReceipt) {
+      await printReceiptToThermalPrinter(canvas);
+      return;
+    }
+
+    await printReceiptPdfFallback(canvas);
 };
 
 
@@ -1031,19 +1148,37 @@ const generateBillPdf = async (checkoutData) => {
     total_price: (getCartUnitPrice(item) - (item.customer_discount || 0)) * item.customer_quantity,
   }));
 
-  // Bill data uses checkout ref for payment details
-  const billData = {
+  const currentReceiptCheckoutData = receiptCheckoutData || checkoutDataRef.current;
+
+  const buildBillDataSnapshot = (checkoutData = currentReceiptCheckoutData) => ({
     invoiceNo: invoiceNo,
     cashier_name: currentUser?.username || "-",
-    payment_method: checkoutDataRef.current?.paymentMethod || "cash",
+    payment_method: checkoutData?.paymentMethodName || checkoutData?.paymentMethod || "cash",
     date_time: formattedDate,
     member_no: selectedMember?.member_no || "-",
-    stock_items: stock_items,
+    stock_items: stock_items.map((item) => ({ ...item })),
     totalAmount: stockTotal,
-    discountAmount: checkoutDataRef.current?.finalDiscount || 0,
-    finalAmount: checkoutDataRef.current?.totalAmount || stockTotal,
-    cashAmount: checkoutDataRef.current?.cashAmount || 0,
-    changeAmount: checkoutDataRef.current?.changeAmount || 0,
+    discountAmount: checkoutData?.finalDiscount || 0,
+    finalAmount: checkoutData?.totalAmount || stockTotal,
+    cashAmount: checkoutData?.cashAmount || 0,
+    changeAmount: checkoutData?.changeAmount || 0,
+  });
+
+  // Bill data uses the latest checkout data captured for receipt generation.
+  const billData = buildBillDataSnapshot(currentReceiptCheckoutData);
+
+  const openReceiptPreview = () => {
+    const previewData = selectedItems.length > 0
+      ? buildBillDataSnapshot(currentReceiptCheckoutData)
+      : lastReceiptData;
+
+    if (!previewData) {
+      setStatusModal({ open: true, type: 'failed', description: "No receipt available to preview" });
+      return;
+    }
+
+    setReceiptPreviewData(previewData);
+    setIsReceiptPreviewOpen(true);
   };
 
   const formatCurrency = (amount) => `Rs. ${(parseFloat(amount) || 0).toFixed(2)}`;
@@ -1295,10 +1430,10 @@ const generateBillPdf = async (checkoutData) => {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="p-3 flex flex-col gap-2">
-            {/* Clear & Hold Row */}
-            <div className="flex gap-2">
+	          {/* Action Buttons */}
+	          <div className="p-3 flex flex-col gap-2">
+	            {/* Clear & Hold Row */}
+	            <div className="flex gap-2">
               <button
                 onClick={openClearConfirm}
                 disabled={selectedItems.length === 0}
@@ -1323,12 +1458,21 @@ const generateBillPdf = async (checkoutData) => {
                 >
                   <Pause className="w-4 h-4" />
                   {releasedHeldOrder ? "Held" : "Hold"}
-                </button>
-              )}
-            </div>
+	                </button>
+	              )}
+	            </div>
 
-            {/* Proceed Button */}
-            <button
+	            <button
+	              onClick={openReceiptPreview}
+	              disabled={selectedItems.length === 0 && !lastReceiptData}
+	              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-teal-200 text-teal-700 rounded-xl font-semibold hover:bg-teal-50 hover:border-teal-300 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+	            >
+	              <Receipt className="w-4 h-4" />
+	              Preview Receipt
+	            </button>
+
+	            {/* Proceed Button */}
+	            <button
               ref={proceedBtnRef}
               onClick={handleProceedClick}
               disabled={selectedItems.length === 0}
@@ -1371,9 +1515,9 @@ const generateBillPdf = async (checkoutData) => {
         onConfirmSale={handleConfirmSale}
       />
 
-      {/* Clear Cart Confirmation Modal */}
-      {isClearConfirmOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
+	      {/* Clear Cart Confirmation Modal */}
+	      {isClearConfirmOpen && (
+	        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
             onClick={closeClearConfirm}
@@ -1408,11 +1552,45 @@ const generateBillPdf = async (checkoutData) => {
               </div>
             </div>
           </div>
-        </div>
-      )}
+	        </div>
+	      )}
 
-      <StatusModal
-        isOpen={statusModal.open}
+	      {isReceiptPreviewOpen && (
+	        <div className="fixed inset-0 z-[70] flex items-center justify-center px-4">
+	          <div
+	            className="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px]"
+	            onClick={() => setIsReceiptPreviewOpen(false)}
+	          />
+	          <div className="relative z-[71] w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-100">
+	            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-white">
+	              <div className="flex items-center gap-3">
+	                <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+	                  <Receipt className="w-5 h-5" />
+	                </div>
+	                <div>
+	                  <h3 className="text-lg font-bold text-slate-900">Receipt Preview</h3>
+	                  <p className="text-xs text-slate-500">{(receiptPreviewData || lastReceiptData || billData)?.invoiceNo || "Current receipt"}</p>
+	                </div>
+	              </div>
+	              <button
+	                onClick={() => setIsReceiptPreviewOpen(false)}
+	                className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 flex items-center justify-center transition-colors"
+	              >
+	                <X className="w-5 h-5" />
+	              </button>
+	            </div>
+
+	            <div className="max-h-[78vh] overflow-auto bg-slate-100 p-5">
+	              <div className="mx-auto w-fit shadow-xl">
+	                <BillContent billData={receiptPreviewData || lastReceiptData || billData} />
+	              </div>
+	            </div>
+	          </div>
+	        </div>
+	      )}
+
+	      <StatusModal
+	        isOpen={statusModal.open}
         closeModal={() => setStatusModal({ open: false, type: null, description: "" })}
         type={statusModal.type}
         description={statusModal.description}

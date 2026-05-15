@@ -203,6 +203,31 @@ class OnlineApiClient {
             body: { type, branchId, branch_id: branchId }
         });
     }
+
+    syncTeaCoop(options = {}) {
+        return this.request('/tea-coop/sync', {
+            method: 'POST',
+            body: options
+        });
+    }
+
+    syncTeaCoopMembers() {
+        return this.request('/tea-coop/sync/members', {
+            method: 'POST',
+            body: {}
+        });
+    }
+
+    syncTeaCoopPayments(memberId = null, options = {}) {
+        return this.request('/tea-coop/sync/payments', {
+            method: 'POST',
+            body: { ...options, memberId, member_id: memberId }
+        });
+    }
+
+    getTeaCoopStatus() {
+        return this.request('/tea-coop/status');
+    }
 }
 
 module.exports = { OnlineApiClient };

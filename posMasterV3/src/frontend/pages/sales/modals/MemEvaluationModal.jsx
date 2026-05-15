@@ -11,6 +11,7 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
   const [historyLoading, setHistoryLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
+  const [syncError, setSyncError] = useState("");
 
   // Use reactive data hook for Tea Coop members
   const { data: members, loading: isLoading, refetch } = useReactiveData(
@@ -37,6 +38,7 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
   // Sync members from external API with progress simulation
   const handleSyncMembers = async () => {
     setSyncing(true);
+    setSyncError("");
     setSyncProgress(0);
 
     // Simulate progress while syncing
@@ -48,14 +50,18 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
     }, 200);
 
     try {
-      await teaCoopApi.syncMembers();
+      const result = await teaCoopApi.syncMembers();
+      if (result?.status !== "success") {
+        throw new Error(result?.message || "Tea Coop sync failed");
+      }
       setSyncProgress(100);
       await refetch();
     } catch (error) {
       console.error("[MemEvaluationModal] Error syncing members:", error);
+      setSyncError(error?.message || "Tea Coop sync failed");
     } finally {
       clearInterval(progressInterval);
-      // Keep 100% shown briefly before hiding
+      // Keep completion/failure state visible briefly before hiding the progress bar.
       setTimeout(() => {
         setSyncing(false);
         setSyncProgress(0);
@@ -213,6 +219,11 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
                     style={{ width: `${syncProgress}%` }}
                   />
                 </div>
+              </div>
+            )}
+            {syncError && (
+              <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+                {syncError}
               </div>
             )}
           </div>

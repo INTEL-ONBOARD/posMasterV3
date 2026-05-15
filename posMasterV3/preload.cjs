@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     send: (channel, data) => ipcRenderer.send(channel, data),
     invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
     sendPrintSilent: (arrayBuffer) => ipcRenderer.send("print-silent", arrayBuffer),
+    printThermalReceipt: (payload) => ipcRenderer.invoke("thermal:print-receipt", payload),
     receive: (channel, func) => {
         ipcRenderer.on(channel, (event, ...args) => func(...args));
     },
@@ -117,6 +118,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
             ipcRenderer.invoke("online:sales:create", data),
         generateInvoiceNo: (type = "SALE", branchId = null) =>
             ipcRenderer.invoke("online:sales:invoice-no", { type, branchId, branch_id: branchId }),
+        syncTeaCoop: (options = {}) => ipcRenderer.invoke("teacoop:sync:members", options),
+        syncTeaCoopMembers: () => ipcRenderer.invoke("teacoop:sync:members"),
+        syncTeaCoopPayments: (memberId = null, options = {}) =>
+            ipcRenderer.invoke("teacoop:sync:payments", { memberId, options }),
+        getTeaCoopStatus: () => ipcRenderer.invoke("teacoop:status"),
         onRealtimeStatus: (callback) => {
             const listener = (_event, payload) => callback(payload);
             ipcRenderer.on("online:realtime-status", listener);

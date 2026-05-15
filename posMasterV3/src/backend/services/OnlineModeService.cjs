@@ -125,6 +125,22 @@ class OnlineModeService {
         return this.api.generateInvoiceNo(type, branchId);
     }
 
+    async syncTeaCoop(options = {}) {
+        return this.api.syncTeaCoop(options);
+    }
+
+    async syncTeaCoopMembers() {
+        return this.api.syncTeaCoopMembers();
+    }
+
+    async syncTeaCoopPayments(memberId = null, options = {}) {
+        return this.api.syncTeaCoopPayments(memberId, options);
+    }
+
+    async getTeaCoopStatus() {
+        return this.api.getTeaCoopStatus();
+    }
+
     async getSalesSummary(startDate, endDate) {
         const db = await getConnectedDb();
         const filter = {

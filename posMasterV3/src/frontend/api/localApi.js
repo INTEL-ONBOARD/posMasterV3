@@ -3722,11 +3722,11 @@ const installOnlineOnlyOverrides = () => {
         getAllMembers: async () => teaCoopApi.getAll(),
         getMemberById: async (memberId) => teaCoopApi.getById(memberId),
         searchMembers: async (term) => teaCoopApi.search(term),
-        getPaymentHistory: async (memberId) => fetchAllCollection('tea_coop_payments', { memberId }),
-        syncMembers: async () => ({ status: 'error', message: 'Tea Coop sync must run in the online backend, not the desktop client' }),
-        syncPayments: async () => ({ status: 'error', message: 'Tea Coop sync must run in the online backend, not the desktop client' }),
+        getPaymentHistory: async (memberId) => fetchAllCollection('tea_coop_payments', { member_id: memberId }),
+        syncMembers: async () => onlineCall((api) => api.syncTeaCoop()),
+        syncPayments: async (memberId, options = {}) => onlineCall((api) => api.syncTeaCoopPayments(memberId, options)),
         refreshMember: async (memberId) => teaCoopApi.getMemberById(memberId),
-        getStatus: async () => ({ status: 'success', data: { isSyncing: false, onlineOnly: true } }),
+        getStatus: async () => onlineCall((api) => api.getTeaCoopStatus()),
         onSyncEvent: () => () => {}
     });
     Object.assign(offersApi, onlineCollectionApi('offers'));

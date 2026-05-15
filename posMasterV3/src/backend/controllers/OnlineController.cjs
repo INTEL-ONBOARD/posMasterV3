@@ -288,10 +288,13 @@ function registerHandlers() {
         const memberId = payload?.memberId || payload?.member_id || payload;
         return teaCoopPayments.list({ memberId, member_id: memberId });
     }));
-    ipcMain.handle('teacoop:sync:members', wrapIpcHandler(async () => ({ status: 'error', message: 'Tea Coop sync must run in the online backend, not the desktop client' })));
-    ipcMain.handle('teacoop:sync:payments', wrapIpcHandler(async () => ({ status: 'error', message: 'Tea Coop sync must run in the online backend, not the desktop client' })));
+    ipcMain.handle('teacoop:sync:members', wrapIpcHandler(async () => service.syncTeaCoop({})));
+    ipcMain.handle('teacoop:sync:payments', wrapIpcHandler(async (event, payload) => {
+        const memberId = payload?.memberId || payload?.member_id || null;
+        return service.syncTeaCoopPayments(memberId, payload?.options || payload || {});
+    }));
     ipcMain.handle('teacoop:members:refresh', wrapIpcHandler(async (event, memberId) => teaCoopMembers.get(memberId)));
-    ipcMain.handle('teacoop:status', wrapIpcHandler(async () => ({ status: 'success', data: { onlineOnly: true, backend: 'online' } })));
+    ipcMain.handle('teacoop:status', wrapIpcHandler(async () => service.getTeaCoopStatus()));
 
     console.log('[OnlineController] Online-only IPC handlers registered');
 }

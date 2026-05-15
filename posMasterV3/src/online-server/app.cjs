@@ -7,6 +7,7 @@ const { errorMiddleware } = require('./utils/http.cjs');
 const healthRoutes = require('./routes/health.cjs');
 const authRoutes = require('./routes/auth.cjs');
 const catalogRoutes = require('./routes/catalog.cjs');
+const teaCoopRoutes = require('./routes/teaCoop.cjs');
 
 function createApp() {
     const app = express();
@@ -20,6 +21,7 @@ function createApp() {
 
     app.use('/api', healthRoutes);
     app.use('/api', authRoutes);
+    app.use('/api', teaCoopRoutes);
     app.use('/api', catalogRoutes);
 
     app.use((req, res) => {

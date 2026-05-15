@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const { pathToFileURL } = require("url");
+const net = require("net");
 const axios = require("axios");
 const fsSync = require("fs");
 const fs = fsSync.promises;
@@ -33,6 +34,80 @@ let bundledOnlineBackendStarted = false;
 // Default folder path
 const defaultFolderPath = "C:\\POS Master";
 const onlineRuntimeConfigFile = "online-runtime-config.json";
+const DEFAULT_THERMAL_PRINTER_HOST =
+  process.env.POS_THERMAL_PRINTER_HOST ||
+  process.env.THERMAL_PRINTER_HOST ||
+  "192.168.8.157";
+const DEFAULT_THERMAL_PRINTER_PORT = Number(
+  process.env.POS_THERMAL_PRINTER_PORT ||
+  process.env.THERMAL_PRINTER_PORT ||
+  9100
+);
+
+function getThermalPrinterTarget(payload = {}) {
+  const host = String(
+    payload.host ||
+    process.env.POS_THERMAL_PRINTER_HOST ||
+    process.env.THERMAL_PRINTER_HOST ||
+    DEFAULT_THERMAL_PRINTER_HOST
+  ).trim();
+  const port = Number(
+    payload.port ||
+    process.env.POS_THERMAL_PRINTER_PORT ||
+    process.env.THERMAL_PRINTER_PORT ||
+    DEFAULT_THERMAL_PRINTER_PORT
+  );
+
+  if (!host) throw new Error("Thermal printer host is not configured");
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+    throw new Error(`Invalid thermal printer port: ${payload.port}`);
+  }
+
+  return { host, port };
+}
+
+function normalizePrintBuffer(data) {
+  if (data instanceof ArrayBuffer) return Buffer.from(data);
+  if (ArrayBuffer.isView(data)) {
+    return Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+  }
+  if (Array.isArray(data)) return Buffer.from(data);
+  return null;
+}
+
+function writeToThermalPrinter(buffer, target, timeoutMs = 8000) {
+  return new Promise((resolve, reject) => {
+    const socket = new net.Socket();
+    let settled = false;
+
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      socket.removeAllListeners();
+      socket.destroy();
+      if (error) reject(error);
+      else resolve();
+    };
+
+    socket.setTimeout(timeoutMs);
+    socket.once("error", finish);
+    socket.once("timeout", () => {
+      finish(new Error(`Thermal printer connection timed out after ${timeoutMs}ms`));
+    });
+    socket.connect(target.port, target.host, () => {
+      socket.write(buffer, (error) => {
+        if (error) {
+          finish(error);
+          return;
+        }
+        socket.end();
+      });
+    });
+    socket.once("close", (hadError) => {
+      if (!hadError) finish();
+    });
+  });
+}
 
 function readPackagedOnlineRuntimeConfig() {
   if (!app.isPackaged) return null;
@@ -660,6 +735,37 @@ ipcMain.on("print-silent", async (event, arrayBuffer) => {
     } catch (cleanupError) {
       console.warn("Temp file cleanup failed:", cleanupError.message);
     }
+  }
+});
+
+ipcMain.handle("thermal:print-receipt", async (event, payload = {}) => {
+  try {
+    const buffer = normalizePrintBuffer(payload.data);
+    if (!buffer || buffer.length === 0) {
+      throw new Error("Thermal print payload is empty");
+    }
+
+    const target = getThermalPrinterTarget(payload);
+    const timeoutMs = Number(payload.timeoutMs || 8000);
+    await writeToThermalPrinter(buffer, target, timeoutMs);
+
+    console.log(
+      `[ThermalPrint] Receipt sent to ${target.host}:${target.port} (${buffer.length} bytes)`
+    );
+    return {
+      status: "success",
+      data: {
+        host: target.host,
+        port: target.port,
+        bytes: buffer.length,
+      },
+    };
+  } catch (error) {
+    console.error("[ThermalPrint] Receipt print failed:", error.message);
+    return {
+      status: "error",
+      message: error.message || "Thermal receipt print failed",
+    };
   }
 });
 

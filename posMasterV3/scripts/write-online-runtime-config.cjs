@@ -22,7 +22,11 @@ const config = {
     MONGODB_DB: optionalEnv('MONGODB_DB', 'POSmaster'),
     JWT_SECRET: requiredEnv('JWT_SECRET'),
     JWT_EXPIRES_IN: optionalEnv('JWT_EXPIRES_IN', '8h'),
-    POS_ORG_ID: optionalEnv('POS_ORG_ID', 'default-org')
+    POS_ORG_ID: optionalEnv('POS_ORG_ID', 'default-org'),
+    TEA_COOP_API_URL: optionalEnv('TEA_COOP_API_URL', ''),
+    TEA_COOP_API_TOKEN: optionalEnv('TEA_COOP_API_TOKEN', ''),
+    TEA_COOP_MEMBERS_PATH: optionalEnv('TEA_COOP_MEMBERS_PATH', '/members'),
+    TEA_COOP_PAYMENTS_PATH: optionalEnv('TEA_COOP_PAYMENTS_PATH', '/payments')
 };
 
 const outputPath = path.join(__dirname, '..', 'online-runtime-config.json');

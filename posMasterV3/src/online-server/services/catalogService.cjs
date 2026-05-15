@@ -215,6 +215,9 @@ function scopedQuery(collectionName, auth, query = {}) {
         orgId: auth.orgId,
         deletedAt: null
     };
+    const teaCoopPaymentMemberId = collectionName === 'tea_coop_payments'
+        ? (query.memberId ?? query.member_id ?? null)
+        : null;
     const queryAliases = [
         ['branchId', 'branchId'],
         ['branch_id', 'branchId'],
@@ -246,9 +249,18 @@ function scopedQuery(collectionName, auth, query = {}) {
         ['status', 'status']
     ];
     for (const [sourceKey, targetKey] of queryAliases) {
+        if (collectionName === 'tea_coop_payments' && (sourceKey === 'memberId' || sourceKey === 'member_id')) {
+            continue;
+        }
         if (query[sourceKey] !== undefined && query[sourceKey] !== null && query[sourceKey] !== '') {
             filter[targetKey] = query[sourceKey];
         }
+    }
+    if (teaCoopPaymentMemberId !== undefined && teaCoopPaymentMemberId !== null && teaCoopPaymentMemberId !== '') {
+        filter.$or = [
+            { memberId: teaCoopPaymentMemberId },
+            { member_id: teaCoopPaymentMemberId }
+        ];
     }
     if (collectionName === 'inventory_transfers' && auth.branchId && !filter.branchId && !filter.sourceBranchId && !filter.targetBranchId) {
         const branchId = auth.branchId;
