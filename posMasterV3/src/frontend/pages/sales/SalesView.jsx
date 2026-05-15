@@ -41,6 +41,7 @@ const THERMAL_PRINT_WIDTH_DOTS = 576;
 const THERMAL_RASTER_CHUNK_HEIGHT = 256;
 const THERMAL_IMAGE_THRESHOLD = 190;
 const THERMAL_TRAILING_FEED_LINES = 5;
+const THERMAL_NETWORK_PRINT_TIMEOUT_MS = 5000;
 const RECEIPT_CANVAS_SCALE = 2;
 const MM_TO_PT = 2.83465;
 
@@ -1038,7 +1039,24 @@ const captureReceiptCanvas = async (checkoutData) => {
     });
 };
 
-const printReceiptToThermalPrinter = async (canvas) => {
+const getReceiptPrinterConfig = async () => {
+    if (!window.electronAPI?.getReceiptPrinterConfig) {
+      return { mode: "auto", networkHost: null };
+    }
+
+    const response = await window.electronAPI.getReceiptPrinterConfig();
+    if (response?.status !== "success") {
+      return { mode: "auto", networkHost: null };
+    }
+
+    return {
+      mode: response.data?.mode || "auto",
+      networkHost: response.data?.networkHost || null,
+      networkAutoDiscovery: Boolean(response.data?.networkAutoDiscovery),
+    };
+};
+
+const printReceiptToThermalPrinter = async (canvas, options = {}) => {
     if (!window.electronAPI?.printThermalReceipt) {
       throw new Error("Thermal printer IPC is not available");
     }
@@ -1046,7 +1064,8 @@ const printReceiptToThermalPrinter = async (canvas) => {
     const commands = buildEscposRasterCommand(canvas);
     const response = await window.electronAPI.printThermalReceipt({
       data: commands.buffer,
-      timeoutMs: 8000
+      mode: "network",
+      timeoutMs: options.timeoutMs || THERMAL_NETWORK_PRINT_TIMEOUT_MS
     });
 
     if (response?.status !== "success") {
@@ -1056,7 +1075,7 @@ const printReceiptToThermalPrinter = async (canvas) => {
     return response;
 };
 
-const printReceiptPdfFallback = async (canvas) => {
+const buildReceiptPdfArrayBuffer = async (canvas) => {
     const rollWidthPt = THERMAL_ROLL_WIDTH_MM * MM_TO_PT;
     const rollPageHeightPt = THERMAL_PAGE_HEIGHT_MM * MM_TO_PT;
 
@@ -1122,22 +1141,61 @@ const printReceiptPdfFallback = async (canvas) => {
       pageNumber++;
     }
 
-    const arrayBuffer = doc.output("arraybuffer");
+    return doc.output("arraybuffer");
+};
+
+const printReceiptViaSystemPrinter = async (canvas) => {
+    const arrayBuffer = await buildReceiptPdfArrayBuffer(canvas);
+
+    if (window.electronAPI?.printReceiptPdf) {
+      const response = await window.electronAPI.printReceiptPdf({
+        data: arrayBuffer,
+        mode: "system"
+      });
+
+      if (response?.status !== "success") {
+        throw new Error(response?.message || "System receipt print failed");
+      }
+
+      return response;
+    }
+
     if (!window.electronAPI?.sendPrintSilent) {
       throw new Error("System print IPC is not available");
     }
+
     window.electronAPI.sendPrintSilent(arrayBuffer);
 };
 
 const printReceipt = async (checkoutData) => {
     const canvas = await captureReceiptCanvas(checkoutData);
+    const printerConfig = await getReceiptPrinterConfig();
+    const printerMode = printerConfig.mode;
 
-    if (window.electronAPI?.printThermalReceipt) {
+    if (printerMode === "system") {
+      await printReceiptViaSystemPrinter(canvas);
+      return;
+    }
+
+    if (printerMode === "network") {
       await printReceiptToThermalPrinter(canvas);
       return;
     }
 
-    await printReceiptPdfFallback(canvas);
+    if (!printerConfig.networkHost && !printerConfig.networkAutoDiscovery) {
+      await printReceiptViaSystemPrinter(canvas);
+      return;
+    }
+
+    try {
+      await printReceiptToThermalPrinter(canvas);
+    } catch (networkPrintError) {
+      console.warn(
+        "[SalesView] Network receipt print failed; trying system printer",
+        networkPrintError
+      );
+      await printReceiptViaSystemPrinter(canvas);
+    }
 };
 
 

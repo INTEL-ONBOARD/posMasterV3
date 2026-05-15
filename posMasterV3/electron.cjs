@@ -3,6 +3,7 @@ const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const { pathToFileURL } = require("url");
 const net = require("net");
+const os = require("os");
 const axios = require("axios");
 const fsSync = require("fs");
 const fs = fsSync.promises;
@@ -37,20 +38,96 @@ const onlineRuntimeConfigFile = "online-runtime-config.json";
 const DEFAULT_THERMAL_PRINTER_HOST =
   process.env.POS_THERMAL_PRINTER_HOST ||
   process.env.THERMAL_PRINTER_HOST ||
-  "192.168.8.157";
+  "";
 const DEFAULT_THERMAL_PRINTER_PORT = Number(
   process.env.POS_THERMAL_PRINTER_PORT ||
   process.env.THERMAL_PRINTER_PORT ||
   9100
 );
+const DEFAULT_RECEIPT_PRINTER_MODE = (
+  process.env.POS_RECEIPT_PRINTER_MODE ||
+  process.env.RECEIPT_PRINTER_MODE ||
+  "auto"
+).toLowerCase();
+const DEFAULT_RECEIPT_SYSTEM_PRINTER_NAME = (
+  process.env.POS_RECEIPT_SYSTEM_PRINTER_NAME ||
+  process.env.POS_PRINTER_NAME ||
+  process.env.PRINTER ||
+  ""
+).trim();
+const DEFAULT_RECEIPT_NETWORK_AUTODISCOVERY = parseBooleanEnv(
+  process.env.POS_RECEIPT_NETWORK_AUTODISCOVERY ||
+  process.env.RECEIPT_NETWORK_AUTODISCOVERY,
+  true
+);
+const THERMAL_PRINTER_DISCOVERY_TIMEOUT_MS = readPositiveIntegerEnv(
+  process.env.POS_THERMAL_PRINTER_DISCOVERY_TIMEOUT_MS,
+  250
+);
+const THERMAL_PRINTER_DISCOVERY_CONCURRENCY = readPositiveIntegerEnv(
+  process.env.POS_THERMAL_PRINTER_DISCOVERY_CONCURRENCY,
+  64
+);
+const THERMAL_PRINTER_DISCOVERY_CACHE_TTL_MS = readPositiveIntegerEnv(
+  process.env.POS_THERMAL_PRINTER_DISCOVERY_CACHE_TTL_MS,
+  5 * 60 * 1000
+);
+let cachedThermalPrinterTarget = null;
 
-function getThermalPrinterTarget(payload = {}) {
-  const host = String(
+function parseBooleanEnv(value, fallback) {
+  if (value === undefined || value === null || value === "") return fallback;
+  return !["0", "false", "no", "off"].includes(String(value).trim().toLowerCase());
+}
+
+function readPositiveIntegerEnv(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function normalizeReceiptPrinterMode(mode) {
+  const normalized = String(mode || DEFAULT_RECEIPT_PRINTER_MODE).trim().toLowerCase();
+
+  if (["tcp", "network", "raw", "wifi", "ethernet"].includes(normalized)) {
+    return "network";
+  }
+
+  if (["system", "usb", "windows", "os", "pdf", "queue"].includes(normalized)) {
+    return "system";
+  }
+
+  return "auto";
+}
+
+function getReceiptPrinterConfig(payload = {}) {
+  return {
+    mode: normalizeReceiptPrinterMode(payload.mode),
+    systemPrinterName: String(
+      payload.printerName ||
+      process.env.POS_RECEIPT_SYSTEM_PRINTER_NAME ||
+      process.env.POS_PRINTER_NAME ||
+      process.env.PRINTER ||
+      DEFAULT_RECEIPT_SYSTEM_PRINTER_NAME ||
+      ""
+    ).trim(),
+    networkAutoDiscovery: parseBooleanEnv(
+      payload.networkAutoDiscovery ??
+      process.env.POS_RECEIPT_NETWORK_AUTODISCOVERY ??
+      process.env.RECEIPT_NETWORK_AUTODISCOVERY,
+      DEFAULT_RECEIPT_NETWORK_AUTODISCOVERY
+    ),
+  };
+}
+
+function getThermalPrinterHost(payload = {}) {
+  return String(
     payload.host ||
     process.env.POS_THERMAL_PRINTER_HOST ||
     process.env.THERMAL_PRINTER_HOST ||
     DEFAULT_THERMAL_PRINTER_HOST
   ).trim();
+}
+
+function getThermalPrinterPort(payload = {}) {
   const port = Number(
     payload.port ||
     process.env.POS_THERMAL_PRINTER_PORT ||
@@ -58,10 +135,18 @@ function getThermalPrinterTarget(payload = {}) {
     DEFAULT_THERMAL_PRINTER_PORT
   );
 
-  if (!host) throw new Error("Thermal printer host is not configured");
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
     throw new Error(`Invalid thermal printer port: ${payload.port}`);
   }
+
+  return port;
+}
+
+function getThermalPrinterTarget(payload = {}) {
+  const host = getThermalPrinterHost(payload);
+  const port = getThermalPrinterPort(payload);
+
+  if (!host) throw new Error("Thermal printer host is not configured");
 
   return { host, port };
 }
@@ -107,6 +192,258 @@ function writeToThermalPrinter(buffer, target, timeoutMs = 8000) {
       if (!hadError) finish();
     });
   });
+}
+
+function ipv4ToNumber(ipAddress) {
+  const parts = String(ipAddress).split(".").map((part) => Number(part));
+  if (
+    parts.length !== 4 ||
+    parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)
+  ) {
+    return null;
+  }
+
+  return (
+    ((parts[0] << 24) >>> 0) +
+    ((parts[1] << 16) >>> 0) +
+    ((parts[2] << 8) >>> 0) +
+    parts[3]
+  ) >>> 0;
+}
+
+function numberToIpv4(value) {
+  return [
+    (value >>> 24) & 255,
+    (value >>> 16) & 255,
+    (value >>> 8) & 255,
+    value & 255,
+  ].join(".");
+}
+
+function getLocalNetworkCandidates() {
+  const candidates = new Set();
+  const localAddresses = new Set();
+
+  for (const entries of Object.values(os.networkInterfaces())) {
+    for (const entry of entries || []) {
+      const isIpv4 = entry.family === "IPv4" || entry.family === 4;
+      if (!isIpv4 || entry.internal) continue;
+
+      const localAddress = ipv4ToNumber(entry.address);
+      if (localAddress === null) continue;
+      localAddresses.add(entry.address);
+
+      const netmask = ipv4ToNumber(entry.netmask);
+      let start = ((localAddress & 0xffffff00) >>> 0) + 1;
+      let end = ((localAddress & 0xffffff00) >>> 0) + 254;
+
+      if (netmask !== null) {
+        const network = (localAddress & netmask) >>> 0;
+        const broadcast = (network | (~netmask >>> 0)) >>> 0;
+        const hostCount = broadcast - network - 1;
+
+        if (hostCount > 0 && hostCount <= 254) {
+          start = network + 1;
+          end = broadcast - 1;
+        }
+      }
+
+      for (let address = start; address <= end; address += 1) {
+        const candidate = numberToIpv4(address >>> 0);
+        if (!localAddresses.has(candidate)) candidates.add(candidate);
+      }
+    }
+  }
+
+  return Array.from(candidates);
+}
+
+function testTcpPort(host, port, timeoutMs) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    let settled = false;
+
+    const finish = (isOpen) => {
+      if (settled) return;
+      settled = true;
+      socket.removeAllListeners();
+      socket.destroy();
+      resolve(isOpen);
+    };
+
+    socket.setTimeout(timeoutMs);
+    socket.once("connect", () => finish(true));
+    socket.once("timeout", () => finish(false));
+    socket.once("error", () => finish(false));
+    socket.connect(port, host);
+  });
+}
+
+async function findReachableHost(candidates, port, timeoutMs, concurrency) {
+  for (let index = 0; index < candidates.length; index += concurrency) {
+    const batch = candidates.slice(index, index + concurrency);
+    const results = await Promise.all(
+      batch.map(async (host) => ((await testTcpPort(host, port, timeoutMs)) ? host : null))
+    );
+    const foundHost = results.find(Boolean);
+    if (foundHost) return foundHost;
+  }
+
+  return null;
+}
+
+async function discoverThermalPrinter(payload = {}) {
+  const port = getThermalPrinterPort(payload);
+  const { networkAutoDiscovery } = getReceiptPrinterConfig(payload);
+
+  if (!networkAutoDiscovery) {
+    throw new Error("Network printer auto-discovery is disabled");
+  }
+
+  if (
+    cachedThermalPrinterTarget &&
+    cachedThermalPrinterTarget.port === port &&
+    Date.now() - cachedThermalPrinterTarget.detectedAt < THERMAL_PRINTER_DISCOVERY_CACHE_TTL_MS
+  ) {
+    return {
+      host: cachedThermalPrinterTarget.host,
+      port: cachedThermalPrinterTarget.port,
+      discovered: true,
+      cached: true,
+    };
+  }
+
+  const candidates = getLocalNetworkCandidates();
+  if (candidates.length === 0) {
+    throw new Error("No local IPv4 network found for printer auto-discovery");
+  }
+
+  console.log(
+    `[ThermalPrint] Auto-discovering network printer on ${candidates.length} hosts, port ${port}`
+  );
+
+  const host = await findReachableHost(
+    candidates,
+    port,
+    THERMAL_PRINTER_DISCOVERY_TIMEOUT_MS,
+    THERMAL_PRINTER_DISCOVERY_CONCURRENCY
+  );
+
+  if (!host) {
+    throw new Error(`No network thermal printer found on port ${port}`);
+  }
+
+  cachedThermalPrinterTarget = {
+    host,
+    port,
+    detectedAt: Date.now(),
+  };
+
+  return {
+    host,
+    port,
+    discovered: true,
+    cached: false,
+  };
+}
+
+async function resolveThermalPrinterTarget(payload = {}) {
+  const host = getThermalPrinterHost(payload);
+
+  if (host) {
+    return {
+      ...getThermalPrinterTarget(payload),
+      discovered: false,
+      cached: false,
+    };
+  }
+
+  return discoverThermalPrinter(payload);
+}
+
+async function printPdfBufferSilently(arrayBuffer, options = {}) {
+  if (!arrayBuffer || !(arrayBuffer instanceof ArrayBuffer)) {
+    throw new Error("Invalid print data received");
+  }
+
+  const tempFile = path.join(app.getPath("temp"), `print-${Date.now()}.pdf`);
+  const { systemPrinterName } = getReceiptPrinterConfig(options);
+
+  try {
+    const pdfBuffer = Buffer.from(arrayBuffer);
+    await fs.writeFile(tempFile, pdfBuffer);
+    console.log("PDF saved to", tempFile);
+
+    const printOptions = { silent: true };
+    if (systemPrinterName) printOptions.printer = systemPrinterName;
+
+    await printer.print(tempFile, printOptions);
+    console.log(
+      systemPrinterName
+        ? `Printed via pdf-to-printer on ${systemPrinterName}`
+        : "Printed via pdf-to-printer on default printer"
+    );
+
+    return {
+      status: "success",
+      data: {
+        mode: "system",
+        printerName: systemPrinterName || null,
+      },
+    };
+  } catch (error) {
+    console.error("Silent print failed:", error.message);
+
+    try {
+      console.log("Attempting fallback printing");
+      const printWindow = new BrowserWindow({ show: false });
+
+      await new Promise((resolve, reject) => {
+        printWindow.webContents.once("did-finish-load", () => {
+          printWindow.webContents.print(
+            {
+              silent: true,
+              printBackground: true,
+              deviceName: systemPrinterName || undefined,
+            },
+            (success, failureReason) => {
+              printWindow.close();
+              if (success) {
+                console.log("Printed via fallback method");
+                resolve();
+                return;
+              }
+
+              reject(new Error(failureReason || "Electron fallback print failed"));
+            }
+          );
+        });
+        printWindow.loadURL(pathToFileURL(tempFile).toString()).catch((loadError) => {
+          printWindow.close();
+          reject(loadError);
+        });
+      });
+
+      return {
+        status: "success",
+        data: {
+          mode: "system",
+          printerName: systemPrinterName || null,
+          fallback: true,
+        },
+      };
+    } catch (fallbackError) {
+      console.error("Fallback printing failed:", fallbackError.message);
+      throw fallbackError;
+    }
+  } finally {
+    try {
+      await fs.unlink(tempFile);
+      console.log("Temporary file cleaned up");
+    } catch (cleanupError) {
+      console.warn("Temp file cleanup failed:", cleanupError.message);
+    }
+  }
 }
 
 function readPackagedOnlineRuntimeConfig() {
@@ -685,56 +1022,68 @@ ipcMain.on("perform-logout", async () => {
 ipcMain.on("print-silent", async (event, arrayBuffer) => {
   console.log("Silent print started");
 
-  if (!arrayBuffer || !(arrayBuffer instanceof ArrayBuffer)) {
-    console.error("Invalid print data received");
-    return;
-  }
-
-  const tempFile = path.join(app.getPath("temp"), `print-${Date.now()}.pdf`);
-
   try {
-    const pdfBuffer = Buffer.from(arrayBuffer);
-
-    await fs.writeFile(tempFile, pdfBuffer);
-    console.log("PDF saved to", tempFile);
-
-    await printer.print(tempFile, { silent: true });
-    console.log("Printed via pdf-to-printer");
+    await printPdfBufferSilently(arrayBuffer);
   } catch (error) {
     console.error("Silent print failed:", error.message);
+  }
+});
 
-    try {
-      console.log("Attempting fallback printing");
-      const printWindow = new BrowserWindow({ show: false });
-      await printWindow.loadURL(`file://${tempFile}`);
+ipcMain.handle("receipt-printer:get-config", async () => {
+  const receiptConfig = getReceiptPrinterConfig();
+  const networkHost = getThermalPrinterHost();
+  let networkPort = null;
 
-      await new Promise((resolve) => {
-        printWindow.webContents.on("did-finish-load", () => {
-          printWindow.webContents.print(
-            {
-              silent: true,
-              printBackground: true,
-            },
-            (success) => {
-              printWindow.close();
-              if (success) {
-                console.log("Printed via fallback method");
-              }
-              resolve();
-            }
-          );
-        });
-      });
-    } catch (fallbackError) {
-      console.error("Fallback printing failed:", fallbackError.message);
-    }
-  } finally {
-    try {
-      await fs.unlink(tempFile);
-      console.log("Temporary file cleaned up");
-    } catch (cleanupError) {
-      console.warn("Temp file cleanup failed:", cleanupError.message);
-    }
+  try {
+    networkPort = getThermalPrinterPort();
+  } catch (error) {
+    console.warn("[ReceiptPrinter] Invalid network printer config:", error.message);
+  }
+
+  return {
+    status: "success",
+    data: {
+      ...receiptConfig,
+      networkHost: networkHost || null,
+      networkPort,
+    },
+  };
+});
+
+ipcMain.handle("receipt-printer:list", async () => {
+  try {
+    const [printers, defaultPrinter] = await Promise.all([
+      printer.getPrinters(),
+      printer.getDefaultPrinter().catch(() => null),
+    ]);
+
+    return {
+      status: "success",
+      data: {
+        printers,
+        defaultPrinter,
+      },
+    };
+  } catch (error) {
+    console.error("[ReceiptPrinter] Failed to list printers:", error.message);
+    return {
+      status: "error",
+      message: error.message || "Failed to list printers",
+    };
+  }
+});
+
+ipcMain.handle("receipt-printer:print-pdf", async (event, payload = {}) => {
+  try {
+    const data = payload.data || payload.pdfData;
+    const result = await printPdfBufferSilently(data, payload);
+    return result;
+  } catch (error) {
+    console.error("[ReceiptPrinter] System print failed:", error.message);
+    return {
+      status: "error",
+      message: error.message || "System receipt print failed",
+    };
   }
 });
 
@@ -745,7 +1094,7 @@ ipcMain.handle("thermal:print-receipt", async (event, payload = {}) => {
       throw new Error("Thermal print payload is empty");
     }
 
-    const target = getThermalPrinterTarget(payload);
+    const target = await resolveThermalPrinterTarget(payload);
     const timeoutMs = Number(payload.timeoutMs || 8000);
     await writeToThermalPrinter(buffer, target, timeoutMs);
 
@@ -757,6 +1106,8 @@ ipcMain.handle("thermal:print-receipt", async (event, payload = {}) => {
       data: {
         host: target.host,
         port: target.port,
+        discovered: target.discovered,
+        cached: target.cached,
         bytes: buffer.length,
       },
     };

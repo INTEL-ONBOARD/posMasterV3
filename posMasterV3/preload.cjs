@@ -28,6 +28,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     send: (channel, data) => ipcRenderer.send(channel, data),
     invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
     sendPrintSilent: (arrayBuffer) => ipcRenderer.send("print-silent", arrayBuffer),
+    getReceiptPrinterConfig: () => ipcRenderer.invoke("receipt-printer:get-config"),
+    listReceiptPrinters: () => ipcRenderer.invoke("receipt-printer:list"),
+    printReceiptPdf: (payload) => ipcRenderer.invoke("receipt-printer:print-pdf", payload),
     printThermalReceipt: (payload) => ipcRenderer.invoke("thermal:print-receipt", payload),
     receive: (channel, func) => {
         ipcRenderer.on(channel, (event, ...args) => func(...args));
