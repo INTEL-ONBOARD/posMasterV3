@@ -63,6 +63,11 @@ jobs:
           ONLINE_API_PORT: ${{ vars.ONLINE_API_PORT || '4100' }}
           ONLINE_API_CORS_ORIGIN: ${{ vars.ONLINE_API_CORS_ORIGIN || '*' }}
           POS_ONLINE_CLIENT_HOST: ${{ vars.POS_ONLINE_CLIENT_HOST || '127.0.0.1' }}
+          POS_RECEIPT_PRINTER_MODE: ${{ vars.POS_RECEIPT_PRINTER_MODE || 'auto' }}
+          POS_RECEIPT_SYSTEM_PRINTER_NAME: ${{ vars.POS_RECEIPT_SYSTEM_PRINTER_NAME || '' }}
+          POS_RECEIPT_NETWORK_AUTODISCOVERY: ${{ vars.POS_RECEIPT_NETWORK_AUTODISCOVERY || 'true' }}
+          POS_THERMAL_PRINTER_HOST: ${{ vars.POS_THERMAL_PRINTER_HOST || '' }}
+          POS_THERMAL_PRINTER_PORT: ${{ vars.POS_THERMAL_PRINTER_PORT || '9100' }}
           TEA_COOP_API_URL: ${{ vars.TEA_COOP_API_URL || secrets.TEA_COOP_API_URL || '' }}
           TEA_COOP_API_TOKEN: ${{ secrets.TEA_COOP_API_TOKEN || '' }}
           TEA_COOP_MEMBERS_PATH: ${{ vars.TEA_COOP_MEMBERS_PATH || '/members' }}
@@ -106,6 +111,11 @@ jobs:
           ONLINE_API_PORT: ${{ vars.ONLINE_API_PORT || '4100' }}
           ONLINE_API_CORS_ORIGIN: ${{ vars.ONLINE_API_CORS_ORIGIN || '*' }}
           POS_ONLINE_CLIENT_HOST: ${{ vars.POS_ONLINE_CLIENT_HOST || '127.0.0.1' }}
+          POS_RECEIPT_PRINTER_MODE: ${{ vars.POS_RECEIPT_PRINTER_MODE || 'auto' }}
+          POS_RECEIPT_SYSTEM_PRINTER_NAME: ${{ vars.POS_RECEIPT_SYSTEM_PRINTER_NAME || '' }}
+          POS_RECEIPT_NETWORK_AUTODISCOVERY: ${{ vars.POS_RECEIPT_NETWORK_AUTODISCOVERY || 'true' }}
+          POS_THERMAL_PRINTER_HOST: ${{ vars.POS_THERMAL_PRINTER_HOST || '' }}
+          POS_THERMAL_PRINTER_PORT: ${{ vars.POS_THERMAL_PRINTER_PORT || '9100' }}
           TEA_COOP_API_URL: ${{ vars.TEA_COOP_API_URL || secrets.TEA_COOP_API_URL || '' }}
           TEA_COOP_API_TOKEN: ${{ secrets.TEA_COOP_API_TOKEN || '' }}
           TEA_COOP_MEMBERS_PATH: ${{ vars.TEA_COOP_MEMBERS_PATH || '/members' }}
