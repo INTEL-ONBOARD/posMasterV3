@@ -183,6 +183,13 @@ class OnlineApiClient {
         });
     }
 
+    getDailyTransactionReport(query = {}) {
+        return this.request('/sales/daily-report', {
+            method: 'POST',
+            body: query
+        });
+    }
+
     acceptInventoryTransfer(id, data = {}) {
         return this.request(`/inventory-transfers/${id}/accept`, {
             method: 'POST',

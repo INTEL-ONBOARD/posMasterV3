@@ -170,6 +170,68 @@ function sanitizeRecords(collectionName, records) {
         : sanitizeRecord(collectionName, records);
 }
 
+async function resolveSupplierRecordById(db, auth, supplierId) {
+    const supplierKey = String(supplierId ?? '').trim();
+    if (!supplierKey) return null;
+
+    const supplierQuery = {
+        orgId: auth.orgId,
+        deletedAt: null,
+        $or: [
+            { id: supplierKey },
+            { supplier_id: supplierKey },
+            { supplierId: supplierKey }
+        ]
+    };
+
+    if (ObjectId.isValid(supplierKey)) {
+        supplierQuery.$or.unshift({ _id: new ObjectId(supplierKey) });
+    }
+
+    return db.collection('suppliers').findOne(supplierQuery);
+}
+
+async function hydrateRestockRecord(record, auth) {
+    const hydrated = sanitizeRecord('restock_transactions', record);
+    if (!hydrated || typeof hydrated !== 'object') return hydrated;
+
+    const supplierId = hydrated.supplierId ?? hydrated.supplier_id ?? hydrated.sup_id ?? null;
+    const directSupplierName = hydrated.supplier_name ?? hydrated.supplierName ?? null;
+
+    if (supplierId) {
+        hydrated.supplierId = hydrated.supplierId ?? supplierId;
+        hydrated.supplier_id = hydrated.supplier_id ?? supplierId;
+        hydrated.sup_id = hydrated.sup_id ?? supplierId;
+    }
+
+    if (directSupplierName) {
+        hydrated.supplier_name = directSupplierName;
+        hydrated.supplierName = hydrated.supplierName ?? directSupplierName;
+    }
+
+    if (!hydrated.supplier_name && supplierId) {
+        const db = getDb();
+        const supplierRecord = await resolveSupplierRecordById(db, auth, supplierId);
+        const supplierName = supplierRecord?.basic_info?.supplier_name ?? supplierRecord?.supplier_name ?? supplierRecord?.name ?? null;
+
+        if (supplierName) {
+            hydrated.supplier_name = supplierName;
+            hydrated.supplierName = supplierName;
+        }
+
+        if (supplierRecord) {
+            hydrated.supplier = sanitizeRecord('suppliers', supplierRecord);
+        }
+    }
+
+    return hydrated;
+}
+
+async function hydrateRestockRecords(records, auth) {
+    if (!Array.isArray(records)) return hydrateRestockRecord(records, auth);
+    return Promise.all(records.map((record) => hydrateRestockRecord(record, auth)));
+}
+
 function getTransferBranchIds(record = {}) {
     return [
         record.branchId,
@@ -425,7 +487,9 @@ async function list(collectionName, auth, query = {}) {
         .skip(skip)
         .limit(limit)
         .toArray();
-    return sanitizeRecords(collectionName, records);
+    return collectionName === 'restock_transactions'
+        ? hydrateRestockRecords(records, auth)
+        : sanitizeRecords(collectionName, records);
 }
 
 async function getById(collectionName, auth, id) {
@@ -442,7 +506,9 @@ async function getById(collectionName, auth, id) {
         throw err;
     }
     assertBranchAccess(collectionName, auth, record);
-    return sanitizeRecord(collectionName, record);
+    return collectionName === 'restock_transactions'
+        ? hydrateRestockRecord(record, auth)
+        : sanitizeRecord(collectionName, record);
 }
 
 async function create(collectionName, auth, body) {
