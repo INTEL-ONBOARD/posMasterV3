@@ -28,10 +28,13 @@ const config = {
     jwtSecret: requireEnv('JWT_SECRET', 'dev-only-change-this-secret'),
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
     defaultOrgId: process.env.POS_ORG_ID || 'default-org',
-    teaCoopApiUrl: process.env.TEA_COOP_API_URL || '',
+    teaCoopApiUrl: process.env.TEA_COOP_API_URL || 'https://api.teacoop.lk/api/v1',
     teaCoopApiToken: process.env.TEA_COOP_API_TOKEN || '',
-    teaCoopMembersPath: process.env.TEA_COOP_MEMBERS_PATH || '/members',
-    teaCoopPaymentsPath: process.env.TEA_COOP_PAYMENTS_PATH || '/payments',
+    teaCoopAuthPath: process.env.TEA_COOP_AUTH_PATH || '/thirdPartyLogin',
+    teaCoopUsername: process.env.TEA_COOP_USERNAME || '',
+    teaCoopPassword: process.env.TEA_COOP_PASSWORD || '',
+    teaCoopMembersPath: process.env.TEA_COOP_MEMBERS_PATH || '/members/thirdparty-all-members-current-month',
+    teaCoopPaymentsPath: process.env.TEA_COOP_PAYMENTS_PATH || '/members/{memberId}/thirdparty-monthly-payment',
     nodeEnv: process.env.NODE_ENV || 'development'
 };
 

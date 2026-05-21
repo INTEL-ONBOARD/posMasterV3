@@ -60,6 +60,13 @@ jobs:
           ONLINE_API_PORT: ${{ vars.ONLINE_API_PORT || '4100' }}
           ONLINE_API_CORS_ORIGIN: ${{ vars.ONLINE_API_CORS_ORIGIN || '*' }}
           POS_ONLINE_CLIENT_HOST: ${{ vars.POS_ONLINE_CLIENT_HOST || '127.0.0.1' }}
+          TEA_COOP_API_URL: ${{ vars.TEA_COOP_API_URL || 'https://api.teacoop.lk/api/v1' }}
+          TEA_COOP_API_TOKEN: ${{ secrets.TEA_COOP_API_TOKEN }}
+          TEA_COOP_AUTH_PATH: ${{ vars.TEA_COOP_AUTH_PATH || '/thirdPartyLogin' }}
+          TEA_COOP_USERNAME: ${{ secrets.TEA_COOP_USERNAME }}
+          TEA_COOP_PASSWORD: ${{ secrets.TEA_COOP_PASSWORD }}
+          TEA_COOP_MEMBERS_PATH: ${{ vars.TEA_COOP_MEMBERS_PATH || '/members/thirdparty-all-members-current-month' }}
+          TEA_COOP_PAYMENTS_PATH: ${{ vars.TEA_COOP_PAYMENTS_PATH || '/members/{memberId}/thirdparty-monthly-payment' }}
         run: node scripts/write-online-runtime-config.cjs
 
       - name: Build and publish (Windows)
@@ -99,6 +106,13 @@ jobs:
           ONLINE_API_PORT: ${{ vars.ONLINE_API_PORT || '4100' }}
           ONLINE_API_CORS_ORIGIN: ${{ vars.ONLINE_API_CORS_ORIGIN || '*' }}
           POS_ONLINE_CLIENT_HOST: ${{ vars.POS_ONLINE_CLIENT_HOST || '127.0.0.1' }}
+          TEA_COOP_API_URL: ${{ vars.TEA_COOP_API_URL || 'https://api.teacoop.lk/api/v1' }}
+          TEA_COOP_API_TOKEN: ${{ secrets.TEA_COOP_API_TOKEN }}
+          TEA_COOP_AUTH_PATH: ${{ vars.TEA_COOP_AUTH_PATH || '/thirdPartyLogin' }}
+          TEA_COOP_USERNAME: ${{ secrets.TEA_COOP_USERNAME }}
+          TEA_COOP_PASSWORD: ${{ secrets.TEA_COOP_PASSWORD }}
+          TEA_COOP_MEMBERS_PATH: ${{ vars.TEA_COOP_MEMBERS_PATH || '/members/thirdparty-all-members-current-month' }}
+          TEA_COOP_PAYMENTS_PATH: ${{ vars.TEA_COOP_PAYMENTS_PATH || '/members/{memberId}/thirdparty-monthly-payment' }}
         run: node scripts/write-online-runtime-config.cjs
 
       - name: Build and publish (macOS)

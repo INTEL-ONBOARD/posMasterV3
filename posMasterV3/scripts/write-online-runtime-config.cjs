@@ -28,10 +28,13 @@ const config = {
     POS_RECEIPT_NETWORK_AUTODISCOVERY: optionalEnv('POS_RECEIPT_NETWORK_AUTODISCOVERY', 'true'),
     POS_THERMAL_PRINTER_HOST: optionalEnv('POS_THERMAL_PRINTER_HOST', ''),
     POS_THERMAL_PRINTER_PORT: optionalEnv('POS_THERMAL_PRINTER_PORT', '9100'),
-    TEA_COOP_API_URL: optionalEnv('TEA_COOP_API_URL', ''),
+    TEA_COOP_API_URL: optionalEnv('TEA_COOP_API_URL', 'https://api.teacoop.lk/api/v1'),
     TEA_COOP_API_TOKEN: optionalEnv('TEA_COOP_API_TOKEN', ''),
-    TEA_COOP_MEMBERS_PATH: optionalEnv('TEA_COOP_MEMBERS_PATH', '/members'),
-    TEA_COOP_PAYMENTS_PATH: optionalEnv('TEA_COOP_PAYMENTS_PATH', '/payments')
+    TEA_COOP_AUTH_PATH: optionalEnv('TEA_COOP_AUTH_PATH', '/thirdPartyLogin'),
+    TEA_COOP_USERNAME: optionalEnv('TEA_COOP_USERNAME', ''),
+    TEA_COOP_PASSWORD: optionalEnv('TEA_COOP_PASSWORD', ''),
+    TEA_COOP_MEMBERS_PATH: optionalEnv('TEA_COOP_MEMBERS_PATH', '/members/thirdparty-all-members-current-month'),
+    TEA_COOP_PAYMENTS_PATH: optionalEnv('TEA_COOP_PAYMENTS_PATH', '/members/{memberId}/thirdparty-monthly-payment')
 };
 
 const outputPath = path.join(__dirname, '..', 'online-runtime-config.json');

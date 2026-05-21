@@ -2,6 +2,9 @@ const { config } = require('../config.cjs');
 const { getDb } = require('../db/mongo.cjs');
 const { publishDomainEvent } = require('./domainEvents.cjs');
 
+let cachedAuthToken = null;
+let cachedAuthTokenExpiresAt = 0;
+
 function requireTeaCoopConfig() {
     if (!config.teaCoopApiUrl) {
         const error = new Error('Tea Coop API is not configured. Set TEA_COOP_API_URL before syncing.');
@@ -11,9 +14,13 @@ function requireTeaCoopConfig() {
     }
 }
 
-function buildTeaCoopUrl(path, query = {}) {
+function buildTeaCoopUrl(path, query = {}, params = {}) {
     const base = String(config.teaCoopApiUrl || '').replace(/\/+$/, '');
-    const suffix = String(path || '').startsWith('/') ? path : `/${path}`;
+    const resolvedPath = String(path || '').replace(/\{(\w+)\}/g, (_, key) => {
+        const value = params[key];
+        return value === undefined || value === null ? '' : encodeURIComponent(String(value));
+    });
+    const suffix = resolvedPath.startsWith('/') ? resolvedPath : `/${resolvedPath}`;
     const url = new URL(`${base}${suffix}`);
     for (const [key, value] of Object.entries(query)) {
         if (value !== undefined && value !== null && value !== '') {
@@ -23,18 +30,80 @@ function buildTeaCoopUrl(path, query = {}) {
     return url;
 }
 
-async function fetchTeaCoopJson(path, query = {}) {
+function parseJson(text) {
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch {
+        return { raw: text };
+    }
+}
+
+function extractAuthToken(payload) {
+    return payload?.token
+        || payload?.accessToken
+        || payload?.access_token
+        || payload?.data?.token
+        || payload?.data?.accessToken
+        || payload?.data?.access_token
+        || null;
+}
+
+async function getTeaCoopAuthToken() {
+    if (config.teaCoopApiToken) return config.teaCoopApiToken;
+    if (!config.teaCoopUsername || !config.teaCoopPassword) return null;
+
+    const now = Date.now();
+    if (cachedAuthToken && now < cachedAuthTokenExpiresAt) {
+        return cachedAuthToken;
+    }
+
+    const response = await fetch(buildTeaCoopUrl(config.teaCoopAuthPath), {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            username: config.teaCoopUsername,
+            password: config.teaCoopPassword
+        })
+    });
+    const payload = parseJson(await response.text());
+    if (!response.ok) {
+        const message = payload?.message || payload?.error || `Tea Coop login failed: ${response.status}`;
+        const error = new Error(message);
+        error.statusCode = response.status;
+        error.payload = payload;
+        throw error;
+    }
+
+    const token = extractAuthToken(payload);
+    if (!token) {
+        const error = new Error('Tea Coop login did not return an access token');
+        error.statusCode = 502;
+        error.payload = payload;
+        throw error;
+    }
+
+    cachedAuthToken = token;
+    cachedAuthTokenExpiresAt = now + (55 * 60 * 1000);
+    return cachedAuthToken;
+}
+
+async function fetchTeaCoopJson(path, query = {}, params = {}) {
     requireTeaCoopConfig();
     const headers = {
         Accept: 'application/json'
     };
-    if (config.teaCoopApiToken) {
-        headers.Authorization = `Bearer ${config.teaCoopApiToken}`;
+    const token = await getTeaCoopAuthToken();
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(buildTeaCoopUrl(path, query), { headers });
+    const response = await fetch(buildTeaCoopUrl(path, query, params), { headers });
     const text = await response.text();
-    const payload = text ? JSON.parse(text) : null;
+    const payload = parseJson(text);
     if (!response.ok) {
         const message = payload?.message || payload?.error || `Tea Coop API request failed: ${response.status}`;
         const error = new Error(message);
@@ -68,7 +137,51 @@ function firstValue(source, keys, fallback = null) {
     return fallback;
 }
 
+function normalizeApiMember(raw) {
+    if (!raw?.member && !raw?.totals) return raw;
+    const member = raw.member || {};
+    const totals = raw.totals || {};
+    return {
+        ...raw,
+        member_id: member.memberNumber,
+        memberId: member.memberNumber,
+        member_no: member.memberNumber,
+        memberNo: member.memberNumber,
+        full_name: member.nameWithInitials,
+        fullName: member.nameWithInitials,
+        name: member.nameWithInitials,
+        contact: member.phoneNumber,
+        phone: member.phoneNumber,
+        memberType: member.memberType,
+        status: member.status,
+        lineName: member.lineName,
+        green_leaf_value: totals.greenLeafValue,
+        greenLeafValue: totals.greenLeafValue,
+        additions: totals.additions,
+        deductions: totals.deductions,
+        loans: totals.loans,
+        net_amount: totals.netAmount,
+        netAmount: totals.netAmount
+    };
+}
+
+function normalizeApiPayment(raw) {
+    if (!raw?.totals) return raw;
+    const totals = raw.totals || {};
+    return {
+        ...raw,
+        green_leaf_value: totals.greenLeafValue,
+        greenLeafValue: totals.greenLeafValue,
+        additions: totals.additions,
+        deductions: totals.deductions,
+        loans: totals.loans,
+        net_amount: totals.netAmount,
+        netAmount: totals.netAmount
+    };
+}
+
 function normalizeMember(raw, auth) {
+    raw = normalizeApiMember(raw);
     const memberId = String(firstValue(raw, ['member_id', 'memberId', 'member_no', 'memberNo', 'id', '_id'], '')).trim();
     if (!memberId) return null;
     const memberNo = String(firstValue(raw, ['member_no', 'memberNo', 'member_id', 'memberId'], memberId)).trim();
@@ -104,6 +217,7 @@ function normalizeMember(raw, auth) {
 }
 
 function normalizePayment(raw, auth, explicitMemberId = null) {
+    raw = normalizeApiPayment(raw);
     const memberId = String(explicitMemberId || firstValue(raw, ['member_id', 'memberId', 'member_no', 'memberNo'], '')).trim();
     if (!memberId) return null;
 
@@ -152,7 +266,7 @@ async function writeSyncRun(auth, type, status, data = {}) {
 }
 
 async function syncMembers(auth) {
-    const payload = await fetchTeaCoopJson(config.teaCoopMembersPath);
+    const payload = await fetchTeaCoopJson(config.teaCoopMembersPath, { page: 1, limit: 100 });
     const records = extractRecords(payload, ['members', 'teaCoopMembers']);
     const db = getDb();
     const operations = [];
@@ -201,11 +315,31 @@ async function syncMembers(auth) {
 }
 
 async function syncPayments(auth, { memberId = null, months = 6 } = {}) {
+    if (!memberId && String(config.teaCoopPaymentsPath || '').includes('{memberId}')) {
+        return {
+            total: 0,
+            valid: 0,
+            matched: 0,
+            modified: 0,
+            upserted: 0,
+            skipped: true,
+            message: 'Tea Coop payment sync requires a memberId for the configured endpoint'
+        };
+    }
+
     const query = {};
-    if (memberId) query.member_id = memberId;
-    if (months) query.months = months;
-    const payload = await fetchTeaCoopJson(config.teaCoopPaymentsPath, query);
-    const records = extractRecords(payload, ['payments', 'paymentHistory', 'teaCoopPayments']);
+    if (memberId && !String(config.teaCoopPaymentsPath || '').includes('{memberId}')) query.member_id = memberId;
+    if (months) {
+        const now = new Date();
+        const pastDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+        query.months = months;
+        query.monthLimit = months;
+        query.startYear = pastDate.getFullYear();
+        query.startMonth = pastDate.getMonth() + 1;
+        query.factory = 1;
+    }
+    const payload = await fetchTeaCoopJson(config.teaCoopPaymentsPath, query, { memberId });
+    const records = extractRecords(payload, ['payments', 'paymentHistory', 'teaCoopPayments', 'monthlyData']);
     const db = getDb();
     const operations = [];
 
@@ -277,6 +411,8 @@ async function getStatus(auth) {
         configured: Boolean(config.teaCoopApiUrl),
         apiUrlConfigured: Boolean(config.teaCoopApiUrl),
         tokenConfigured: Boolean(config.teaCoopApiToken),
+        credentialLoginConfigured: Boolean(config.teaCoopUsername && config.teaCoopPassword),
+        authPath: config.teaCoopAuthPath,
         membersPath: config.teaCoopMembersPath,
         paymentsPath: config.teaCoopPaymentsPath,
         latestSync: latest[0] || null
