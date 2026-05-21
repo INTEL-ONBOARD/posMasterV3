@@ -2,6 +2,7 @@ const { OnlineApiClient } = require('../online/OnlineApiClient.cjs');
 const { OnlineRealtimeClient } = require('../online/OnlineRealtimeClient.cjs');
 const { config } = require('../../online-server/config.cjs');
 const { connectMongo, getDb } = require('../../online-server/db/mongo.cjs');
+const reportsService = require('./reportsService.cjs');
 
 async function getConnectedDb() {
     try {
@@ -111,6 +112,10 @@ class OnlineModeService {
 
     async returnSaleItems(saleId, data = {}) {
         return this.api.returnSaleItems(saleId, data);
+    }
+
+    async getDailyTransactionReport(query = {}) {
+        return this.api.getDailyTransactionReport(query || {});
     }
 
     async acceptInventoryTransfer(transferId, data = {}) {
@@ -231,6 +236,10 @@ class OnlineModeService {
         ]).toArray();
 
         return { success: true, status: 'success', data: rows };
+    }
+
+    async getPettyCashReport(query = {}) {
+        return reportsService.getPettyCashReport(query || {});
     }
 
     async getActiveSessions() {
