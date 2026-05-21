@@ -1,160 +1,332 @@
 import React, { useMemo } from "react";
 
-/**
- * DailyTransactionReportPaginated.jsx
- *
- * - Guests exist only under the "Cash" payment type.
- * - Guest rows do not show a Mem. No value (cell left empty).
- * - Pagination logic preserved.
- * - Totals page rowSpan adjusts: non-cash => 2 customer rows (Member, Staff), cash => 3 rows (Member, Staff, Guest).
- */
-
 const ROWS_PER_PAGE = 16;
 
-function makeRows(count, baseIdx = 1) {
-  return Array.from({ length: count }, (_, i) => {
-    const n = baseIdx + i;
-    return {
-      type: "data",
-      idx: n,
-      invNo: "54343343",
-      memNo: "04566546",
-      name: "A.P. Asela",
-      price: 18200.0,
-    };
-  });
+const SECTION_ORDER = ["06 Months", "03 Months", "02 Months", "01 Months", "B.O.G", "Cash"];
+const TYPE_ORDER = ["Member", "Staff", "Guest"];
+
+const fmt = (value) =>
+  Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function normalizeDurationLabel(value, paymentMethod = "") {
+  const raw = String(value ?? "").trim();
+  if (!raw) {
+    return String(paymentMethod).toLowerCase() === "cash" ? "Cash" : "Cash";
+  }
+
+  if (/^cash$/i.test(raw)) return "Cash";
+  if (/^b\.?o\.?g\.?$/i.test(raw)) return "B.O.G";
+
+  const monthMatch = raw.match(/(\d+)\s*(?:months?|mos?)/i);
+  if (monthMatch) {
+    return `${String(Number(monthMatch[1])).padStart(2, "0")} Months`;
+  }
+
+  const numericMatch = raw.match(/^(\d+)$/);
+  if (numericMatch) {
+    return `${String(Number(numericMatch[1])).padStart(2, "0")} Months`;
+  }
+
+  return raw.replace(/\s+/g, " ");
 }
 
-const MAIN_SECTIONS = [
-  "06 Months",
-  "03 Months",
-  "02 Months",
-  "01 Months",
-  "B.O.G",
-  "Cash",
-];
+function normalizeCustomerType(transaction = {}) {
+  const explicitType =
+    transaction.customer_type ??
+    transaction.customerType ??
+    transaction.type ??
+    transaction.member_type ??
+    transaction.memberType ??
+    "";
 
-const CUSTOMER_TYPES = ["Member", "Staff", "Guest"];
-const DUMMY_COUNTS = {
-  "06 Months": { Member: 6, Staff: 3, Guest: 0 },
-  "03 Months": { Member: 2, Staff: 2, Guest: 0 },
-  "02 Months": { Member: 4, Staff: 4, Guest: 0 },
-  "01 Months": { Member: 1, Staff: 1, Guest: 0 },
-  "B.O.G": { Member: 3, Staff: 3, Guest: 0 },
-  "Cash": { Member: 5, Staff: 2, Guest: 2 },
-};
+  const text = String(explicitType || "").trim().toLowerCase();
+  if (text.includes("staff") || text.includes("employee") || text.includes("worker")) return "Staff";
+  if (text.includes("guest") || text.includes("walk")) return "Guest";
+  if (text.includes("member") || ["regular", "vip", "wholesale", "tea_coop"].includes(text)) return "Member";
 
-export default function DailyTransactionReportPaginated({ maxHeight = "calc(100vh - 160px)" }) {
-  // Build flattened rows and include explicit customer-header rows so pagination is accurate.
-  const flattened = useMemo(() => {
-    const out = [];
-    let globalDataIdx = 1;
+  if (transaction.is_staff || transaction.isStaff || transaction.staff_id || transaction.staffId) {
+    return "Staff";
+  }
 
-    MAIN_SECTIONS.forEach((sec) => {
-      out.push({ type: "section", title: sec });
+  if (transaction.member_id || transaction.memberId || transaction.member_no || transaction.memberNo) {
+    return "Member";
+  }
 
-      // choose which customer-types actually apply to this section
-      const customersForSection = sec === "Cash" ? CUSTOMER_TYPES : CUSTOMER_TYPES.filter((c) => c !== "Guest");
+  return "Staff";
+}
 
-      customersForSection.forEach((cust) => {
-        out.push({ type: "customer", title: cust, parent: sec });
+function normalizeDailyRow(transaction = {}) {
+  const duration = normalizeDurationLabel(
+    transaction.credit_duration ??
+      transaction.creditDuration ??
+      transaction.duration ??
+      transaction.duration_label ??
+      transaction.durationLabel ??
+      "",
+    transaction.payment_method ?? transaction.paymentMethod ?? ""
+  );
 
-        // explicit header row for this customer's mini-table (counts as a visible row)
-        out.push({ type: "custHeader", title: cust, parent: sec });
+  const customerType = normalizeCustomerType(transaction);
 
-        const count = (DUMMY_COUNTS[sec] && DUMMY_COUNTS[sec][cust]) || 0;
-        if (count > 0) {
-          const rows = makeRows(count, globalDataIdx);
-          rows.forEach((r) => {
-            // For Guest rows we keep memNo blank at render-time (we still include property)
-            out.push({ ...r, section: sec, customer: cust });
-            globalDataIdx++;
-          });
-        }
+  const invoiceNo =
+    transaction.invoice_no ??
+    transaction.invoiceNo ??
+    transaction.bill_no ??
+    transaction.billNo ??
+    "";
 
-        out.push({ type: "subtotal", section: sec, customer: cust });
-      });
-    });
+  const memberNo =
+    transaction.member_no ??
+    transaction.memberNo ??
+    "";
 
-    return out;
-  }, []);
+  const name =
+    transaction.member_name ??
+    transaction.memberName ??
+    "Guest";
 
-  // paginate by flattened visible rows
-  const pages = useMemo(() => {
-    const p = [];
-    for (let i = 0; i < flattened.length; i += ROWS_PER_PAGE) {
-      p.push(flattened.slice(i, i + ROWS_PER_PAGE));
+  const price = Number(transaction.total_amount ?? transaction.totalAmount ?? transaction.amount ?? 0) || 0;
+
+  return {
+    ...transaction,
+    invoice_no: invoiceNo,
+    invoiceNo,
+    member_no: memberNo,
+    memberNo,
+    member_name: name,
+    memberName: name,
+    credit_duration: duration,
+    creditDuration: duration,
+    duration,
+    customer_type: customerType,
+    customerType,
+    transaction_type: customerType,
+    price,
+    total_amount: price,
+    totalAmount: price,
+  };
+}
+
+function buildReportModel(transactions = []) {
+  const normalizedTransactions = Array.isArray(transactions)
+    ? transactions.map((transaction) => normalizeDailyRow(transaction))
+    : [];
+
+  const grouped = new Map();
+  normalizedTransactions.forEach((transaction) => {
+    const duration = transaction.duration || "Cash";
+    const type = transaction.customer_type || "Member";
+
+    if (!grouped.has(duration)) {
+      grouped.set(duration, new Map());
     }
-    return p.length ? p : [[]];
-  }, [flattened]);
 
-  // helper compute subtotal for section+customer
-  const computeSubtotal = (section, customer) =>
-    flattened
-      .filter((r) => r.type === "data" && r.section === section && r.customer === customer)
-      .reduce((s, r) => s + (r.price || 0), 0);
+    const typeMap = grouped.get(duration);
+    if (!typeMap.has(type)) {
+      typeMap.set(type, []);
+    }
 
-  // totals per payment type (section)
-  const totalsPerSection = useMemo(() => {
-    const t = {};
-    MAIN_SECTIONS.forEach((sec) => {
-      t[sec] = flattened
-        .filter((r) => r.type === "data" && r.section === sec)
-        .reduce((s, r) => s + (r.price || 0), 0);
+    typeMap.get(type).push(transaction);
+  });
+
+  const knownDurations = [...SECTION_ORDER.filter((duration) => grouped.has(duration))];
+  const extraDurations = [...grouped.keys()].filter((duration) => !SECTION_ORDER.includes(duration)).sort();
+  const orderedDurations = [...knownDurations, ...extraDurations];
+
+  const flattened = [];
+  const subtotalBySectionType = new Map();
+  const sectionTotals = new Map();
+  let runningIndex = 1;
+
+  orderedDurations.forEach((duration) => {
+    const typeMap = grouped.get(duration);
+    const orderedTypes = [
+      ...TYPE_ORDER.filter((type) => typeMap.has(type)),
+      ...[...typeMap.keys()].filter((type) => !TYPE_ORDER.includes(type)).sort(),
+    ];
+
+    if (orderedTypes.length === 0) return;
+
+    flattened.push({ type: "section", title: duration });
+
+    orderedTypes.forEach((type) => {
+      const rows = typeMap.get(type) || [];
+      if (!rows.length) return;
+
+      flattened.push({ type: "customer", title: type, parent: duration });
+      flattened.push({ type: "custHeader", title: type, parent: duration });
+
+      let subtotal = 0;
+      rows.forEach((row) => {
+        const price = Number(row.price || row.totalAmount || 0) || 0;
+        subtotal += price;
+        flattened.push({
+          type: "data",
+          idx: runningIndex++,
+          section: duration,
+          customer: type,
+          invNo: row.invoice_no || row.invoiceNo || "",
+          memNo: row.member_no || row.memberNo || "",
+          name: row.member_name || row.memberName || "Guest",
+          price,
+        });
+      });
+
+      subtotalBySectionType.set(`${duration}::${type}`, subtotal);
+      sectionTotals.set(duration, (sectionTotals.get(duration) || 0) + subtotal);
+      flattened.push({ type: "subtotal", section: duration, customer: type, subtotal });
     });
-    return t;
-  }, [flattened]);
+  });
 
-  const grandTotal = Object.values(totalsPerSection).reduce((s, v) => s + v, 0);
+  const grandTotal = [...sectionTotals.values()].reduce((sum, value) => sum + value, 0);
 
-  // helper to get first index of a predicate in flattened (for continuation detection)
+  return {
+    flattened,
+    orderedDurations,
+    grouped,
+    subtotalBySectionType,
+    sectionTotals,
+    grandTotal,
+  };
+}
+
+function LoadingState() {
+  return (
+    <div style={styles.emptyState}>
+      <div style={styles.spinner} />
+      <p style={{ margin: 0 }}>Loading daily transaction data...</p>
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }) {
+  return (
+    <div style={styles.emptyState}>
+      <p style={{ margin: 0, color: "#b91c1c", fontWeight: 700 }}>Could not load daily transaction data</p>
+      <p style={{ margin: 0 }}>{message}</p>
+      <button type="button" onClick={onRetry} style={styles.retryButton}>
+        Retry
+      </button>
+    </div>
+  );
+}
+
+function formatReportDate(reportDate) {
+  if (!reportDate) return new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+
+  const parsed = new Date(reportDate);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(reportDate);
+  }
+
+  return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+export default function DailyTransactionRep({
+  transactions = [],
+  companyName = "",
+  branchName = "",
+  reportNo = "",
+  reportDate = "",
+  isLoading = false,
+  error = "",
+  onRetry,
+  maxHeight = "calc(100vh - 160px)",
+  title = "Daily Transaction Report",
+}) {
+  console.log("[DTR][DailyTransactionRep] received props", {
+    transactionsCount: transactions.length,
+    companyName,
+    branchName,
+    reportNo,
+    reportDate,
+    sample: transactions.slice(0, 5),
+  });
+
+  const model = useMemo(() => {
+    const result = buildReportModel(transactions);
+    console.log("[DTR][DailyTransactionRep] model summary", {
+      flattenedCount: result.flattened.length,
+      orderedDurations: result.orderedDurations,
+      groupedKeys: [...result.grouped.keys()],
+      sectionTotals: [...result.sectionTotals.entries()],
+      subtotalKeys: [...result.subtotalBySectionType.keys()],
+      grandTotal: result.grandTotal,
+    });
+    return result;
+  }, [transactions]);
+  const formattedReportDate = useMemo(() => formatReportDate(reportDate), [reportDate]);
+
+  const pages = useMemo(() => {
+    const chunks = [];
+    for (let i = 0; i < model.flattened.length; i += ROWS_PER_PAGE) {
+      chunks.push(model.flattened.slice(i, i + ROWS_PER_PAGE));
+    }
+    return chunks.length ? chunks : [[]];
+  }, [model.flattened]);
+
   const firstIndexOf = (predicate) => {
-    for (let i = 0; i < flattened.length; i++) if (predicate(flattened[i])) return i;
+    for (let i = 0; i < model.flattened.length; i += 1) {
+      if (predicate(model.flattened[i])) return i;
+    }
     return -1;
   };
 
   const totalPages = pages.length + 1;
 
-  const fmt = (v) => Number(v).toLocaleString(undefined, { minimumFractionDigits: 2 });
+  if (isLoading) {
+    return (
+      <div style={styles.container(maxHeight)}>
+        <LoadingState />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={styles.container(maxHeight)}>
+        <ErrorState message={error} onRetry={onRetry} />
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container(maxHeight)}>
-      {/* Render content pages */}
       {pages.map((pageRows, pageIndex) => {
         const globalStartIndex = pageIndex * ROWS_PER_PAGE;
 
         return (
           <div
             key={`daily-page-${pageIndex}`}
-            // daily-page is used by query selector for printing these pages via querySelector
             className="daily-page"
             style={{ ...styles.page, pageBreakAfter: "always" }}
           >
-            {/* Header */}
             <div style={styles.header}>
-              <div style={styles.companySinhala}>මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමූපකාර සමිතිය</div>
-              <div style={styles.subCompany}>AllenValley Trade Center</div> {/* branch */}
-              <div style={styles.title}>Daily Transaction Report</div> {/* report name */}
+              <div style={styles.companyName}>{companyName}</div>
+              <div style={styles.subCompany}>{branchName}</div>
+              <div style={styles.title}>{title}</div>
             </div>
 
-            {/* Meta */}
             <div style={styles.meta}>
               <div>
-                <strong>No:</strong> GDG343CFF
+                <strong>No:</strong> {reportNo || "-"}
               </div>
               <div>
-                <strong>Date:</strong> 2025-11-25
+                <strong>Date:</strong> {formattedReportDate}
               </div>
             </div>
 
             <hr style={styles.hr} />
 
-            {/* Single table per page - but every customer block prints its own header row (custHeader) */}
             <table style={styles.table}>
               <tbody>
-                {pageRows.length === 0 ? <tr>
-                  <td style={styles.td} colSpan={5}>No rows</td>
-                </tr> : null}
+                {pageRows.length === 0 ? (
+                  <tr>
+                    <td style={styles.td} colSpan={5}>
+                      No rows
+                    </td>
+                  </tr>
+                ) : null}
 
                 {pageRows.map((row, idxOnPage) => {
                   const globalIndex = globalStartIndex + idxOnPage;
@@ -165,7 +337,10 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
                     return (
                       <tr key={`sec-${globalIndex}`}>
                         <td style={styles.sectionCell} colSpan={5}>
-                          <strong>{row.title}{continued ? " (cont.)" : ""}</strong>
+                          <strong>
+                            {row.title}
+                            {continued ? " (cont.)" : ""}
+                          </strong>
                           <hr />
                         </td>
                       </tr>
@@ -173,19 +348,23 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
                   }
 
                   if (row.type === "customer") {
-                    const firstCustIdx = firstIndexOf((x) => x.type === "customer" && x.title === row.title && x.parent === row.parent);
+                    const firstCustIdx = firstIndexOf(
+                      (x) => x.type === "customer" && x.title === row.title && x.parent === row.parent
+                    );
                     const continued = firstCustIdx < globalIndex;
                     return (
                       <tr key={`cust-${globalIndex}`}>
                         <td style={styles.customerCell} colSpan={5}>
-                          <em>{row.title}{continued ? " (cont.)" : ""}</em>
+                          <em>
+                            {row.title}
+                            {continued ? " (cont.)" : ""}
+                          </em>
                         </td>
                       </tr>
                     );
                   }
 
                   if (row.type === "custHeader") {
-                    // For Guest we still render the Mem. No header cell but leave it blank (no Mem No field)
                     const isGuest = row.title === "Guest";
                     return (
                       <tr key={`custHeader-${globalIndex}`} style={styles.custHeaderRow}>
@@ -204,22 +383,20 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
                       <tr key={`row-${row.idx}-${globalIndex}`}>
                         <td style={styles.tdSmall}>{row.idx}</td>
                         <td style={styles.td}>{row.invNo}</td>
-                        {/* Guest has no Mem. No -> render empty cell */}
                         <td style={styles.td}>{isGuestRow ? "" : row.memNo}</td>
                         <td style={styles.tdLeft}>{row.name}</td>
-                        <td style={styles.tdRight}>{Number(row.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td style={styles.tdRight}>{fmt(row.price)}</td>
                       </tr>
                     );
                   }
 
                   if (row.type === "subtotal") {
-                    const st = computeSubtotal(row.section, row.customer);
                     return (
                       <tr key={`sub-${row.section}-${row.customer}-${globalIndex}`}>
                         <td colSpan={4} style={styles.subtotalCell}></td>
                         <td style={styles.subtotalRight}>
                           <div style={styles.subtotalLine} />
-                          <div style={styles.subtotalAmount}>{Number(st).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                          <div style={styles.subtotalAmount}>{fmt(row.subtotal)}</div>
                         </td>
                       </tr>
                     );
@@ -230,22 +407,27 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
               </tbody>
             </table>
 
-            <div style={styles.footer}>page {pageIndex + 1} of {totalPages}</div>
+            <div style={styles.footer}>
+              page {pageIndex + 1} of {totalPages}
+            </div>
           </div>
         );
       })}
 
-      {/* Totals Page (four-column layout; customer rows count depends on section) */}
-      <div className="daily-page totals-page" style={{ ...styles.page }}>  {/* daily-page is used by query selector for printing these pages via querySelector */}
+      <div className="daily-page totals-page" style={{ ...styles.page }}>
         <div style={styles.header}>
-          <div style={styles.companySinhala}>මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමූපකාර සමිතිය</div>
-          <div style={styles.subCompany}>Kotawala</div>
-          <div style={styles.title}>Daily Transaction Report — Totals</div>
+          <div style={styles.companyName}>{companyName}</div>
+          <div style={styles.subCompany}>{branchName}</div>
+          <div style={styles.title}>{title} — Totals</div>
         </div>
 
         <div style={styles.meta}>
-          <div><strong>No:</strong> GDG343CFF</div>
-          <div><strong>Date:</strong> 2025-11-25</div>
+          <div>
+            <strong>No:</strong> {reportNo || "-"}
+          </div>
+          <div>
+            <strong>Date:</strong> {formattedReportDate}
+          </div>
         </div>
 
         <hr style={styles.hr} />
@@ -260,31 +442,33 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
             </tr>
           </thead>
           <tbody>
-            {MAIN_SECTIONS.map((sec, secIndex) => {
-              const sectionTotal = totalsPerSection[sec] || 0;
-              const customersForSection = sec === "Cash" ? CUSTOMER_TYPES : CUSTOMER_TYPES.filter((c) => c !== "Guest");
-              const rowSpanCount = customersForSection.length;
+            {model.orderedDurations.map((duration, secIndex) => {
+              const typeMap = model.grouped.get(duration) || new Map();
+              const orderedTypes = [
+                ...TYPE_ORDER.filter((type) => typeMap.has(type)),
+                ...[...typeMap.keys()].filter((type) => !TYPE_ORDER.includes(type)).sort(),
+              ];
+              const rowSpanCount = orderedTypes.length || 1;
+              const sectionTotal = model.sectionTotals.get(duration) || 0;
 
               return (
-                <React.Fragment key={`totblock-${sec}-${secIndex}`}>
-                  {customersForSection.map((cust, i) => {
-                    const custAmount = computeSubtotal(sec, cust);
+                <React.Fragment key={`totblock-${duration}-${secIndex}`}>
+                  {orderedTypes.map((type, i) => {
+                    const custAmount = model.subtotalBySectionType.get(`${duration}::${type}`) || 0;
                     return (
-                      <tr key={`${sec}-${cust}-${i}`}>
-                        {/* Payment Type cell only on first of rowsForSection. verticalAlign: 'top' */}
+                      <tr key={`${duration}-${type}-${i}`}>
                         {i === 0 ? (
                           <td
                             rowSpan={rowSpanCount}
                             style={{ ...styles.td, verticalAlign: "top", fontWeight: 700, paddingTop: 6 }}
                           >
-                            {sec}
+                            {duration}
                           </td>
                         ) : null}
 
-                        <td style={styles.td}>{cust}</td>
+                        <td style={styles.td}>{type}</td>
                         <td style={styles.tdRight}>{fmt(custAmount)}</td>
 
-                        {/* Payment total cell only on first of rowsForSection. verticalAlign: 'bottom' */}
                         {i === 0 ? (
                           <td
                             rowSpan={rowSpanCount}
@@ -297,11 +481,7 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
                     );
                   })}
 
-                  {/* Separator row AFTER the customer rows for this section:
-                      - leave first 2 columns empty
-                      - draw a top border spanning columns 3 and 4
-                  */}
-                  <tr key={`sep-${sec}-${secIndex}`}>
+                  <tr key={`sep-${duration}-${secIndex}`}>
                     <td colSpan={2} style={styles.sepCell}></td>
                     <td colSpan={2} style={styles.sepLine}></td>
                   </tr>
@@ -309,28 +489,28 @@ export default function DailyTransactionReportPaginated({ maxHeight = "calc(100v
               );
             })}
 
-            {/* Grand total row */}
             <tr>
               <td colSpan={2} style={{ ...styles.td, fontWeight: 700, borderTop: "1px solid rgba(0,0,0,0.15)" }}>
                 Grand Total
               </td>
               <td style={{ ...styles.tdRight, fontWeight: 700, borderTop: "1px solid rgba(0,0,0,0.15)" }}>
-                {fmt(grandTotal)}
+                {fmt(model.grandTotal)}
               </td>
               <td style={{ ...styles.tdRight, fontWeight: 700, borderTop: "1px solid rgba(0,0,0,0.15)" }}>
-                {fmt(grandTotal)}
+                {fmt(model.grandTotal)}
               </td>
             </tr>
           </tbody>
         </table>
 
-        <div style={styles.footer}>page {totalPages} of {totalPages}</div>
+        <div style={styles.footer}>
+          page {totalPages} of {totalPages}
+        </div>
       </div>
     </div>
   );
 }
 
-/* ================= STYLES ================= */
 const styles = {
   container: (maxHeight) => ({
     overflow: "auto",
@@ -340,22 +520,21 @@ const styles = {
   }),
   page: {
     width: 794,
-    height: 1123,            // fixed page height
+    height: 1123,
     margin: "0 auto 20px",
-    padding: 82,             // keep your padding if you want
+    padding: 82,
     background: "#fff",
-    boxSizing: "border-box", // IMPORTANT: include padding inside height
+    boxSizing: "border-box",
     fontFamily: '"Times New Roman", Georgia, serif',
     color: "#222",
-    position: "relative",    // contains the absolute footer
-    overflow: "hidden"       // prevent any accidental overflow to a new page
+    position: "relative",
+    overflow: "hidden",
   },
-
   header: {
     textAlign: "center",
     marginBottom: 6,
   },
-  companySinhala: {
+  companyName: {
     fontSize: 16,
     fontWeight: 600,
   },
@@ -368,7 +547,6 @@ const styles = {
     marginTop: 6,
     fontWeight: 700,
   },
-
   meta: {
     marginTop: 8,
     marginBottom: 8,
@@ -376,20 +554,17 @@ const styles = {
     display: "flex",
     gap: 24,
   },
-
   hr: {
     border: "none",
     borderTop: "1px solid rgba(0,0,0,0.15)",
     margin: "8px 0 10px",
   },
-
   table: {
     width: "100%",
     borderCollapse: "collapse",
     fontSize: 16,
     marginBottom: 10,
   },
-
   thSmall: {
     width: 28,
     textAlign: "left",
@@ -416,7 +591,6 @@ const styles = {
     background: "#fafafa",
     width: 140,
   },
-
   tdSmall: {
     padding: "2px 8px",
     color: "#555",
@@ -437,7 +611,6 @@ const styles = {
     color: "#555",
     width: 140,
   },
-
   sectionCell: {
     padding: "10px 6px",
     background: "#fafafa",
@@ -447,15 +620,11 @@ const styles = {
   customerCell: {
     padding: "8px 6px",
     background: "#fff",
-    // fontStyle: "italic",
     color: "#333",
   },
-
   custHeaderRow: {
-    // style the header row for each customer mini-table (keeps it visible / distinct)
     background: "#fff",
   },
-
   subtotalCell: {
     padding: "8px 6px",
   },
@@ -471,20 +640,6 @@ const styles = {
   subtotalAmount: {
     fontWeight: 700,
   },
-
-  summaryArea: {
-    marginTop: 12,
-    background: "#f3f3f3",
-    padding: 8,
-    fontSize: 16,
-  },
-  summaryRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "6px 0",
-  },
-
-
   footer: {
     position: "absolute",
     right: 28,
@@ -492,8 +647,6 @@ const styles = {
     fontSize: 16,
     color: "#444",
   },
-
-  // add near the other style entries
   sepCell: {
     padding: 0,
     border: "none",
@@ -503,5 +656,37 @@ const styles = {
     padding: 0,
     borderTop: "1px solid rgba(0,0,0,0.15)",
     height: 0,
+  },
+  emptyState: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "60vh",
+    gap: 8,
+    color: "#6b7280",
+    background: "#fff",
+    borderRadius: 16,
+    padding: 24,
+  },
+  spinner: {
+    width: 44,
+    height: 44,
+    borderRadius: "50%",
+    border: "4px solid #d1d5db",
+    borderTopColor: "#1A318C",
+    animation: "spin 1s linear infinite",
+  },
+  retryButton: {
+    marginTop: 8,
+    border: "none",
+    borderRadius: 12,
+    backgroundColor: "#1A318C",
+    color: "#fff",
+    padding: "10px 16px",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
   },
 };

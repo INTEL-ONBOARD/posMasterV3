@@ -117,6 +117,18 @@ function registerHandlers() {
         return service.getSalesDaily(payload?.days || 30);
     }));
 
+    ipcMain.handle('online:sales:get-daily-report', wrapIpcHandler(async (event, payload) => {
+        return service.getDailyTransactionReport(payload || {});
+    }));
+
+    ipcMain.handle('online:reports:get-petty-cash', wrapIpcHandler(async (event, payload) => {
+        return service.getPettyCashReport(payload || {});
+    }));
+
+    ipcMain.handle('online:reports:get-transaction-b5', wrapIpcHandler(async (event, payload) => {
+        return service.getTransactionB5Report(payload || {});
+    }));
+
     ipcMain.handle('online:login-history:get-active-sessions', wrapIpcHandler(async () => {
         return service.getActiveSessions();
     }));

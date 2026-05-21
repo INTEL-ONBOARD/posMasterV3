@@ -163,7 +163,9 @@ function Dashboard() {
     const initializeSettings = async () => {
       try {
         // Apply all settings (maximize window, etc.)
-        await appSettingsApi.applyAll();
+        if (appSettingsApi?.applyAll) {
+          await appSettingsApi.applyAll();
+        }
       } catch (err) {
         console.error('[Dashboard] Failed to apply settings:', err);
       }

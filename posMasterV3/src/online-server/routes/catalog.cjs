@@ -70,6 +70,11 @@ router.post('/sales/:id/return-items', requireSalesPermission, asyncHandler(asyn
     return ok(res, sale);
 }));
 
+router.post('/sales/daily-report', requireSalesPermission, asyncHandler(async (req, res) => {
+    const report = await salesService.getDailyTransactionReport(req.auth, req.body || {});
+    return ok(res, report);
+}));
+
 router.post('/inventory-transfers/:id/accept', requireInventoryPermission, asyncHandler(async (req, res) => {
     const transfer = await inventoryTransferService.acceptTransfer(req.auth, req.params.id, req.body || {});
     return ok(res, transfer);

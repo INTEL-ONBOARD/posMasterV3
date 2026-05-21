@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { branchContextApi } from '../api/localApi';
 import { localAuth } from '../api/services/localAuth';
-import BranchSelectionModal from '../components/BranchSelectionModal';
 import { dataStore } from '../store/DataStore';
 
 /**
@@ -39,7 +38,6 @@ export function useBranchContext() {
 export function BranchProvider({ children }) {
     const [currentBranch, setCurrentBranch] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [showSelectionModal, setShowSelectionModal] = useState(false);
 
     // Load current branch from backend
     const loadCurrentBranch = useCallback(async () => {
@@ -64,21 +62,39 @@ export function BranchProvider({ children }) {
                 if (setBranchResponse.status === 'success' && setBranchResponse.data) {
                     setCurrentBranch(setBranchResponse.data);
                     console.log('[BranchContext] Auto-selected user branch:', setBranchResponse.data?.name);
-                    return;
+                    return setBranchResponse;
                 }
             }
 
             const response = await branchContextApi.getCurrent();
             if (response.status === 'success') {
                 setCurrentBranch(response.data);
-
                 if (!response.data) {
-                    // No branch assigned or auto-select failed - show selection modal
-                    setShowSelectionModal(true);
+                    const availableResponse = await branchContextApi.getAvailableBranches();
+                    const availableBranches = availableResponse.status === 'success'
+                        ? (Array.isArray(availableResponse.data) ? availableResponse.data : [])
+                        : [];
+
+                    if (availableBranches.length > 0) {
+                        const fallbackBranch = availableBranches[0];
+                        const fallbackBranchId = fallbackBranch?.id || fallbackBranch?.branchId || fallbackBranch?.branch_id || null;
+                        if (fallbackBranchId) {
+                            const setBranchResponse = await branchContextApi.setCurrent(fallbackBranchId);
+                            if (setBranchResponse.status === 'success' && setBranchResponse.data) {
+                                setCurrentBranch(setBranchResponse.data);
+                                console.log('[BranchContext] Auto-selected fallback branch:', setBranchResponse.data?.name || fallbackBranchId);
+                                return setBranchResponse;
+                            }
+                        }
+                    }
                 }
+                return response;
             }
+
+            return response;
         } catch (error) {
             console.error('[BranchContext] Error loading branch:', error);
+            return { status: 'error', message: error.message };
         } finally {
             setLoading(false);
         }
@@ -103,7 +119,6 @@ export function BranchProvider({ children }) {
             const response = await branchContextApi.setCurrent(branchId);
             if (response.status === 'success') {
                 setCurrentBranch(response.data);
-                setShowSelectionModal(false);
                 // Invalidate DataStore so all components refetch with the new branch context
                 dataStore.invalidateAll();
                 dataStore._refreshStaleCaches();
@@ -121,7 +136,6 @@ export function BranchProvider({ children }) {
         try {
             await branchContextApi.clear();
             setCurrentBranch(null);
-            setShowSelectionModal(true);
         } catch (error) {
             console.error('[BranchContext] Error clearing branch:', error);
         }
@@ -129,7 +143,7 @@ export function BranchProvider({ children }) {
 
     // Show branch selection modal
     const showBranchSelector = useCallback(() => {
-        setShowSelectionModal(true);
+        void loadCurrentBranch();
     }, []);
 
     // Validate operation (check if branch is required)
@@ -137,9 +151,9 @@ export function BranchProvider({ children }) {
         try {
             const response = await branchContextApi.validateOperation(operation);
             if (response.status === 'error' || !response.valid) {
-                // Show branch selection modal if branch is required
                 if (response.requiresBranch) {
-                    setShowSelectionModal(true);
+                    await loadCurrentBranch();
+                    return { valid: true };
                 }
                 return { valid: false, message: response.message };
             }
@@ -148,15 +162,6 @@ export function BranchProvider({ children }) {
             console.error('[BranchContext] Error validating operation:', error);
             return { valid: false, message: error.message };
         }
-    }, []);
-
-    // Handle branch selected from modal
-    const handleBranchSelected = useCallback((branch) => {
-        setCurrentBranch(branch);
-        setShowSelectionModal(false);
-        // Invalidate DataStore so all components refetch with the new branch context
-        dataStore.invalidateAll();
-        dataStore._refreshStaleCaches();
     }, []);
 
     // Context value
@@ -179,14 +184,6 @@ export function BranchProvider({ children }) {
     return (
         <BranchContext.Provider value={value}>
             {children}
-
-            {/* Branch Selection Modal - shows when no branch is selected */}
-            <BranchSelectionModal
-                isOpen={showSelectionModal && !loading}
-                onBranchSelected={handleBranchSelected}
-                allowClose={!!currentBranch} // Can close if a branch is already selected
-                onClose={() => setShowSelectionModal(false)}
-            />
         </BranchContext.Provider>
     );
 }
@@ -197,22 +194,7 @@ export function BranchProvider({ children }) {
  */
 export function withBranchRequired(WrappedComponent) {
     return function BranchRequiredWrapper(props) {
-        const { hasBranch, showBranchSelector, loading } = useBranchContext();
-
-        useEffect(() => {
-            if (!loading && !hasBranch) {
-                showBranchSelector();
-            }
-        }, [loading, hasBranch, showBranchSelector]);
-
-        // Show loading while checking branch
-        if (loading) {
-            return (
-                <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1A318C]" />
-                </div>
-            );
-        }
+        useBranchContext();
 
         return React.createElement(WrappedComponent, props);
     };

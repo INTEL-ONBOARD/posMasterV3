@@ -1240,6 +1240,11 @@ export const salesApi = {
     }
 };
 
+export const reportsApi = {
+    getPettyCashReport: async (query = {}) => onlineCall((api) => api.getPettyCashReport(query)),
+    getTransactionB5Report: async (query = {}) => onlineCall((api) => api.getTransactionB5Report(query)),
+};
+
 // ============================================
 // PAYMENT METHODS API
 // ============================================
@@ -3325,6 +3330,7 @@ const installOnlineOnlyOverrides = () => {
         },
         getSummary: async (startDate, endDate) => onlineCall((api) => api.getSalesSummary(startDate, endDate)),
         getDaily: async (days = 30) => onlineCall((api) => api.getSalesDaily(days)),
+        getDailyTransactionReport: async (query = {}) => onlineCall((api) => api.getDailyTransactionReport(query)),
         getByMember: async (memberId) => {
             const response = await salesApi.getAll();
             if (Array.isArray(response?.data)) {
@@ -3765,6 +3771,7 @@ export default {
     restocks: restockApi,
     members: memberApi,
     sales: salesApi,
+    reports: reportsApi,
     paymentMethods: paymentMethodApi,
     auth: authApi,
     users: userApi,

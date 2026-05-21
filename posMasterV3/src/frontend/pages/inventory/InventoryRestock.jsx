@@ -616,6 +616,22 @@ function InventoryRestock({ isActive }) {
   }
 
   const addReturnItemToForm = (item) => {
+    const stockPrice = parseFloat(
+      item.stock_price ??
+      item.stockPrice ??
+      item.unit_price ??
+      item.unitPrice ??
+      0
+    ) || 0;
+    const retailPrice = parseFloat(
+      item.retail_price ??
+      item.retailPrice ??
+      item.unit_price ??
+      item.unitPrice ??
+      0
+    ) || 0;
+    const quantity = parseFloat(item.quantity ?? item.return_quantity ?? 0) || 0;
+
     //validation of some sort?
 
     //to make left section's return item block visible only after selecting a return item from the table
@@ -659,10 +675,10 @@ function InventoryRestock({ isActive }) {
 
     setFormDataStock({
       batch_code: item.batch_code,
-      quantity: item.quantity,
+      quantity,
       threshold_limit: item.threshold_limit,
-      stock_price: item.stock_price,
-      retail_price: item.retail_price,
+      stock_price: stockPrice,
+      retail_price: retailPrice,
       selling_price_per_kg: item.selling_price_per_kg ?? item.sellingPricePerKg ?? "",
       selling_price_per_liter: item.selling_price_per_liter ?? item.sellingPricePerLiter ?? "",
       expired_datetime: item.expired_datetime,
@@ -681,11 +697,11 @@ function InventoryRestock({ isActive }) {
     setFormDataReturnItem({
       sku: "",
 
-      stock_price: item.stock_price,
-      retail_price: item.retail_price,
+      stock_price: stockPrice,
+      retail_price: retailPrice,
 
       batch_code: item.batch_code,
-      quantity: item.return_quantity,
+      quantity,
       return_description: item.return_description
     }
     );
@@ -801,6 +817,9 @@ function InventoryRestock({ isActive }) {
       }
 
       const uomSymbol = formDataRegItem.uom?.symbol || "";
+      const stockPrice = parseFloat(formDataReturnItem.stock_price || formDataStock.stock_price || 0) || 0;
+      const retailPrice = parseFloat(formDataReturnItem.retail_price || formDataStock.retail_price || 0) || 0;
+      const quantity = parseFloat(formDataReturnItem.quantity) || 0;
 
       const newRetItem = {
 
@@ -822,8 +841,12 @@ function InventoryRestock({ isActive }) {
 
         sku: formDataRegItem.sku,
         threshold_limit: parseFloat(formDataStock.threshold_limit) || 0,
-        stock_price: parseFloat(formDataReturnItem.stock_price) || parseFloat(formDataStock.stock_price) || 0,
-        retail_price: parseFloat(formDataReturnItem.retail_price) || parseFloat(formDataStock.retail_price) || 0,
+        stock_price: stockPrice,
+        stockPrice,
+        unit_price: retailPrice,
+        unitPrice: retailPrice,
+        retail_price: retailPrice,
+        retailPrice,
         selling_price_per_kg: parseFloat(formDataStock.selling_price_per_kg) || 0,
         selling_price_per_liter: parseFloat(formDataStock.selling_price_per_liter) || 0,
         expired_datetime: formDataStock.expired_datetime,
@@ -831,13 +854,13 @@ function InventoryRestock({ isActive }) {
 
         //the batch code for table row - use return form's batch_code which is validated
         batch_code: formDataReturnItem.batch_code || formDataStock.batch_code,
-        quantity: parseFloat(formDataReturnItem.quantity),
+        quantity,
+        return_quantity: quantity,
         uom_symbol: uomSymbol,
 
         item_discount_amt: formDataStock.discount,
 
         return_description: formDataReturnItem.return_description,
-        return_quantity: formDataReturnItem.quantity
 
       };
       console.log("Adding/updating return item:", newRetItem);
@@ -1437,13 +1460,20 @@ function InventoryRestock({ isActive }) {
         sku: item.sku,
         batch_code: item.batch_code,
         qty: item.return_quantity,
-        description: item.return_description
+        description: item.return_description,
+        stock_price: item.stock_price ?? item.stockPrice ?? item.unit_price ?? item.unitPrice ?? 0,
+        retail_price: item.retail_price ?? item.retailPrice ?? item.price ?? item.unit_price ?? item.unitPrice ?? 0,
+        stockPrice: item.stock_price ?? item.stockPrice ?? item.unit_price ?? item.unitPrice ?? 0,
+        retailPrice: item.retail_price ?? item.retailPrice ?? item.price ?? item.unit_price ?? item.unitPrice ?? 0
       }));
     };
 
     try {
       const requestData = {
         sup_id: transactionData.supplier_id,
+        supplier_id: transactionData.supplier_id,
+        supplier_name: transactionData.supplierName || formDataSupplier.supplier_name,
+        supplierName: transactionData.supplierName || formDataSupplier.supplier_name,
         prep_agent_id: transactionData.prep_id,
         auth_agent_id: transactionData.auth_id,
         invoice_no: transactionData.invoiceNo,
@@ -1520,7 +1550,7 @@ function InventoryRestock({ isActive }) {
                         if (selectedSupplier) {
                           setTransactionData(prev => ({
                             ...prev,
-                            supplier_id: selectedSupplier.id,
+                            supplier_id: selectedSupplier.id || selectedSupplier._id || selectedSupplier.supplier_id || "",
                             supplierName: selectedSupplier?.basic_info?.supplier_name,
                             previousAmount: selectedSupplier?.financial_info?.previous_amount
                           }));
@@ -2311,46 +2341,53 @@ function InventoryRestock({ isActive }) {
               {selectedReturnItemList.map((item, index) => {
                 const itemId = item.id ?? item._id;
                 const formId = formDataRegItem.id ?? formDataRegItem._id;
+                const quantity = Math.abs(parseFloat(item.quantity ?? item.return_quantity ?? 0) || 0);
+                const stockPrice = parseFloat(item.stock_price ?? item.stockPrice ?? item.unit_price ?? item.unitPrice ?? 0) || 0;
+                const retailPrice = parseFloat(item.retail_price ?? item.retailPrice ?? item.unit_price ?? item.unitPrice ?? 0) || 0;
+                const stockTotal = quantity * stockPrice;
+                const retailTotal = quantity * retailPrice;
+
                 return (
-                <tr
-                  onClick={() => {
-                    addReturnItemToForm(item);
-                  }}
-                  key={`${itemId || item.item_name || "item"}-${index}`}
-                  className={`${itemId === formId && item.item_name === formDataRegItem.item_name && returnItemSelected ? 'ring-2 ring-red-400 ring-inset' : ''} bg-red-50 hover:bg-red-100 cursor-pointer transition-all`}
-                >
-                  <td className="px-4 py-3 text-sm text-red-600 tabular-nums">
-                    {selectedStockItemList.length + index + 1}
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium text-red-700 font-mono">
-                    {item.sku}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-red-600 tabular-nums">
-                    <span className="font-semibold">{item.return_quantity}</span>
-                    <span className="text-red-400 ml-1">({item.uom_symbol})</span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-red-400">—</td>
-                  <td className="px-4 py-3 text-sm text-red-400">—</td>
-                  <td className="px-4 py-3 text-sm text-red-400">—</td>
-                  <td className="px-4 py-3 text-sm text-red-400">—</td>
-                  <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeReturnItemFromList(itemId);
-                      }}
-                      aria-label="Remove item"
-                      className="w-7 h-7 rounded-lg bg-red-100 hover:bg-red-500 hover:text-white text-red-400 inline-flex items-center justify-center transition-all"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              )})}
+                  <tr
+                    onClick={() => {
+                      addReturnItemToForm(item);
+                    }}
+                    key={`${itemId || item.item_name || "item"}-${index}`}
+                    className={`${itemId === formId && item.item_name === formDataRegItem.item_name && returnItemSelected ? 'ring-2 ring-red-400 ring-inset' : ''} bg-red-50 hover:bg-red-100 cursor-pointer transition-all`}
+                  >
+                    <td className="px-4 py-3 text-sm text-red-600 tabular-nums">
+                      {selectedStockItemList.length + index + 1}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-medium text-red-700 font-mono">
+                      {item.sku}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-red-600 tabular-nums">
+                      <span className="font-semibold">{quantity}</span>
+                      <span className="text-red-400 ml-1">({item.uom_symbol})</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700 tabular-nums">{stockPrice.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-800 tabular-nums">{stockTotal.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700 tabular-nums">{retailPrice.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-800 tabular-nums">{retailTotal.toFixed(2)}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeReturnItemFromList(itemId);
+                        }}
+                        aria-label="Remove item"
+                        className="w-7 h-7 rounded-lg bg-red-100 hover:bg-red-500 hover:text-white text-red-400 inline-flex items-center justify-center transition-all"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           </div>
