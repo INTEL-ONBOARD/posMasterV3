@@ -12,7 +12,7 @@ import InventoryRep from "./layout/InventoryRep";
 import RestockRep from "./layout/RestockRep";
 import DailyTransactionRep from "./layout/DailyTransactionRep";
 import PettyCashReport from "./layout/PettyCashReport";
-import TransactionB5Rep from "./layout/TransactionB5";
+import TransactionB5Rep from "./layout/TransactionB5.jsx";
 
 const REPORT_TITLES = {
   basic: "Inventory Status Report",
@@ -322,6 +322,9 @@ export default function InventoryReport({ isActive }) {
   const [pettyCashReportData, setPettyCashReportData] = useState([]);
   const [isLoadingPettyCash, setIsLoadingPettyCash] = useState(false);
   const [errorPettyCash, setErrorPettyCash] = useState("");
+  const [transactionB5Data, setTransactionB5Data] = useState(null);
+  const [isLoadingTransactionB5, setIsLoadingTransactionB5] = useState(false);
+  const [errorTransactionB5, setErrorTransactionB5] = useState("");
   const [inventoryItems, setInventoryItems] = useState([]);
   const [pdfGenerating, setPdfGenerating] = useState(false);
 
@@ -469,6 +472,29 @@ export default function InventoryReport({ isActive }) {
     }
   }, [currentDate]);
 
+  const fetchTransactionB5Report = useCallback(async () => {
+    setIsLoadingTransactionB5(true);
+    setErrorTransactionB5("");
+
+    try {
+      const response = await reportsApi.getTransactionB5Report({
+        startDate: currentDate,
+        endDate: currentDate,
+      });
+
+      if (response?.status !== "success") {
+        throw new Error(response?.message || "Failed to load B5 report.");
+      }
+
+      setTransactionB5Data(response?.data || null);
+    } catch (error) {
+      setTransactionB5Data(null);
+      setErrorTransactionB5(error?.message || "Unable to load B5 report.");
+    } finally {
+      setIsLoadingTransactionB5(false);
+    }
+  }, [currentDate]);
+
   useEffect(() => {
     if (!isActive || reportType !== "basic") {
       return;
@@ -500,6 +526,14 @@ export default function InventoryReport({ isActive }) {
 
     void fetchPettyCashReport();
   }, [isActive, reportType, fetchPettyCashReport]);
+
+  useEffect(() => {
+    if (!isActive || reportType !== "trans-b5") {
+      return;
+    }
+
+    void fetchTransactionB5Report();
+  }, [isActive, reportType, fetchTransactionB5Report]);
 
   const filteredItemsBasic = useMemo(() => {
     const term = searchTermBasic.trim().toLowerCase();
@@ -681,7 +715,21 @@ export default function InventoryReport({ isActive }) {
               />
             )
           ) : reportType === "trans-b5" ? (
-            <TransactionB5Rep />
+            isLoadingTransactionB5 ? (
+              <SpinnerMessage
+                title="Loading B5 report..."
+                subtitle="Fetching live B5 data from the backend."
+              />
+            ) : errorTransactionB5 ? (
+              <ErrorState message={errorTransactionB5} onRetry={fetchTransactionB5Report} />
+            ) : (
+              <TransactionB5Rep
+                meta={transactionB5Data?.meta}
+                topTable={transactionB5Data?.topTable}
+                receivedRows={transactionB5Data?.receivedRows}
+                expensesRows={transactionB5Data?.expensesRows}
+              />
+            )
           ) : reportType === "dailyTrans" ? (
             <DailyTransactionRep
               transactions={dailyTransactions}

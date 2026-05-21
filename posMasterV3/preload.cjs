@@ -73,6 +73,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     // ONLINE-ONLY API
     // ============================================
 
+    getPettyCashReport: (query = {}) =>
+        ipcRenderer.invoke("online:reports:get-petty-cash", query),
+    getTransactionB5Report: (query = {}) =>
+        ipcRenderer.invoke("online:reports:get-transaction-b5", query),
+
     online: {
         getConfig: () => ipcRenderer.invoke("online:get-config"),
         health: () => ipcRenderer.invoke("online:health"),
@@ -97,6 +102,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
             ipcRenderer.invoke("online:sales:get-daily-report", query),
         getPettyCashReport: (query = {}) =>
             ipcRenderer.invoke("online:reports:get-petty-cash", query),
+        getTransactionB5Report: (query = {}) =>
+            ipcRenderer.invoke("online:reports:get-transaction-b5", query),
         completeHeldSale: (id, data) =>
             ipcRenderer.invoke("online:sales:complete-held", { id, ...data }),
         cancelSale: (id, data = {}) =>

@@ -1242,6 +1242,7 @@ export const salesApi = {
 
 export const reportsApi = {
     getPettyCashReport: async (query = {}) => onlineCall((api) => api.getPettyCashReport(query)),
+    getTransactionB5Report: async (query = {}) => onlineCall((api) => api.getTransactionB5Report(query)),
 };
 
 // ============================================

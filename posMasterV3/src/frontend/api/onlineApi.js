@@ -94,6 +94,10 @@ export const onlineApi = {
     return getOnlineApi().getPettyCashReport(query);
   },
 
+  getTransactionB5Report(query = {}) {
+    return getOnlineApi().getTransactionB5Report(query);
+  },
+
   onRealtimeStatus(callback) {
     return getOnlineApi().onRealtimeStatus(callback);
   },

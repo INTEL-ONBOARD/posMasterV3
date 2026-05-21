@@ -226,6 +226,10 @@ class OnlineModeService {
         return reportsService.getPettyCashReport(query || {});
     }
 
+    async getTransactionB5Report(query = {}) {
+        return reportsService.getTransactionB5Report(query || {});
+    }
+
     async getActiveSessions() {
         const db = await getConnectedDb();
         const sessions = await db.collection('sessions')
