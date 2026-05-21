@@ -310,6 +310,7 @@ function PrintButton({ reportType, onPrint, disabled }) {
 
 export default function InventoryReport({ isActive }) {
   const [reportType, setReportType] = useState("basic");
+  const [selectedDate, setSelectedDate] = useState(() => toLocalISODate());
   const [searchTermBasic, setSearchTermBasic] = useState("");
   const [isLoadingBasic, setIsLoadingBasic] = useState(false);
   const [errorBasic, setErrorBasic] = useState("");
@@ -329,9 +330,9 @@ export default function InventoryReport({ isActive }) {
   const [pdfGenerating, setPdfGenerating] = useState(false);
 
   const inventoryReportRef = useRef(null);
-  const currentDate = useMemo(() => toLocalISODate(), []);
-  const reportNo = useMemo(() => `GDG-${currentDate.replaceAll("-", "")}`, [currentDate]);
-  const dailyReportRange = useMemo(() => ({ startDate: currentDate, endDate: currentDate }), [currentDate]);
+  const reportDate = selectedDate;
+  const reportNo = useMemo(() => `GDG-${selectedDate.replaceAll("-", "")}`, [selectedDate]);
+  const dailyReportRange = useMemo(() => ({ startDate: selectedDate, endDate: selectedDate }), [selectedDate]);
 
   const fetchInventoryStatus = useCallback(async () => {
     setIsLoadingBasic(true);
@@ -389,7 +390,7 @@ export default function InventoryReport({ isActive }) {
       console.log("[DTR][InventoryReport] fetch start", {
         isActive,
         reportType,
-        currentDate,
+        selectedDate,
         dailyReportRange,
         hasOnlineBridge: !!window.electronAPI?.online?.getDailyTransactionReport,
       });
@@ -447,7 +448,7 @@ export default function InventoryReport({ isActive }) {
     } finally {
       setIsLoadingDaily(false);
     }
-  }, [dailyReportRange]);
+  }, [dailyReportRange, isActive, reportType, selectedDate]);
 
   const fetchPettyCashReport = useCallback(async () => {
     setIsLoadingPettyCash(true);
@@ -455,8 +456,8 @@ export default function InventoryReport({ isActive }) {
 
     try {
       const response = await reportsApi.getPettyCashReport({
-        startDate: currentDate,
-        endDate: currentDate,
+        startDate: selectedDate,
+        endDate: selectedDate,
       });
 
       if (response?.status !== "success") {
@@ -470,7 +471,7 @@ export default function InventoryReport({ isActive }) {
     } finally {
       setIsLoadingPettyCash(false);
     }
-  }, [currentDate]);
+  }, [selectedDate]);
 
   const fetchTransactionB5Report = useCallback(async () => {
     setIsLoadingTransactionB5(true);
@@ -478,8 +479,8 @@ export default function InventoryReport({ isActive }) {
 
     try {
       const response = await reportsApi.getTransactionB5Report({
-        startDate: currentDate,
-        endDate: currentDate,
+        startDate: selectedDate,
+        endDate: selectedDate,
       });
 
       if (response?.status !== "success") {
@@ -493,7 +494,7 @@ export default function InventoryReport({ isActive }) {
     } finally {
       setIsLoadingTransactionB5(false);
     }
-  }, [currentDate]);
+  }, [selectedDate]);
 
   useEffect(() => {
     if (!isActive || reportType !== "basic") {
@@ -709,7 +710,7 @@ export default function InventoryReport({ isActive }) {
                 reportData={pettyCashReportData}
                 companyName="මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමුපකාර සමිතිය"
                 branchName="කොටපොල"
-                reportDate={currentDate}
+                reportDate={reportDate}
                 preparedBy="Accounts"
                 maxHeight="calc(100vh - 300px)"
               />
@@ -740,7 +741,7 @@ export default function InventoryReport({ isActive }) {
               companyName="මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමුපකාර සමිතිය"
               branchName="කොටපොල"
               reportNo={reportNo}
-              reportDate={currentDate}
+              reportDate={reportDate}
             />
           ) : null}
         </div>
@@ -817,7 +818,32 @@ export default function InventoryReport({ isActive }) {
             </div>
           </div>
 
-          <div className="flex-1 rounded-xl border border-gray-100 bg-white shadow-sm" />
+          <div className="flex-1 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+            <div className="border-b border-gray-100 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1A318C]/10">
+                  <Search className="h-4 w-4 text-[#1A318C]" />
+                </div>
+                <span className="text-sm font-semibold uppercase tracking-wide text-gray-700">Report Date</span>
+              </div>
+            </div>
+
+            <div className="p-4">
+              <label htmlFor="inventory-report-date" className="mb-2 block text-xs font-medium text-gray-500">
+                Select a date
+              </label>
+              <input
+                id="inventory-report-date"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="h-12 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 text-sm text-gray-700 outline-none transition-all focus:border-[#1A318C] focus:bg-white focus:ring-2 focus:ring-[#1A318C]/20"
+              />
+              <p className="mt-3 text-xs leading-5 text-gray-500">
+                Reports below will refresh automatically for the selected day.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
