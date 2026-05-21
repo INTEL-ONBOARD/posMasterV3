@@ -191,7 +191,6 @@ function UnitOfMeassurement() {
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-[#1A318C] to-[#2a4ab8]">
-                <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">ID</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Unit Name</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Unit Symbol</th>
                 <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider w-20">Action</th>
@@ -200,7 +199,7 @@ function UnitOfMeassurement() {
             <tbody className="divide-y divide-gray-100">
               {units.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-12 text-center">
+                  <td colSpan="3" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center">
                       <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
                         <Ruler className="w-8 h-8 text-gray-300" />
@@ -217,7 +216,6 @@ function UnitOfMeassurement() {
                     onClick={() => handleRowClick(unit)}
                     className={`cursor-pointer transition-colors ${editingId === unit.id ? 'bg-[#1A318C]/5 ring-2 ring-inset ring-[#1A318C]' : 'hover:bg-gray-50'}`}
                   >
-                    <td className="px-6 py-4 text-sm text-gray-600">{unit.id}</td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-800">{unit.unit_name}</td>
                     <td className="px-6 py-4">
                       <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-mono">{unit.symbol}</span>

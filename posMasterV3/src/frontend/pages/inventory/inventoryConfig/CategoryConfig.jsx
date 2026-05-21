@@ -231,7 +231,6 @@ function CategoryConfig() {
             <table className="w-full">
               <thead>
                 <tr>
-                  <th className="sticky top-0 z-10 px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider w-20 bg-[#1A318C]">ID</th>
                   <th className="sticky top-0 z-10 px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider bg-[#1A318C]">Category</th>
                   <th className="sticky top-0 z-10 px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider bg-[#1A318C]">Brand</th>
                   <th className="sticky top-0 z-10 px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider w-20 bg-[#1A318C]">Action</th>
@@ -240,7 +239,7 @@ function CategoryConfig() {
               <tbody className="divide-y divide-gray-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-12 text-center">
+                  <td colSpan="3" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center">
                       <div className="animate-spin rounded-full border-4 border-gray-200 border-t-[#1A318C] h-10 w-10 mb-3"></div>
                       <span className="text-gray-500">Searching...</span>
@@ -249,7 +248,7 @@ function CategoryConfig() {
                 </tr>
               ) : filteredCategories.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-12 text-center">
+                  <td colSpan="3" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center">
                       <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
                         <Tag className="w-8 h-8 text-gray-300" />
@@ -266,7 +265,6 @@ function CategoryConfig() {
                     onClick={() => handleRowClick(category)}
                     className={`cursor-pointer transition-colors ${editingId === category.id ? 'bg-[#1A318C]/5 ring-2 ring-inset ring-[#1A318C]' : 'hover:bg-gray-50'}`}
                   >
-                    <td className="px-6 py-4 text-sm text-gray-600">{category.id}</td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-800">{category.type}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{category.brand}</td>
                     <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>

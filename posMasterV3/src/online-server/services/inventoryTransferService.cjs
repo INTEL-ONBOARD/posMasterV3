@@ -10,14 +10,70 @@ function toObjectId(id) {
     return ObjectId.isValid(id) ? new ObjectId(id) : id;
 }
 
-function readTransferQuantity(transfer = {}) {
+function readTransferItems(transfer = {}) {
+    const candidates = [
+        transfer.items,
+        transfer.transferItems,
+        transfer.transfer_items,
+        transfer.details,
+        transfer.requestDetails?.items,
+        transfer.request_details?.items
+    ];
+
+    for (const value of candidates) {
+        if (Array.isArray(value)) return value;
+    }
+
+    return [];
+}
+
+function readTransferLineQuantity(item = {}) {
     return Number(
+        item.quantity
+        ?? item.qty
+        ?? item.transferQty
+        ?? item.transfer_qty
+        ?? item.requestedQty
+        ?? item.requested_qty
+        ?? item.requested_quantity
+        ?? item.acceptedQty
+        ?? item.accepted_qty
+        ?? item.accepted_quantity
+        ?? 0
+    ) || 0;
+}
+
+function readTransferLineIdentity(item = {}) {
+    return {
+        stockId: item.stockId || item.stock_id || item.stockid || null,
+        itemId: item.itemId || item.item_id || item.id || item._id || null,
+        batchCode: item.batchCode || item.batch_code || item.batch || null,
+        sku: item.sku || null
+    };
+}
+
+function readTransferQuantity(transfer = {}) {
+    const topLevelQty = Number(
         transfer.quantity
         ?? transfer.requestedQty
         ?? transfer.requested_qty
         ?? transfer.requested_quantity
         ?? 0
-    );
+    ) || 0;
+
+    if (topLevelQty > 0) return topLevelQty;
+
+    const items = readTransferItems(transfer);
+    const itemQtyTotal = items.reduce((sum, item) => sum + readTransferLineQuantity(item), 0);
+    if (itemQtyTotal > 0) return itemQtyTotal;
+
+    const bodyQty = Number(
+        transfer.totalRequestedQty
+        ?? transfer.total_requested_qty
+        ?? 0
+    ) || 0;
+
+    return bodyQty;
 }
 
 function getSourceBranchId(transfer = {}) {
@@ -40,21 +96,53 @@ function getTargetBranchId(transfer = {}) {
         || null;
 }
 
-function buildSourceStockFilter(auth, transfer, sourceBranchId) {
-    const itemId = transfer.itemId || transfer.item_id || null;
-    const batchCode = transfer.batchCode || transfer.batch_code || null;
-    const stockId = transfer.stockId || transfer.stock_id || null;
-    const sku = transfer.sku || null;
-    const clauses = [];
+function isSameBranch(a, b) {
+    return Boolean(a && b && String(a) === String(b));
+}
 
-    if (stockId && ObjectId.isValid(stockId)) clauses.push({ _id: new ObjectId(stockId) });
-    if (stockId) clauses.push({ id: stockId }, { stockId }, { stock_id: stockId });
-    if (itemId && batchCode) {
-        clauses.push({ itemId, batchCode });
-        clauses.push({ item_id: itemId, batch_code: batchCode });
-    }
-    if (sku && batchCode) {
-        clauses.push({ sku, batchCode }, { sku, batch_code: batchCode });
+function normalizeTransferStatus(status) {
+    return String(status || 'pending').trim().toLowerCase();
+}
+
+function getTransferDecisionStage(existing) {
+    const status = normalizeTransferStatus(existing?.status);
+    if (status === 'pending') return 'source_review';
+    if (status === 'approved_by_manager' || status === 'in_transit') return 'target_review';
+    return 'terminal';
+}
+
+function buildManagerDecisionUpdate(auth, existing, nextStatus, extra = {}) {
+    const now = new Date();
+    return {
+        ...extra,
+        status: nextStatus,
+        updatedAt: now,
+        updated_at: now,
+        updatedBy: auth.userId,
+        version: (existing.version || 1) + 1
+    };
+}
+
+function buildSourceStockFilter(auth, transfer, sourceBranchId) {
+    const clauses = [];
+    const items = readTransferItems(transfer);
+    const candidates = [
+        transfer,
+        ...items
+    ];
+
+    for (const candidate of candidates) {
+        const { stockId, itemId, batchCode, sku } = readTransferLineIdentity(candidate);
+
+        if (stockId && ObjectId.isValid(stockId)) clauses.push({ _id: new ObjectId(stockId) });
+        if (stockId) clauses.push({ id: stockId }, { stockId }, { stock_id: stockId });
+        if (itemId && batchCode) {
+            clauses.push({ itemId, batchCode });
+            clauses.push({ item_id: itemId, batch_code: batchCode });
+        }
+        if (sku && batchCode) {
+            clauses.push({ sku, batchCode }, { sku, batch_code: batchCode });
+        }
     }
 
     if (clauses.length === 0) {
@@ -93,23 +181,57 @@ async function acceptTransfer(auth, transferId, body = {}) {
                 err.statusCode = 404;
                 throw err;
             }
-            if (String(existing.status || '').toLowerCase() !== 'pending') {
-                const err = new Error(`Only pending transfers can be accepted. Current status: ${existing.status || 'unknown'}`);
-                err.statusCode = 409;
-                throw err;
-            }
 
             const sourceBranchId = body.sourceBranchId || body.source_branch_id || getSourceBranchId(existing);
             const targetBranchId = body.targetBranchId || body.target_branch_id || getTargetBranchId(existing);
-            const requestedQty = readTransferQuantity(existing);
+            let requestedQty = readTransferQuantity(existing);
+            if (requestedQty <= 0) {
+                requestedQty = readTransferQuantity(body);
+            }
             const acceptedQty = Number(body.acceptedQty ?? body.accepted_qty ?? body.accepted_quantity ?? requestedQty);
+            const currentStage = getTransferDecisionStage(existing);
 
             if (!sourceBranchId || !targetBranchId) {
                 const err = new Error('Source and target branches are required to accept a transfer');
                 err.statusCode = 400;
                 throw err;
             }
-            if (auth.branchId && String(auth.branchId) !== String(targetBranchId)) {
+            if (currentStage === 'source_review') {
+                if (!isSameBranch(auth.branchId, sourceBranchId)) {
+                    const err = new Error('Only the source branch can approve this transfer');
+                    err.statusCode = 403;
+                    throw err;
+                }
+
+                const updateDoc = buildManagerDecisionUpdate(auth, existing, 'approved_by_manager', {
+                    approvedByManagerAt: new Date(),
+                    approved_by_manager_at: new Date(),
+                    approvedByManagerBy: auth.userId,
+                    approved_by_manager_by: auth.userId,
+                    sourceBranchId,
+                    source_branch_id: sourceBranchId,
+                    fromBranchId: sourceBranchId,
+                    targetBranchId,
+                    target_branch_id: targetBranchId,
+                    toBranchId: targetBranchId
+                });
+
+                await db.collection('inventory_transfers').updateOne(
+                    { _id: existing._id, orgId: auth.orgId },
+                    { $set: updateDoc },
+                    { session: querySession }
+                );
+                transfer = { ...existing, ...updateDoc };
+                return;
+            }
+
+            if (currentStage !== 'target_review') {
+                const err = new Error(`Only pending or manager-approved transfers can be accepted. Current status: ${existing.status || 'unknown'}`);
+                err.statusCode = 409;
+                throw err;
+            }
+
+            if (!isSameBranch(auth.branchId, targetBranchId)) {
                 const err = new Error('Only the target branch can accept this transfer');
                 err.statusCode = 403;
                 throw err;
@@ -121,8 +243,19 @@ async function acceptTransfer(auth, transferId, body = {}) {
             }
 
             const now = new Date();
+            const transferForLookup = {
+                ...existing,
+                ...body,
+                items: Array.isArray(body.items) && body.items.length > 0
+                    ? body.items
+                    : readTransferItems(existing),
+                requestDetails: {
+                    ...(existing.requestDetails || {}),
+                    ...(body.requestDetails || {})
+                }
+            };
             const sourceFilter = {
-                ...buildSourceStockFilter(auth, existing, sourceBranchId),
+                ...buildSourceStockFilter(auth, transferForLookup, sourceBranchId),
                 quantity: { $gte: acceptedQty }
             };
             const sourceStock = await db.collection('stock_batches').findOne(sourceFilter, { session: querySession });
@@ -286,6 +419,20 @@ async function acceptTransfer(auth, transferId, body = {}) {
         if (session) await session.endSession();
     }
 
+    if (normalizeTransferStatus(transfer.status) === 'approved_by_manager') {
+        await publishDomainEvent({
+            event: 'inventory_transfers.manager_approved',
+            orgId: auth.orgId,
+            branchId: transfer.sourceBranchId || transfer.source_branch_id || auth.branchId || null,
+            entity: 'inventory_transfers',
+            entityId: String(transfer._id),
+            operation: 'update',
+            version: transfer.version,
+            changedBy: auth.userId
+        });
+        return transfer;
+    }
+
     await publishDomainEvent({
         event: 'inventory_transfers.accepted',
         orgId: auth.orgId,
@@ -345,14 +492,71 @@ async function rejectTransfer(auth, transferId, body = {}) {
         err.statusCode = 404;
         throw err;
     }
+    const sourceBranchId = body.sourceBranchId || body.source_branch_id || getSourceBranchId(existing);
     const targetBranchId = body.targetBranchId || body.target_branch_id || getTargetBranchId(existing);
-    if (auth.branchId && String(auth.branchId) !== String(targetBranchId)) {
+    const currentStage = getTransferDecisionStage(existing);
+    const now = new Date();
+    const rejectionReason = body.reason || body.rejectionReason || body.rejection_reason || null;
+
+    if (currentStage === 'source_review') {
+        if (!isSameBranch(auth.branchId, sourceBranchId)) {
+            const err = new Error('Only the source branch can reject this transfer');
+            err.statusCode = 403;
+            throw err;
+        }
+
+        const updateDoc = buildManagerDecisionUpdate(auth, existing, 'rejected_by_manager', {
+            acceptedQty: 0,
+            accepted_qty: 0,
+            accepted_quantity: 0,
+            rejectedAt: now,
+            rejected_at: now,
+            rejectionReason,
+            rejection_reason: rejectionReason,
+            managerRejectedAt: now,
+            manager_rejected_at: now,
+            managerRejectedBy: auth.userId,
+            manager_rejected_by: auth.userId,
+            sourceBranchId,
+            source_branch_id: sourceBranchId,
+            fromBranchId: sourceBranchId,
+            targetBranchId,
+            target_branch_id: targetBranchId,
+            toBranchId: targetBranchId
+        });
+
+        await db.collection('inventory_transfers').updateOne(
+            { _id: existing._id, orgId: auth.orgId },
+            { $set: updateDoc }
+        );
+
+        const transfer = { ...existing, ...updateDoc };
+        await publishDomainEvent({
+            event: 'inventory_transfers.manager_rejected',
+            orgId: auth.orgId,
+            branchId: sourceBranchId || auth.branchId || null,
+            entity: 'inventory_transfers',
+            entityId: String(transfer._id),
+            operation: 'update',
+            version: transfer.version,
+            changedBy: auth.userId
+        });
+
+        return transfer;
+    }
+
+    if (currentStage !== 'target_review') {
+        const err = new Error(`Only pending or manager-approved transfers can be rejected. Current status: ${existing.status || 'unknown'}`);
+        err.statusCode = 409;
+        throw err;
+    }
+
+    if (!isSameBranch(auth.branchId, targetBranchId)) {
         const err = new Error('Only the target branch can reject this transfer');
         err.statusCode = 403;
         throw err;
     }
 
-    const now = new Date();
     const updateDoc = {
         status: 'rejected',
         acceptedQty: 0,
@@ -360,8 +564,8 @@ async function rejectTransfer(auth, transferId, body = {}) {
         accepted_quantity: 0,
         rejectedAt: now,
         rejected_at: now,
-        rejectionReason: body.reason || body.rejectionReason || body.rejection_reason || null,
-        rejection_reason: body.reason || body.rejectionReason || body.rejection_reason || null,
+        rejectionReason,
+        rejection_reason: rejectionReason,
         updatedAt: now,
         updated_at: now,
         updatedBy: auth.userId,
