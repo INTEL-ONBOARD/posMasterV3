@@ -74,6 +74,10 @@ export const onlineApi = {
     return getOnlineApi().returnSaleItems(id, data);
   },
 
+  getDailyTransactionReport(query = {}) {
+    return getOnlineApi().getDailyTransactionReport(query);
+  },
+
   acceptInventoryTransfer(id, data = {}) {
     return getOnlineApi().acceptInventoryTransfer(id, data);
   },
@@ -84,6 +88,14 @@ export const onlineApi = {
 
   generateInvoiceNo(type = 'SALE', branchId = null) {
     return getOnlineApi().generateInvoiceNo(type, branchId);
+  },
+
+  getPettyCashReport(query = {}) {
+    return getOnlineApi().getPettyCashReport(query);
+  },
+
+  getTransactionB5Report(query = {}) {
+    return getOnlineApi().getTransactionB5Report(query);
   },
 
   onRealtimeStatus(callback) {

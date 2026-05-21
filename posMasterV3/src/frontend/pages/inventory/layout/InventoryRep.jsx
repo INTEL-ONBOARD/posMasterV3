@@ -1,17 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-/**
- * InventoryRep.jsx (report-styled)
- *
- * - Uses A4-like page styling (width 794px, minHeight 1123px)
- * - Pagination via ROWS_PER_PAGE (keeps pages safe for A4)
- * - Clean header (company + branch + report title)
- * - Compact table styling to match the other report components
- * - Footer area reserved for signatures/notes
- */
-
-const ROWS_PER_PAGE = 18; // safe for A4 portrait (tweak if needed)
+const ROWS_PER_PAGE = 18;
 
 const styles = {
   scrollContainer: (maxHeight) => ({
@@ -20,10 +10,9 @@ const styles = {
     backgroundColor: "#f6f6f6",
     padding: 20,
   }),
-
   page: {
-    width: "794px", // A4 width @ 96dpi
-    minHeight: "1123px", // A4 height @ 96dpi
+    width: "794px",
+    minHeight: "1123px",
     margin: "0 auto 20px",
     padding: "32px",
     backgroundColor: "#ffffff",
@@ -33,12 +22,10 @@ const styles = {
     pageBreakAfter: "always",
     position: "relative",
   },
-
   header: {
     textAlign: "center",
     marginBottom: 8,
   },
-
   companySinhala: {
     fontSize: "18px",
     margin: 0,
@@ -54,7 +41,6 @@ const styles = {
     marginTop: 6,
     fontWeight: 700,
   },
-
   metaRow: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -63,24 +49,20 @@ const styles = {
     marginBottom: "10px",
     alignItems: "center",
   },
-
   divider: {
     margin: "12px 0",
     border: "none",
     borderTop: "1px solid #ddd",
   },
-
   tableWrapper: {
     marginTop: 6,
   },
-
   table: {
     width: "100%",
     borderCollapse: "collapse",
     fontSize: "12px",
     color: "#333",
   },
-
   theadTh: {
     backgroundColor: "#444",
     color: "#fff",
@@ -88,31 +70,25 @@ const styles = {
     textAlign: "left",
     fontSize: "11px",
   },
-
   td: {
     padding: "8px",
     borderBottom: "1px solid #eee",
     fontSize: "12px",
     verticalAlign: "middle",
   },
-
   tdCenter: {
     textAlign: "center",
   },
-
   tdRight: {
     textAlign: "right",
   },
-
   itemName: {
     fontWeight: 700,
     color: "#222",
   },
-
   mono: {
     fontFamily: "monospace",
   },
-
   statusBadge: {
     padding: "4px 8px",
     borderRadius: "999px",
@@ -120,7 +96,6 @@ const styles = {
     fontWeight: 700,
     display: "inline-block",
   },
-
   footerArea: {
     marginTop: 18,
     display: "flex",
@@ -129,32 +104,26 @@ const styles = {
     fontSize: 12,
     color: "#666",
   },
-
   signatureBlock: {
     display: "flex",
     gap: 24,
     marginTop: 18,
   },
-
   signatureColumn: {
     width: "180px",
     textAlign: "center",
     fontSize: 12,
   },
-
   signatureLine: {
     borderBottom: "1px dotted #000",
     height: "20px",
     marginBottom: 6,
   },
-
-  // small spacer reserved for consistent layout when table shorter
   reservedSpace: {
     height: "160px",
   },
 };
 
-/* ===================== Helpers ===================== */
 const paginateItems = (items, rowsPerPage) => {
   const pages = [];
   for (let i = 0; i < items.length; i += rowsPerPage) {
@@ -163,11 +132,59 @@ const paginateItems = (items, rowsPerPage) => {
   return pages.length ? pages : [[]];
 };
 
-/* ===================== Component ===================== */
+const toNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+function getQuantity(item = {}) {
+  return toNumber(item.quantity ?? item.stock_quantity ?? item.stockQuantity);
+}
+
+function getUnitPrice(item = {}) {
+  return toNumber(
+    item.retail_price ??
+      item.retailPrice ??
+      item.stock_price ??
+      item.stockPrice ??
+      item.unit_price ??
+      item.unitPrice
+  );
+}
+
+function getLowStockThreshold(item = {}) {
+  const explicitThreshold = Number(item.threshold_limit ?? item.thresholdLimit);
+  if (Number.isFinite(explicitThreshold) && explicitThreshold > 0) {
+    return explicitThreshold;
+  }
+
+  const capacity = Number(item.maximum_capacity ?? item.maximumCapacity);
+  if (Number.isFinite(capacity) && capacity > 0) {
+    return Math.max(1, Math.ceil(capacity * 0.2));
+  }
+
+  return 10;
+}
+
+function defaultGetStockStatus(item = {}) {
+  const quantity = getQuantity(item);
+  const threshold = getLowStockThreshold(item);
+
+  if (quantity <= 0) {
+    return { text: "Out of Stock", className: "bg-red-100 text-red-700" };
+  }
+
+  if (quantity <= threshold) {
+    return { text: "Low Stock", className: "bg-amber-100 text-amber-700" };
+  }
+
+  return { text: "In Stock", className: "bg-emerald-100 text-emerald-700" };
+}
+
 const InventoryRep = React.forwardRef(function InventoryRep(
   {
     items = [],
-    getStockStatus = () => ({ text: "N/A" }),
+    getStockStatus = defaultGetStockStatus,
     maxHeight = "calc(100vh - 300px)",
     onRowClick,
     title = "Inventory Status Report",
@@ -186,20 +203,18 @@ const InventoryRep = React.forwardRef(function InventoryRep(
 
           return (
             <div key={`inventory-page-${pageIndex}`} className="report-page" style={styles.page}>
-              {/* Header */}
               <div style={styles.header}>
-                <h1 style={styles.companySinhala}>මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමූපකාර සමිතිය</h1>
+                <h1 style={styles.companySinhala}>මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමුපකාර සමිතිය</h1>
                 <div style={styles.branch}>AllenValley Trade Center</div>
                 <div style={styles.reportTitle}>{title}</div>
-                {subTitle && <div style={{ fontSize: 12, color: "#555", marginTop: 6 }}>{subTitle}</div>}
+                {subTitle ? <div style={{ fontSize: 12, color: "#555", marginTop: 6 }}>{subTitle}</div> : null}
               </div>
 
-              {/* Meta */}
               <div style={styles.metaRow}>
                 <div>
                   <div><strong>Report type:</strong> Inventory status</div>
                   <div>
-                    <strong>Items:</strong> {startIndex + 1}–{endIndex} of {items.length}
+                    <strong>Items:</strong> {startIndex + 1}-{endIndex} of {items.length}
                   </div>
                 </div>
 
@@ -215,7 +230,6 @@ const InventoryRep = React.forwardRef(function InventoryRep(
 
               <hr style={styles.divider} />
 
-              {/* Table */}
               <div style={styles.tableWrapper}>
                 <table style={styles.table}>
                   <thead>
@@ -234,50 +248,42 @@ const InventoryRep = React.forwardRef(function InventoryRep(
                   <tbody>
                     {pageItems.map((item, rowIdx) => {
                       const globalIndex = startIndex + rowIdx;
+                      const quantity = getQuantity(item);
+                      const unitPrice = getUnitPrice(item);
+                      const totalValue = quantity * unitPrice;
                       const status = getStockStatus(item);
 
                       return (
                         <tr
-                          key={`${item.id ?? item.sku ?? "inventory-item"}-${globalIndex}`}
+                          key={`${item.id ?? item._id ?? item.sku ?? "inventory-item"}-${globalIndex}`}
                           onClick={() => onRowClick && onRowClick(item)}
                           style={{ cursor: onRowClick ? "pointer" : "default" }}
                         >
                           <td style={styles.td}>{globalIndex + 1}</td>
-
                           <td style={styles.td}>
-                            <div style={styles.itemName}>{item.item_name}</div>
+                            <div style={styles.itemName}>{item.item_name ?? item.name ?? "Unnamed item"}</div>
                           </td>
-
-                          <td style={{ ...styles.td, ...styles.mono }}>{item.sku}</td>
-
+                          <td style={{ ...styles.td, ...styles.mono }}>{item.sku ?? "N/A"}</td>
                           <td style={styles.td}>{item.category?.type ?? "N/A"}</td>
-
                           <td style={{ ...styles.td, ...styles.tdCenter }}>
-                            {item.quantity ?? 0} {item.uom?.symbol ?? "pcs"}
+                            {quantity} {item.uom?.symbol ?? "pcs"}
                           </td>
-
-                          <td style={{ ...styles.td, ...styles.tdRight }}>
-                            Rs. {(item.retail_price ?? 0).toLocaleString()}
-                          </td>
-
-                          <td style={{ ...styles.td, ...styles.tdRight }}>
-                            Rs. {((item.retail_price ?? 0) * (item.quantity ?? 0)).toLocaleString()}
-                          </td>
-
+                          <td style={{ ...styles.td, ...styles.tdRight }}>Rs. {unitPrice.toLocaleString()}</td>
+                          <td style={{ ...styles.td, ...styles.tdRight }}>Rs. {totalValue.toLocaleString()}</td>
                           <td style={{ ...styles.td, ...styles.tdCenter }}>
                             <span
                               style={{
                                 ...styles.statusBadge,
                                 backgroundColor:
-                                  status.text === "Low Stock"
+                                  status.text === "Out of Stock"
                                     ? "#fee2e2"
-                                    : status.text === "Medium"
+                                    : status.text === "Low Stock"
                                     ? "#fef3c7"
                                     : "#d1fae5",
                                 color:
-                                  status.text === "Low Stock"
+                                  status.text === "Out of Stock"
                                     ? "#b91c1c"
-                                    : status.text === "Medium"
+                                    : status.text === "Low Stock"
                                     ? "#92400e"
                                     : "#065f46",
                               }}
@@ -289,22 +295,19 @@ const InventoryRep = React.forwardRef(function InventoryRep(
                       );
                     })}
 
-                    {/* If page has fewer rows, reserve space so footer sits consistently */}
-                    {pageItems.length < ROWS_PER_PAGE && (
+                    {pageItems.length < ROWS_PER_PAGE ? (
                       <tr>
                         <td colSpan={8} style={{ padding: 0 }}>
                           <div style={styles.reservedSpace} />
                         </td>
                       </tr>
-                    )}
+                    ) : null}
                   </tbody>
                 </table>
               </div>
 
-              {/* Footer area */}
               <div style={styles.footerArea}>
-                <div>Inventory System · Confidential</div>
-
+                <div>Inventory System - Confidential</div>
                 <div>
                   <div style={styles.signatureBlock}>
                     <div style={styles.signatureColumn}>
@@ -332,12 +335,11 @@ const InventoryRep = React.forwardRef(function InventoryRep(
 
 InventoryRep.propTypes = {
   items: PropTypes.array.isRequired,
-  getStockStatus: PropTypes.func.isRequired,
+  getStockStatus: PropTypes.func,
   maxHeight: PropTypes.string,
   onRowClick: PropTypes.func,
   title: PropTypes.string,
   subTitle: PropTypes.string,
-  footerHeight: PropTypes.string,
 };
 
 export default InventoryRep;

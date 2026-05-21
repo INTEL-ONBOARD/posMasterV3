@@ -15,6 +15,239 @@ function toObjectId(id) {
     return ObjectId.isValid(id) ? new ObjectId(id) : id;
 }
 
+function normalizeReportDate(value, endOfDay = false) {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    if (endOfDay) {
+        date.setHours(23, 59, 59, 999);
+    } else {
+        date.setHours(0, 0, 0, 0);
+    }
+    return date;
+}
+
+function normalizeDurationLabel(value, paymentMethod = '') {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+        return String(paymentMethod).toLowerCase() === 'cash' ? 'Cash' : 'Cash';
+    }
+
+    if (/^cash$/i.test(raw)) return 'Cash';
+    if (/^b\.?o\.?g\.?$/i.test(raw)) return 'B.O.G';
+
+    const monthMatch = raw.match(/(\d+)\s*(?:months?|mos?)/i);
+    if (monthMatch) {
+        return `${String(Number(monthMatch[1])).padStart(2, '0')} Months`;
+    }
+
+    const numericMatch = raw.match(/^(\d+)$/);
+    if (numericMatch) {
+        return `${String(Number(numericMatch[1])).padStart(2, '0')} Months`;
+    }
+
+    return raw.replace(/\s+/g, ' ');
+}
+
+function normalizeCustomerType(transaction = {}, memberRecord = null) {
+    const explicitType =
+        transaction.customer_type ??
+        transaction.customerType ??
+        transaction.type ??
+        transaction.member_type ??
+        transaction.memberType ??
+        memberRecord?.member_type ??
+        memberRecord?.memberType ??
+        '';
+
+    const text = String(explicitType || '').trim().toLowerCase();
+    if (text.includes('staff') || text.includes('employee') || text.includes('worker')) return 'Staff';
+    if (text.includes('guest') || text.includes('walk')) return 'Guest';
+    if (text.includes('member') || ['regular', 'vip', 'wholesale', 'tea_coop'].includes(text)) return 'Member';
+
+    if (transaction.is_staff || transaction.isStaff || transaction.staff_id || transaction.staffId) {
+        return 'Staff';
+    }
+
+    if (transaction.member_id || transaction.memberId || transaction.member_no || transaction.memberNo || memberRecord) {
+        return 'Member';
+    }
+
+    return 'Staff';
+}
+
+function normalizeMemberRecord(member = {}) {
+    const id = member.id ?? member._id ?? member.member_id ?? member.memberId ?? member.member_no ?? member.memberNo ?? null;
+
+    return {
+        ...member,
+        id,
+        _id: member._id ?? id,
+        member_id: member.member_id ?? member.memberId ?? id,
+        memberId: member.memberId ?? member.member_id ?? id,
+        member_no: member.member_no ?? member.memberNo ?? '',
+        memberNo: member.memberNo ?? member.member_no ?? '',
+        full_name: member.full_name ?? member.fullName ?? member.member_name ?? member.memberName ?? member.name ?? '',
+        fullName: member.fullName ?? member.full_name ?? member.member_name ?? member.memberName ?? member.name ?? '',
+        member_type: member.member_type ?? member.memberType ?? member.customer_type ?? member.customerType ?? '',
+        memberType: member.memberType ?? member.member_type ?? member.customer_type ?? member.customerType ?? '',
+        is_staff: Boolean(
+            member.is_staff ??
+            member.isStaff ??
+            /staff|employee|worker/i.test(String(member.member_type ?? member.memberType ?? member.customer_type ?? member.customerType ?? ''))
+        )
+    };
+}
+
+function buildMemberLookup(members = []) {
+    const lookup = new Map();
+    (Array.isArray(members) ? members : []).forEach((member) => {
+        const normalized = normalizeMemberRecord(member);
+        [
+            normalized.id,
+            normalized._id,
+            normalized.member_id,
+            normalized.memberId,
+            normalized.member_no,
+            normalized.memberNo
+        ]
+            .filter((value) => value !== undefined && value !== null && value !== '')
+            .forEach((key) => lookup.set(String(key), normalized));
+    });
+
+    return lookup;
+}
+
+function normalizeDailyTransactionRow(transaction = {}, memberLookup = new Map()) {
+    const memberKeyCandidates = [
+        transaction.member_id,
+        transaction.memberId,
+        transaction.member_no,
+        transaction.memberNo
+    ].filter((value) => value !== undefined && value !== null && value !== '');
+
+    const memberRecord = memberKeyCandidates
+        .map((value) => memberLookup.get(String(value)))
+        .find(Boolean) || null;
+
+    const duration = normalizeDurationLabel(
+        transaction.credit_duration ??
+        transaction.creditDuration ??
+        transaction.duration ??
+        transaction.duration_label ??
+        transaction.durationLabel ??
+        '',
+        transaction.payment_method ?? transaction.paymentMethod ?? ''
+    );
+
+    const customerType = normalizeCustomerType({
+        ...transaction,
+        member_type: transaction.member_type ?? transaction.memberType ?? memberRecord?.member_type ?? memberRecord?.memberType,
+        is_staff: transaction.is_staff ?? transaction.isStaff ?? memberRecord?.is_staff ?? memberRecord?.isStaff
+    }, memberRecord);
+
+    const invoiceNo =
+        transaction.invoice_no ??
+        transaction.invoiceNo ??
+        transaction.bill_no ??
+        transaction.billNo ??
+        '';
+
+    const memberNo =
+        transaction.member_no ??
+        transaction.memberNo ??
+        memberRecord?.member_no ??
+        memberRecord?.memberNo ??
+        '';
+
+    const name =
+        transaction.member_name ??
+        transaction.memberName ??
+        memberRecord?.full_name ??
+        memberRecord?.fullName ??
+        memberRecord?.name ??
+        'Guest';
+
+    const price = Number(transaction.total_amount ?? transaction.totalAmount ?? transaction.amount ?? 0) || 0;
+    const createdAt = transaction.effectiveCreatedAt ?? transaction.createdAt ?? transaction.created_at ?? null;
+
+    return {
+        ...transaction,
+        invoice_no: invoiceNo,
+        invoiceNo,
+        member_no: memberNo,
+        memberNo,
+        member_name: name,
+        memberName: name,
+        credit_duration: duration,
+        creditDuration: duration,
+        duration,
+        customer_type: customerType,
+        customerType,
+        transaction_type: customerType,
+        price,
+        total_amount: price,
+        totalAmount: price,
+        created_at: createdAt,
+        createdAt,
+        payment_method: transaction.payment_method ?? transaction.paymentMethod ?? 'cash',
+        paymentMethod: transaction.paymentMethod ?? transaction.payment_method ?? 'cash'
+    };
+}
+
+async function buildReportMemberLookup(db, auth, rows = []) {
+    const memberValues = new Set();
+    const memberNos = new Set();
+
+    rows.forEach((row) => {
+        [
+            row.memberId,
+            row.member_id,
+            row.memberNo,
+            row.member_no
+        ].forEach((value) => {
+            if (value === undefined || value === null || value === '') return;
+            const key = String(value);
+            memberValues.add(key);
+            memberNos.add(key);
+        });
+    });
+
+    const orClauses = [];
+    const objectIds = [...memberValues].filter((value) => ObjectId.isValid(value)).map((value) => new ObjectId(value));
+    const stringValues = [...memberValues].filter((value) => !ObjectId.isValid(value));
+
+    if (objectIds.length) {
+        orClauses.push({ _id: { $in: objectIds } });
+    }
+    if (stringValues.length) {
+        orClauses.push(
+            { id: { $in: stringValues } },
+            { member_id: { $in: stringValues } },
+            { memberId: { $in: stringValues } }
+        );
+    }
+    if (memberNos.size) {
+        const members = [...memberNos];
+        orClauses.push(
+            { member_no: { $in: members } },
+            { memberNo: { $in: members } }
+        );
+    }
+
+    if (orClauses.length === 0) {
+        return new Map();
+    }
+
+    const memberRows = await db.collection('members').find({
+        orgId: auth.orgId,
+        deletedAt: null,
+        $or: orClauses
+    }).toArray();
+
+    return buildMemberLookup(memberRows);
+}
+
 function saleLineKey(line = {}) {
     return String(
         line.sale_item_id
@@ -283,6 +516,118 @@ async function generateInvoiceNo(auth, type = 'SALE', branchId = null) {
     return {
         invoice_no: invoiceNo,
         invoiceNo
+    };
+}
+
+async function getDailyTransactionReport(auth, query = {}) {
+    const db = getDb();
+    const branchId = query.branchId || query.branch_id || auth.branchId || null;
+    const startDate = normalizeReportDate(query.startDate || query.start_date || query.from || null, false);
+    const endDate = normalizeReportDate(query.endDate || query.end_date || query.to || null, true);
+
+    console.log("[DTR][salesService] incoming query", {
+        orgId: auth.orgId,
+        authBranchId: auth.branchId,
+        query,
+        branchId,
+        startDateRaw: query.startDate || query.start_date || query.from || null,
+        endDateRaw: query.endDate || query.end_date || query.to || null
+    });
+    console.log("[DTR][salesService] normalized date range", {
+        startDate: startDate ? startDate.toISOString() : null,
+        endDate: endDate ? endDate.toISOString() : null
+    });
+
+    const pipeline = [
+        {
+            $addFields: {
+                effectiveCreatedAt: {
+                    $ifNull: [
+                        '$createdAt',
+                        {
+                            $cond: [
+                                { $ne: ['$created_at', null] },
+                                { $toDate: '$created_at' },
+                                null
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            $match: {
+                orgId: auth.orgId,
+                deletedAt: null,
+                $or: [
+                    { is_held: { $ne: true } },
+                    { isHeld: { $ne: true } },
+                    { status: { $ne: 'held' } }
+                ]
+            }
+        }
+    ];
+
+    if (branchId) {
+        pipeline.push({
+            $match: {
+                $or: [
+                    { branchId },
+                    { branch_id: branchId }
+                ]
+            }
+        });
+    }
+
+    if (startDate || endDate) {
+        const dateRange = {};
+        if (startDate) dateRange.$gte = startDate;
+        if (endDate) dateRange.$lte = endDate;
+        pipeline.push({ $match: { effectiveCreatedAt: dateRange } });
+    }
+
+    console.log("[DTR][salesService] aggregate pipeline", JSON.stringify(pipeline, null, 2));
+
+    const rows = await db.collection('sales').aggregate(pipeline).toArray();
+    console.log("[DTR][salesService] raw aggregate rows", rows.length);
+    console.log(
+        "[DTR][salesService] raw sample",
+        rows.slice(0, 5).map((row) => ({
+            id: row._id,
+            invoiceNo: row.invoiceNo || row.invoice_no,
+            createdAt: row.createdAt,
+            created_at: row.created_at,
+            branchId: row.branchId,
+            branch_id: row.branch_id,
+            totalAmount: row.totalAmount,
+            total_amount: row.total_amount,
+            payment_method: row.payment_method,
+            memberId: row.memberId,
+            member_id: row.member_id,
+            memberNo: row.memberNo,
+            member_no: row.member_no,
+            status: row.status
+        }))
+    );
+
+    const memberLookup = await buildReportMemberLookup(db, auth, rows);
+    const finalRows = rows.map((row) => normalizeDailyTransactionRow(row, memberLookup));
+    console.log(
+        "[DTR][salesService] final rows",
+        finalRows.map((row) => ({
+            invoiceNo: row.invoiceNo || row.invoice_no,
+            duration: row.creditDuration || row.credit_duration || row.duration,
+            customerType: row.customerType || row.customer_type,
+            totalAmount: row.totalAmount || row.total_amount,
+            memberNo: row.memberNo || row.member_no,
+            memberName: row.memberName || row.member_name
+        }))
+    );
+
+    return {
+        success: true,
+        status: 'success',
+        data: finalRows
     };
 }
 
@@ -935,6 +1280,7 @@ async function returnSaleItems(auth, saleId, body = {}) {
 
 module.exports = {
     generateInvoiceNo,
+    getDailyTransactionReport,
     createSale,
     completeHeldSale,
     cancelSale,

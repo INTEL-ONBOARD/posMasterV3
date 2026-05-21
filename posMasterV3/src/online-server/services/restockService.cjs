@@ -1,3 +1,4 @@
+const { ObjectId } = require('mongodb');
 const { getDb, getMongoClient, supportsTransactions } = require('../db/mongo.cjs');
 const { publishDomainEvent } = require('./domainEvents.cjs');
 const { normalizeUomSymbol, getEffectiveSellingPrice } = require('../utils/uomPricing.cjs');
@@ -25,10 +26,58 @@ function assertFiniteNumber(value, label, { positive = false } = {}) {
     }
 }
 
+function normalizeSupplierName(value) {
+    const text = String(value ?? '').trim();
+    return text || null;
+}
+
+async function resolveSupplierSnapshot(db, auth, restockInput = {}) {
+    const supplierId = restockInput.supplier_id || restockInput.supplierId || restockInput.sup_id || null;
+    const supplierNameInput =
+        restockInput.supplier_name ||
+        restockInput.supplierName ||
+        restockInput.supplier?.basic_info?.supplier_name ||
+        restockInput.supplier?.supplier_name ||
+        restockInput.supplier?.name ||
+        null;
+
+    let supplierName = normalizeSupplierName(supplierNameInput);
+
+    if (!supplierName && supplierId) {
+        const supplierKey = String(supplierId).trim();
+        const supplierQuery = {
+            orgId: auth.orgId,
+            deletedAt: null,
+            $or: [
+                { id: supplierKey },
+                { supplier_id: supplierKey },
+                { supplierId: supplierKey }
+            ]
+        };
+
+        if (ObjectId.isValid(supplierKey)) {
+            supplierQuery.$or.unshift({ _id: new ObjectId(supplierKey) });
+        }
+
+        const supplierRecord = await db.collection('suppliers').findOne(supplierQuery);
+        supplierName = normalizeSupplierName(
+            supplierRecord?.basic_info?.supplier_name ||
+            supplierRecord?.supplier_name ||
+            supplierRecord?.name
+        );
+    }
+
+    return {
+        supplierId: supplierId || null,
+        supplierName
+    };
+}
+
 async function createRestock(auth, restockInput = {}) {
     const db = getDb();
     const now = new Date();
     const branchId = auth.branchId || restockInput.branchId || restockInput.branch_id || null;
+    const supplierSnapshot = await resolveSupplierSnapshot(db, auth, restockInput);
 
     if (!branchId) {
         const err = new Error('Branch is required to create a restock transaction');
@@ -74,7 +123,11 @@ async function createRestock(auth, restockInput = {}) {
         sku: item.sku || item.SKU || '',
         batchCode: item.batch_code || item.batchCode || '',
         quantity: Number(item.qty || item.quantity || 0),
-        description: item.description || item.reason || ''
+        description: item.description || item.reason || '',
+        stockPrice: Number(item.stock_price || item.stockPrice || item.unit_price || item.unitPrice || 0),
+        stock_price: Number(item.stock_price || item.stockPrice || item.unit_price || item.unitPrice || 0),
+        retailPrice: Number(item.retail_price || item.retailPrice || item.price || item.unit_price || item.unitPrice || 0),
+        retail_price: Number(item.retail_price || item.retailPrice || item.price || item.unit_price || item.unitPrice || 0)
     }));
 
     for (const item of returnItems) {
@@ -91,7 +144,11 @@ async function createRestock(auth, restockInput = {}) {
         orgId: auth.orgId,
         branchId,
         branch_id: branchId,
-        supplierId: restockInput.sup_id || restockInput.supplierId || restockInput.supplier_id || null,
+        supplierId: supplierSnapshot.supplierId,
+        supplier_id: supplierSnapshot.supplierId,
+        sup_id: supplierSnapshot.supplierId,
+        supplier_name: supplierSnapshot.supplierName,
+        supplierName: supplierSnapshot.supplierName,
         preparedBy: restockInput.prep_agent_id || restockInput.preparedBy || restockInput.prepared_by || null,
         authorizedBy: restockInput.auth_agent_id || restockInput.authorizedBy || restockInput.authorized_by || null,
         invoiceNo: restockInput.invoice_no || restockInput.invoiceNo || null,

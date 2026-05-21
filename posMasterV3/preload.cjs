@@ -77,6 +77,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     // ONLINE-ONLY API
     // ============================================
 
+    getPettyCashReport: (query = {}) =>
+        ipcRenderer.invoke("online:reports:get-petty-cash", query),
+    getTransactionB5Report: (query = {}) =>
+        ipcRenderer.invoke("online:reports:get-transaction-b5", query),
+
     online: {
         getConfig: () => ipcRenderer.invoke("online:get-config"),
         health: () => ipcRenderer.invoke("online:health"),
@@ -97,6 +102,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
             ipcRenderer.invoke("online:sales:get-summary", { startDate, endDate }),
         getSalesDaily: (days) =>
             ipcRenderer.invoke("online:sales:get-daily", { days }),
+        getDailyTransactionReport: (query = {}) =>
+            ipcRenderer.invoke("online:sales:get-daily-report", query),
+        getPettyCashReport: (query = {}) =>
+            ipcRenderer.invoke("online:reports:get-petty-cash", query),
+        getTransactionB5Report: (query = {}) =>
+            ipcRenderer.invoke("online:reports:get-transaction-b5", query),
         completeHeldSale: (id, data) =>
             ipcRenderer.invoke("online:sales:complete-held", { id, ...data }),
         cancelSale: (id, data = {}) =>
@@ -366,6 +377,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
         getSummary: (startDate, endDate) =>
             ipcRenderer.invoke("online:sales:get-summary", { startDate, endDate }),
         getDaily: (days) => ipcRenderer.invoke("online:sales:get-daily", { days }),
+        getDailyTransactionReport: (query = {}) =>
+            ipcRenderer.invoke("online:sales:get-daily-report", query),
         generateInvoiceNo: (type = "SALE", branchId = null) =>
             ipcRenderer.invoke("online:sales:invoice-no", { type, branchId, branch_id: branchId })
     },

@@ -68,6 +68,11 @@ class SalesService {
         return ResponseDTO(response);
     }
 
+    async getDailyTransactionReport(query = {}) {
+        const response = await salesApi.getDailyTransactionReport(query);
+        return ResponseDTO(response);
+    }
+
 }
 
 export default new SalesService();
