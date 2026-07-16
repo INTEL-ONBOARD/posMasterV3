@@ -31,15 +31,15 @@ const GUEST_USER = {
   is_guest: true
 };
 
-// Thermal roll print settings. 80mm printers usually expose 576 printable dots.
-// The rendered receipt is converted to a monochrome ESC/POS raster image so
-// Sinhala text and the current receipt layout print without relying on fonts.
+// Thermal roll print settings. The rendered receipt is converted to a
+// monochrome ESC/POS raster image so Sinhala text and the current receipt
+// layout print without relying on fonts.
 //
-// THERMAL_ROLL_WIDTH_MM is the PAPER width; the printhead only images
-// THERMAL_PRINT_WIDTH_DOTS across (~72mm), leaving ~4mm dead on each edge.
-// Receipt content must be sized to the printable width, never the paper width,
-// or the right edge is physically clipped.
-const THERMAL_ROLL_WIDTH_MM = 80;
+// Both print paths are sized from THERMAL_PRINT_WIDTH_DOTS -- the printhead's
+// dot count -- and never from the paper width. An "80mm" roll only images ~72mm
+// (576 dots @ 203dpi), and the driver anchors output at the head's first dot,
+// so sizing to the paper runs content off the right edge with no paper to
+// catch it. Everything below derives from the head, not the roll.
 const THERMAL_PAGE_HEIGHT_MM = 297;
 const THERMAL_PRINT_WIDTH_DOTS = 576;
 const THERMAL_PRINT_DPI = 203;
@@ -1082,7 +1082,12 @@ const printReceiptToThermalPrinter = async (canvas, options = {}) => {
 };
 
 const buildReceiptPdfArrayBuffer = async (canvas) => {
-    const rollWidthPt = THERMAL_ROLL_WIDTH_MM * MM_TO_PT;
+    // The page IS the printhead. The Windows driver anchors the PDF page origin
+    // at the printhead's first dot rather than on the physical paper, so a page
+    // wider than the head (or any x offset within it) pushes content off the
+    // right edge with nothing to catch it. Emitting a page exactly one
+    // printhead wide, drawn edge to edge, maps page x=0..72mm onto dots 0..575.
+    const rollWidthPt = THERMAL_PRINT_WIDTH_MM * MM_TO_PT;
     const rollPageHeightPt = THERMAL_PAGE_HEIGHT_MM * MM_TO_PT;
 
     const doc = new jsPDF({
@@ -1093,11 +1098,9 @@ const buildReceiptPdfArrayBuffer = async (canvas) => {
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    // Size to the printhead's reach, not the paper edge, and centre it on the
-    // roll so the image lands on the dots the printer can actually fire.
-    const printableWidth = THERMAL_PRINT_WIDTH_MM * MM_TO_PT;
+    const printableWidth = pageWidth;
     const printableHeight = pageHeight;
-    const offsetX = (pageWidth - printableWidth) / 2;
+    const offsetX = 0;
 
     // Canvas px -> PDF pt.
     const pxToPt = 0.75 / RECEIPT_CANVAS_SCALE;
