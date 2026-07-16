@@ -143,11 +143,11 @@ const BillContent = React.forwardRef(({ billData = {} }, ref) => {
 
       <table className="w-full table-fixed border-collapse text-[21px] leading-[1.35]">
         <thead>
-          <tr>
+          <tr className="text-[18px]">
             <th className="py-2 pr-2 font-bold text-left border-b border-gray-900">ද්‍රව්‍ය</th>
-            <th className="py-2 px-2 font-bold w-[108px] text-right border-b border-gray-900">ඒකක මිල</th>
-            <th className="py-2 px-2 font-bold w-[82px] text-right border-b border-gray-900">ප්‍රමාණය</th>
-            <th className="py-2 pl-2 font-bold w-[108px] text-right border-b border-gray-900">මුළු මිල</th>
+            <th className="py-2 px-2 font-bold w-[116px] text-right border-b border-gray-900">ඒකක මිල</th>
+            <th className="py-2 px-2 font-bold w-[100px] text-right border-b border-gray-900">ප්‍රමාණය</th>
+            <th className="py-2 pl-2 font-bold w-[116px] text-right border-b border-gray-900">මුළු මිල</th>
           </tr>
         </thead>
         <tbody>
@@ -156,9 +156,9 @@ const BillContent = React.forwardRef(({ billData = {} }, ref) => {
               <td className="py-3 pr-2 text-left align-top">
                 <div className="break-words">{item.item_name ?? ""}</div>
               </td>
-              <td className="py-3 px-2 w-[108px] text-right align-top tabular-nums">{fmt(item.retail_price)}</td>
-              <td className="py-3 px-2 w-[82px] text-right align-top tabular-nums">{item.customer_quantity ?? ""}</td>
-              <td className="py-3 pl-2 w-[108px] text-right align-top tabular-nums">{fmt(item.total_price)}</td>
+              <td className="py-3 px-2 w-[116px] text-right align-top tabular-nums">{fmt(item.retail_price)}</td>
+              <td className="py-3 px-2 w-[100px] text-right align-top tabular-nums">{item.customer_quantity ?? ""}</td>
+              <td className="py-3 pl-2 w-[116px] text-right align-top tabular-nums">{fmt(item.total_price)}</td>
             </tr>
           ))}
         </tbody>

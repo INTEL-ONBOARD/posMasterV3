@@ -34,10 +34,16 @@ const GUEST_USER = {
 // Thermal roll print settings. 80mm printers usually expose 576 printable dots.
 // The rendered receipt is converted to a monochrome ESC/POS raster image so
 // Sinhala text and the current receipt layout print without relying on fonts.
+//
+// THERMAL_ROLL_WIDTH_MM is the PAPER width; the printhead only images
+// THERMAL_PRINT_WIDTH_DOTS across (~72mm), leaving ~4mm dead on each edge.
+// Receipt content must be sized to the printable width, never the paper width,
+// or the right edge is physically clipped.
 const THERMAL_ROLL_WIDTH_MM = 80;
 const THERMAL_PAGE_HEIGHT_MM = 297;
-const THERMAL_SIDE_MARGIN_PT = 4;
 const THERMAL_PRINT_WIDTH_DOTS = 576;
+const THERMAL_PRINT_DPI = 203;
+const THERMAL_PRINT_WIDTH_MM = (THERMAL_PRINT_WIDTH_DOTS / THERMAL_PRINT_DPI) * 25.4;
 const THERMAL_RASTER_CHUNK_HEIGHT = 256;
 const THERMAL_IMAGE_THRESHOLD = 190;
 const THERMAL_TRAILING_FEED_LINES = 5;
@@ -1087,8 +1093,11 @@ const buildReceiptPdfArrayBuffer = async (canvas) => {
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const printableWidth = pageWidth - THERMAL_SIDE_MARGIN_PT * 2;
+    // Size to the printhead's reach, not the paper edge, and centre it on the
+    // roll so the image lands on the dots the printer can actually fire.
+    const printableWidth = THERMAL_PRINT_WIDTH_MM * MM_TO_PT;
     const printableHeight = pageHeight;
+    const offsetX = (pageWidth - printableWidth) / 2;
 
     // Canvas px -> PDF pt.
     const pxToPt = 0.75 / RECEIPT_CANVAS_SCALE;
@@ -1131,7 +1140,7 @@ const buildReceiptPdfArrayBuffer = async (canvas) => {
       doc.addImage(
         sliceData,
         "PNG",
-        THERMAL_SIDE_MARGIN_PT,
+        offsetX,
         0,
         printableWidth,
         sliceHeightPt
