@@ -190,26 +190,25 @@ export function useReceiptPrinting({
     window.electronAPI.sendPrintSilent(arrayBuffer);
   };
 
-  // Every sale prints two copies back-to-back: the signed office copy first,
-  // then the customer copy. Each ESC/POS payload ends with a cut, so the two
-  // separate cleanly. The routing is resolved once so network auto-discovery
-  // does not re-run for the second copy.
+  // Every sale prints two copies: the signed office copy, then the customer
+  // copy. Each ESC/POS payload ends with a cut, so they separate cleanly.
   const RECEIPT_COPIES = ["office", "customer"];
 
-  const printReceipt = async (checkoutData) => {
-    const printerConfig = await getReceiptPrinterConfig();
-    const printerMode = printerConfig.mode;
-
-    let route; // "system" | "network" | "auto-network"
-    if (printerMode === "system") route = "system";
-    else if (printerMode === "network") route = "network";
-    else if (!printerConfig.networkHost && !printerConfig.networkAutoDiscovery) route = "system";
-    else route = "auto-network";
-
+  // Print already-captured receipt images. Runs in the background (not awaited
+  // by the sale) so checkout never waits on printer discovery/spooling. The
+  // route is resolved once so network auto-discovery does not re-run per copy.
+  const printCapturedCopies = async (canvases) => {
     try {
-      for (const variant of RECEIPT_COPIES) {
-        const canvas = await captureReceiptCanvas(checkoutData, variant);
+      const printerConfig = await getReceiptPrinterConfig();
+      const printerMode = printerConfig.mode;
 
+      let route; // "system" | "network" | "auto-network"
+      if (printerMode === "system") route = "system";
+      else if (printerMode === "network") route = "network";
+      else if (!printerConfig.networkHost && !printerConfig.networkAutoDiscovery) route = "system";
+      else route = "auto-network";
+
+      for (const canvas of canvases) {
         if (route === "system") {
           await printReceiptViaSystemPrinter(canvas);
         } else if (route === "network") {
@@ -227,10 +226,23 @@ export function useReceiptPrinting({
           }
         }
       }
-    } finally {
-      // Leave the off-screen node on the office copy for the preview default.
-      setReceiptVariant("office");
+    } catch (err) {
+      console.error("[SalesView] Background receipt printing failed:", err);
     }
+  };
+
+  const printReceipt = async (checkoutData) => {
+    // Capture both copies now, while the cart is still on screen (only the image
+    // capture needs the live cart). Then dispatch the actual printing in the
+    // background so the sale completes instantly instead of waiting on the
+    // printer (network discovery, spooling, and fallbacks).
+    const canvases = [];
+    for (const variant of RECEIPT_COPIES) {
+      canvases.push(await captureReceiptCanvas(checkoutData, variant));
+    }
+    setReceiptVariant("office");
+
+    void printCapturedCopies(canvases);
   };
 
   const stock_items = selectedItems.map((item) => ({
