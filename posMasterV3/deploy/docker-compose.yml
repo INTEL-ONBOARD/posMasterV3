@@ -9,11 +9,15 @@ services:
     image: mongo:7
     container_name: posmaster-mongo
     restart: always
+    # Single-node replica set (rs0) so multi-document transactions work, which
+    # the sales/inventory services require. --keyFile enables auth for the set.
+    command: ["--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile", "--bind_ip_all"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
     volumes:
       - posmaster_mongo_data:/data/db
+      - ./mongo-keyfile:/etc/mongo-keyfile:ro
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 30s
