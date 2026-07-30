@@ -4,7 +4,6 @@ const path = require("path");
 const { pathToFileURL } = require("url");
 const net = require("net");
 const os = require("os");
-const axios = require("axios");
 const fsSync = require("fs");
 const fs = fsSync.promises;
 const printer = require("pdf-to-printer");
@@ -19,8 +18,35 @@ function getBackend() {
     return _backendModule;
 }
 
+// Same lazy-load pattern as getBackend() above. Used by performLogoutAndQuit
+// to invalidate the current session through the real online-server, via the
+// same OnlineModeService singleton every other IPC handler already shares
+// (it tracks the current session token internally, so no user data needs to
+// be passed in).
+let _onlineModeServiceModule = null;
+function getOnlineModeServiceModule() {
+    if (!_onlineModeServiceModule) {
+        _onlineModeServiceModule = require("./src/backend/services/OnlineModeService.cjs");
+    }
+    return _onlineModeServiceModule;
+}
+
 // Load the version from package.json
 const appVersion = require(path.join(__dirname, "package.json")).version;
+
+// Errors that reach here would otherwise vanish entirely on a packaged
+// Windows build (no attached console). Persisted to the same log file IPC
+// handler errors go to (src/backend/utils/helpers.cjs) so support can pull
+// one file instead of asking "does it still crash?".
+const { createLogger } = require("./src/online-server/utils/logger.cjs");
+const mainProcessLogger = createLogger("Electron");
+process.on("uncaughtException", (error) => {
+  mainProcessLogger.error(error.message, { stack: error.stack });
+});
+process.on("unhandledRejection", (reason) => {
+  const error = reason instanceof Error ? reason : new Error(String(reason));
+  mainProcessLogger.error(error.message, { stack: error.stack });
+});
 
 // Auto-updater configuration - user must trigger download manually
 autoUpdater.autoDownload = false;
@@ -31,6 +57,23 @@ let mainWindow;
 let storedUser = null;
 let isQuitting = false;
 let bundledOnlineBackendStarted = false;
+
+// Without this, running the app twice (e.g. a user double-clicking the icon
+// while it's already open) starts two processes against the same MongoDB,
+// which can race on session/inventory writes. Must run before any other
+// startup work so the second process exits as early as possible.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+  process.exit(0);
+} else {
+  app.on("second-instance", () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
 
 // Default folder path
 const defaultFolderPath = "C:\\POS Master";
@@ -481,10 +524,12 @@ function readPackagedOnlineRuntimeConfig() {
 }
 
 function applyBundledOnlineDefaults() {
+  process.env.NODE_ENV = process.env.NODE_ENV || "production";
   process.env.ONLINE_API_HOST = process.env.ONLINE_API_HOST || "127.0.0.1";
   process.env.ONLINE_API_PORT = process.env.ONLINE_API_PORT || "4100";
   process.env.ONLINE_API_CORS_ORIGIN =
-    process.env.ONLINE_API_CORS_ORIGIN || "*";
+    process.env.ONLINE_API_CORS_ORIGIN ||
+    "file://,http://localhost:5173,http://localhost:5174";
 
   const clientHost = process.env.POS_ONLINE_CLIENT_HOST || "127.0.0.1";
   const port = process.env.ONLINE_API_PORT;
@@ -498,6 +543,43 @@ function prepareBundledOnlineEnvironment() {
   if (!app.isPackaged) return;
   readPackagedOnlineRuntimeConfig();
   applyBundledOnlineDefaults();
+}
+
+function getStartupErrorLogPath() {
+  return path.join(app.getPath("userData"), "startup-error.log");
+}
+
+// Bundled server startup failures used to be logged with console.error only,
+// which is invisible on a packaged Windows build (no attached console). This
+// writes the failure to a file the renderer can read and display, and support
+// can ask users to attach.
+function recordStartupError(error) {
+  try {
+    const timestamp = new Date().toISOString();
+    const detail = error && error.stack ? error.stack : String(error);
+    fsSync.writeFileSync(getStartupErrorLogPath(), `[${timestamp}] ${detail}\n`, "utf8");
+  } catch (writeError) {
+    console.error("[Electron] Failed to write startup-error.log:", writeError.message);
+  }
+}
+
+function clearStartupError() {
+  try {
+    const logPath = getStartupErrorLogPath();
+    if (fsSync.existsSync(logPath)) fsSync.unlinkSync(logPath);
+  } catch {
+    // Non-fatal: stale error file just persists until next successful start.
+  }
+}
+
+function readStartupError() {
+  try {
+    const logPath = getStartupErrorLogPath();
+    if (!fsSync.existsSync(logPath)) return null;
+    return fsSync.readFileSync(logPath, "utf8").slice(-4000);
+  } catch {
+    return null;
+  }
 }
 
 function sleep(ms) {
@@ -825,82 +907,31 @@ const performLogoutAndQuit = async () => {
   isQuitting = true;
   console.log("performLogoutAndQuit: starting logout sequence");
 
-  if (!storedUser) {
-    try {
-      const userFromRenderer = await new Promise((resolve) => {
-        const timeout = setTimeout(() => {
-          ipcMain.removeAllListeners("reply-user-data");
-          resolve(null);
-        }, 2000);
-
-        ipcMain.once("reply-user-data", (event, user) => {
-          clearTimeout(timeout);
-          resolve(user);
-        });
-
-        try {
-          if (mainWindow && mainWindow.webContents) {
-            mainWindow.webContents.send("request-user-data");
-          }
-        } catch (e) {
-          console.error("Error sending request-user-data to renderer", e);
-        }
+  // Invalidates the session through the real online-server (the
+  // OnlineModeService singleton already tracks the current session's token
+  // internally, same as every other IPC handler) instead of the previous
+  // hardcoded call to a decommissioned pre-migration backend
+  // (posmasterv3-backend.onrender.com), which never touched the actual
+  // MongoDB sessions collection this app now validates against.
+  try {
+    const { getOnlineModeService } = getOnlineModeServiceModule();
+    const result = await getOnlineModeService().logout();
+    console.log("Logout successful", result);
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send("logout-response", {
+        ok: true,
+        data: result,
       });
-
-      if (userFromRenderer) {
-        storedUser = userFromRenderer;
-        console.log(
-          "performLogoutAndQuit: received user from renderer",
-          storedUser
-        );
-      } else {
-        console.warn("performLogoutAndQuit: no user reply from renderer");
-      }
-    } catch (e) {
-      console.error("Error requesting user from renderer", e);
     }
-  }
-
-  if (
-    storedUser &&
-    (storedUser.email || storedUser.username) &&
-    (storedUser._id || storedUser.token)
-  ) {
-    try {
-      const resp = await axios.post(
-        "https://posmasterv3-backend.onrender.com/api/users/logout",
-        {
-          email: storedUser.email,
-          user_id: storedUser._id,
-          username: storedUser.username,
-          token: storedUser.token,
-        },
-        { timeout: 5000 }
-      );
-      console.log("Logout successful", resp && resp.data ? resp.data : resp);
-      if (mainWindow && mainWindow.webContents) {
-        mainWindow.webContents.send("logout-response", {
-          ok: true,
-          data: resp.data,
-        });
-      }
-    } catch (error) {
-      const errMsg =
-        error && error.response && error.response.data
-          ? error.response.data
-          : error && error.message
-          ? error.message
-          : String(error);
-      console.error("Logout failed:", errMsg);
-      if (mainWindow && mainWindow.webContents) {
-        mainWindow.webContents.send("logout-response", {
-          ok: false,
-          error: errMsg,
-        });
-      }
+  } catch (error) {
+    const errMsg = error && error.message ? error.message : String(error);
+    console.error("Logout failed:", errMsg);
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send("logout-response", {
+        ok: false,
+        error: errMsg,
+      });
     }
-  } else {
-    console.warn("No user data to logout");
   }
 
   try {
@@ -914,23 +945,29 @@ const performLogoutAndQuit = async () => {
   }
 };
 
-async function createWindow(showImmediately = false) {
-  const iconPath = path.join(__dirname, "src", "frontend", "assets", "icon.ico");
-
-  mainWindow = new BrowserWindow({
+// Shared by createWindow() (macOS dock reactivate) and the app.whenReady()
+// cold-boot flow below, which needs its own splash-screen choreography and so
+// can't just call createWindow() directly — but both must agree on window
+// chrome/webPreferences, which used to drift as two separate literals.
+function getMainWindowOptions(overrides = {}) {
+  return {
     width: 1024,
     height: 768,
     autoHideMenuBar: true,
     titleBarOverlay: true,
-    icon: iconPath,
-    show: showImmediately, // Show immediately if requested
-    backgroundColor: "#ffffff", // White background while loading
+    icon: path.join(__dirname, "src", "frontend", "assets", "icon.ico"),
+    backgroundColor: "#ffffff",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       nodeIntegration: false,
       contextIsolation: true,
     },
-  });
+    ...overrides,
+  };
+}
+
+async function createWindow(showImmediately = false) {
+  mainWindow = new BrowserWindow(getMainWindowOptions({ show: showImmediately }));
 
   if (showImmediately) {
     mainWindow.maximize();
@@ -1125,6 +1162,12 @@ ipcMain.handle("backend:status", async () => {
   return getBackend().getBackendStatus();
 });
 
+// Lets the renderer show the actual bundled-server startup failure instead of
+// a generic "check connection" message — see recordStartupError() above.
+ipcMain.handle("startup:get-error", async () => {
+  return { status: "success", data: readStartupError() };
+});
+
 // IPC handler for app restart (used when app_settings change)
 ipcMain.handle("app:restart", async () => {
   console.log("[Electron] App restart requested - restarting application...");
@@ -1248,24 +1291,9 @@ ipcMain.handle("updates:install-update", () => {
 });
 
 app.whenReady().then(async () => {
-  const iconPath = path.join(__dirname, "src", "frontend", "assets", "icon.ico");
-
   // Create window and show immediately with splash screen (maximize setting read after backend init)
   console.log("[Electron] Creating window with splash...");
-  mainWindow = new BrowserWindow({
-    width: 1024,
-    height: 768,
-    autoHideMenuBar: true,
-    titleBarOverlay: true,
-    icon: iconPath,
-    show: true,
-    backgroundColor: "#ffffff",
-    webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
-      nodeIntegration: false,
-      contextIsolation: true,
-    },
-  });
+  mainWindow = new BrowserWindow(getMainWindowOptions({ show: true }));
 
   // Load splash screen HTML immediately (matches Intro.jsx styling)
   const splashHtml = `
@@ -1396,11 +1424,13 @@ app.whenReady().then(async () => {
     console.log("[Electron] Starting bundled online backend...");
     try {
       await startBundledOnlineBackend();
+      clearStartupError();
     } catch (error) {
       console.error(
         "[Electron] Bundled online backend failed to start:",
         error && error.stack ? error.stack : error
       );
+      recordStartupError(error);
     }
   }
 

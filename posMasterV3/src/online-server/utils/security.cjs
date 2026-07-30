@@ -10,7 +10,7 @@ function now() {
 
 function publicUser(user) {
     if (!user) return null;
-    const { passwordHash, ...safe } = user;
+    const { passwordHash, failedLoginAttempts, lockedUntil, ...safe } = user;
     return safe;
 }
 

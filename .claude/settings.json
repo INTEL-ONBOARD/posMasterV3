@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless=new --disable-gpu --hide-scrollbars --user-data-dir=/tmp/chrome-shot-profile --window-size=620,1100 --screenshot=/private/tmp/claude-501/-Users-kkwenuja-development-Clients-Revo-infosurv-posMasterV3/6fb0c5e8-e8ed-499a-890a-bd59999e46f9/scratchpad/receipt-layout.png file:///Users/kkwenuja/development/Clients/Revo-infosurv/posMasterV3/posMasterV3/docs/receipt-layout.html)",
+      "Bash(sips -g pixelWidth -g pixelHeight /private/tmp/claude-501/-Users-kkwenuja-development-Clients-Revo-infosurv-posMasterV3/6fb0c5e8-e8ed-499a-890a-bd59999e46f9/scratchpad/receipt-layout.png)"
+    ]
+  }
+}

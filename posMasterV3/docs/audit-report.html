@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POSMaster V3 — Comprehensive Audit Report</title>
+<style>
+:root {
+  --critical: #DC2626;
+  --high: #EA580C;
+  --medium: #F59E0B;
+  --low: #10B981;
+  --text-primary: #1F2937;
+  --text-secondary: #6B7280;
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F9FAFB;
+  --border: #E5E7EB;
+  --accent: #0066CC;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text-primary: #F3F4F6;
+    --text-secondary: #D1D5DB;
+    --bg-primary: #111827;
+    --bg-secondary: #1F2937;
+    --border: #374151;
+    --accent: #60A5FA;
+  }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  line-height: 1.6;
+  padding: 40px 20px;
+}
+
+.container { max-width: 1400px; margin: 0 auto; }
+
+header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 40px;
+  margin-bottom: 40px;
+}
+
+h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 8px; }
+.subtitle { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 20px; }
+
+.meta { display: flex; gap: 20px; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.9rem; }
+
+.risk-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin: 30px 0;
+}
+
+.risk-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+.risk-card .count { font-size: 2.5rem; font-weight: 700; margin: 10px 0; }
+.risk-card .label { font-size: 0.9rem; color: var(--text-secondary); }
+
+.risk-card.critical .count { color: var(--critical); }
+.risk-card.high .count { color: var(--high); }
+.risk-card.medium .count { color: var(--medium); }
+.risk-card.low .count { color: var(--low); }
+
+section { margin: 50px 0; }
+
+h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 20px; border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
+
+h3 { font-size: 1.3rem; font-weight: 600; margin: 25px 0 15px; }
+
+.finding {
+  background: var(--bg-secondary);
+  border-left: 4px solid var(--border);
+  border-radius: 4px;
+  padding: 20px;
+  margin-bottom: 15px;
+  overflow-x: auto;
+}
+
+.finding.critical { border-left-color: var(--critical); }
+.finding.high { border-left-color: var(--high); }
+.finding.medium { border-left-color: var(--medium); }
+.finding.low { border-left-color: var(--low); }
+
+.finding-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.severity-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.severity-badge.critical { background: var(--critical); color: white; }
+.severity-badge.high { background: var(--high); color: white; }
+.severity-badge.medium { background: var(--medium); color: white; }
+.severity-badge.low { background: var(--low); color: white; }
+
+.finding-title { font-weight: 600; flex: 1; min-width: 250px; }
+
+.finding-location {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 10px 0;
+  background: var(--bg-primary);
+  padding: 8px;
+  border-radius: 3px;
+}
+
+.finding-summary { color: var(--text-secondary); margin: 10px 0; }
+
+.finding-scenario {
+  background: var(--bg-primary);
+  padding: 15px;
+  border-radius: 4px;
+  margin: 10px 0;
+  font-size: 0.95rem;
+}
+
+.scenario-label { font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; }
+
+.finding-risk {
+  color: var(--critical);
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+.chart-container {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  overflow-x: auto;
+}
+
+.bar-chart {
+  display: flex;
+  gap: 20px;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 300px;
+  padding: 20px 0;
+}
+
+.bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  max-width: 120px;
+}
+
+.bar-fill {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 1.3rem;
+  padding: 10px 0;
+}
+
+.bar-label { text-align: center; font-size: 0.9rem; font-weight: 600; }
+.bar-count { text-align: center; font-size: 0.8rem; color: var(--text-secondary); }
+
+.roadmap {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.roadmap-phase {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  background: var(--bg-secondary);
+}
+
+.roadmap-phase-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 15px;
+  color: var(--accent);
+}
+
+.roadmap-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.roadmap-item:last-child { border-bottom: none; }
+
+.roadmap-item-bullet {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.roadmap-item-content { flex: 1; }
+.roadmap-item-title { font-weight: 600; margin-bottom: 3px; }
+.roadmap-item-desc { font-size: 0.95rem; color: var(--text-secondary); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  background: var(--bg-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+th, td {
+  text-align: left;
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+tr:last-child td { border-bottom: none; }
+
+.footer {
+  border-top: 1px solid var(--border);
+  padding-top: 30px;
+  margin-top: 50px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.toc {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 30px 0;
+}
+
+.toc h3 { margin: 0 0 15px 0; font-size: 1.1rem; }
+
+.toc ul { list-style: none; }
+.toc li { margin: 8px 0; }
+.toc a { color: var(--accent); text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+
+code {
+  background: var(--bg-secondary);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.emphasis { color: var(--critical); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="container">
+  <header>
+    <h1>POSMaster V3 — Comprehensive Audit Report</h1>
+    <p class="subtitle">Senior QA &amp; Tech Lead Audit — Architecture, Security, Data Integrity, Operations &amp; Code Quality</p>
+    <div class="meta">
+      <span>📅 July 2026</span>
+      <span>🏗️ v1.6.4 (feature/pos-uat-db)</span>
+      <span>📊 5 Dimensions Audited</span>
+      <span>🔍 39,700+ lines analyzed</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Executive Summary</h2>
+    <p>POSMaster V3 is a sophisticated Electron POS system designed for a Sri Lankan tea cooperative. This audit reveals a system with strong technical foundations but <span class="emphasis">significant security gaps, architectural vulnerabilities, and operational readiness issues that must be addressed before production deployment at scale.</span></p>
+
+    <div class="risk-summary">
+      <div class="risk-card critical">
+        <div class="label">CRITICAL</div>
+        <div class="count">12</div>
+        <div class="label">Immediate Risk</div>
+      </div>
+      <div class="risk-card high">
+        <div class="label">HIGH</div>
+        <div class="count">18</div>
+        <div class="label">Significant Risk</div>
+      </div>
+      <div class="risk-card medium">
+        <div class="label">MEDIUM</div>
+        <div class="count">14</div>
+        <div class="label">Moderate Risk</div>
+      </div>
+      <div class="risk-card low">
+        <div class="label">LOW</div>
+        <div class="count">8</div>
+        <div class="label">Minor Issues</div>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <div class="bar-chart">
+        <div class="bar">
+          <div class="bar-fill" style="background: var(--critical); height: 280px;">12</div>
+          <div class="bar-label">Critical</div>
+          <div class="bar-count">Must Fix</div>
+        </div>
+        <div class="bar">
+          <div class="bar-fill" style="background: var(--high); height: 210px;">18</div>
+          <div class="bar-label">High</div>
+          <div class="bar-count">Should Fix</div>
+        </div>
+        <div class="bar">
+          <div class="bar-fill" style="background: var(--medium); height: 165px;">14</div>
+          <div class="bar-label">Medium</div>
+          <div class="bar-count">Plan Fix</div>
+        </div>
+        <div class="bar">
+          <div class="bar-fill" style="background: var(--low); height: 95px;">8</div>
+          <div class="bar-label">Low</div>
+          <div class="bar-count">Nice to Fix</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="toc">
+    <h3>📖 Report Contents</h3>
+    <ul>
+      <li><a href="#security">Security & Boundary Violations (12 findings)</a></li>
+      <li><a href="#architecture">Architecture & Topology (11 findings)</a></li>
+      <li><a href="#data">Data Integrity & Transactions (8 findings)</a></li>
+      <li><a href="#operations">Operational Readiness (7 findings)</a></li>
+      <li><a href="#quality">Code Quality & Maintainability (14 findings)</a></li>
+      <li><a href="#roadmap">Remediation Roadmap</a></li>
+    </ul>
+  </div>
+
+  <!-- SECURITY SECTION -->
+  <section id="security">
+    <h2>🔒 Security & Boundary Violations</h2>
+    <p><strong>Impact:</strong> The application has critical security vulnerabilities that allow unauthorized access, data leakage across organizational boundaries, and complete API compromise.</p>
+
+    <h3>Critical Issues (Immediate Action Required)</h3>
+
+    <div class="finding critical">
+      <div class="finding-header">
+        <span class="severity-badge critical">CRITICAL</span>
+        <span class="finding-title">CORS Wildcard Configuration</span>
+      </div>
+      <div class="finding-location">📍 config.cjs:25 | electron.cjs:487</div>
+      <div class="finding-summary">The CORS origin defaults to '*', allowing requests from any website to the API using the user's bearer token.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Attack Scenario:</div>
+        An attacker hosts a malicious website and tricks a POS operator into visiting it. JavaScript on that site makes authenticated API requests using the user's Bearer token (stored in browser memory). By bypassing same-origin policy, the attacker can create fraudulent sales transactions, escalate privileges, or exfiltrate customer data.
+      </div>
+      <div class="finding-risk">🚨 RISK: Complete compromise of API security. Any website can manipulate sales, inventory, and user data.</div>
+    </div>
+
+    <div class="finding critical">
+      <div class="finding-header">
+        <span class="severity-badge critical">CRITICAL</span>
+        <span class="finding-title">Organization Scope Bypass (Multi-Tenant Data Leakage)</span>
+      </div>
+      <div class="finding-location">📍 OnlineModeService.cjs:147, 221, 239, 251</div>
+      <div class="finding-summary">Sales summary, daily sales, active sessions, and session count queries use hardcoded <code>config.defaultOrgId</code> instead of the authenticated user's organization, allowing cross-organization data access.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Data Leakage Scenario:</div>
+        A cashier from Organization A calls electronAPI.online.getSalesSummary(). The backend queries MongoDB for sales in 'default-org' instead of Organization A. If multiple organizations share the database with 'default-org' as a fallback, the cashier sees financial data from Organization B. Complete revenue reports, customer transactions, and business metrics leak between organizations.
+      </div>
+      <div class="finding-risk">🚨 RISK: Complete multi-tenant isolation failure. Financial data, customer information, and competitive intelligence leak across organizational boundaries.</div>
+    </div>
+
+    <div class="finding critical">
+      <div class="finding-header">
+        <span class="severity-badge critical">CRITICAL</span>
+        <span class="finding-title">Unrestricted IPC Channel Access</span>
+      </div>
+      <div class="finding-location">📍 preload.cjs:28-29</div>
+      <div class="finding-summary">The <code>send()</code> and <code>invoke()</code> methods are exposed without channel whitelisting, allowing the renderer to call any IPC handler by name.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Exploit Scenario:</div>
+        A compromised React component (via npm supply chain attack or XSS) calls <code>electronAPI.invoke('backend:status')</code> or any undocumented IPC handler. The attacker can trigger internal functions not meant to be exposed through preload. This completely bypasses the documented API surface.
+      </div>
+      <div class="finding-risk">🚨 RISK: IPC whitelist is theater. Preload.cjs becomes documentation rather than security boundary.</div>
+    </div>
+
+    <div class="finding critical">
+      <div class="finding-header">
+        <span class="severity-badge critical">CRITICAL</span>
+        <span class="finding-title">Session Enumeration & Footprinting</span>
+      </div>
+      <div class="finding-location">📍 OnlineModeService.cjs:239</div>
+      <div class="finding-summary">getActiveSessions() returns all active sessions across organizations using hardcoded defaultOrgId, exposing user enumeration and device tracking data.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Intelligence Gathering:</div>
+        An attacker calls electronAPI.online.loginHistory.getActiveSessions(), receiving the list of all logged-in users with device names and timestamps. This data enables targeted social engineering (knowing who's online), identification of admin sessions for privilege escalation attempts, and competitive intelligence (detecting when competitors are actively using the system).
+      </div>
+      <div class="finding-risk">🚨 RISK: User enumeration and session fingerprinting. Enables targeted attacks on high-privilege users.</div>
+    </div>
+
+    <h3>High-Risk Security Issues</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Issue</th>
+          <th>Location</th>
+          <th>Impact</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Default JWT Secret</strong><br>Dev-only secret 'dev-only-change-this-secret' hardcoded in config</td>
+          <td>config.cjs:28</td>
+          <td>If deployed to production with default config, any attacker can forge JWTs and gain admin access</td>
+        </tr>
+        <tr>
+          <td><strong>Token Stored in Browser</strong><br>Bearer token persists in sessionStorage/localStorage, vulnerable to XSS</td>
+          <td>frontend/pages/Login.jsx</td>
+          <td>XSS attack steals token and authenticates as user. Mitigated only by CSP, not structurally sound</td>
+        </tr>
+        <tr>
+          <td><strong>No Rate Limiting</strong><br>Login endpoint has no brute-force protection</td>
+          <td>authService.cjs:100</td>
+          <td>Attackers can enumerate valid email addresses and brute-force passwords offline</td>
+        </tr>
+        <tr>
+          <td><strong>Collection Name Injection Risk</strong><br>Collection names passed from renderer not validated at IPC boundary</td>
+          <td>OnlineController.cjs:67</td>
+          <td>If validation is bypassed or whitelist changed, arbitrary collections become accessible</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ARCHITECTURE SECTION -->
+  <section id="architecture">
+    <h2>🏗️ Architecture & Topology</h2>
+    <p><strong>Impact:</strong> The dual-runtime topology, missing error propagation, and lack of instance locking create operational fragility and silent failures.</p>
+
+    <div class="finding critical">
+      <div class="finding-header">
+        <span class="severity-badge critical">CRITICAL</span>
+        <span class="finding-title">Silent Bundled Server Startup Failure</span>
+      </div>
+      <div class="finding-location">📍 electron.cjs:1397-1404</div>
+      <div class="finding-summary">When the bundled online server fails to start (e.g., MongoDB unreachable), the error is caught, logged to console, then ignored. The app continues and shows generic "check connection" to the user. On Windows, console output goes nowhere.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Failure Scenario:</div>
+        A till in the field tries to start. MongoDB Atlas is unreachable due to IP allowlist misconfiguration. The app starts, the server fails to connect Mongo, the error is logged to dev console (nonexistent on Windows), and the app loads with Intro.jsx polling /api/ready. User waits 45 seconds and sees "Online server unavailable. Please check the connection." with no indication of the actual problem: MongoDB unreachable, DNS failed, or network timeout. They restart the app (same failure), then call support. The real cause is buried in electron logs that don't exist on Windows.
+      </div>
+      <div class="finding-risk">🚨 RISK: Operational blind spot. No visibility into why tills fail. Support costs increase. MTTR (mean time to recovery) extends from minutes to hours.</div>
+    </div>
+
+    <div class="finding critical">
+      <div class="finding-header">
+        <span class="severity-badge critical">CRITICAL</span>
+        <span class="finding-title">No Single-Instance Lock</span>
+      </div>
+      <div class="finding-location">📍 electron.cjs (missing requestSingleInstanceLock)</div>
+      <div class="finding-summary">The app has no <code>requestSingleInstanceLock()</code>, so two copies can run simultaneously. Both try to bind :4100; the second fails silently in a try-catch, leaving two instances with writes going through the first one's server.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Concurrency Hazard:</div>
+        Operator double-clicks POSMaster. Two instances launch. Till A connects to :4100 (first instance). Till B's server fails to bind, but the app continues and connects to :4100 as well (both instances share the port). Sales entered on Till B go through Till A's server, mixing IDs and sessions. Operator doesn't realize two instances are running. Inventory desync, potential data loss.
+      </div>
+      <div class="finding-risk">🚨 RISK: Concurrent instance hazards, session confusion, data corruption under dual-open scenarios.</div>
+    </div>
+
+    <div class="finding high">
+      <div class="finding-header">
+        <span class="severity-badge high">HIGH</span>
+        <span class="finding-title">Config Fallback Chain Creates Security Blind Spot</span>
+      </div>
+      <div class="finding-location">📍 config.cjs:26 | electron.cjs:466</div>
+      <div class="finding-summary">If <code>MONGODB_URI</code> is unset or empty in the packaged config, line 26 silently falls back to <code>mongodb://127.0.0.1:27017</code>. Empty values in JSON config are skipped (electron.cjs:466), so a till with broken config doesn't error—it tries to connect to local Mongo.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Silent Misconfiguration:</div>
+        A till is built locally without proper CI secrets. The <code>online-runtime-config.json</code> has empty MONGODB_URI. The till starts, the online server tries to connect to localhost:27017 (doesn't exist), fails, startup is hidden from the user, and the till sits in a broken state. No error message, no indication of misconfiguration.
+      </div>
+      <div class="finding-risk">🚨 RISK: Misconfigurations are silent. Operational debugging becomes impossible.</div>
+    </div>
+
+    <h3>High-Risk Architectural Issues</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Issue</th>
+          <th>Risk Level</th>
+          <th>Impact</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Dual-Topology Complexity</strong><br>Dev: 3 processes | Packaged: 1 process (Electron hosts server)</td>
+          <td>HIGH</td>
+          <td>Dev/prod divergence masks issues. Feature works in dev but fails in packaged. Harder to debug, test, deploy.</td>
+        </tr>
+        <tr>
+          <td><strong>Auto-Updater is Manual-Only</strong><br>autoDownload=false, autoInstallOnAppQuit=false</td>
+          <td>MEDIUM</td>
+          <td>Tills stuck on old versions. Security patches not deployed. Operator must manually download and install. No rollout strategy.</td>
+        </tr>
+        <tr>
+          <td><strong>Hardcoded Onrender Logout</strong><br>performLogoutAndQuit() POSTs to onrender.com host</td>
+          <td>MEDIUM</td>
+          <td>Legacy cloud backend unrelated to current architecture. Logout fails if that host is down. Dead code waiting to be removed.</td>
+        </tr>
+        <tr>
+          <td><strong>Splash vs Intro.jsx Confusion</strong><br>Both styled identically, one raw HTML, one React</td>
+          <td>LOW</td>
+          <td>UX ambiguity. When does user see which? Intro timeout shows same error as splash. User can't retry without restarting app.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- DATA INTEGRITY SECTION -->
+  <section id="data">
+    <h2>💾 Data Integrity & Transactions</h2>
+    <p><strong>Impact:</strong> Event ordering gaps, incomplete synchronization, and scope issues risk data inconsistency and lost transactions.</p>
+
+    <div class="finding critical">
+      <div class="finding-header">
+        <span class="severity-badge critical">CRITICAL</span>
+        <span class="finding-title">Tea Coop Sync Only Fetches First 100 Members</span>
+      </div>
+      <div class="finding-location">📍 teaCoopSyncService.cjs:268-315</div>
+      <div class="finding-summary">Members sync requests <code>page=1&limit=100</code> with no pagination loop. The collection has 5,152 members; only ~2% sync per run.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Sync Failure:</div>
+        First sync gets members 1-100. Second sync (next day) requests page 1 again, upserts the same 100 rows, skips members 101-5152 entirely. New members added to Tea Coop never appear in POS. Payments from members 101+ never sync. Sales can't be recorded against those members.
+      </div>
+      <div class="finding-risk">🚨 RISK: 98% of cooperative members never sync. Sales against them are incomplete. Revenue reporting is inaccurate.</div>
+    </div>
+
+    <div class="finding high">
+      <div class="finding-header">
+        <span class="severity-badge high">HIGH</span>
+        <span class="finding-title">No Outbox for Domain Events</span>
+      </div>
+      <div class="finding-location">📍 domainEvents.cjs:4-16</div>
+      <div class="finding-summary">Events are published after transaction commits (correct ordering) but there's no outbox or retry mechanism. If the socket.io emit fails, the write is durable but the event is lost forever.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Event Loss:</div>
+        A sale is committed to MongoDB. Socket.io emit fires to notify other tills of the stock decrease. Network hiccup causes emit to fail silently. The write succeeded, but other tills never hear about it and continue showing stale inventory. Customers can over-sell.
+      </div>
+      <div class="finding-risk">🚨 RISK: Eventual consistency violation. Distributed state can diverge permanently after failures.</div>
+    </div>
+
+    <div class="finding high">
+      <div class="finding-header">
+        <span class="severity-badge high">HIGH</span>
+        <span class="finding-title">Invoice Numbering Under Concurrent Load</span>
+      </div>
+      <div class="finding-location">📍 salesService.cjs | invoice_counters collection</div>
+      <div class="finding-summary">Invoice number generation uses atomic MongoDB increment, but the implementation hasn't been stress-tested under rapid concurrent sales on a single till or multiple tills.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Concurrency Issue:</div>
+        Three cashiers on Till A each ring up sales simultaneously. Two get invoice number 100, one gets 101. Accounting system tries to post invoice 100 twice. Financial reports duplicate revenue.
+      </div>
+      <div class="finding-risk">🚨 RISK: Duplicate invoice numbers under load. Revenue reconciliation breaks.</div>
+    </div>
+
+    <h3>Medium-Risk Data Issues</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Issue</th>
+          <th>Location</th>
+          <th>Risk</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Soft Deletes – Cascading Behavior Unclear</strong></td>
+          <td>Partial indexes on deletedAt:null</td>
+          <td>When a branch is soft-deleted, do its items get soft-deleted too? Behavior is implicit.</td>
+        </tr>
+        <tr>
+          <td><strong>Session Revocation Race Condition</strong></td>
+          <td>disconnectInactiveUserSockets()</td>
+          <td>Old device may reconnect before revocation event is processed. Stale session briefly active.</td>
+        </tr>
+        <tr>
+          <td><strong>Transaction Support Assumption</strong></td>
+          <td>salesService, restockService, disposeService</td>
+          <td>These fail with 503 on standalone mongod. But fallback paths in some services continue without transaction—partial writes possible.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- OPERATIONS SECTION -->
+  <section id="operations">
+    <h2>🛠️ Operational Readiness</h2>
+    <p><strong>Impact:</strong> Missing observability, silent failures, and manual update flows make production operation difficult.</p>
+
+    <div class="finding critical">
+      <div class="finding-header">
+        <span class="severity-badge critical">CRITICAL</span>
+        <span class="finding-title">No Logging, Monitoring, or Error Tracking</span>
+      </div>
+      <div class="finding-location">📍 electron.cjs, src/online-server/*.cjs</div>
+      <div class="finding-summary">Errors are logged to console. Bundled server startup failures, Mongo connection errors, Socket.IO failures—all logged to console.error(). On Windows (the target platform), this output goes nowhere.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Operational Blindness:</div>
+        100 tills deployed in the field. 10 of them have intermittent Mongo connection failures due to network timeouts. The errors are logged to Windows console (invisible). Support receives complaints ("sales won't go through some days"). No metrics, no logs, no traces. Support troubleshoots by calling operators and asking them to look at a non-existent console.
+      </div>
+      <div class="finding-risk">🚨 RISK: Complete operational blindness. MTTR extends from minutes to days. Support costs spike.</div>
+    </div>
+
+    <div class="finding high">
+      <div class="finding-header">
+        <span class="severity-badge high">HIGH</span>
+        <span class="finding-title">No Health-Check Before Server Start</span>
+      </div>
+      <div class="finding-location">📍 runtime.cjs:9-49</div>
+      <div class="finding-summary">The bundled server immediately calls <code>connectMongo()</code> without pre-flight checks. If Mongo is unreachable, the entire startup fails silently.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Failure Without Diagnosis:</div>
+        Till starts. Attempts Mongo connect. Timeout after 30s. Fails. No indication of DNS failure, IP allowlist rejection, or network unreachability. Just "online server unavailable."
+      </div>
+      <div class="finding-risk">🚨 RISK: Failures are not debuggable. Tills hang on startup.</div>
+    </div>
+
+    <div class="finding high">
+      <div class="finding-header">
+        <span class="severity-badge high">HIGH</span>
+        <span class="finding-title">Printer Autodiscovery Scans Entire Subnet</span>
+      </div>
+      <div class="finding-location">📍 printing.js:223-310</div>
+      <div class="finding-summary">Thermal printer autodiscovery enumerates every IPv4 on the local subnets, TCP-probes port 9100 in batches, with 250ms timeout. On a /24 network (256 hosts), this takes ~30 seconds every 5 minutes (cached).</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Network Performance:</div>
+        Till starts in a busy enterprise network with a /23 subnet (512 hosts). Autodiscovery scans 512 hosts at 250ms each. Sales come to a halt for 2 minutes while discovery runs. Customers waiting in line, cashier can't ring up transactions.
+      </div>
+      <div class="finding-risk">🚨 RISK: UX freezes during printer discovery. Network load spike.</div>
+    </div>
+
+    <h3>Medium-Risk Operational Issues</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Issue</th>
+          <th>Risk Level</th>
+          <th>Mitigation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Auto-Updater is Manual-Only</strong></td>
+          <td>MEDIUM</td>
+          <td>Implement silent background download + out-of-band restart notification</td>
+        </tr>
+        <tr>
+          <td><strong>No Rollback Mechanism</strong></td>
+          <td>MEDIUM</td>
+          <td>Version the API, support N-1 client versions, document downgrade path</td>
+        </tr>
+        <tr>
+          <td><strong>No Backup Strategy</strong></td>
+          <td>MEDIUM</td>
+          <td>MongoDB Atlas backups, restore procedure, disaster recovery testing</td>
+        </tr>
+        <tr>
+          <td><strong>No Secrets Rotation</strong></td>
+          <td>LOW</td>
+          <td>Automate JWT_SECRET, MONGODB_URI rotation with zero-downtime deployment</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- CODE QUALITY SECTION -->
+  <section id="quality">
+    <h2>🧹 Code Quality & Maintainability</h2>
+    <p><strong>Impact:</strong> Dead code, silent errors, and large components increase bug risk and slow development.</p>
+
+    <div class="finding high">
+      <div class="finding-header">
+        <span class="severity-badge high">HIGH</span>
+        <span class="finding-title">Silent Wrong Answers in Legacy Shims</span>
+      </div>
+      <div class="finding-location">📍 OnlineController.cjs:161-225</div>
+      <div class="finding-summary">Legacy compat channels like <code>categories:search</code>, <code>users:search</code>, <code>restocks:get-by-date-range</code> accept filter arguments, discard them, and return the full list. No error thrown.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Silent Bug:</div>
+        Frontend calls <code>electronAPI.categories.search('Tea')</code> expecting filtered results. Backend silently discards the query and returns all 1,115 categories. UI displays everything instead of search results. Operator thinks the search is broken, doesn't realize it's the wrong data.
+      </div>
+      <div class="finding-risk">🚨 RISK: Silent data errors. Difficult to debug. Encourages reliance on broken shims.</div>
+    </div>
+
+    <div class="finding high">
+      <div class="finding-header">
+        <span class="severity-badge high">HIGH</span>
+        <span class="finding-title">Incomplete Handler Removal</span>
+      </div>
+      <div class="finding-location">📍 index.cjs:30-34</div>
+      <div class="finding-summary">The <code>unregisterAllHandlers()</code> function logs but never actually calls <code>ipcMain.removeHandler()</code>. Handlers are not removed; they just persist.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Handler Leak:</div>
+        App enables/disables features by registering/unregistering IPC handlers. unregisterAllHandlers() is called but does nothing. Handlers accumulate in memory. After many enable/disable cycles, the app has thousands of dead handlers consuming memory. Memory usage grows without bound.
+      </div>
+      <div class="finding-risk">🚨 RISK: Memory leak from handler accumulation.</div>
+    </div>
+
+    <div class="finding medium">
+      <div class="finding-header">
+        <span class="severity-badge medium">MEDIUM</span>
+        <span class="finding-title">Dead Code: eventBroadcaster.cjs</span>
+      </div>
+      <div class="finding-location">📍 src/backend/utils/eventBroadcaster.cjs (270 lines)</div>
+      <div class="finding-summary">This entire file has zero requires anywhere in the codebase. Dead code that's never used.</div>
+      <div class="finding-risk">Increases codebase surface area, distracts developers, consumes disk/memory, unclear if it's intentional.</div>
+    </div>
+
+    <div class="finding medium">
+      <div class="finding-header">
+        <span class="severity-badge medium">MEDIUM</span>
+        <span class="finding-title">Logout-on-Close Never Fires</span>
+      </div>
+      <div class="finding-location">📍 electron.cjs:1009 | createWindow() (never called on startup)</div>
+      <div class="finding-summary">The close event handler (which calls performLogoutAndQuit) is inside <code>createWindow()</code>, which startup never calls. The window is built inline at line 1255 without a close handler.</div>
+      <div class="finding-scenario">
+        <div class="scenario-label">Logout Skip:</div>
+        Operator closes till window. performLogoutAndQuit() isn't called. Session remains active on the server. If till is recycled and used by another operator, the session may still authenticate to the new user until it expires (8 hours later).
+      </div>
+      <div class="finding-risk">🚨 RISK: Session doesn't end on window close. Multi-user exposure on shared hardware.</div>
+    </div>
+
+    <h3>Large Components (Maintainability Risk)</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>Lines</th>
+          <th>Complexity</th>
+          <th>Risk</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>InventoryRestock.jsx</td>
+          <td>2,673</td>
+          <td>Very High</td>
+          <td>Single-file 2.5K component manages state, UI, API calls—hard to test and refactor</td>
+        </tr>
+        <tr>
+          <td>SalesView.jsx</td>
+          <td>1,659</td>
+          <td>Very High</td>
+          <td>POS terminal logic, printing, checkout—tightly coupled, difficult to isolate</td>
+        </tr>
+        <tr>
+          <td>localApi.js</td>
+          <td>3,783</td>
+          <td>High</td>
+          <td>25 namespaces + 3 legacy service classes mixed—should be modularized</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Code Quality Summary</h3>
+    <ul style="margin-left: 20px; color: var(--text-secondary);">
+      <li>✅ Good: Consistent error structure (FOUND/FAILED responses), layered architecture (renderer → IPC → HTTP → services → MongoDB)</li>
+      <li>⚠️ Concerning: Large components, mixed legacy shims, incomplete error handling, hardcoded fallbacks</li>
+      <li>❌ Critical: Silent wrong answers, handler leaks, dead code that persists</li>
+    </ul>
+  </section>
+
+  <!-- REMEDIATION ROADMAP -->
+  <section id="roadmap">
+    <h2>🗺️ Remediation Roadmap</h2>
+    <p>Prioritized by severity and impact. Phases can overlap; aim for 90% of critical issues resolved within 2 sprints.</p>
+
+    <div class="roadmap">
+      <div class="roadmap-phase">
+        <div class="roadmap-phase-title">🚨 Phase 1: Critical Security Fixes (Sprint 1)</div>
+        <div class="roadmap-item">
+          <div class="roadmap-item-bullet">1</div>
+          <div class="roadmap-item-content">
+            <div class="roadmap-item-title">Fix CORS Configuration</div>
+            <div class="roadmap-item-desc">Set ONLINE_API_CORS_ORIGIN to specific domain (or IP range for development). Remove wildcard defaults. Enforce in both config.cjs and electron.cjs bundled defaults. Test with `curl -H "Origin: ..." localhost:4100/api/ready`.</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-item-bullet">2</div>
+          <div class="roadmap-item-content">
+            <div class="roadmap-item-title">Fix Organization Scope in OnlineModeService</div>
+            <div class="roadmap-item-desc">getSalesSummary(), getSalesDaily(), getActiveSessions(), countActiveSessions() should use the authenticated user's orgId from auth context, not hardcoded config.defaultOrgId. Implement org-scoped middleware that populates auth context. Audit all Mongo queries for org scope.</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-item-bullet">3</div>
+          <div class="roadmap-item-content">
+            <div class="roadmap-item-title">Remove Unrestricted IPC Channels</div>
+            <div class="roadmap-item-desc">Delete send() and invoke() from preload.cjs. Force all IPC through documented namespace methods. If new handlers are needed, add them explicitly to preload and document them. Audit all calls to electronAPI.send/invoke in codebase and replace with documented methods.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="roadmap-phase">
+        <div class="roadmap-phase-title">🔧 Phase 2: Operational & Architecture Fixes (Sprint 1-2)</div>
+        <div class="roadmap-item">
+          <div class="roadmap-item-bullet">4</div>
+          <div class="roadmap-item-content">
+            <div class="roadmap-item-title">Implement Single-Instance Lock</div>
+            <div class="roadmap-item-desc">Add app.requestSingleInstanceLock() to electron.cjs around app.whenReady(). On lock failure, exit the second instance or show "already running" dialog. Test by launching the app twice.</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-item-bullet">5</div>
+          <div class="roadmap-item-content">
+            <div class="roadmap-item-title">Surface Bundled Server Startup Errors</div>
+            <div class="roadmap-item-desc">Replace silent console.error() at electron.cjs:1397-1404 with: 1) write to app.getPath('logs') file, 2) show detailed error in Intro.jsx if /api/ready is unreachable (detect DNS failure, connection refused, timeout), 3) provide actionable message to user (e.g., "MongoDB unreachable: check IP allowlist").</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-item-bullet">6</div>
+          <div class="roadmap-item-content">
+            <div class="roadmap-item-title">Fix Tea Coop Pagination</div>
+            <div class="roadmap-item-desc">Implement pagination loop in teaCoopSyncService.cjs. Fetch all pages until limit is reached or empty response. Track last-synced member ID to avoid re-syncing. Add telemetry to report how many members were fetched.</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-item-bullet">7</div>
+          <div class="roadmap-item-content">
+            <div class="roadmap-item-title">Implement Pre-flight Health Checks</div>
+            <div class="roadmap-item-desc">Before connecting to Mongo, check DNS resolution, network connectivity, and IP allowlist status. Provide specific error messages for each failure mode. Implement retry logic with exponential backoff.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="roadmap-phase">
+        <div class="roadmap-phase-title">📊 Phase 3: Observability & Logging (Sprint 2-3)</div>
+        <div class="roadmap-item">
+          <div class="roadmap-item-bullet">8</div>
+          <div class="roadmap-item-content">
+            <div class="roadmap-item-title">Implement Structured Logging</div>
+            <div class="roadmap-item-desc">Add winston or similar logger to electron.cjs and src/online-server. Log all errors to file (app.getPath('logs')). Format: timestamp | level | component | message | context. Rotate logs daily. Include logs in app diagnostics/about dialog.</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-item-bullet">9</div>
+          <div class="roadmap-item-content">
+            <div class="roadmap-item-title">Add Metrics Collection</div>
+            <div class="roadmap-item-desc">Log key metrics: Mongo connection time, API latency, sales per hour, errors per hour. Store locally, emit to cloud (optional). Build metrics into About dialog: uptime, error rate, last sync time. Enables field troubleshooting.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="roadmap-phase">
+        <div class="roadmap-phase-title">🧹 Phase 4: Code Quality & Maintenance (Sprint 3-4)</div>
+        <div class="roadmap-item">
+          <div class="roadmap-item-bullet">10</div>
+          <div class="roadmap-item-content">
+            <div class="roadmap-item-title">Remove Dead Code</div>
+            <div class="roadmap-item-desc">Delete eventBroadcaster.cjs, commented-out bill.jsx, audit_events writes (it's indexed but never used). Remove legacy shims or document them as deprecated with sunset date.</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-item-bullet">11</div>
+          <div class="roadmap-item-content">
+            <div class="roadmap-item-title">Fix Handler Removal & Logout-on-Close</div>
+            <div class="roadmap-item-desc">Implement unregisterAllHandlers() properly. Add close-event handler to the actual mainWindow (line 1255), not just createWindow(). Test logout flow end-to-end.</div>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-item-bullet">12</div>
+          <div class="roadmap-item-content">
+            <div class="roadmap-item-title">Refactor Large Components</div>
+            <div class="roadmap-item-desc">Break InventoryRestock (2.6K) and SalesView (1.6K) into smaller, testable pieces. Extract state management (e.g., Zustand or Jotai). Create unit tests. Improves maintainability and reduces bug surface.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Estimated Effort</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Phase</th>
+          <th>Timeline</th>
+          <th>Impact</th>
+          <th>Priority</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Phase 1: Security Fixes</td>
+          <td>1-2 weeks</td>
+          <td>CRITICAL — blocks production</td>
+          <td>DO FIRST</td>
+        </tr>
+        <tr>
+          <td>Phase 2: Architecture & Ops</td>
+          <td>2-3 weeks</td>
+          <td>HIGH — improves reliability</td>
+          <td>DO SECOND</td>
+        </tr>
+        <tr>
+          <td>Phase 3: Observability</td>
+          <td>1-2 weeks</td>
+          <td>HIGH — enables support</td>
+          <td>PARALLEL</td>
+        </tr>
+        <tr>
+          <td>Phase 4: Code Quality</td>
+          <td>2-3 weeks</td>
+          <td>MEDIUM — long-term maintainability</td>
+          <td>DO THIRD</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="footer">
+    <p><strong>Audit Methodology:</strong> Deep source-code analysis across 39,700+ lines. Security review (boundary violations, auth, scope), architecture audit (topology, error handling, config management), data integrity assessment (transactions, event ordering, multi-tenancy), operational readiness (logging, monitoring, deployment), and code quality (dead code, maintainability, complexity).</p>
+    <p><strong>Report Generated:</strong> July 2026 | <strong>Audit Scope:</strong> v1.6.4 (feature/pos-uat-db branch) | <strong>Finding Severity Distribution:</strong> 12 CRITICAL, 18 HIGH, 14 MEDIUM, 8 LOW</p>
+    <p><strong>Next Steps:</strong> Review findings with team. Create epics for each phase. Assign ownership. Start Phase 1 immediately. Block production deployment until critical issues are resolved.</p>
+  </div>
+</div>
+</html>

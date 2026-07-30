@@ -2511,7 +2511,15 @@ exponential-backoff@^3.1.1:
   resolved "https://registry.npmjs.org/exponential-backoff/-/exponential-backoff-3.1.2.tgz"
   integrity sha512-8QxYTVXUkuy7fIIoitQkPwGonB8F3Zj8eEO8Sqg9Zv/bkI7RJAzowee4gr81Hak/dUTpA2Z7VfQgoijjPNlUZA==
 
-express@^5.2.1:
+express-rate-limit@^8.6.1:
+  version "8.6.1"
+  resolved "https://registry.npmjs.org/express-rate-limit/-/express-rate-limit-8.6.1.tgz"
+  integrity sha512-0D493aP61w0TJ2A0wy27riRsO7FMQ7FK+KUHOKCSfPvYo0R55aiC6emCVgFUeShH0fq0ICPVzNcgoS+BsbXQCA==
+  dependencies:
+    debug "^4.4.3"
+    ip-address "^10.2.0"
+
+express@^5.2.1, "express@>= 4.11":
   version "5.2.1"
   resolved "https://registry.npmjs.org/express/-/express-5.2.1.tgz"
   integrity sha512-hIS4idWWai69NezIdRt2xFVofaF4j+6INOpJlVOLDO8zXGpUVEVzIYk12UUi2JzjEzWL3IOAxcTubgz9Po0yXw==
@@ -3275,6 +3283,11 @@ iobuffer@^5.3.2:
   version "5.4.0"
   resolved "https://registry.npmjs.org/iobuffer/-/iobuffer-5.4.0.tgz"
   integrity sha512-DRebOWuqDvxunfkNJAlc3IzWIPD5xVxwUNbHr7xKB8E6aLJxIPfNX3CoMJghcFjpv6RWQsrcJbghtEwSPoJqMA==
+
+ip-address@^10.2.0:
+  version "10.3.1"
+  resolved "https://registry.npmjs.org/ip-address/-/ip-address-10.3.1.tgz"
+  integrity sha512-1e9d3kb97NHJTIJDZW9rKqW2h6+dFa50Dy0fpPSMQp2ADje5gvKsXmdiK6dwY5t76TaTt5+P5N1Y/LoToIxP6g==
 
 ip-address@^9.0.5:
   version "9.0.5"

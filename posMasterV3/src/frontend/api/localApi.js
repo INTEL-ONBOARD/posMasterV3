@@ -3154,7 +3154,21 @@ const installOnlineOnlyOverrides = () => {
             }
             return response;
         },
-        getExpiring: async () => stockApi.getAll(),
+        getExpiring: async (days) => {
+            const response = await stockApi.getAll();
+            const daysNum = Number(days);
+            if (!Array.isArray(response?.data) || !Number.isFinite(daysNum)) return response;
+            const cutoff = Date.now() + daysNum * 24 * 60 * 60 * 1000;
+            return {
+                ...response,
+                data: response.data.filter((row) => {
+                    const expiry = row.exp_date || row.expiry_date || row.expiryDate;
+                    if (!expiry) return false;
+                    const expiryTime = new Date(expiry).getTime();
+                    return Number.isFinite(expiryTime) && expiryTime <= cutoff;
+                })
+            };
+        },
         getValue: async () => {
             const response = await stockApi.getAll();
             if (!Array.isArray(response?.data)) return response;

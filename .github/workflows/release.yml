@@ -58,7 +58,7 @@ jobs:
           POS_ORG_ID: ${{ vars.POS_ORG_ID || 'default-org' }}
           ONLINE_API_HOST: ${{ vars.ONLINE_API_HOST || '127.0.0.1' }}
           ONLINE_API_PORT: ${{ vars.ONLINE_API_PORT || '4100' }}
-          ONLINE_API_CORS_ORIGIN: ${{ vars.ONLINE_API_CORS_ORIGIN || '*' }}
+          ONLINE_API_CORS_ORIGIN: ${{ vars.ONLINE_API_CORS_ORIGIN || 'file://,http://localhost:5173,http://localhost:5174' }}
           POS_ONLINE_CLIENT_HOST: ${{ vars.POS_ONLINE_CLIENT_HOST || '127.0.0.1' }}
           TEA_COOP_API_URL: ${{ vars.TEA_COOP_API_URL || 'https://api.teacoop.lk/api/v1' }}
           TEA_COOP_API_TOKEN: ${{ secrets.TEA_COOP_API_TOKEN }}
@@ -104,7 +104,7 @@ jobs:
           POS_ORG_ID: ${{ vars.POS_ORG_ID || 'default-org' }}
           ONLINE_API_HOST: ${{ vars.ONLINE_API_HOST || '127.0.0.1' }}
           ONLINE_API_PORT: ${{ vars.ONLINE_API_PORT || '4100' }}
-          ONLINE_API_CORS_ORIGIN: ${{ vars.ONLINE_API_CORS_ORIGIN || '*' }}
+          ONLINE_API_CORS_ORIGIN: ${{ vars.ONLINE_API_CORS_ORIGIN || 'file://,http://localhost:5173,http://localhost:5174' }}
           POS_ONLINE_CLIENT_HOST: ${{ vars.POS_ONLINE_CLIENT_HOST || '127.0.0.1' }}
           TEA_COOP_API_URL: ${{ vars.TEA_COOP_API_URL || 'https://api.teacoop.lk/api/v1' }}
           TEA_COOP_API_TOKEN: ${{ secrets.TEA_COOP_API_TOKEN }}

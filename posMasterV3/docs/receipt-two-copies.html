@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>POSMaster — New Receipt · Two Copies per Sale</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; padding:32px 24px 64px; background:#3f3f46; color:#1f2937;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, "Noto Sans", "Noto Sans Sinhala", sans-serif;
+  }
+  h1.page { color:#fafafa; font-size:22px; margin:0 0 4px; }
+  p.page-sub { color:#d4d4d8; font-size:14px; margin:0 0 22px; max-width:940px; line-height:1.55; }
+  p.page-sub b { color:#fff; }
+
+  .stage { display:flex; gap:44px; align-items:flex-start; overflow-x:auto; padding-bottom:12px; }
+  .panel { flex:0 0 auto; position:relative; }
+  .panel > .cap { font-size:13px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+                  margin:0 0 4px; text-align:center; color:#fafafa; }
+  .panel > .order { text-align:center; color:#a1a1aa; font-size:12px; margin:0 0 12px; }
+  .panel > .order b { color:#fcd34d; }
+
+  /* scissors cut marker under each copy */
+  .cutline { margin-top:10px; border-top:2px dashed #a1a1aa; position:relative; height:0; }
+  .cutline::before { content:"✂"; position:absolute; top:-11px; left:12px; color:#d4d4d8; font-size:16px; background:#3f3f46; padding:0 4px; }
+  .cutline span { position:absolute; top:-9px; right:10px; color:#a1a1aa; font-size:11px; background:#3f3f46; padding:0 6px; }
+
+  /* ---------- paper (NEW format) ---------- */
+  .bill { width:520px; background:#fff; color:#000; box-shadow:0 10px 40px rgba(0,0,0,.35);
+          padding:24px 22px 28px; line-height:1.4; }
+  .bill .center { text-align:center; }
+  .bill hr { border:0; border-top:1px solid #9ca3af; margin:16px 0; }
+  .bill hr.strong { border-top:1px solid #4b5563; }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  .h-org { font-size:24px; line-height:1.24; font-weight:800; margin:0 0 6px; }
+  .h-sub { font-size:20px; line-height:1.24; font-weight:700; margin:0 0 6px; }
+  .h-addr{ font-size:16px; font-weight:700; margin:0; }
+
+  .meta { display:flex; justify-content:space-between; gap:18px; font-size:16px; line-height:1.7; }
+  .meta .right { text-align:right; }
+  .meta .inv { font-size:19px; }
+
+  table { width:100%; border-collapse:collapse; font-size:15px; }
+  thead th { font-weight:700; padding:8px 6px 10px; border-bottom:1px solid #9ca3af; white-space:nowrap; }
+  thead th.l { text-align:left; } thead th.c { text-align:center; } thead th.r { text-align:right; }
+  .line-top td { padding:11px 6px 0; vertical-align:top; }
+  .line-bot td { padding:2px 6px 11px; vertical-align:top; }
+  .ix { text-align:center; width:40px; }
+  .nm { text-align:left; font-size:18px; }
+  .r { text-align:right; }
+
+  .totals { font-size:18px; line-height:1.85; }
+  .row { display:flex; justify-content:space-between; gap:24px; }
+  .row p { margin:0; }
+  .grand { font-size:29px; font-weight:800; align-items:baseline; }
+
+  .foot { text-align:center; font-size:15px; line-height:1.5; }
+  .sig { margin:16px 0 4px; }
+  .sig .rule { letter-spacing:1px; }
+  .ack { margin-top:8px; }
+  .terms { margin:12px 0; }
+  .thanks { font-size:18px; margin-top:6px; }
+  .brand { font-size:21px; font-weight:800; margin-top:2px; }
+  .barcode { display:flex; flex-direction:column; align-items:center; gap:6px; margin-top:18px; }
+  .barcode .bars { display:flex; align-items:flex-end; height:64px; }
+  .barcode .bars i { display:block; }
+  .barcode .code { font-size:15px; letter-spacing:2px; }
+  .copylabel { font-size:18px; font-weight:700; margin-top:16px; letter-spacing:.03em; }
+
+  /* difference highlight */
+  .diff { outline:2px solid #22c55e; outline-offset:3px; border-radius:3px; }
+  .diff-badge { position:absolute; background:#16a34a; color:#fff; font-size:11px; font-weight:700;
+                padding:2px 8px; border-radius:20px; white-space:nowrap; }
+
+  /* plan panel */
+  .plan { margin:38px auto 0; max-width:1000px; background:#fff; border-radius:10px; padding:22px 26px; }
+  .plan h2 { font-size:17px; margin:0 0 6px; }
+  .plan h3 { font-size:14px; margin:18px 0 6px; color:#374151; }
+  .plan p, .plan li { font-size:13.5px; line-height:1.6; color:#374151; }
+  .plan code { background:#f3f4f6; padding:1px 6px; border-radius:4px; font-size:12.5px; }
+  .plan ol, .plan ul { margin:6px 0 0; padding-left:20px; }
+  .qa { background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:12px 16px; margin-top:12px; }
+  .qa b { color:#9a3412; }
+</style>
+</head>
+<body>
+  <h1 class="page">New receipt — two copies printed per sale</h1>
+  <p class="page-sub">Each transaction now prints <b>two receipts back-to-back</b> with a cut between them. They are identical except the footer: the <b>Office Copy</b> carries the signature line and the goods-received acknowledgement (kept by the shop, signed by the member); the <b>Customer Copy</b> drops both and is stamped “Customer Copy”. Green outlines mark the only differences.</p>
+
+  <div class="stage">
+
+    <!-- ============ OFFICE COPY ============ -->
+    <div class="panel">
+      <p class="cap">Office Copy (signed)</p>
+      <p class="order">prints <b>1st</b> · kept by shop</p>
+      <div class="bill">
+        <div class="center">
+          <div class="h-org">මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමූපකාර සමිතිය - කොටපොල</div>
+          <div class="h-sub">ඇලන්වැලි සමූපකාර වෙළදසැල</div>
+          <div class="h-addr">No.91, කොටපොල, මාතර -&nbsp;&nbsp; 0344940670</div>
+        </div>
+        <hr>
+        <div class="meta">
+          <div>
+            <div>ඉන්වොයිස් අංකය:</div>
+            <div class="inv">SALE-20260716-00011</div>
+            <div>අයකැමි: Namal</div>
+            <div>ගෙවීම් ක්‍රමය: Credit</div>
+          </div>
+          <div class="right">
+            <div>2025/07/01 04:53PM</div>
+            <div>සාමාජික නම : Kamal</div>
+            <div>සාමාජික අංකය : 00023</div>
+            <div>වාරික ගණන : 01 month</div>
+          </div>
+        </div>
+        <hr>
+        <table>
+          <thead><tr>
+            <th class="c" style="width:40px">අං.</th><th class="l">ද්‍රව්‍ය</th>
+            <th class="r">ද්‍රව්‍ය මිල</th><th class="r">ප්‍රමාණය</th><th class="r">වට්ටම</th><th class="r">වටිනාකම</th>
+          </tr></thead>
+          <tbody>
+            <tr class="line-top"><td class="ix">1</td><td class="nm" colspan="5">Eddie Chocolate</td></tr>
+            <tr class="line-bot"><td></td><td></td><td class="r">100.00 /1pcs</td><td class="r">2pcs</td><td class="r">0.00</td><td class="r">200.00</td></tr>
+            <tr class="line-top"><td class="ix">2</td><td class="nm" colspan="5">Red Rice</td></tr>
+            <tr class="line-bot"><td></td><td></td><td class="r">420.00 /100g</td><td class="r">500g</td><td class="r">0.00</td><td class="r">200.00</td></tr>
+            <tr class="line-top"><td class="ix">3</td><td class="nm" colspan="5">Coconut oil-100ml</td></tr>
+            <tr class="line-bot"><td></td><td></td><td class="r">150.00 /1pcs</td><td class="r">500g</td><td class="r">0.00</td><td class="r">200.00</td></tr>
+            <tr class="line-top"><td class="ix">4</td><td class="nm" colspan="5">Nylon string</td></tr>
+            <tr class="line-bot"><td></td><td></td><td class="r">50.00/10cm</td><td class="r">500cm</td><td class="r">0.00</td><td class="r">1,000.00</td></tr>
+          </tbody>
+        </table>
+        <hr class="strong">
+        <div class="totals">
+          <div class="row"><p>මුළු වටිනාකම:</p><p class="tnum">2600.00</p></div>
+          <div class="row"><p>වට්ටම් එකතුව:</p><p class="tnum">100.00</p></div>
+          <div class="row grand"><p>ගෙවිය යුතු මුදල:</p><p class="tnum">2500.00</p></div>
+          <hr class="strong">
+          <div class="row"><p>ලබා දුන් මුදල :</p><p class="tnum">5,000.00</p></div>
+          <div class="row"><p>ඉතිරි මුදල :</p><p class="tnum">2500.00</p></div>
+        </div>
+        <hr>
+        <div class="foot">
+          <div class="sig diff">
+            <div class="rule">------------------------------</div>
+            <div>අත්සන</div>
+            <div class="ack">ඉහත සදහන් ද්‍රව්‍ය නිවැරදිව භාර ගතිමි.</div>
+          </div>
+          <div class="terms">මුදල් හෝ භාණ්ඩ වෙනසක් අත්නම් දින 30ක් ඇතුලත දැනුම් දිය යුතුය.</div>
+          <div class="thanks">------------THANK YOU COME AGAIN-----------</div>
+          <div class="brand">POSMaster</div>
+          <div class="barcode"><div class="bars" data-code="office"></div><div class="code">T3HHQNN1191/CG14C1QDN</div></div>
+        </div>
+      </div>
+      <div class="cutline"><span>cut</span></div>
+    </div>
+
+    <!-- ============ CUSTOMER COPY ============ -->
+    <div class="panel">
+      <p class="cap">Customer Copy</p>
+      <p class="order">prints <b>2nd</b> · handed to customer</p>
+      <div class="bill">
+        <div class="center">
+          <div class="h-org">මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමූපකාර සමිතිය - කොටපොල</div>
+          <div class="h-sub">ඇලන්වැලි සමූපකාර වෙළදසැල</div>
+          <div class="h-addr">No.91, කොටපොල, මාතර -&nbsp;&nbsp; 0344940670</div>
+        </div>
+        <hr>
+        <div class="meta">
+          <div>
+            <div>ඉන්වොයිස් අංකය:</div>
+            <div class="inv">SALE-20260716-00011</div>
+            <div>අයකැමි: Namal</div>
+            <div>ගෙවීම් ක්‍රමය: Credit</div>
+          </div>
+          <div class="right">
+            <div>2025/07/01 04:53PM</div>
+            <div>සාමාජික නම : Kamal</div>
+            <div>සාමාජික අංකය : 00023</div>
+            <div>වාරික ගණන : 01 month</div>
+          </div>
+        </div>
+        <hr>
+        <table>
+          <thead><tr>
+            <th class="c" style="width:40px">අං.</th><th class="l">ද්‍රව්‍ය</th>
+            <th class="r">ද්‍රව්‍ය මිල</th><th class="r">ප්‍රමාණය</th><th class="r">වට්ටම</th><th class="r">වටිනාකම</th>
+          </tr></thead>
+          <tbody>
+            <tr class="line-top"><td class="ix">1</td><td class="nm" colspan="5">Eddie Chocolate</td></tr>
+            <tr class="line-bot"><td></td><td></td><td class="r">100.00 /1pcs</td><td class="r">2pcs</td><td class="r">0.00</td><td class="r">200.00</td></tr>
+            <tr class="line-top"><td class="ix">2</td><td class="nm" colspan="5">Red Rice</td></tr>
+            <tr class="line-bot"><td></td><td></td><td class="r">420.00 /100g</td><td class="r">500g</td><td class="r">0.00</td><td class="r">200.00</td></tr>
+            <tr class="line-top"><td class="ix">3</td><td class="nm" colspan="5">Coconut oil-100ml</td></tr>
+            <tr class="line-bot"><td></td><td></td><td class="r">150.00 /1pcs</td><td class="r">500g</td><td class="r">0.00</td><td class="r">200.00</td></tr>
+            <tr class="line-top"><td class="ix">4</td><td class="nm" colspan="5">Nylon string</td></tr>
+            <tr class="line-bot"><td></td><td></td><td class="r">50.00/10cm</td><td class="r">500cm</td><td class="r">0.00</td><td class="r">1,000.00</td></tr>
+          </tbody>
+        </table>
+        <hr class="strong">
+        <div class="totals">
+          <div class="row"><p>මුළු වටිනාකම:</p><p class="tnum">2600.00</p></div>
+          <div class="row"><p>වට්ටම් එකතුව:</p><p class="tnum">100.00</p></div>
+          <div class="row grand"><p>ගෙවිය යුතු මුදල:</p><p class="tnum">2500.00</p></div>
+          <hr class="strong">
+          <div class="row"><p>ලබා දුන් මුදල :</p><p class="tnum">5,000.00</p></div>
+          <div class="row"><p>ඉතිරි මුදල :</p><p class="tnum">2500.00</p></div>
+        </div>
+        <hr>
+        <div class="foot">
+          <!-- signature + acknowledgement omitted on the customer copy -->
+          <div class="terms" style="margin-top:16px">මුදල් හෝ භාණ්ඩ වෙනසක් අත්නම් දින 30ක් ඇතුලත දැනුම් දිය යුතුය.</div>
+          <div class="thanks">------------THANK YOU COME AGAIN-----------</div>
+          <div class="brand">POSMaster</div>
+          <div class="barcode"><div class="bars" data-code="customer"></div><div class="code">T3HHQNN1191/CG14C1QDN</div></div>
+          <div class="copylabel diff">Customer Copy</div>
+        </div>
+      </div>
+      <div class="cutline"><span>cut</span></div>
+    </div>
+
+  </div>
+
+  <!-- ============ PLAN ============ -->
+  <div class="plan">
+    <h2>Implementation plan — new template + two-copy print</h2>
+    <p>The two copies share one body and differ only in the footer, so this is one templated component rendered twice, not two components.</p>
+
+    <h3>1 · New template (<code>BillContent</code>)</h3>
+    <ul>
+      <li>Add a <code>variant</code> prop: <code>"office"</code> | <code>"customer"</code>. Office renders the signature block + acknowledgement line; customer renders the “Customer Copy” label. Everything else is shared.</li>
+      <li>Rebuild the item table as 6 columns with two-line rows (index, name / unit-price·unit, qty·unit, discount, value). This is the part that needs width tuning for 72 mm — see the caveat.</li>
+      <li>New billData fields to add: <code>member_name</code>, <code>installment_term</code>, <code>time</code> on the timestamp, per-item <code>uom.symbol</code> + <code>customer_discount</code> (mostly wiring existing data), and shop <code>address</code>/<code>phone</code> from settings.</li>
+    </ul>
+
+    <h3>2 · Two-copy print loop (<code>SalesView.printReceipt</code>)</h3>
+    <ol>
+      <li><b>Every sale prints both copies</b> (cash and credit alike). Pick the printer path once (thermal vs system), as today.</li>
+      <li>For <code>variant</code> in <code>["office","customer"]</code>: set the variant → <code>captureReceiptCanvas()</code> → print that canvas. Each ESC/POS payload already ends with a cut, so the two copies separate cleanly.</li>
+      <li>System/PDF path prints two jobs (or a 2-page PDF) the same way.</li>
+    </ol>
+
+    <h3>3 · Installment term captured at checkout</h3>
+    <p>A new control in the checkout step lets the cashier pick the installment term (<code>වාරික ගණන</code>); the chosen value flows into <code>billData.installment_term</code> and onto both copies. The office copy keeps the signature block with no label; only the customer copy is stamped “Customer Copy”.</p>
+
+    <div class="qa">
+      <p><b>Confirmed decisions:</b></p>
+      <ol>
+        <li><b>Two copies on every sale</b> — cash and credit both print office + customer.</li>
+        <li><b>No “Office Copy” label</b> — the office copy stays as your image shows; the signature block is the tell.</li>
+        <li><b>Installment term is chosen at checkout</b> by the cashier, per transaction.</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    // Deterministic faux barcode (visual only; real one via jsbarcode on invoiceNo).
+    document.querySelectorAll('.bars').forEach(function (el) {
+      var seed = 'T3HHQNN1191/CG14C1QDN', out = '';
+      for (var i = 0; i < 116; i++) {
+        var c = seed.charCodeAt(i % seed.length);
+        var w = 1 + ((c + i * 7) % 4);
+        var gap = (c + i) % 3 === 0;
+        out += '<i style="width:' + w + 'px;height:100%;background:' + (gap ? 'transparent' : '#000') + '"></i>';
+      }
+      el.innerHTML = out;
+    });
+  </script>
+</body>
+</html>

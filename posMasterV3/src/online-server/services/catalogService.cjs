@@ -5,6 +5,21 @@ const { publishDomainEvent } = require('./domainEvents.cjs');
 const restockService = require('./restockService.cjs');
 const disposeService = require('./disposeService.cjs');
 const { normalizeTrackingMode } = require('./inventoryTrackingService.cjs');
+const { hasAnyRole, MANAGER_ROLES } = require('../middleware/auth.cjs');
+
+// Fields a non-manager may change on their own user record via the
+// self-service PATCH /collections/users/:id path (see middleware/auth.cjs's
+// isSelfUserRecord gate) — matches exactly what UserSettings.jsx's profile
+// form actually sends (username, email, full_name). Deliberately an
+// ALLOWLIST, not a blocklist: a blocklist of field names like 'roles' is
+// bypassable by sending the key as "roles.0" — MongoDB's $set treats a
+// dotted key as a path into the array/object, not a literal field name equal
+// to "roles", so `delete body['roles']` doesn't touch it, and the update
+// still lands. An allowlist has no equivalent bypass — anything not on the
+// list is dropped, whatever it's named.
+const SELF_SERVICE_ALLOWED_USER_FIELDS = new Set([
+    'username', 'email', 'full_name', 'fullName'
+]);
 
 const COLLECTIONS = new Set([
     'branches',
@@ -71,7 +86,8 @@ const SEARCH_FIELDS = {
     payment_methods: ['name', 'description', 'type'],
     login_history: ['email', 'username', 'deviceName', 'device_name', 'status'],
     offers: ['name', 'description', 'code'],
-    disposed_items: ['sku', 'batchCode', 'batch_code', 'item_name']
+    disposed_items: ['sku', 'batchCode', 'batch_code', 'item_name'],
+    tea_coop_members: ['name', 'full_name', 'member_no', 'memberNo']
 };
 
 const USER_SECRET_FIELDS = [
@@ -83,7 +99,15 @@ const USER_SECRET_FIELDS = [
     'resetTokenHash',
     'tokenHash',
     'sessionToken',
-    'apiKey'
+    'apiKey',
+    // Internal login-lockout bookkeeping (see authService.cjs) — not secrets
+    // in the credential sense, but internal auth state that shouldn't reach
+    // the client. publicUser() in utils/security.cjs strips these for the
+    // login/register response path; this is the equivalent for the generic
+    // catalog browsing path (GET /collections/users), which goes through
+    // sanitizeRecord() below instead of publicUser().
+    'failedLoginAttempts',
+    'lockedUntil'
 ];
 
 function ensureCollection(name) {
@@ -142,6 +166,79 @@ function applySearchFilter(collectionName, filter, query = {}) {
         delete filter.$or;
     } else {
         Object.assign(filter, searchClause);
+    }
+
+    return filter;
+}
+
+function applyDateRangeFilter(filter, query = {}) {
+    const startRaw = query.startDate ?? query.start_date ?? query.from ?? '';
+    const endRaw = query.endDate ?? query.end_date ?? query.to ?? '';
+    if (!startRaw && !endRaw) return filter;
+
+    const range = {};
+    if (startRaw) {
+        const start = new Date(startRaw);
+        if (!Number.isNaN(start.getTime())) range.$gte = start;
+    }
+    if (endRaw) {
+        const end = new Date(endRaw);
+        if (!Number.isNaN(end.getTime())) range.$lte = end;
+    }
+    if (!range.$gte && !range.$lte) return filter;
+
+    // Records were created via different service paths over time, some of
+    // which only ever set createdAt (camelCase) and some which set both that
+    // and the legacy created_at (snake_case) — never with different values —
+    // so matching either field is the same defensive coalesce
+    // OnlineModeService's own sales aggregations already rely on.
+    const dateClause = {
+        $or: [
+            { createdAt: range },
+            { created_at: range }
+        ]
+    };
+
+    if (filter.$and) {
+        filter.$and.push(dateClause);
+    } else if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, dateClause];
+        delete filter.$or;
+    } else {
+        Object.assign(filter, dateClause);
+    }
+
+    return filter;
+}
+
+// Used only by the stock:get-expiring IPC handler ("batches expiring within
+// N days"), which previously ignored the days argument entirely and
+// returned the full unfiltered stock list. Matches on expiryDate OR
+// expiry_date, same dual-field-name reasoning as applyDateRangeFilter above.
+function applyExpiryFilter(collectionName, filter, query = {}) {
+    if (collectionName !== 'stock_batches') return filter;
+    const daysRaw = query.days ?? query.expiringInDays;
+    if (daysRaw === undefined || daysRaw === null || daysRaw === '') return filter;
+
+    const days = Number(daysRaw);
+    if (!Number.isFinite(days)) return filter;
+
+    const cutoff = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    const range = { $lte: cutoff };
+    const expiryClause = {
+        $or: [
+            { expiryDate: range },
+            { expiry_date: range }
+        ]
+    };
+
+    if (filter.$and) {
+        filter.$and.push(expiryClause);
+    } else if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, expiryClause];
+        delete filter.$or;
+    } else {
+        Object.assign(filter, expiryClause);
     }
 
     return filter;
@@ -430,7 +527,7 @@ async function list(collectionName, auth, query = {}) {
     const db = getDb();
     const limit = parseLimit(query);
     const skip = parseSkip(query);
-    const filter = applySearchFilter(collectionName, scopedQuery(collectionName, auth, query), query);
+    const filter = applyExpiryFilter(collectionName, applyDateRangeFilter(applySearchFilter(collectionName, scopedQuery(collectionName, auth, query), query), query), query);
     const records = await db.collection(collectionName)
         .find(filter)
         .sort({ updatedAt: -1, createdAt: -1 })
@@ -536,7 +633,15 @@ async function update(collectionName, auth, id, body) {
     }
     assertBranchAccess(collectionName, auth, existing);
 
-    const payload = normalizeCollectionBody(collectionName, auth, body, existing);
+    let effectiveBody = body;
+    if (collectionName === 'users' && String(existing._id) === String(auth.userId) && !hasAnyRole(auth, MANAGER_ROLES)) {
+        effectiveBody = {};
+        for (const key of Object.keys(body || {})) {
+            if (SELF_SERVICE_ALLOWED_USER_FIELDS.has(key)) effectiveBody[key] = body[key];
+        }
+    }
+
+    const payload = normalizeCollectionBody(collectionName, auth, effectiveBody, existing);
     if (payload.passwordHashPromise) {
         payload.passwordHash = await payload.passwordHashPromise;
         delete payload.passwordHashPromise;

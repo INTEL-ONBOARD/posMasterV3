@@ -6,6 +6,8 @@
  */
 
 const crypto = require('crypto');
+const { createLogger } = require('../../online-server/utils/logger.cjs');
+const ipcLogger = createLogger('IPC');
 
 // Sri Lanka timezone offset: UTC+5:30
 const SRI_LANKA_OFFSET_HOURS = 5;
@@ -166,7 +168,7 @@ function wrapIpcHandler(handler) {
         try {
             return await handler(...args);
         } catch (error) {
-            console.error('[IPC Handler Error]', error);
+            ipcLogger.error(error.message || 'An unexpected error occurred', { stack: error.stack });
             return {
                 status: 'error',
                 message: error.message || 'An unexpected error occurred'

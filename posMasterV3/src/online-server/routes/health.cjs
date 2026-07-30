@@ -25,7 +25,7 @@ router.get('/ready', asyncHandler(async (req, res) => {
             transactionsSupported: supportsTransactions()
         });
     } catch (error) {
-        return fail(res, 503, 'Online backend is not ready');
+        return fail(res, 503, `Online backend is not ready: ${error.message}`);
     }
 }));
 

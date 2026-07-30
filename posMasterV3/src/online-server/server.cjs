@@ -1,4 +1,14 @@
 const { startOnlineServer, stopOnlineServer } = require('./runtime.cjs');
+const { createLogger } = require('./utils/logger.cjs');
+
+const logger = createLogger('OnlineAPI');
+process.on('uncaughtException', (error) => {
+    logger.error(error.message, { stack: error.stack });
+});
+process.on('unhandledRejection', (reason) => {
+    const error = reason instanceof Error ? reason : new Error(String(reason));
+    logger.error(error.message, { stack: error.stack });
+});
 
 async function start() {
     await startOnlineServer();

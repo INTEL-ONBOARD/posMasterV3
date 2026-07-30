@@ -9,6 +9,87 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 const defaultFolderPath = "C:\\POS Master";
 
+// Channels the renderer is allowed to reach through the generic send()/invoke()
+// passthrough below. Every channel the app actually uses is exposed through the
+// namespaced APIs further down this file (electronAPI.online.*, .users.*, etc.),
+// each of which hardcodes its own channel name. This whitelist exists only to
+// close off the raw passthrough as an attack surface (e.g. a compromised
+// dependency or XSS payload calling electronAPI.invoke() with an arbitrary
+// channel name) — nothing in this codebase relies on it being unrestricted.
+const ALLOWED_RAW_IPC_CHANNELS = new Set([
+    "select-folder", "create-files", "read-config-dtos", "store-user-data",
+    "perform-logout", "print-silent", "receipt-printer:get-config", "receipt-printer:list",
+    "receipt-printer:print-pdf", "thermal:print-receipt", "backend:status", "app:restart",
+    "app:logoutAndRestart", "startup:get-error", "updates:get-version", "updates:check-for-updates",
+    "updates:download-update", "updates:install-update",
+    "auth:login", "auth:register", "auth:logout", "auth:validate-session",
+    "auth:get-current-user", "auth:change-password", "auth:import-from-cloud",
+    "auth:check-session-with-sync", "auth:validate-session-fast",
+    "users:get-all", "users:get-by-id", "users:update", "users:delete", "users:search",
+    "users:get-by-role", "users:update-roles", "users:statistics", "users:reset-password",
+    "categories:get-all", "categories:get-by-id", "categories:get-types", "categories:search",
+    "categories:create", "categories:update", "categories:delete",
+    "uom:get-all", "uom:get-by-id", "uom:search", "uom:create", "uom:update", "uom:delete",
+    "branches:get-all", "branches:get-active", "branches:get-by-id", "branches:search",
+    "branches:create", "branches:update", "branches:delete",
+    "suppliers:get-all", "suppliers:get-active", "suppliers:get-by-id", "suppliers:search",
+    "suppliers:create", "suppliers:update", "suppliers:delete", "suppliers:update-amounts",
+    "items:get-all", "items:get-all-extended", "items:get-by-id", "items:get-by-id-extended",
+    "items:get-by-sku", "items:search", "items:create", "items:update", "items:delete",
+    "stock:get-all", "stock:get-all-with-items", "stock:get-by-id", "stock:get-by-sku",
+    "stock:get-low-stock", "stock:get-expiring", "stock:get-value", "stock:upsert",
+    "stock:update-quantity", "stock:update-prices", "stock:delete",
+    "restocks:get-all", "restocks:get-by-id", "restocks:get-by-invoice", "restocks:get-by-supplier",
+    "restocks:get-by-date-range", "restocks:get-stock-data", "restocks:get-stock-items",
+    "restocks:create", "restocks:get-summary",
+    "members:get-all", "members:get-active", "members:get-by-id", "members:get-by-member-no",
+    "members:get-with-transactions", "members:search", "members:create", "members:update",
+    "members:delete", "members:get-top", "members:get-debtors",
+    "offers:get-all", "offers:get-active", "offers:create", "offers:update", "offers:delete",
+    "offers:toggle-active",
+    "disposed:get-all", "disposed:create", "disposed:get-by-date-range",
+    "sales:get-all", "sales:get-by-id", "sales:get-by-invoice", "sales:get-by-member",
+    "sales:get-by-date-range", "sales:get-held-orders", "sales:create", "sales:hold",
+    "payment-methods:get-all", "payment-methods:get-active", "payment-methods:get-for-members",
+    "payment-methods:get-for-non-members", "payment-methods:get-by-id", "payment-methods:search",
+    "payment-methods:create", "payment-methods:update", "payment-methods:toggle-active",
+    "payment-methods:delete",
+    "loginHistory:getAll", "loginHistory:getByUser", "loginHistory:getByDateRange",
+    "loginHistory:getUserStats", "loginHistory:getDailyStats", "loginHistory:getUserActivitySummary",
+    "loginHistory:getActiveSessions", "loginHistory:markStaleSessions",
+    "teacoop:initialize", "teacoop:members:getAll", "teacoop:members:getById",
+    "teacoop:members:search", "teacoop:payments:getHistory", "teacoop:sync:members",
+    "teacoop:sync:payments", "teacoop:members:refresh", "teacoop:status",
+    "appSettings:getAll", "appSettings:setLogoutOnClose", "appSettings:setRunOnStartup",
+    "appSettings:setMaximizeOnStart", "appSettings:setNotifications", "appSettings:testNotification",
+    "appSettings:applyAll",
+    "online:get-config", "online:health", "online:ready", "online:login", "online:register",
+    "online:logout", "online:validate-session", "online:set-token", "online:realtime-status",
+    "online:list", "online:get", "online:create", "online:update", "online:delete",
+    "online:sales:create", "online:sales:complete-held", "online:sales:cancel",
+    "online:sales:return-items", "online:sales:invoice-no", "online:sales:get-summary",
+    "online:sales:get-daily", "online:login-history:get-active-sessions",
+    "online:login-history:count-active-sessions", "online:auth:change-password",
+    "online:users:reset-password", "online:inventory-transfers:accept",
+    "online:inventory-transfers:reject",
+]);
+
+// Channels the main process pushes TO the renderer (the reverse direction
+// from ALLOWED_RAW_IPC_CHANNELS above) — gates the generic receive()
+// passthrough the same way, so a compromised renderer can't register a
+// listener on an arbitrary channel name. Built from every webContents.send()
+// call site (electron.cjs, OnlineRealtimeClient.cjs's broadcast()) plus the
+// channels the dedicated onSessionKicked/onStatusUpdate/onAutoLogout/
+// onSyncEvent methods below already listen for even though nothing
+// currently triggers them.
+const ALLOWED_RECEIVE_CHANNELS = new Set([
+    "logout-response", "updates:available", "updates:download-progress",
+    "updates:downloaded", "updates:error", "updates:not-available",
+    "online:realtime-status", "online:domain-event", "online:event",
+    "session:kicked", "status:update", "appSettings:auto-logout",
+    "teacoop:sync:started", "teacoop:sync:completed", "teacoop:sync:error",
+]);
+
 contextBridge.exposeInMainWorld("electronAPI", {
     // ============================================
     // UTILITY METHODS
@@ -24,15 +105,28 @@ contextBridge.exposeInMainWorld("electronAPI", {
     // GENERAL IPC METHODS (Legacy)
     // ============================================
 
-    // General send and receive IPC methods
-    send: (channel, data) => ipcRenderer.send(channel, data),
-    invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
+    // General send and receive IPC methods (channel-restricted, see ALLOWED_RAW_IPC_CHANNELS above)
+    send: (channel, data) => {
+        if (!ALLOWED_RAW_IPC_CHANNELS.has(channel)) {
+            throw new Error(`IPC channel not allowed: ${channel}`);
+        }
+        return ipcRenderer.send(channel, data);
+    },
+    invoke: (channel, ...args) => {
+        if (!ALLOWED_RAW_IPC_CHANNELS.has(channel)) {
+            throw new Error(`IPC channel not allowed: ${channel}`);
+        }
+        return ipcRenderer.invoke(channel, ...args);
+    },
     sendPrintSilent: (arrayBuffer) => ipcRenderer.send("print-silent", arrayBuffer),
     getReceiptPrinterConfig: () => ipcRenderer.invoke("receipt-printer:get-config"),
     listReceiptPrinters: () => ipcRenderer.invoke("receipt-printer:list"),
     printReceiptPdf: (payload) => ipcRenderer.invoke("receipt-printer:print-pdf", payload),
     printThermalReceipt: (payload) => ipcRenderer.invoke("thermal:print-receipt", payload),
     receive: (channel, func) => {
+        if (!ALLOWED_RECEIVE_CHANNELS.has(channel)) {
+            throw new Error(`IPC channel not allowed: ${channel}`);
+        }
         ipcRenderer.on(channel, (event, ...args) => func(...args));
     },
 
@@ -72,6 +166,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     // Create config files
     createFiles: (folderPath, outlet) =>
         ipcRenderer.invoke("create-files", { folderPath, outlet }),
+
+    // Read the last bundled-server startup failure, if any (see electron.cjs recordStartupError)
+    getStartupError: () => ipcRenderer.invoke("startup:get-error"),
 
     // ============================================
     // ONLINE-ONLY API

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POSMaster V3 — Architecture</title>
+<style>
+  :root{
+    --bg:#0b1020; --bg2:#111a30; --panel:#151f38; --panel2:#1b273f;
+    --ink:#e7ecf6; --muted:#9aa8c4; --faint:#6b7899; --line:#26324f;
+    --renderer:#5b9bff; --main:#a97bff; --server:#2dd4bf; --mongo:#34d399;
+    --ext:#f59e0b; --danger:#fb7185; --code:#0e1830;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:linear-gradient(180deg,#0a0e1c,#0b1020 40%);color:var(--ink);font-family:var(--sans);line-height:1.55;font-size:15px}
+  a{color:var(--renderer);text-decoration:none}
+  code,.mono{font-family:var(--mono);font-size:.86em}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+
+  /* header */
+  header.hero{padding:54px 0 30px;border-bottom:1px solid var(--line);background:radial-gradient(1200px 300px at 50% -60px,rgba(91,155,255,.14),transparent)}
+  .hero h1{margin:0 0 8px;font-size:34px;letter-spacing:-.02em;font-weight:800}
+  .hero p{margin:0;color:var(--muted);max-width:820px;font-size:16px}
+  .hero .meta{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
+  .pill{font-size:12px;color:var(--muted);border:1px solid var(--line);background:var(--panel);padding:4px 11px;border-radius:20px}
+  .pill b{color:var(--ink);font-weight:600}
+
+  /* sticky nav */
+  nav.toc{position:sticky;top:0;z-index:20;background:rgba(10,14,28,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  nav.toc .wrap{display:flex;gap:4px;flex-wrap:wrap;padding:10px 22px}
+  nav.toc a{color:var(--muted);font-size:12.5px;padding:6px 11px;border-radius:8px;white-space:nowrap}
+  nav.toc a:hover{color:var(--ink);background:var(--panel)}
+
+  section{padding:44px 0;border-bottom:1px solid var(--line)}
+  h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.14em;color:var(--server);margin:0 0 4px;font-weight:700}
+  h3.title{font-size:24px;margin:0 0 6px;letter-spacing:-.01em;font-weight:750}
+  .lead{color:var(--muted);max-width:850px;margin:0 0 24px}
+
+  /* legend */
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0 0}
+  .legend .k{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+  .swatch{width:13px;height:13px;border-radius:4px;flex:none}
+
+  /* layered stack */
+  .stack{display:flex;flex-direction:column;gap:0}
+  .layer{position:relative;border:1px solid var(--line);border-top:2px solid var(--accent,var(--line));border-radius:14px;background:var(--panel);padding:16px 18px;margin:9px 0}
+  .layer.acc-renderer{--accent:var(--renderer)}
+  .layer.acc-main{--accent:var(--main)}
+  .layer.acc-server{--accent:var(--server)}
+  .layer.acc-mongo{--accent:var(--mongo)}
+  .layer.acc-ext{--accent:var(--ext)}
+  .layer .lh{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .layer .lh::before{content:"";width:11px;height:11px;border-radius:3px;background:var(--accent,var(--line));align-self:center;flex:none}
+  .layer .lh .name{font-weight:700;font-size:15px}
+  .layer .lh .sub{color:var(--faint);font-size:12.5px;font-family:var(--mono)}
+  .layer .lh .tag{margin-left:auto;font-size:11px;color:var(--muted);border:1px solid var(--line);padding:2px 9px;border-radius:20px}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+  .node{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+  .node .nt{font-weight:650;font-size:13.5px;margin-bottom:3px}
+  .node .nd{color:var(--muted);font-size:12px;line-height:1.45}
+  .node .ref{color:var(--faint);font-family:var(--mono);font-size:11px;margin-top:6px;display:block}
+  .between{display:flex;justify-content:center;padding:3px 0}
+  .between span{font-family:var(--mono);font-size:12px;color:var(--server);background:var(--code);border:1px solid var(--line);border-radius:20px;padding:3px 14px}
+  .between.up span{color:var(--ext)}
+
+  /* flow steps */
+  .flow{counter-reset:step;display:flex;flex-direction:column;gap:0}
+  .step{display:grid;grid-template-columns:42px 1fr;gap:14px;position:relative;padding:8px 0}
+  .step::before{counter-increment:step;content:counter(step);grid-column:1;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:var(--mono);font-size:14px;background:var(--panel2);border:1px solid var(--line);color:var(--ink)}
+  .step .body{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .step .body .t{font-weight:650}
+  .step .body .t .chip{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:6px;margin-left:8px;vertical-align:1px}
+  .chip.r{background:rgba(91,155,255,.16);color:var(--renderer)}
+  .chip.m{background:rgba(169,123,255,.16);color:var(--main)}
+  .chip.s{background:rgba(45,212,191,.16);color:var(--server)}
+  .chip.d{background:rgba(52,211,153,.16);color:var(--mongo)}
+  .chip.e{background:rgba(245,158,11,.16);color:var(--ext)}
+  .step .body .d{color:var(--muted);font-size:13px;margin-top:3px}
+  .step .body .ref{color:var(--faint);font-family:var(--mono);font-size:11px;margin-top:5px;display:block}
+  .connector{grid-column:1;justify-self:center;width:2px;background:var(--line);height:12px}
+
+  /* loop / return path */
+  .retpath .step::before{background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.4);color:var(--mongo)}
+
+  /* generic cards grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 16px}
+  .card h4{margin:0 0 8px;font-size:14.5px;display:flex;align-items:center;gap:8px}
+  .card h4 .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .card ul{margin:0;padding-left:16px;color:var(--muted);font-size:13px}
+  .card li{margin:3px 0}
+  .card p{margin:0;color:var(--muted);font-size:13px}
+  .kref{color:var(--faint);font-family:var(--mono);font-size:11px}
+
+  /* tables */
+  .tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px;overflow:hidden;border-radius:10px;border:1px solid var(--line)}
+  .tbl th,.tbl td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  .tbl th{background:var(--panel2);color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em}
+  .tbl td{color:var(--ink)}
+  .tbl td .mono,.tbl td code{color:var(--server)}
+  .tbl tr:last-child td{border-bottom:0}
+  .scroll{overflow-x:auto}
+
+  .note{background:linear-gradient(180deg,rgba(45,212,191,.07),transparent 60%);border:1px solid var(--line);border-top:2px solid var(--server);border-radius:10px;padding:12px 15px;color:var(--muted);font-size:13.5px;margin:16px 0}
+  .note b{color:var(--ink)}
+  .warn{border-top-color:var(--danger);background:linear-gradient(180deg,rgba(251,113,133,.07),transparent 60%)}
+
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:820px){.two{grid-template-columns:1fr}}
+  .tagrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .tag{font-size:11.5px;font-family:var(--mono);color:var(--muted);background:var(--code);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+  footer{padding:34px 0 60px;color:var(--faint);font-size:12.5px}
+  .arrowcol{display:flex;flex-direction:column;align-items:center;color:var(--faint);font-size:20px;line-height:1}
+</style>
+</head>
+<body>
+
+<header class="hero"><div class="wrap">
+  <h1>POSMaster V3 — System Architecture</h1>
+  <p>How the Electron desktop POS is built and how it connects to the data. The defining trait: the desktop app <b>embeds its own API server</b> in-process, so the UI never talks to the network directly — every read, write, and live update is brokered through an Electron IPC bridge to a local Express + Socket.IO server that owns the one shared MongoDB Atlas database.</p>
+  <div class="meta">
+    <span class="pill"><b>App</b> v1.6.6 · Electron 30 · React 19 · Vite 6</span>
+    <span class="pill"><b>Server</b> Express 5 · Socket.IO 4 · MongoDB 7 (Atlas)</span>
+    <span class="pill"><b>Mode</b> online-only · single shared DB</span>
+    <span class="pill"><b>DB</b> POSmaster · 30+ collections</span>
+  </div>
+</div></header>
+
+<nav class="toc"><div class="wrap">
+  <a href="#overview">Overview</a>
+  <a href="#process">Process model</a>
+  <a href="#datapath">Data path</a>
+  <a href="#realtime">Real-time sync</a>
+  <a href="#lifecycle">Server lifecycle</a>
+  <a href="#auth">Auth &amp; sessions</a>
+  <a href="#startup">Startup</a>
+  <a href="#printing">Printing</a>
+  <a href="#config">Config &amp; release</a>
+  <a href="#ipc">IPC surface</a>
+  <a href="#api">Endpoints</a>
+  <a href="#data">Collections</a>
+</div></nav>
+
+<!-- ===================== OVERVIEW ===================== -->
+<section id="overview"><div class="wrap">
+  <h2 class="sec">The big picture</h2>
+  <h3 class="title">Four layers inside one desktop process, plus one shared cloud database</h3>
+  <p class="lead">Everything except MongoDB and the external services runs inside a <b>single Electron application instance</b> (single-instance-locked). The renderer, the IPC bridge, and the online API server are three contexts of the same OS process; the server is not a separate program.</p>
+
+  <div class="legend">
+    <span class="k"><span class="swatch" style="background:var(--renderer)"></span>Renderer (React UI)</span>
+    <span class="k"><span class="swatch" style="background:var(--main)"></span>Electron main / IPC bridge</span>
+    <span class="k"><span class="swatch" style="background:var(--server)"></span>Embedded online server</span>
+    <span class="k"><span class="swatch" style="background:var(--mongo)"></span>MongoDB Atlas</span>
+    <span class="k"><span class="swatch" style="background:var(--ext)"></span>External services</span>
+  </div>
+
+  <div class="stack" style="margin-top:22px">
+
+    <div class="layer acc-renderer">
+      <div class="lh"><span class="name">1 · Renderer — React UI</span><span class="sub">dist/index.html · or Vite dev :5173</span><span class="tag">Chromium sandbox · no Node</span></div>
+      <div class="nodes">
+        <div class="node"><div class="nt">Pages &amp; routing</div><div class="nd">HashRouter, PrivateRoute/PermissionRoute. Sales, Inventory, Dashboard, Settings, Users.</div><span class="ref">App.jsx · pages/*</span></div>
+        <div class="node"><div class="nt">Hooks</div><div class="nd">useCart, useSalePayload, useCheckout, useReceiptPrinting, useReactiveData.</div><span class="ref">hooks/* · store/hooks/*</span></div>
+        <div class="node"><div class="nt">Reactive store</div><div class="nd">DataStore singleton, 2s TTL cache, subscribe/invalidate/refetch.</div><span class="ref">store/DataStore.js</span></div>
+        <div class="node"><div class="nt">Data layer</div><div class="nd">localApi.js — online-only after installOnlineOnlyOverrides(). Calls the bridge, never HTTP.</div><span class="ref">api/localApi.js:3763</span></div>
+      </div>
+    </div>
+
+    <div class="between"><span>window.electronAPI (contextBridge) ↕ ipcRenderer.invoke / .on</span></div>
+
+    <div class="layer acc-main">
+      <div class="lh"><span class="name">2 · Electron main — IPC bridge &amp; native services</span><span class="sub">electron.cjs · preload.cjs</span><span class="tag">Node.js · contextIsolation</span></div>
+      <div class="nodes">
+        <div class="node"><div class="nt">Preload bridge</div><div class="nd">contextBridge exposes electronAPI.* namespaces; whitelisted channels only.</div><span class="ref">preload.cjs:93</span></div>
+        <div class="node"><div class="nt">Backend controllers</div><div class="nd">OnlineController registers ~130 ipcMain.handle channels → OnlineModeService.</div><span class="ref">controllers/OnlineController.cjs</span></div>
+        <div class="node"><div class="nt">OnlineApiClient</div><div class="nd">fetch() to the embedded server. Bearer token, retry w/ backoff on GET/5xx.</div><span class="ref">online/OnlineApiClient.cjs</span></div>
+        <div class="node"><div class="nt">OnlineRealtimeClient</div><div class="nd">socket.io-client to :4100; rebroadcasts domain events to every window.</div><span class="ref">online/OnlineRealtimeClient.cjs</span></div>
+        <div class="node"><div class="nt">Printing</div><div class="nd">Thermal raw TCP :9100, pdf-to-printer, webContents.print fallback.</div><span class="ref">electron.cjs:206 / 407 / 1127</span></div>
+        <div class="node"><div class="nt">Auto-update / launch</div><div class="nd">electron-updater (GitHub), auto-launch on startup.</div><span class="ref">electron.cjs:1193 · AppSettingsService</span></div>
+      </div>
+    </div>
+
+    <div class="between"><span>HTTP fetch → 127.0.0.1:4100/api   ·   Socket.IO ws → 127.0.0.1:4100</span></div>
+
+    <div class="layer acc-server">
+      <div class="lh"><span class="name">3 · Embedded online server — Express + Socket.IO</span><span class="sub">src/online-server/* · in-process</span><span class="tag">started by runtime.cjs:9</span></div>
+      <div class="nodes">
+        <div class="node"><div class="nt">Express app</div><div class="nd">helmet → cors → json(10mb) → /api routes → 404 → errorMiddleware.</div><span class="ref">app.cjs:34</span></div>
+        <div class="node"><div class="nt">Routes</div><div class="nd">health, auth, teaCoop, catalog (collections + sales + transfers).</div><span class="ref">routes/*</span></div>
+        <div class="node"><div class="nt">Auth middleware</div><div class="nd">requireAuth (JWT + session), requireOrgScope, RBAC permission guards.</div><span class="ref">middleware/auth.cjs</span></div>
+        <div class="node"><div class="nt">Services</div><div class="nd">auth, catalog (25 collections), sales, restock, transfer, dispose, teaCoop.</div><span class="ref">services/*</span></div>
+        <div class="node"><div class="nt">Domain events</div><div class="nd">publishDomainEvent → domain_events insert + Socket.IO broadcast.</div><span class="ref">services/domainEvents.cjs</span></div>
+        <div class="node"><div class="nt">Realtime hub</div><div class="nd">Socket.IO rooms org/branch/user/role; handshake JWT auth.</div><span class="ref">realtime/hub.cjs</span></div>
+      </div>
+    </div>
+
+    <div class="between"><span>MongoDB driver — single pooled client (db/mongo.cjs)</span></div>
+
+    <div class="layer acc-mongo">
+      <div class="lh"><span class="name">4 · MongoDB Atlas — the single source of truth</span><span class="sub">database: POSmaster</span><span class="tag">shared by every till</span></div>
+      <div class="nodes">
+        <div class="node"><div class="nt">Transactional writes</div><div class="nd">Sales / restock / transfer / dispose use multi-doc transactions (Atlas replica set).</div><span class="ref">supportsTransactions()</span></div>
+        <div class="node"><div class="nt">Unique partial indexes</div><div class="nd">deletedAt:null uniqueness on users, items, sales(invoiceNo), stock_batches…</div><span class="ref">mongo.cjs:74</span></div>
+        <div class="node"><div class="nt">Event log</div><div class="nd">domain_events collection persists every change (audit + replay).</div><span class="ref">domain_events</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="two" style="margin-top:20px">
+    <div class="layer acc-ext" style="margin:0">
+      <div class="lh"><span class="name">External · Tea Coop API</span><span class="tag">outbound sync</span></div>
+      <div class="node" style="background:transparent;border:0;padding:0"><div class="nd">Server-side sync pulls members &amp; payments from <span class="mono">api.teacoop.lk</span>, upserts into <span class="mono">tea_coop_members / _payments</span>. Auth via token or username/password (55-min cache).</div><span class="ref">teaCoopSyncService.cjs</span></div>
+    </div>
+    <div class="layer acc-ext" style="margin:0">
+      <div class="lh"><span class="name">External · GitHub Releases + Thermal Printer</span><span class="tag">updates · hardware</span></div>
+      <div class="node" style="background:transparent;border:0;padding:0"><div class="nd">electron-updater pulls signed builds from <span class="mono">INTEL-ONBOARD/posMasterV3</span>. Receipts print to an 80mm thermal printer over raw TCP :9100 or a system print queue.</div><span class="ref">package.json build.publish</span></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ===================== PROCESS MODEL ===================== -->
+<section id="process"><div class="wrap">
+  <h2 class="sec">Process model</h2>
+  <h3 class="title">One OS process, three JavaScript contexts, one external DB</h3>
+  <p class="lead">The unusual part: what looks like a client/server system is actually a single Electron app. The "server" is booted by the main process via <span class="mono">require('./src/online-server/runtime.cjs').startOnlineServer()</span> and runs in the same process — not spawned as a child.</p>
+  <div class="grid">
+    <div class="card"><h4><span class="dot" style="background:var(--renderer)"></span>Renderer context</h4><p>Chromium window running the React bundle. No Node access (<span class="kref">contextIsolation:true, nodeIntegration:false</span>). Reaches everything through <span class="mono">window.electronAPI</span>.</p></div>
+    <div class="card"><h4><span class="dot" style="background:var(--main)"></span>Main process</h4><p>Node.js. Owns windows, printing, auto-update, the IPC handlers, and hosts the embedded server + realtime client.</p></div>
+    <div class="card"><h4><span class="dot" style="background:var(--server)"></span>Embedded server</h4><p>Express + Socket.IO on <span class="mono">127.0.0.1:4100</span>, started inside main only when packaged (dev runs it as a separate <span class="mono">online:dev</span> process).</p></div>
+    <div class="card"><h4><span class="dot" style="background:var(--mongo)"></span>MongoDB Atlas</h4><p>The only thing outside the process. Every till connects to the <b>same</b> cluster, which is how sales and stock stay consistent across terminals.</p></div>
+  </div>
+  <div class="note"><b>Why embed the server?</b> It keeps one codebase and one auth/permission model for both the desktop and any future remote deployment, and it means the renderer talks to a stable local endpoint regardless of network quality. The tradeoff: each till holds its own DB connection and its own realtime hub, so cross-till propagation happens through MongoDB + each till's own event stream, not a shared broker.</div>
+</div></section>
+
+<!-- ===================== DATA PATH ===================== -->
+<section id="datapath"><div class="wrap">
+  <h2 class="sec">The data path</h2>
+  <h3 class="title">How one action travels from a click to MongoDB</h3>
+  <p class="lead">Worked example: a cashier confirms a sale. The renderer never opens a socket or makes an HTTP request — it hands off to the bridge, and the main process makes the actual network call to the embedded server. Each hop below is a real function boundary.</p>
+
+  <div class="flow">
+    <div class="step"><div class="body"><div class="t">User confirms the sale<span class="chip r">renderer</span></div><div class="d">Checkout modal calls <span class="mono">handleConfirmSale()</span>; re-validates each line against live stock, builds the payload.</div><span class="ref">useCheckout.js:46 · useSalePayload.js:63</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">API call through the data layer<span class="chip r">renderer</span></div><div class="d"><span class="mono">salesApi.create(payload)</span> → <span class="mono">onlineCall(api ⇒ api.createSale(...))</span>. localApi is online-only; it delegates to the bridge.</div><span class="ref">localApi.js:3330 · onlineCall:2476</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Cross the context bridge<span class="chip r">renderer</span> <span class="chip m">→ main</span></div><div class="d"><span class="mono">window.electronAPI.online.createSale(data)</span> → <span class="mono">ipcRenderer.invoke("online:sales:create", data)</span>. This is the only way out of the sandbox.</div><span class="ref">preload.cjs:218</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">IPC handler in the main process<span class="chip m">main</span></div><div class="d"><span class="mono">ipcMain.handle("online:sales:create")</span> → <span class="mono">OnlineModeService.createSale(data)</span>, wrapped for a uniform <span class="mono">{status,message}</span> shape.</div><span class="ref">OnlineController.cjs:101</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Service → HTTP client<span class="chip m">main</span></div><div class="d"><span class="mono">OnlineModeService</span> syncs the JWT then calls <span class="mono">OnlineApiClient.createSale()</span>, which <span class="mono">fetch()</span>es the local server with a Bearer token.</div><span class="ref">OnlineModeService.cjs · OnlineApiClient.cjs:158</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">HTTP hits the embedded server<span class="chip m">main</span> <span class="chip s">→ server</span></div><div class="d"><span class="mono">POST http://127.0.0.1:4100/api/sales</span> → helmet → cors → json → <span class="mono">requireAuth</span> → <span class="mono">requireOrgScope</span> → <span class="mono">requireSalesPermission</span>.</div><span class="ref">app.cjs · routes/catalog.cjs:53</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Service runs a transaction<span class="chip s">server</span></div><div class="d"><span class="mono">salesService.createSale()</span> opens a Mongo transaction: atomic invoice number, decrements stock batches, writes the sale + items + stock movements.</div><span class="ref">services/salesService.cjs</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Commit to MongoDB<span class="chip s">server</span> <span class="chip d">→ mongo</span></div><div class="d">Transaction commits to the <span class="mono">POSmaster</span> database. Response bubbles back up the same chain to the UI, which shows the success screen and prints.</div><span class="ref">db/mongo.cjs</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Publish the change<span class="chip s">server</span></div><div class="d">After commit, <span class="mono">publishDomainEvent('sales.created', …)</span> inserts into <span class="mono">domain_events</span> and broadcasts over Socket.IO. → feeds the real-time loop below.</div><span class="ref">domainEvents.cjs:23</span></div></div>
+  </div>
+
+  <div class="note"><b>The key insight:</b> the renderer has no network access at all. <span class="mono">localApi.js</span> is named "local" and still contains a whole legacy SQLite-style implementation, but <span class="mono">installOnlineOnlyOverrides()</span> at line 3763 overwrites every method to route through the bridge. The HTTP call is made by the <b>main process</b>, one step removed from the UI.</div>
+</div></section>
+
+<!-- ===================== REALTIME ===================== -->
+<section id="realtime"><div class="wrap">
+  <h2 class="sec">Real-time sync</h2>
+  <h3 class="title">How a sale on one till refreshes the others in ~2 seconds</h3>
+  <p class="lead">Writes emit domain events. Socket.IO carries them from the server into the main process, which pushes them into the renderer over IPC, where the reactive store invalidates the affected caches and refetches. This is the return half of the loop.</p>
+
+  <div class="flow retpath">
+    <div class="step"><div class="body"><div class="t">Server broadcasts the event<span class="chip s">server</span></div><div class="d"><span class="mono">emitDomainEvent()</span> sends the named event to <span class="mono">org:</span>/<span class="mono">branch:</span>/<span class="mono">user:</span> rooms plus a generic <span class="mono">domain.event</span> to the org room.</div><span class="ref">realtime/hub.cjs:55</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Main-process socket receives it<span class="chip m">main</span></div><div class="d"><span class="mono">OnlineRealtimeClient</span> (socket.io-client, infinite reconnect) is subscribed to <span class="mono">domain.event</span>.</div><span class="ref">OnlineRealtimeClient.cjs:34</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Rebroadcast to every window<span class="chip m">main</span> <span class="chip r">→ renderer</span></div><div class="d"><span class="mono">webContents.send("online:domain-event", event)</span> to all open BrowserWindows.</div><span class="ref">OnlineRealtimeClient.cjs:57</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Store handles the refresh<span class="chip r">renderer</span></div><div class="d"><span class="mono">DataStore.onDomainEvent → _handleRefreshNeeded()</span>: 500ms debounce, invalidate the entity's table + related tables.</div><span class="ref">DataStore.js:173 · _getRelatedTables:330</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Components re-render<span class="chip r">renderer</span></div><div class="d">Subscribed <span class="mono">useReactiveData()</span> hooks refetch through the same data path; the UI updates. 2s cache TTL bounds staleness.</div><span class="ref">useReactiveData.js · CACHE_TTL 2000ms</span></div></div>
+  </div>
+
+  <div class="two">
+    <div class="note" style="margin-top:6px"><b>Same-till loop is guaranteed.</b> A write and its event both pass through the one embedded server, so the terminal that made the change always refreshes.</div>
+    <div class="note warn" style="margin-top:6px"><b>Cross-till timing.</b> Each till runs its own server + socket bound to the shared Atlas DB. Another terminal sees the change when its own event stream/cache cycle turns over (seconds), backed by the 2s cache TTL — not an instant shared-broker push.</div>
+  </div>
+</div></section>
+
+<!-- ===================== SERVER LIFECYCLE ===================== -->
+<section id="lifecycle"><div class="wrap">
+  <h2 class="sec">Server request lifecycle</h2>
+  <h3 class="title">What every <span class="mono" style="font-size:.7em">/api</span> request passes through</h3>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Stage</th><th>What happens</th><th>Ref</th></tr>
+    <tr><td><b>helmet</b></td><td>Security headers.</td><td class="kref">app.cjs:37</td></tr>
+    <tr><td><b>cors</b></td><td>Origin allowlist from <span class="mono">ONLINE_API_CORS_ORIGIN</span> (<span class="mono">file://</span>, localhost:5173). No-Origin requests (server-to-server) always allowed.</td><td class="kref">app.cjs:38</td></tr>
+    <tr><td><b>express.json</b></td><td>Body parse, 10&nbsp;MB limit.</td><td class="kref">app.cjs:42</td></tr>
+    <tr><td><b>requireAuth</b></td><td>Verify JWT, then look up an <b>active session</b> by SHA-256 token hash in the <span class="mono">sessions</span> collection. Populates <span class="mono">req.auth</span>.</td><td class="kref">middleware/auth.cjs:6</td></tr>
+    <tr><td><b>requireOrgScope</b></td><td>Rejects if the request's orgId ≠ the token's orgId (403).</td><td class="kref">auth.cjs:42</td></tr>
+    <tr><td><b>permission guard</b></td><td>Per-collection RBAC: <span class="mono">requireSalesPermission</span> / <span class="mono">requireInventoryPermission</span> / <span class="mono">requireCatalogPermission</span>. Admin bypasses.</td><td class="kref">auth.cjs:81–208</td></tr>
+    <tr><td><b>service</b></td><td>Business logic; transactions for sales/inventory; org + <span class="mono">deletedAt:null</span> scoping on every query.</td><td class="kref">services/*</td></tr>
+    <tr><td><b>publishDomainEvent</b></td><td>After commit: insert into <span class="mono">domain_events</span> + Socket.IO broadcast. Best-effort, never fails the committed write.</td><td class="kref">domainEvents.cjs:22</td></tr>
+    <tr><td><b>ok() / errorMiddleware</b></td><td>Uniform <span class="mono">{status,data}</span> success or normalized error envelope.</td><td class="kref">utils/http.cjs</td></tr>
+  </table></div>
+</div></section>
+
+<!-- ===================== AUTH ===================== -->
+<section id="auth"><div class="wrap">
+  <h2 class="sec">Auth &amp; sessions</h2>
+  <h3 class="title">JWT for identity, a server session for revocation</h3>
+  <div class="two">
+    <div class="card"><h4><span class="dot" style="background:var(--server)"></span>Login</h4><ul>
+      <li>bcrypt verify (cost 12); per-account lockout (5 tries / 15 min).</li>
+      <li>Mints a JWT: <span class="mono">{sub, orgId, branchId, roles, sessionVersion}</span>, expires <span class="mono">8h</span>.</li>
+      <li>Inserts a <span class="mono">sessions</span> row storing only the token's <b>SHA-256 hash</b>, never the raw token.</li>
+      <li><b>Single active session:</b> prior sessions for the user are deactivated.</li>
+    </ul><span class="kref">authService.cjs:107</span></div>
+    <div class="card"><h4><span class="dot" style="background:var(--main)"></span>Every request &amp; socket</h4><ul>
+      <li>HTTP: <span class="mono">requireAuth</span> verifies JWT + matches an active session by token hash.</li>
+      <li>Socket.IO: the same check runs at the <span class="mono">io.use</span> handshake, using <span class="mono">handshake.auth.token</span>.</li>
+      <li>When a session is replaced, the hub force-disconnects the old device's sockets.</li>
+      <li>Session token is pushed into the bridge before each call via <span class="mono">syncOnlineToken()</span>.</li>
+    </ul><span class="kref">middleware/auth.cjs · hub.cjs:17</span></div>
+  </div>
+  <div class="note"><b>Revocation without stateless-JWT pain:</b> because a valid token must also match a live <span class="mono">sessions</span> row, logging out (or being displaced by a new login) invalidates the token immediately — server-side — even though it hasn't expired.</div>
+</div></section>
+
+<!-- ===================== STARTUP ===================== -->
+<section id="startup"><div class="wrap">
+  <h2 class="sec">Startup sequence</h2>
+  <h3 class="title">From launch to a usable window</h3>
+  <div class="flow">
+    <div class="step"><div class="body"><div class="t">Single-instance lock<span class="chip m">main</span></div><div class="d">A second launch just focuses the existing window.</div><span class="ref">electron.cjs:65</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Create window + splash<span class="chip m">main</span></div><div class="d">BrowserWindow with preload; an inline <span class="mono">data:</span> splash shows immediately.</div><span class="ref">electron.cjs:1299</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Load packaged config<span class="chip m">main</span></div><div class="d">When packaged: read <span class="mono">online-runtime-config.json</span> into env (without overwriting), derive API + realtime URLs.</div><span class="ref">electron.cjs:492</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Register the IPC bridge<span class="chip m">main</span></div><div class="d"><span class="mono">initializeBackend()</span> → OnlineController + AppSettingsController register all channels.</div><span class="ref">backend.cjs · controllers/index.cjs</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Start the embedded server<span class="chip m">main</span> <span class="chip s">→ server</span></div><div class="d">Packaged only: <span class="mono">startOnlineServer()</span> → connect Mongo → Express + Socket.IO → wait up to 30s for <span class="mono">/api/ready</span>.</div><span class="ref">electron.cjs:607 · runtime.cjs:9</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Load the React app<span class="chip m">main</span> <span class="chip r">→ renderer</span></div><div class="d">Dev → Vite dev server; packaged → <span class="mono">dist/index.html</span>, then a delayed <span class="mono">autoUpdater.checkForUpdates()</span>.</div><span class="ref">electron.cjs:1438</span></div></div>
+  </div>
+  <div class="note warn"><b>Fail-loud on config:</b> at build time <span class="mono">MONGODB_URI</span> and <span class="mono">JWT_SECRET</span> are <span class="mono">requiredEnv()</span> (build breaks if missing). If Mongo can't connect at boot, the error is rewrapped with an Atlas IP-allowlist hint and written to <span class="mono">userData/startup-error.log</span>.</div>
+</div></section>
+
+<!-- ===================== PRINTING ===================== -->
+<section id="printing"><div class="wrap">
+  <h2 class="sec">Receipt printing</h2>
+  <h3 class="title">Three paths, selected by mode</h3>
+  <p class="lead">The renderer rasterizes the receipt to a canvas (html2canvas), then either builds ESC/POS bytes or a sized PDF. All three print paths live in the main process because they need Node/native access the browser can't have.</p>
+  <div class="grid">
+    <div class="card"><h4><span class="dot" style="background:var(--main)"></span>Network (thermal)</h4><p>Raw <span class="mono">net.Socket</span> to the printer's IP on <span class="mono">:9100</span>, streaming an ESC/POS raster. Optional subnet auto-discovery (scans :9100, 5-min cache).</p><span class="kref">electron.cjs:206 / 338 / 1127</span></div>
+    <div class="card"><h4><span class="dot" style="background:var(--main)"></span>System (PDF)</h4><p><span class="mono">pdf-to-printer</span> prints a PDF silently to the OS queue. Page sized to the printhead (72&nbsp;mm) so nothing clips.</p><span class="kref">electron.cjs:407 · useReceiptPrinting.js</span></div>
+    <div class="card"><h4><span class="dot" style="background:var(--main)"></span>Electron fallback</h4><p>Hidden BrowserWindow + <span class="mono">webContents.print({silent})</span> if pdf-to-printer fails.</p><span class="kref">electron.cjs:442</span></div>
+  </div>
+  <div class="note"><b>Auto mode</b> tries the network printer first and falls back to the system printer. Receipts print two copies per sale (office + customer); the ESC/POS payload ends with a cut so they separate.</div>
+</div></section>
+
+<!-- ===================== CONFIG / RELEASE ===================== -->
+<section id="config"><div class="wrap">
+  <h2 class="sec">Config &amp; release</h2>
+  <h3 class="title">How secrets and builds flow to a till</h3>
+  <div class="flow">
+    <div class="step"><div class="body"><div class="t">CI injects secrets<span class="chip e">github actions</span></div><div class="d">On a version tag, the workflow writes <span class="mono">online-runtime-config.json</span> from repo secrets (MONGODB_URI, JWT_SECRET, TEA_COOP_*).</div><span class="ref">.github/workflows/release.yml · write-online-runtime-config.cjs</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">electron-builder packages<span class="chip e">ci</span></div><div class="d">Bundles the config as an <span class="mono">extraResource</span>, builds the NSIS installer, publishes to GitHub Releases.</div><span class="ref">package.json build</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Till installs / auto-updates<span class="chip m">desktop</span></div><div class="d">electron-updater checks GitHub, downloads, and installs on the user's command.</div><span class="ref">electron.cjs:1241</span></div></div>
+    <div class="connector"></div>
+    <div class="step"><div class="body"><div class="t">Runtime reads config<span class="chip m">main</span> <span class="chip s">→ server</span></div><div class="d">On boot the packaged app copies the bundled config into env; <span class="mono">config.cjs</span> feeds Mongo URI, JWT secret, ports, Tea Coop creds to the embedded server.</div><span class="ref">electron.cjs:492 · config.cjs:53</span></div></div>
+  </div>
+  <div class="tagrow">
+    <span class="tag">ONLINE_API_PORT=4100</span><span class="tag">ONLINE_API_HOST=127.0.0.1</span><span class="tag">MONGODB_DB=POSmaster</span><span class="tag">POS_ORG_ID=default-org</span><span class="tag">JWT_EXPIRES_IN=8h</span><span class="tag">POS_ONLINE_API_URL=…/api</span><span class="tag">POS_ONLINE_REALTIME_URL=…:4100</span>
+  </div>
+</div></section>
+
+<!-- ===================== IPC SURFACE ===================== -->
+<section id="ipc"><div class="wrap">
+  <h2 class="sec">IPC bridge surface</h2>
+  <h3 class="title"><span class="mono" style="font-size:.7em">window.electronAPI</span> namespaces</h3>
+  <p class="lead">The contextBridge exposes domain-grouped APIs; the CRUD ones all funnel into <span class="mono">online:*</span> channels. Legacy per-domain channels remain as thin compatibility wrappers.</p>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Namespace</th><th>Representative methods</th><th>Channels</th></tr>
+    <tr><td><b>online</b></td><td>login/logout/validateSession, list/get/create/update/delete, createSale/cancelSale/returnSaleItems/generateInvoiceNo, teaCoop sync, onDomainEvent/onRealtimeStatus</td><td class="mono">online:*, teacoop:sync:*</td></tr>
+    <tr><td><b>auth</b></td><td>login, getCurrentUser, validateSessionFast, changePassword</td><td class="mono">auth:* (→ online)</td></tr>
+    <tr><td><b>sales</b></td><td>getAll/getById/create/hold; completeHeld/cancel/return/summary/daily</td><td class="mono">sales:* · online:sales:*</td></tr>
+    <tr><td><b>items / stock / restocks / members / categories / uom / suppliers / offers / disposed / paymentMethods</b></td><td>CRUD + search/toggleActive</td><td class="mono">&lt;domain&gt;:*</td></tr>
+    <tr><td><b>teaCoop</b></td><td>getAllMembers, getPaymentHistory, syncMembers, syncPayments, getStatus, onSyncEvent</td><td class="mono">teacoop:*</td></tr>
+    <tr><td><b>settings / appSettings</b></td><td>user/app settings (via collections); setRunOnStartup, setMaximizeOnStart, applyAll</td><td class="mono">online:list/create/update · appSettings:*</td></tr>
+    <tr><td><b>updates</b></td><td>getVersion, checkForUpdates, downloadUpdate, installUpdate + listeners</td><td class="mono">updates:*</td></tr>
+    <tr><td><b>printing (top-level)</b></td><td>printThermalReceipt, printReceiptPdf, listReceiptPrinters, getReceiptPrinterConfig</td><td class="mono">thermal:print-receipt · receipt-printer:*</td></tr>
+  </table></div>
+</div></section>
+
+<!-- ===================== ENDPOINTS ===================== -->
+<section id="api"><div class="wrap">
+  <h2 class="sec">Server endpoints</h2>
+  <h3 class="title">The <span class="mono" style="font-size:.7em">/api</span> catalog</h3>
+  <div class="scroll"><table class="tbl">
+    <tr><th>Method &amp; path</th><th>Guard</th><th>Service</th></tr>
+    <tr><td class="mono">GET /api/health · /api/ready</td><td>none</td><td>Mongo ping / readiness</td></tr>
+    <tr><td class="mono">POST /api/auth/login</td><td>rate-limit 20/15m</td><td>authService.login</td></tr>
+    <tr><td class="mono">POST /api/auth/register · logout · change-password</td><td>requireAuth (+manager on register)</td><td>authService.*</td></tr>
+    <tr><td class="mono">POST /api/users/:id/reset-password</td><td>requireAuth (role in service)</td><td>authService.resetPassword</td></tr>
+    <tr><td class="mono">GET/POST/PATCH/DELETE /api/collections/:collection[/:id]</td><td>requireAuth · orgScope · catalog RBAC</td><td>catalogService.* (25 collections)</td></tr>
+    <tr><td class="mono">POST /api/sales · /sales/:id/complete-held · /cancel · /return-items · /sales/invoice-no</td><td>requireSalesPermission</td><td>salesService.* (transactional)</td></tr>
+    <tr><td class="mono">POST /api/inventory-transfers/:id/accept · /reject</td><td>requireInventoryPermission</td><td>inventoryTransferService.*</td></tr>
+    <tr><td class="mono">GET /api/tea-coop/status · POST /sync · /sync/members · /sync/payments</td><td>requireAuth · orgScope · sales</td><td>teaCoopSyncService.*</td></tr>
+  </table></div>
+</div></section>
+
+<!-- ===================== COLLECTIONS ===================== -->
+<section id="data"><div class="wrap">
+  <h2 class="sec">Data model</h2>
+  <h3 class="title">The <span class="mono" style="font-size:.7em">POSmaster</span> collections</h3>
+  <p class="lead">The catalog service gates a whitelist of collections; sales/inventory services own the transactional ones; every mutation writes a matching <span class="mono">domain_events</span> row.</p>
+  <div class="grid">
+    <div class="card"><h4><span class="dot" style="background:var(--mongo)"></span>Identity &amp; access</h4><div class="tagrow"><span class="tag">users</span><span class="tag">sessions</span><span class="tag">login_history</span><span class="tag">user_settings</span><span class="tag">app_settings</span></div></div>
+    <div class="card"><h4><span class="dot" style="background:var(--mongo)"></span>Catalog</h4><div class="tagrow"><span class="tag">branches</span><span class="tag">categories</span><span class="tag">units_of_measurement</span><span class="tag">suppliers</span><span class="tag">items</span><span class="tag">payment_methods</span><span class="tag">offers</span></div></div>
+    <div class="card"><h4><span class="dot" style="background:var(--mongo)"></span>Inventory</h4><div class="tagrow"><span class="tag">stock_batches</span><span class="tag">inventory_units</span><span class="tag">inventory_counters</span><span class="tag">stock_movements</span><span class="tag">restock_transactions</span><span class="tag">restock_items</span><span class="tag">inventory_transfers</span><span class="tag">disposed_items</span></div></div>
+    <div class="card"><h4><span class="dot" style="background:var(--mongo)"></span>Sales</h4><div class="tagrow"><span class="tag">sales</span><span class="tag">sales_items</span><span class="tag">returned_items</span><span class="tag">return_items</span><span class="tag">invoice_counters</span><span class="tag">members</span></div></div>
+    <div class="card"><h4><span class="dot" style="background:var(--mongo)"></span>Tea Coop</h4><div class="tagrow"><span class="tag">tea_coop_members</span><span class="tag">tea_coop_payments</span><span class="tag">tea_coop_sync_runs</span></div></div>
+    <div class="card"><h4><span class="dot" style="background:var(--mongo)"></span>System</h4><div class="tagrow"><span class="tag">domain_events</span><span class="tag">audit_events</span></div></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  Generated from a source-level review of the POSMaster V3 codebase. All references are <span class="mono">file:line</span> anchors into the repo. The renderer is online-only; the embedded server is the single data authority; MongoDB Atlas is shared across tills.
+</div></footer>
+
+</body>
+</html>

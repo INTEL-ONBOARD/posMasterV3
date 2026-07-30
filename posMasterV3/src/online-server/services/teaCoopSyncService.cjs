@@ -265,30 +265,70 @@ async function writeSyncRun(auth, type, status, data = {}) {
     });
 }
 
-async function syncMembers(auth) {
-    const payload = await fetchTeaCoopJson(config.teaCoopMembersPath, { page: 1, limit: 100 });
-    const records = extractRecords(payload, ['members', 'teaCoopMembers']);
-    const db = getDb();
-    const operations = [];
+async function fetchAllTeaCoopMembers(auth) {
+    const limit = 100;
+    // Comfortably above the current ~5,152 members (52 pages at limit=100);
+    // exists purely as a backstop against a runaway loop, not a real ceiling.
+    const maxPages = 200;
 
-    for (const raw of records) {
-        const member = normalizeMember(raw, auth);
-        if (!member) continue;
-        operations.push({
-            updateOne: {
-                filter: { orgId: auth.orgId, member_id: member.member_id, deletedAt: null },
-                update: {
-                    $set: member,
-                    $setOnInsert: {
-                        createdAt: new Date(),
-                        created_at: new Date()
-                    },
-                    $inc: { version: 1 }
-                },
-                upsert: true
-            }
-        });
+    let page = 1;
+    let totalRaw = 0;
+    let normalizedMembers = [];
+    let lastPageFirstMemberId = null;
+    let totalReported = null;
+
+    while (page <= maxPages) {
+        const payload = await fetchTeaCoopJson(config.teaCoopMembersPath, { page, limit });
+        const pageRecords = extractRecords(payload, ['members', 'teaCoopMembers']);
+        if (pageRecords.length === 0) break;
+
+        const pageMembers = pageRecords.map((raw) => normalizeMember(raw, auth)).filter(Boolean);
+
+        // Guards against an API that ignores the page param and keeps
+        // returning the same page: if the first member repeats, pagination
+        // isn't actually advancing, so stop instead of looping to maxPages
+        // and re-upserting the same 100 records dozens of times. Checked
+        // before totalRaw/normalizedMembers are updated so a detected repeat
+        // never gets counted twice.
+        const firstMemberId = pageMembers[0]?.member_id ?? null;
+        if (firstMemberId !== null && firstMemberId === lastPageFirstMemberId) break;
+        lastPageFirstMemberId = firstMemberId;
+
+        totalRaw += pageRecords.length;
+        normalizedMembers = normalizedMembers.concat(pageMembers);
+
+        if (totalReported === null) {
+            totalReported = firstValue(payload, ['total', 'totalCount', 'totalRecords', 'totalItems'], null)
+                ?? firstValue(payload?.data, ['total', 'totalCount', 'totalRecords', 'totalItems'], null);
+        }
+
+        const reachedReportedTotal = totalReported !== null && totalRaw >= Number(totalReported);
+        const shortPage = pageRecords.length < limit;
+        if (reachedReportedTotal || shortPage) break;
+
+        page += 1;
     }
+
+    return { totalRaw, normalizedMembers, pagesFetched: page };
+}
+
+async function syncMembers(auth) {
+    const { totalRaw, normalizedMembers, pagesFetched } = await fetchAllTeaCoopMembers(auth);
+    const db = getDb();
+    const operations = normalizedMembers.map((member) => ({
+        updateOne: {
+            filter: { orgId: auth.orgId, member_id: member.member_id, deletedAt: null },
+            update: {
+                $set: member,
+                $setOnInsert: {
+                    createdAt: new Date(),
+                    created_at: new Date()
+                },
+                $inc: { version: 1 }
+            },
+            upsert: true
+        }
+    }));
 
     const result = operations.length
         ? await db.collection('tea_coop_members').bulkWrite(operations, { ordered: false })
@@ -303,15 +343,67 @@ async function syncMembers(auth) {
         operation: 'sync',
         changedBy: auth.userId
     });
-    await writeSyncRun(auth, 'members', 'success', { total: records.length, valid: operations.length });
+    await writeSyncRun(auth, 'members', 'success', { total: totalRaw, valid: operations.length, pages: pagesFetched });
 
     return {
-        total: records.length,
+        total: totalRaw,
         valid: operations.length,
         matched: result.matchedCount || 0,
         modified: result.modifiedCount || 0,
-        upserted: result.upsertedCount || 0
+        upserted: result.upsertedCount || 0,
+        pages: pagesFetched
     };
+}
+
+async function fetchAllTeaCoopPayments(auth, baseQuery, params, memberId) {
+    const limit = 100;
+    // Same backstop as fetchAllTeaCoopMembers — a real ceiling would depend on
+    // how many months/members a single sync call can span, which isn't fixed,
+    // so this exists purely to bound a runaway loop.
+    const maxPages = 200;
+
+    let page = 1;
+    let totalRaw = 0;
+    let normalizedPayments = [];
+    let lastPageFirstKey = null;
+    let totalReported = null;
+
+    while (page <= maxPages) {
+        const payload = await fetchTeaCoopJson(config.teaCoopPaymentsPath, { ...baseQuery, page, limit }, params);
+        const pageRecords = extractRecords(payload, ['payments', 'paymentHistory', 'teaCoopPayments', 'monthlyData']);
+        if (pageRecords.length === 0) break;
+
+        const pageMembers = pageRecords.map((raw) => normalizePayment(raw, auth, memberId)).filter(Boolean);
+
+        // Same guard as fetchAllTeaCoopMembers: if the API ignores the page
+        // param and repeats itself, the first record's identity will match
+        // the previous page's — stop instead of looping to maxPages. Must
+        // match the bulkWrite upsert filter below exactly (member + year +
+        // month + factory_id) — omitting factory_id here would make two
+        // genuinely different payments (same member/month, different
+        // factory) look like a repeated page and truncate the sync early.
+        const firstKey = pageMembers[0]
+            ? `${pageMembers[0].member_id}:${pageMembers[0].year}:${pageMembers[0].month}:${pageMembers[0].factory_id}`
+            : null;
+        if (firstKey !== null && firstKey === lastPageFirstKey) break;
+        lastPageFirstKey = firstKey;
+
+        totalRaw += pageRecords.length;
+        normalizedPayments = normalizedPayments.concat(pageMembers);
+
+        if (totalReported === null) {
+            totalReported = firstValue(payload, ['total', 'totalCount', 'totalRecords', 'totalItems'], null)
+                ?? firstValue(payload?.data, ['total', 'totalCount', 'totalRecords', 'totalItems'], null);
+        }
+
+        const reachedReportedTotal = totalReported !== null && totalRaw >= Number(totalReported);
+        const shortPage = pageRecords.length < limit;
+        if (reachedReportedTotal || shortPage) break;
+
+        page += 1;
+    }
+
+    return { totalRaw, normalizedPayments, pagesFetched: page };
 }
 
 async function syncPayments(auth, { memberId = null, months = 6 } = {}) {
@@ -338,36 +430,30 @@ async function syncPayments(auth, { memberId = null, months = 6 } = {}) {
         query.startMonth = pastDate.getMonth() + 1;
         query.factory = 1;
     }
-    const payload = await fetchTeaCoopJson(config.teaCoopPaymentsPath, query, { memberId });
-    const records = extractRecords(payload, ['payments', 'paymentHistory', 'teaCoopPayments', 'monthlyData']);
-    const db = getDb();
-    const operations = [];
 
-    for (const raw of records) {
-        const payment = normalizePayment(raw, auth, memberId);
-        if (!payment) continue;
-        operations.push({
-            updateOne: {
-                filter: {
-                    orgId: auth.orgId,
-                    member_id: payment.member_id,
-                    year: payment.year,
-                    month: payment.month,
-                    factory_id: payment.factory_id,
-                    deletedAt: null
+    const { totalRaw, normalizedPayments, pagesFetched } = await fetchAllTeaCoopPayments(auth, query, { memberId }, memberId);
+    const db = getDb();
+    const operations = normalizedPayments.map((payment) => ({
+        updateOne: {
+            filter: {
+                orgId: auth.orgId,
+                member_id: payment.member_id,
+                year: payment.year,
+                month: payment.month,
+                factory_id: payment.factory_id,
+                deletedAt: null
+            },
+            update: {
+                $set: payment,
+                $setOnInsert: {
+                    createdAt: new Date(),
+                    created_at: new Date()
                 },
-                update: {
-                    $set: payment,
-                    $setOnInsert: {
-                        createdAt: new Date(),
-                        created_at: new Date()
-                    },
-                    $inc: { version: 1 }
-                },
-                upsert: true
-            }
-        });
-    }
+                $inc: { version: 1 }
+            },
+            upsert: true
+        }
+    }));
 
     const result = operations.length
         ? await db.collection('tea_coop_payments').bulkWrite(operations, { ordered: false })
@@ -382,14 +468,15 @@ async function syncPayments(auth, { memberId = null, months = 6 } = {}) {
         operation: 'sync',
         changedBy: auth.userId
     });
-    await writeSyncRun(auth, 'payments', 'success', { total: records.length, valid: operations.length, memberId });
+    await writeSyncRun(auth, 'payments', 'success', { total: totalRaw, valid: operations.length, memberId, pages: pagesFetched });
 
     return {
-        total: records.length,
+        total: totalRaw,
         valid: operations.length,
         matched: result.matchedCount || 0,
         modified: result.modifiedCount || 0,
-        upserted: result.upsertedCount || 0
+        upserted: result.upsertedCount || 0,
+        pages: pagesFetched
     };
 }
 

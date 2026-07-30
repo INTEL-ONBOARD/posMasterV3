@@ -23,6 +23,9 @@ function roleRequiresBranch(roles = []) {
     return roles.some((role) => ['cashier', 'assistant', 'user'].includes(String(role).toLowerCase()));
 }
 
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const ACCOUNT_LOCKOUT_MS = 15 * 60 * 1000;
+
 async function register(body = {}, auth = null) {
     const db = getDb();
     const now = new Date();
@@ -114,8 +117,23 @@ async function login({ email, password, deviceInfo = null }) {
         return { success: false, status: 'error', message: 'Invalid credentials' };
     }
 
+    if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
+        // Message intentionally matches the generic "Invalid credentials" below —
+        // a distinct "account locked" message lets an attacker enumerate valid
+        // usernames simply by brute-forcing 5 wrong passwords per candidate and
+        // watching for the response to change. The lockout itself still applies;
+        // only the wording that would leak account existence is suppressed.
+        return { success: false, status: 'error', message: 'Invalid credentials' };
+    }
+
     const ok = await bcrypt.compare(password, user.passwordHash || '');
     if (!ok) {
+        const failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+        const update = { failedLoginAttempts, updatedAt: new Date() };
+        if (failedLoginAttempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+            update.lockedUntil = new Date(Date.now() + ACCOUNT_LOCKOUT_MS);
+        }
+        await db.collection('users').updateOne({ _id: user._id }, { $set: update });
         return { success: false, status: 'error', message: 'Invalid credentials' };
     }
 
@@ -154,7 +172,10 @@ async function login({ email, password, deviceInfo = null }) {
     await db.collection('sessions').insertOne(session);
     await db.collection('users').updateOne(
         { _id: user._id },
-        { $set: { lastLoginAt: new Date(), updatedAt: new Date(), branchId, branch_id: branchId } }
+        {
+            $set: { lastLoginAt: new Date(), updatedAt: new Date(), branchId, branch_id: branchId, failedLoginAttempts: 0 },
+            $unset: { lockedUntil: '' }
+        }
     );
 
     await publishDomainEvent({

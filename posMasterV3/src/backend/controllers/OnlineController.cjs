@@ -3,6 +3,15 @@ const { getOnlineModeService } = require('../services/OnlineModeService.cjs');
 const { wrapIpcHandler, successResponse } = require('../utils/helpers.cjs');
 
 function registerHandlers() {
+    // Tracks every channel this function registers so unregisterHandlers()
+    // (see controllers/index.cjs) can remove exactly what was added, without
+    // maintaining a second, separately-drifting list of channel names.
+    const registeredChannels = [];
+    const handle = (channel, listener) => {
+        registeredChannels.push(channel);
+        ipcMain.handle(channel, listener);
+    };
+
     const service = getOnlineModeService();
     const collectionHandler = (collection) => ({
         list: (query = {}) => service.list(collection, query || {}),
@@ -27,276 +36,290 @@ function registerHandlers() {
     const teaCoopMembers = collectionHandler('tea_coop_members');
     const teaCoopPayments = collectionHandler('tea_coop_payments');
 
-    ipcMain.handle('online:get-config', wrapIpcHandler(async () => {
+    handle('online:get-config', wrapIpcHandler(async () => {
         return successResponse(service.getConfig());
     }));
 
-    ipcMain.handle('online:health', wrapIpcHandler(async () => {
+    handle('online:health', wrapIpcHandler(async () => {
         return service.health();
     }));
 
-    ipcMain.handle('online:ready', wrapIpcHandler(async () => {
+    handle('online:ready', wrapIpcHandler(async () => {
         return service.ready();
     }));
 
-    ipcMain.handle('online:login', wrapIpcHandler(async (event, payload) => {
+    handle('online:login', wrapIpcHandler(async (event, payload) => {
         const { email, password, deviceInfo } = payload || {};
         return service.login(email, password, deviceInfo);
     }));
 
-    ipcMain.handle('online:register', wrapIpcHandler(async (event, payload) => {
+    handle('online:register', wrapIpcHandler(async (event, payload) => {
         return service.register(payload || {});
     }));
 
-    ipcMain.handle('online:logout', wrapIpcHandler(async () => {
+    handle('online:logout', wrapIpcHandler(async () => {
         return service.logout();
     }));
 
-    ipcMain.handle('online:validate-session', wrapIpcHandler(async (event, payload) => {
+    handle('online:validate-session', wrapIpcHandler(async (event, payload) => {
         return service.validateSession(payload?.token || null);
     }));
 
-    ipcMain.handle('online:set-token', wrapIpcHandler(async (event, payload) => {
+    handle('online:set-token', wrapIpcHandler(async (event, payload) => {
         return service.setToken(payload?.token || null);
     }));
 
-    ipcMain.handle('online:realtime-status', wrapIpcHandler(async () => {
+    handle('online:realtime-status', wrapIpcHandler(async () => {
         return successResponse(service.getRealtimeStatus());
     }));
 
-    ipcMain.handle('online:list', wrapIpcHandler(async (event, payload) => {
+    handle('online:list', wrapIpcHandler(async (event, payload) => {
         const { collection, query } = payload || {};
         return service.list(collection, query || {});
     }));
 
-    ipcMain.handle('online:get', wrapIpcHandler(async (event, payload) => {
+    handle('online:get', wrapIpcHandler(async (event, payload) => {
         const { collection, id } = payload || {};
         return service.get(collection, id);
     }));
 
-    ipcMain.handle('online:create', wrapIpcHandler(async (event, payload) => {
+    handle('online:create', wrapIpcHandler(async (event, payload) => {
         const { collection, data } = payload || {};
         return service.create(collection, data || {});
     }));
 
-    ipcMain.handle('online:update', wrapIpcHandler(async (event, payload) => {
+    handle('online:update', wrapIpcHandler(async (event, payload) => {
         const { collection, id, data } = payload || {};
         return service.update(collection, id, data || {});
     }));
 
-    ipcMain.handle('online:delete', wrapIpcHandler(async (event, payload) => {
+    handle('online:delete', wrapIpcHandler(async (event, payload) => {
         const { collection, id } = payload || {};
         return service.delete(collection, id);
     }));
 
-    ipcMain.handle('online:sales:create', wrapIpcHandler(async (event, payload) => {
+    handle('online:sales:create', wrapIpcHandler(async (event, payload) => {
         return service.createSale(payload || {});
     }));
 
-    ipcMain.handle('online:sales:complete-held', wrapIpcHandler(async (event, payload) => {
+    handle('online:sales:complete-held', wrapIpcHandler(async (event, payload) => {
         return service.completeHeldSale(payload?.id || payload?.saleId || payload?._id, payload || {});
     }));
 
-    ipcMain.handle('online:sales:cancel', wrapIpcHandler(async (event, payload) => {
+    handle('online:sales:cancel', wrapIpcHandler(async (event, payload) => {
         return service.cancelSale(payload?.id || payload?.saleId || payload?._id, payload || {});
     }));
 
-    ipcMain.handle('online:sales:return-items', wrapIpcHandler(async (event, payload) => {
+    handle('online:sales:return-items', wrapIpcHandler(async (event, payload) => {
         return service.returnSaleItems(payload?.id || payload?.saleId || payload?._id, payload || {});
     }));
 
-    ipcMain.handle('online:sales:invoice-no', wrapIpcHandler(async (event, payload) => {
+    handle('online:sales:invoice-no', wrapIpcHandler(async (event, payload) => {
         return service.generateInvoiceNo(payload?.type || 'SALE', payload?.branchId || payload?.branch_id || null);
     }));
 
-    ipcMain.handle('online:sales:get-summary', wrapIpcHandler(async (event, payload) => {
+    handle('online:sales:get-summary', wrapIpcHandler(async (event, payload) => {
         return service.getSalesSummary(payload?.startDate, payload?.endDate);
     }));
 
-    ipcMain.handle('online:sales:get-daily', wrapIpcHandler(async (event, payload) => {
+    handle('online:sales:get-daily', wrapIpcHandler(async (event, payload) => {
         return service.getSalesDaily(payload?.days || 30);
     }));
 
-    ipcMain.handle('online:login-history:get-active-sessions', wrapIpcHandler(async () => {
-        return service.getActiveSessions();
+    handle('online:login-history:get-active-sessions', wrapIpcHandler(async (event, payload) => {
+        return service.getActiveSessions(payload?.limit, payload?.skip);
     }));
 
-    ipcMain.handle('online:login-history:count-active-sessions', wrapIpcHandler(async () => {
+    handle('online:login-history:count-active-sessions', wrapIpcHandler(async () => {
         return service.countActiveSessions();
     }));
 
-    ipcMain.handle('online:auth:change-password', wrapIpcHandler(async (event, payload) => {
+    handle('online:auth:change-password', wrapIpcHandler(async (event, payload) => {
         return service.changePassword(payload?.currentPassword || payload?.current_password || '', payload?.newPassword || payload?.new_password || payload?.password || '');
     }));
 
-    ipcMain.handle('online:users:reset-password', wrapIpcHandler(async (event, payload) => {
+    handle('online:users:reset-password', wrapIpcHandler(async (event, payload) => {
         return service.resetPassword(payload?.userId || payload?.user_id || payload?.id, payload?.newPassword || payload?.new_password || payload?.password || '');
     }));
 
-    ipcMain.handle('online:inventory-transfers:accept', wrapIpcHandler(async (event, payload) => {
+    handle('online:inventory-transfers:accept', wrapIpcHandler(async (event, payload) => {
         return service.acceptInventoryTransfer(payload?.id || payload?.transferId || payload?._id, payload || {});
     }));
 
-    ipcMain.handle('online:inventory-transfers:reject', wrapIpcHandler(async (event, payload) => {
+    handle('online:inventory-transfers:reject', wrapIpcHandler(async (event, payload) => {
         return service.rejectInventoryTransfer(payload?.id || payload?.transferId || payload?._id, payload || {});
     }));
 
     // Compatibility handlers for older renderer paths. They are intentionally
     // backed by the online service so stale UI imports cannot hit missing local
     // SQLite-era IPC channels.
-    ipcMain.handle('auth:login', wrapIpcHandler(async (event, payload) => service.login(payload?.email, payload?.password, payload?.deviceInfo)));
-    ipcMain.handle('auth:register', wrapIpcHandler(async (event, payload) => service.register(payload || {})));
-    ipcMain.handle('auth:logout', wrapIpcHandler(async () => service.logout()));
-    ipcMain.handle('auth:validate-session', wrapIpcHandler(async (event, payload) => service.validateSession(payload?.token || null)));
-    ipcMain.handle('auth:get-current-user', wrapIpcHandler(async (event, payload) => service.validateSession(payload?.token || null)));
-    ipcMain.handle('auth:change-password', wrapIpcHandler(async (event, payload) => service.changePassword(payload?.currentPassword || '', payload?.newPassword || payload?.password || '')));
-    ipcMain.handle('auth:import-from-cloud', wrapIpcHandler(async () => ({ status: 'error', message: 'Cloud import is disabled in online-only mode' })));
-    ipcMain.handle('auth:check-session-with-sync', wrapIpcHandler(async (event, payload) => service.validateSession(payload?.token || null)));
-    ipcMain.handle('auth:validate-session-fast', wrapIpcHandler(async (event, payload) => service.validateSession(payload?.token || null)));
+    handle('auth:login', wrapIpcHandler(async (event, payload) => service.login(payload?.email, payload?.password, payload?.deviceInfo)));
+    handle('auth:register', wrapIpcHandler(async (event, payload) => service.register(payload || {})));
+    handle('auth:logout', wrapIpcHandler(async () => service.logout()));
+    handle('auth:validate-session', wrapIpcHandler(async (event, payload) => service.validateSession(payload?.token || null)));
+    handle('auth:get-current-user', wrapIpcHandler(async (event, payload) => service.validateSession(payload?.token || null)));
+    handle('auth:change-password', wrapIpcHandler(async (event, payload) => service.changePassword(payload?.currentPassword || '', payload?.newPassword || payload?.password || '')));
+    handle('auth:import-from-cloud', wrapIpcHandler(async () => ({ status: 'error', message: 'Cloud import is disabled in online-only mode' })));
+    handle('auth:check-session-with-sync', wrapIpcHandler(async (event, payload) => service.validateSession(payload?.token || null)));
+    handle('auth:validate-session-fast', wrapIpcHandler(async (event, payload) => service.validateSession(payload?.token || null)));
 
-    ipcMain.handle('users:get-all', wrapIpcHandler(async (event, options) => users.list(options)));
-    ipcMain.handle('users:get-by-id', wrapIpcHandler(async (event, payload) => users.get(payload?.userId || payload?.id)));
-    ipcMain.handle('users:update', wrapIpcHandler(async (event, payload) => users.update(payload?.userId || payload?.id, payload?.data || {})));
-    ipcMain.handle('users:delete', wrapIpcHandler(async (event, payload) => users.delete(payload?.userId || payload?.id)));
-    ipcMain.handle('users:search', wrapIpcHandler(async () => users.list({})));
-    ipcMain.handle('users:get-by-role', wrapIpcHandler(async (event, payload) => users.list({ role: payload?.role })));
-    ipcMain.handle('users:update-roles', wrapIpcHandler(async (event, payload) => users.update(payload?.userId || payload?.id, { roles: payload?.roles || [] })));
-    ipcMain.handle('users:statistics', wrapIpcHandler(async () => service.list('users', {})));
-    ipcMain.handle('users:reset-password', wrapIpcHandler(async (event, payload) => service.resetPassword(payload?.userId || payload?.id, payload?.newPassword || payload?.password || '')));
+    handle('users:get-all', wrapIpcHandler(async (event, options) => users.list(options)));
+    handle('users:get-by-id', wrapIpcHandler(async (event, payload) => users.get(payload?.userId || payload?.id)));
+    handle('users:update', wrapIpcHandler(async (event, payload) => users.update(payload?.userId || payload?.id, payload?.data || {})));
+    handle('users:delete', wrapIpcHandler(async (event, payload) => users.delete(payload?.userId || payload?.id)));
+    handle('users:search', wrapIpcHandler(async (event, payload) => users.list({ search: (payload?.query ?? payload) || '' })));
+    handle('users:get-by-role', wrapIpcHandler(async (event, payload) => users.list({ role: payload?.role })));
+    handle('users:update-roles', wrapIpcHandler(async (event, payload) => users.update(payload?.userId || payload?.id, { roles: payload?.roles || [] })));
+    handle('users:statistics', wrapIpcHandler(async () => service.list('users', {})));
+    handle('users:reset-password', wrapIpcHandler(async (event, payload) => service.resetPassword(payload?.userId || payload?.id, payload?.newPassword || payload?.password || '')));
 
-    ipcMain.handle('categories:get-all', wrapIpcHandler(async () => categories.list({})));
-    ipcMain.handle('categories:get-by-id', wrapIpcHandler(async (event, id) => categories.get(id)));
-    ipcMain.handle('categories:get-types', wrapIpcHandler(async () => categories.list({})));
-    ipcMain.handle('categories:search', wrapIpcHandler(async () => categories.list({})));
-    ipcMain.handle('categories:create', wrapIpcHandler(async (event, data) => categories.create(data)));
-    ipcMain.handle('categories:update', wrapIpcHandler(async (event, id, data) => categories.update(id, data)));
-    ipcMain.handle('categories:delete', wrapIpcHandler(async (event, id) => categories.delete(id)));
+    handle('categories:get-all', wrapIpcHandler(async () => categories.list({})));
+    handle('categories:get-by-id', wrapIpcHandler(async (event, id) => categories.get(id)));
+    handle('categories:get-types', wrapIpcHandler(async () => categories.list({})));
+    handle('categories:search', wrapIpcHandler(async (event, searchTerm) => categories.list({ search: searchTerm || '' })));
+    handle('categories:create', wrapIpcHandler(async (event, data) => categories.create(data)));
+    handle('categories:update', wrapIpcHandler(async (event, id, data) => categories.update(id, data)));
+    handle('categories:delete', wrapIpcHandler(async (event, id) => categories.delete(id)));
 
-    ipcMain.handle('uom:get-all', wrapIpcHandler(async () => uom.list({})));
-    ipcMain.handle('uom:get-by-id', wrapIpcHandler(async (event, id) => uom.get(id)));
-    ipcMain.handle('uom:search', wrapIpcHandler(async () => uom.list({})));
-    ipcMain.handle('uom:create', wrapIpcHandler(async (event, data) => uom.create(data)));
-    ipcMain.handle('uom:update', wrapIpcHandler(async (event, id, data) => uom.update(id, data)));
-    ipcMain.handle('uom:delete', wrapIpcHandler(async (event, id) => uom.delete(id)));
+    handle('uom:get-all', wrapIpcHandler(async () => uom.list({})));
+    handle('uom:get-by-id', wrapIpcHandler(async (event, id) => uom.get(id)));
+    handle('uom:search', wrapIpcHandler(async (event, searchTerm) => uom.list({ search: searchTerm || '' })));
+    handle('uom:create', wrapIpcHandler(async (event, data) => uom.create(data)));
+    handle('uom:update', wrapIpcHandler(async (event, id, data) => uom.update(id, data)));
+    handle('uom:delete', wrapIpcHandler(async (event, id) => uom.delete(id)));
 
-    ipcMain.handle('branches:get-all', wrapIpcHandler(async () => branches.list({})));
-    ipcMain.handle('branches:get-active', wrapIpcHandler(async () => branches.list({})));
-    ipcMain.handle('branches:get-by-id', wrapIpcHandler(async (event, id) => branches.get(id)));
-    ipcMain.handle('branches:search', wrapIpcHandler(async () => branches.list({})));
-    ipcMain.handle('branches:create', wrapIpcHandler(async (event, data) => branches.create(data)));
-    ipcMain.handle('branches:update', wrapIpcHandler(async (event, id, data) => branches.update(id, data)));
-    ipcMain.handle('branches:delete', wrapIpcHandler(async (event, id) => branches.delete(id)));
+    handle('branches:get-all', wrapIpcHandler(async () => branches.list({})));
+    handle('branches:get-active', wrapIpcHandler(async () => branches.list({})));
+    handle('branches:get-by-id', wrapIpcHandler(async (event, id) => branches.get(id)));
+    handle('branches:search', wrapIpcHandler(async (event, searchTerm) => branches.list({ search: searchTerm || '' })));
+    handle('branches:create', wrapIpcHandler(async (event, data) => branches.create(data)));
+    handle('branches:update', wrapIpcHandler(async (event, id, data) => branches.update(id, data)));
+    handle('branches:delete', wrapIpcHandler(async (event, id) => branches.delete(id)));
 
-    ipcMain.handle('suppliers:get-all', wrapIpcHandler(async () => suppliers.list({})));
-    ipcMain.handle('suppliers:get-active', wrapIpcHandler(async () => suppliers.list({})));
-    ipcMain.handle('suppliers:get-by-id', wrapIpcHandler(async (event, id) => suppliers.get(id)));
-    ipcMain.handle('suppliers:search', wrapIpcHandler(async () => suppliers.list({})));
-    ipcMain.handle('suppliers:create', wrapIpcHandler(async (event, data) => suppliers.create(data)));
-    ipcMain.handle('suppliers:update', wrapIpcHandler(async (event, id, data) => suppliers.update(id, data)));
-    ipcMain.handle('suppliers:delete', wrapIpcHandler(async (event, id) => suppliers.delete(id)));
-    ipcMain.handle('suppliers:update-amounts', wrapIpcHandler(async (event, id, currentAmount, previousAmount) => suppliers.update(id, { current_amount: currentAmount, previous_amount: previousAmount })));
+    handle('suppliers:get-all', wrapIpcHandler(async () => suppliers.list({})));
+    handle('suppliers:get-active', wrapIpcHandler(async () => suppliers.list({})));
+    handle('suppliers:get-by-id', wrapIpcHandler(async (event, id) => suppliers.get(id)));
+    handle('suppliers:search', wrapIpcHandler(async (event, searchTerm) => suppliers.list({ search: searchTerm || '' })));
+    handle('suppliers:create', wrapIpcHandler(async (event, data) => suppliers.create(data)));
+    handle('suppliers:update', wrapIpcHandler(async (event, id, data) => suppliers.update(id, data)));
+    handle('suppliers:delete', wrapIpcHandler(async (event, id) => suppliers.delete(id)));
+    handle('suppliers:update-amounts', wrapIpcHandler(async (event, id, currentAmount, previousAmount) => suppliers.update(id, { current_amount: currentAmount, previous_amount: previousAmount })));
 
-    ipcMain.handle('items:get-all', wrapIpcHandler(async () => items.list({})));
-    ipcMain.handle('items:get-all-extended', wrapIpcHandler(async () => items.list({})));
-    ipcMain.handle('items:get-by-id', wrapIpcHandler(async (event, id) => items.get(id)));
-    ipcMain.handle('items:get-by-id-extended', wrapIpcHandler(async (event, id) => items.get(id)));
-    ipcMain.handle('items:get-by-sku', wrapIpcHandler(async (event, sku) => items.list({ sku })));
-    ipcMain.handle('items:search', wrapIpcHandler(async () => items.list({})));
-    ipcMain.handle('items:create', wrapIpcHandler(async (event, data) => items.create(data)));
-    ipcMain.handle('items:update', wrapIpcHandler(async (event, id, data) => items.update(id, data)));
-    ipcMain.handle('items:delete', wrapIpcHandler(async (event, id) => items.delete(id)));
+    handle('items:get-all', wrapIpcHandler(async () => items.list({})));
+    handle('items:get-all-extended', wrapIpcHandler(async () => items.list({})));
+    handle('items:get-by-id', wrapIpcHandler(async (event, id) => items.get(id)));
+    handle('items:get-by-id-extended', wrapIpcHandler(async (event, id) => items.get(id)));
+    handle('items:get-by-sku', wrapIpcHandler(async (event, sku) => items.list({ sku })));
+    handle('items:search', wrapIpcHandler(async (event, searchTerm) => items.list({ search: searchTerm || '' })));
+    handle('items:create', wrapIpcHandler(async (event, data) => items.create(data)));
+    handle('items:update', wrapIpcHandler(async (event, id, data) => items.update(id, data)));
+    handle('items:delete', wrapIpcHandler(async (event, id) => items.delete(id)));
 
-    ipcMain.handle('stock:get-all', wrapIpcHandler(async () => stock.list({})));
-    ipcMain.handle('stock:get-all-with-items', wrapIpcHandler(async () => stock.list({})));
-    ipcMain.handle('stock:get-by-id', wrapIpcHandler(async (event, id) => stock.get(id)));
-    ipcMain.handle('stock:get-by-sku', wrapIpcHandler(async (event, sku) => stock.list({ sku })));
-    ipcMain.handle('stock:get-low-stock', wrapIpcHandler(async () => stock.list({})));
-    ipcMain.handle('stock:get-expiring', wrapIpcHandler(async () => stock.list({})));
-    ipcMain.handle('stock:get-value', wrapIpcHandler(async () => stock.list({})));
-    ipcMain.handle('stock:upsert', wrapIpcHandler(async (event, data) => stock.create(data)));
-    ipcMain.handle('stock:update-quantity', wrapIpcHandler(async (event, id, quantity) => stock.update(id, { quantity })));
-    ipcMain.handle('stock:update-prices', wrapIpcHandler(async (event, id, stockPrice, retailPrice, changedBy, reason) => stock.update(id, { stock_price: stockPrice, retail_price: retailPrice, changedBy, reason })));
-    ipcMain.handle('stock:delete', wrapIpcHandler(async (event, id) => stock.delete(id)));
+    handle('stock:get-all', wrapIpcHandler(async () => stock.list({})));
+    handle('stock:get-all-with-items', wrapIpcHandler(async () => stock.list({})));
+    handle('stock:get-by-id', wrapIpcHandler(async (event, id) => stock.get(id)));
+    handle('stock:get-by-sku', wrapIpcHandler(async (event, sku) => stock.list({ sku })));
+    handle('stock:get-low-stock', wrapIpcHandler(async () => stock.list({})));
+    handle('stock:get-expiring', wrapIpcHandler(async (event, days) => stock.list({ days })));
+    handle('stock:get-value', wrapIpcHandler(async () => stock.list({})));
+    handle('stock:upsert', wrapIpcHandler(async (event, data) => stock.create(data)));
+    handle('stock:update-quantity', wrapIpcHandler(async (event, id, quantity) => stock.update(id, { quantity })));
+    handle('stock:update-prices', wrapIpcHandler(async (event, id, stockPrice, retailPrice, changedBy, reason) => stock.update(id, { stock_price: stockPrice, retail_price: retailPrice, changedBy, reason })));
+    handle('stock:delete', wrapIpcHandler(async (event, id) => stock.delete(id)));
 
-    ipcMain.handle('restocks:get-all', wrapIpcHandler(async (event, options) => restocks.list(options || {})));
-    ipcMain.handle('restocks:get-by-id', wrapIpcHandler(async (event, id) => restocks.get(id)));
-    ipcMain.handle('restocks:get-by-invoice', wrapIpcHandler(async (event, invoiceNo) => restocks.list({ invoiceNo, invoice_no: invoiceNo })));
-    ipcMain.handle('restocks:get-by-supplier', wrapIpcHandler(async (event, supplierId) => restocks.list({ supplierId, supplier_id: supplierId })));
-    ipcMain.handle('restocks:get-by-date-range', wrapIpcHandler(async () => restocks.list({})));
-    ipcMain.handle('restocks:get-stock-data', wrapIpcHandler(async (event, sku) => stock.list({ sku })));
-    ipcMain.handle('restocks:get-stock-items', wrapIpcHandler(async () => stock.list({})));
-    ipcMain.handle('restocks:create', wrapIpcHandler(async (event, data) => restocks.create(data)));
-    ipcMain.handle('restocks:get-summary', wrapIpcHandler(async () => restocks.list({})));
+    handle('restocks:get-all', wrapIpcHandler(async (event, options) => restocks.list(options || {})));
+    handle('restocks:get-by-id', wrapIpcHandler(async (event, id) => restocks.get(id)));
+    handle('restocks:get-by-invoice', wrapIpcHandler(async (event, invoiceNo) => restocks.list({ invoiceNo, invoice_no: invoiceNo })));
+    handle('restocks:get-by-supplier', wrapIpcHandler(async (event, supplierId) => restocks.list({ supplierId, supplier_id: supplierId })));
+    handle('restocks:get-by-date-range', wrapIpcHandler(async (event, startDate, endDate) => restocks.list({ startDate, endDate })));
+    handle('restocks:get-stock-data', wrapIpcHandler(async (event, sku) => stock.list({ sku })));
+    handle('restocks:get-stock-items', wrapIpcHandler(async () => stock.list({})));
+    handle('restocks:create', wrapIpcHandler(async (event, data) => restocks.create(data)));
+    handle('restocks:get-summary', wrapIpcHandler(async (event, startDate, endDate) => restocks.list({ startDate, endDate })));
 
-    ipcMain.handle('members:get-all', wrapIpcHandler(async () => members.list({})));
-    ipcMain.handle('members:get-active', wrapIpcHandler(async () => members.list({})));
-    ipcMain.handle('members:get-by-id', wrapIpcHandler(async (event, id) => members.get(id)));
-    ipcMain.handle('members:get-by-member-no', wrapIpcHandler(async (event, memberNo) => members.list({ memberNo, member_no: memberNo })));
-    ipcMain.handle('members:get-with-transactions', wrapIpcHandler(async (event, id) => members.get(id)));
-    ipcMain.handle('members:search', wrapIpcHandler(async () => members.list({})));
-    ipcMain.handle('members:create', wrapIpcHandler(async (event, data) => members.create(data)));
-    ipcMain.handle('members:update', wrapIpcHandler(async (event, id, data) => members.update(id, data)));
-    ipcMain.handle('members:delete', wrapIpcHandler(async (event, id) => members.delete(id)));
-    ipcMain.handle('members:get-top', wrapIpcHandler(async () => members.list({})));
-    ipcMain.handle('members:get-debtors', wrapIpcHandler(async () => members.list({})));
+    handle('members:get-all', wrapIpcHandler(async () => members.list({})));
+    handle('members:get-active', wrapIpcHandler(async () => members.list({})));
+    handle('members:get-by-id', wrapIpcHandler(async (event, id) => members.get(id)));
+    handle('members:get-by-member-no', wrapIpcHandler(async (event, memberNo) => members.list({ memberNo, member_no: memberNo })));
+    handle('members:get-with-transactions', wrapIpcHandler(async (event, id) => members.get(id)));
+    handle('members:search', wrapIpcHandler(async (event, searchTerm) => members.list({ search: searchTerm || '' })));
+    handle('members:create', wrapIpcHandler(async (event, data) => members.create(data)));
+    handle('members:update', wrapIpcHandler(async (event, id, data) => members.update(id, data)));
+    handle('members:delete', wrapIpcHandler(async (event, id) => members.delete(id)));
+    handle('members:get-top', wrapIpcHandler(async () => members.list({})));
+    handle('members:get-debtors', wrapIpcHandler(async () => members.list({})));
 
-    ipcMain.handle('offers:get-all', wrapIpcHandler(async () => offers.list({})));
-    ipcMain.handle('offers:get-active', wrapIpcHandler(async () => offers.list({})));
-    ipcMain.handle('offers:create', wrapIpcHandler(async (event, data) => offers.create(data)));
-    ipcMain.handle('offers:update', wrapIpcHandler(async (event, id, data) => offers.update(id, data)));
-    ipcMain.handle('offers:delete', wrapIpcHandler(async (event, id) => offers.delete(id)));
-    ipcMain.handle('offers:toggle-active', wrapIpcHandler(async (event, id) => offers.update(id, {})));
+    handle('offers:get-all', wrapIpcHandler(async () => offers.list({})));
+    handle('offers:get-active', wrapIpcHandler(async () => offers.list({})));
+    handle('offers:create', wrapIpcHandler(async (event, data) => offers.create(data)));
+    handle('offers:update', wrapIpcHandler(async (event, id, data) => offers.update(id, data)));
+    handle('offers:delete', wrapIpcHandler(async (event, id) => offers.delete(id)));
+    handle('offers:toggle-active', wrapIpcHandler(async (event, id) => {
+        // The frontend only sends the id (see OffersDiscountView.jsx), expecting
+        // a true toggle — read the current state and flip it, since an empty
+        // update body leaves is_active untouched entirely.
+        const current = await offers.get(id);
+        const isActive = Boolean(current?.data?.is_active ?? current?.data?.isActive);
+        return offers.update(id, { is_active: !isActive, isActive: !isActive });
+    }));
 
-    ipcMain.handle('disposed:get-all', wrapIpcHandler(async () => disposed.list({})));
-    ipcMain.handle('disposed:create', wrapIpcHandler(async (event, data) => disposed.create(data)));
-    ipcMain.handle('disposed:get-by-date-range', wrapIpcHandler(async () => disposed.list({})));
+    handle('disposed:get-all', wrapIpcHandler(async () => disposed.list({})));
+    handle('disposed:create', wrapIpcHandler(async (event, data) => disposed.create(data)));
+    handle('disposed:get-by-date-range', wrapIpcHandler(async (event, startDate, endDate) => disposed.list({ startDate, endDate })));
 
-    ipcMain.handle('sales:get-all', wrapIpcHandler(async (event, options) => service.list('sales', options || {})));
-    ipcMain.handle('sales:get-by-id', wrapIpcHandler(async (event, id) => service.get('sales', id)));
-    ipcMain.handle('sales:get-by-invoice', wrapIpcHandler(async (event, invoiceNo) => service.list('sales', { invoiceNo, invoice_no: invoiceNo })));
-    ipcMain.handle('sales:get-by-member', wrapIpcHandler(async (event, memberId) => service.list('sales', { memberId, member_id: memberId })));
-    ipcMain.handle('sales:get-by-date-range', wrapIpcHandler(async () => service.list('sales', {})));
-    ipcMain.handle('sales:get-held-orders', wrapIpcHandler(async () => service.list('sales', { status: 'held' })));
-    ipcMain.handle('sales:create', wrapIpcHandler(async (event, data) => service.createSale(data || {})));
-    ipcMain.handle('sales:hold', wrapIpcHandler(async (event, data) => service.createSale({ ...(data || {}), is_held: true, isHeld: true })));
+    handle('sales:get-all', wrapIpcHandler(async (event, options) => service.list('sales', options || {})));
+    handle('sales:get-by-id', wrapIpcHandler(async (event, id) => service.get('sales', id)));
+    handle('sales:get-by-invoice', wrapIpcHandler(async (event, invoiceNo) => service.list('sales', { invoiceNo, invoice_no: invoiceNo })));
+    handle('sales:get-by-member', wrapIpcHandler(async (event, memberId) => service.list('sales', { memberId, member_id: memberId })));
+    handle('sales:get-by-date-range', wrapIpcHandler(async (event, startDate, endDate) => service.list('sales', { startDate, endDate })));
+    handle('sales:get-held-orders', wrapIpcHandler(async () => service.list('sales', { status: 'held' })));
+    handle('sales:create', wrapIpcHandler(async (event, data) => service.createSale(data || {})));
+    handle('sales:hold', wrapIpcHandler(async (event, data) => service.createSale({ ...(data || {}), is_held: true, isHeld: true })));
 
-    ipcMain.handle('payment-methods:get-all', wrapIpcHandler(async () => paymentMethods.list({})));
-    ipcMain.handle('payment-methods:get-active', wrapIpcHandler(async () => paymentMethods.list({})));
-    ipcMain.handle('payment-methods:get-for-members', wrapIpcHandler(async () => paymentMethods.list({})));
-    ipcMain.handle('payment-methods:get-for-non-members', wrapIpcHandler(async () => paymentMethods.list({})));
-    ipcMain.handle('payment-methods:get-by-id', wrapIpcHandler(async (event, id) => paymentMethods.get(id)));
-    ipcMain.handle('payment-methods:search', wrapIpcHandler(async () => paymentMethods.list({})));
-    ipcMain.handle('payment-methods:create', wrapIpcHandler(async (event, data) => paymentMethods.create(data)));
-    ipcMain.handle('payment-methods:update', wrapIpcHandler(async (event, id, data) => paymentMethods.update(id, data)));
-    ipcMain.handle('payment-methods:toggle-active', wrapIpcHandler(async (event, id) => paymentMethods.update(id, {})));
-    ipcMain.handle('payment-methods:delete', wrapIpcHandler(async (event, id) => paymentMethods.delete(id)));
+    handle('payment-methods:get-all', wrapIpcHandler(async () => paymentMethods.list({})));
+    handle('payment-methods:get-active', wrapIpcHandler(async () => paymentMethods.list({})));
+    handle('payment-methods:get-for-members', wrapIpcHandler(async () => paymentMethods.list({})));
+    handle('payment-methods:get-for-non-members', wrapIpcHandler(async () => paymentMethods.list({})));
+    handle('payment-methods:get-by-id', wrapIpcHandler(async (event, id) => paymentMethods.get(id)));
+    handle('payment-methods:search', wrapIpcHandler(async (event, searchTerm) => paymentMethods.list({ search: searchTerm || '' })));
+    handle('payment-methods:create', wrapIpcHandler(async (event, data) => paymentMethods.create(data)));
+    handle('payment-methods:update', wrapIpcHandler(async (event, id, data) => paymentMethods.update(id, data)));
+    handle('payment-methods:toggle-active', wrapIpcHandler(async (event, id) => {
+        // Same fix as offers:toggle-active above — SalesConfig.jsx only sends
+        // the id, expecting a true toggle rather than a no-op empty update.
+        const current = await paymentMethods.get(id);
+        const isActive = Boolean(current?.data?.is_active ?? current?.data?.isActive);
+        return paymentMethods.update(id, { is_active: !isActive, isActive: !isActive });
+    }));
+    handle('payment-methods:delete', wrapIpcHandler(async (event, id) => paymentMethods.delete(id)));
 
-    ipcMain.handle('loginHistory:getAll', wrapIpcHandler(async (event, options) => loginHistory.list(options || {})));
-    ipcMain.handle('loginHistory:getByUser', wrapIpcHandler(async (event, userId) => loginHistory.list({ userId, user_id: userId })));
-    ipcMain.handle('loginHistory:getByDateRange', wrapIpcHandler(async () => loginHistory.list({})));
-    ipcMain.handle('loginHistory:getUserStats', wrapIpcHandler(async () => loginHistory.list({})));
-    ipcMain.handle('loginHistory:getDailyStats', wrapIpcHandler(async () => loginHistory.list({})));
-    ipcMain.handle('loginHistory:getUserActivitySummary', wrapIpcHandler(async () => loginHistory.list({})));
-    ipcMain.handle('loginHistory:getActiveSessions', wrapIpcHandler(async () => service.getActiveSessions()));
-    ipcMain.handle('loginHistory:markStaleSessions', wrapIpcHandler(async () => ({ status: 'success', data: { onlineOnly: true } })));
+    handle('loginHistory:getAll', wrapIpcHandler(async (event, options) => loginHistory.list(options || {})));
+    handle('loginHistory:getByUser', wrapIpcHandler(async (event, userId) => loginHistory.list({ userId, user_id: userId })));
+    handle('loginHistory:getByDateRange', wrapIpcHandler(async (event, startDate, endDate) => loginHistory.list({ startDate, endDate })));
+    handle('loginHistory:getUserStats', wrapIpcHandler(async () => loginHistory.list({})));
+    handle('loginHistory:getDailyStats', wrapIpcHandler(async () => loginHistory.list({})));
+    handle('loginHistory:getUserActivitySummary', wrapIpcHandler(async () => loginHistory.list({})));
+    handle('loginHistory:getActiveSessions', wrapIpcHandler(async () => service.getActiveSessions()));
+    handle('loginHistory:markStaleSessions', wrapIpcHandler(async () => ({ status: 'success', data: { onlineOnly: true } })));
 
-    ipcMain.handle('teacoop:initialize', wrapIpcHandler(async () => ({ status: 'success', data: { onlineOnly: true } })));
-    ipcMain.handle('teacoop:members:getAll', wrapIpcHandler(async () => teaCoopMembers.list({})));
-    ipcMain.handle('teacoop:members:getById', wrapIpcHandler(async (event, memberId) => teaCoopMembers.get(memberId)));
-    ipcMain.handle('teacoop:members:search', wrapIpcHandler(async (event, searchTerm) => teaCoopMembers.list({ search: searchTerm })));
-    ipcMain.handle('teacoop:payments:getHistory', wrapIpcHandler(async (event, payload) => {
+    handle('teacoop:initialize', wrapIpcHandler(async () => ({ status: 'success', data: { onlineOnly: true } })));
+    handle('teacoop:members:getAll', wrapIpcHandler(async () => teaCoopMembers.list({})));
+    handle('teacoop:members:getById', wrapIpcHandler(async (event, memberId) => teaCoopMembers.get(memberId)));
+    handle('teacoop:members:search', wrapIpcHandler(async (event, searchTerm) => teaCoopMembers.list({ search: searchTerm })));
+    handle('teacoop:payments:getHistory', wrapIpcHandler(async (event, payload) => {
         const memberId = payload?.memberId || payload?.member_id || payload;
         return teaCoopPayments.list({ memberId, member_id: memberId });
     }));
-    ipcMain.handle('teacoop:sync:members', wrapIpcHandler(async () => service.syncTeaCoop({})));
-    ipcMain.handle('teacoop:sync:payments', wrapIpcHandler(async (event, payload) => {
+    handle('teacoop:sync:members', wrapIpcHandler(async () => service.syncTeaCoop({})));
+    handle('teacoop:sync:payments', wrapIpcHandler(async (event, payload) => {
         const memberId = payload?.memberId || payload?.member_id || null;
         return service.syncTeaCoopPayments(memberId, payload?.options || payload || {});
     }));
-    ipcMain.handle('teacoop:members:refresh', wrapIpcHandler(async (event, memberId) => teaCoopMembers.get(memberId)));
-    ipcMain.handle('teacoop:status', wrapIpcHandler(async () => service.getTeaCoopStatus()));
+    handle('teacoop:members:refresh', wrapIpcHandler(async (event, memberId) => teaCoopMembers.get(memberId)));
+    handle('teacoop:status', wrapIpcHandler(async () => service.getTeaCoopStatus()));
 
     console.log('[OnlineController] Online-only IPC handlers registered');
+    return registeredChannels;
 }
 
 module.exports = { registerHandlers };

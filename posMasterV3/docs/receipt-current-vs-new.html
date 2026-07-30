@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>POSMaster — Receipt: Current vs New</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 24px 64px; background: #3f3f46; color: #1f2937;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, "Noto Sans", "Noto Sans Sinhala", sans-serif;
+  }
+  h1.page { color:#fafafa; font-size:22px; margin:0 0 4px; }
+  p.page-sub { color:#d4d4d8; font-size:14px; margin:0 0 24px; max-width:900px; line-height:1.5; }
+
+  /* ---- readiness legend ---- */
+  .legend { display:flex; gap:18px; flex-wrap:wrap; align-items:center; margin:0 0 28px; }
+  .legend .chip { display:flex; align-items:center; gap:8px; color:#e4e4e7; font-size:13px; }
+  .dot { flex:0 0 auto; width:14px; height:14px; border-radius:4px; border:1px solid rgba(0,0,0,.25); }
+  .dot.ready { background:#86efac; }
+  .dot.wire  { background:#fde68a; }
+  .dot.new   { background:#fca5a5; }
+
+  /* ---- side-by-side stage ---- */
+  .stage { display:flex; gap:32px; align-items:flex-start; overflow-x:auto; padding-bottom:12px; }
+  .panel { flex:0 0 auto; }
+  .panel > .cap { color:#fafafa; font-size:13px; font-weight:600; letter-spacing:.04em;
+                  text-transform:uppercase; margin:0 0 10px; text-align:center; }
+  .panel > .cap small { display:block; text-transform:none; letter-spacing:0; color:#a1a1aa; font-weight:400; margin-top:2px; }
+
+  /* ---- shared paper ---- */
+  .bill { background:#fff; color:#000; box-shadow:0 10px 40px rgba(0,0,0,.35); }
+  .bill .center { text-align:center; }
+  .bill hr { border:0; border-top:1px dashed #111827; }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* =========================================================
+     CURRENT  (faithful to BillContent.jsx, v1.6.6) — 512px
+     ========================================================= */
+  .cur { width:512px; padding:24px 20px 40px; line-height:1.38; font-size:0; }
+  .cur * { font-size:initial; }
+  .cur .h-org { font-size:24px; line-height:1.25; font-weight:800; margin:0 0 4px; }
+  .cur .h-sub { font-size:22px; line-height:1.25; font-weight:700; margin:0 0 4px; }
+  .cur .h-doc { font-size:23px; line-height:1.25; font-weight:700; margin:0; }
+  .cur hr { margin:20px 0; }
+  .cur .meta { display:flex; justify-content:space-between; gap:16px; font-size:21px; line-height:1.45; }
+  .cur .meta .right { text-align:right; }
+  .cur table { width:100%; table-layout:fixed; border-collapse:collapse; font-size:21px; line-height:1.35; }
+  .cur thead tr { font-size:18px; }
+  .cur th { font-weight:700; border-bottom:1px solid #111827; padding:8px; }
+  .cur th.i { text-align:left; padding-left:0; }
+  .cur th.n { text-align:right; }
+  .cur td { padding:12px 8px; vertical-align:top; }
+  .cur td.i { text-align:left; padding-left:0; word-break:break-word; }
+  .cur td.n { text-align:right; }
+  .cur .u { width:116px; } .cur .q { width:100px; } .cur .t2 { width:116px; }
+  .cur .totals { padding:4px 16px; font-size:22px; line-height:1.5; }
+  .cur .row { display:flex; justify-content:space-between; gap:32px; }
+  .cur .row p { margin:0; }
+  .cur .grand { font-weight:800; font-size:28px; line-height:1.35; margin-top:4px; }
+  .cur .foot { text-align:center; font-size:19px; line-height:1.3; margin-top:8px; }
+  .cur .foot > div + div { margin-top:8px; }
+
+  /* =========================================================
+     NEW  (faithful to the supplied design) — 560px
+     ========================================================= */
+  .new { width:560px; padding:26px 22px 30px; line-height:1.4; }
+  .new .h-org { font-size:25px; line-height:1.24; font-weight:800; margin:0 0 6px; }
+  .new .h-sub { font-size:21px; line-height:1.24; font-weight:700; margin:0 0 6px; }
+  .new .h-addr{ font-size:17px; font-weight:700; margin:0; }
+  .new hr { border-top:1px solid #9ca3af; margin:18px 0; }
+  .new hr.strong { border-top:1px solid #4b5563; }
+  .new .meta { display:flex; justify-content:space-between; gap:20px; font-size:17px; line-height:1.7; }
+  .new .meta .right { text-align:right; }
+  .new .meta .inv { font-size:20px; }
+  .new table { width:100%; border-collapse:collapse; font-size:16px; }
+  .new thead th { font-weight:700; padding:8px 6px 10px; border-bottom:1px solid #9ca3af; white-space:nowrap; }
+  .new thead th.l { text-align:left; } .new thead th.c { text-align:center; } .new thead th.r { text-align:right; }
+  .new tbody .line-top td { padding:12px 6px 0; vertical-align:top; }
+  .new tbody .line-bot td { padding:2px 6px 12px; vertical-align:top; }
+  .new .ix { text-align:center; width:44px; }
+  .new .nm { text-align:left; font-size:19px; }
+  .new .r { text-align:right; } .new .c { text-align:center; }
+  .new .totals { font-size:19px; line-height:1.9; }
+  .new .row { display:flex; justify-content:space-between; gap:24px; }
+  .new .row p { margin:0; }
+  .new .grand { font-size:30px; font-weight:800; align-items:baseline; }
+  .new .foot { text-align:center; font-size:16px; line-height:1.5; }
+  .new .sig { margin:18px 0 4px; }
+  .new .sig .rule { letter-spacing:1px; }
+  .new .terms { margin:14px 0; }
+  .new .thanks { font-size:19px; margin-top:6px; }
+  .new .brand { font-size:22px; font-weight:800; margin-top:2px; }
+  .new .barcode { display:flex; flex-direction:column; align-items:center; gap:6px; margin-top:20px; }
+  .new .barcode .bars { display:flex; align-items:flex-end; height:70px; }
+  .new .barcode .bars i { display:block; width:2px; background:#000; height:100%; }
+  .new .barcode .code { font-size:16px; letter-spacing:2px; }
+
+  /* ---- mapping table ---- */
+  .map { margin:40px auto 0; max-width:1000px; background:#fff; border-radius:10px; padding:22px 24px; }
+  .map h2 { font-size:17px; margin:0 0 14px; }
+  .map table { width:100%; border-collapse:collapse; font-size:14px; }
+  .map th, .map td { text-align:left; padding:9px 10px; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+  .map th { background:#f9fafb; font-weight:700; }
+  .map code { background:#f3f4f6; padding:1px 6px; border-radius:4px; font-size:12.5px; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:20px; font-size:12px; font-weight:600; white-space:nowrap; }
+  .tag.ready { background:#dcfce7; color:#166534; }
+  .tag.wire  { background:#fef3c7; color:#92400e; }
+  .tag.new   { background:#fee2e2; color:#991b1b; }
+</style>
+</head>
+<body>
+  <h1 class="page">Receipt template — Current vs Proposed New</h1>
+  <p class="page-sub">Left is the receipt shipping today (BillContent.jsx, v1.6.6). Right is the new design you supplied, rebuilt in HTML. The colour key shows, for each new element, whether the data is already on the receipt, already in the system but not yet passed to the receipt, or genuinely new and needing a data source.</p>
+
+  <div class="legend">
+    <span class="chip"><span class="dot ready"></span> Already in <code style="background:none;color:#e4e4e7">billData</code> — renders today</span>
+    <span class="chip"><span class="dot wire"></span> In the system, needs wiring into the receipt</span>
+    <span class="chip"><span class="dot new"></span> New — needs a new field / setting</span>
+  </div>
+
+  <div class="stage">
+
+    <!-- ================= CURRENT ================= -->
+    <div class="panel">
+      <p class="cap">Current<small>v1.6.6 · 4 columns</small></p>
+      <div class="bill cur">
+        <div class="center">
+          <div class="h-org">මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමූපකාර සමිතිය</div>
+          <div class="h-sub">ටී කෝප් ඇලන් වැලි ට්‍රේඩ් සෙන්ටර්</div>
+          <div class="h-doc">වෙළදාම්පත</div>
+        </div>
+        <hr>
+        <div class="meta">
+          <div>
+            <div>ඉන්වොයිස් අංකය: SALE-20260716-00011</div>
+            <div>අයකැමි: Namal</div>
+            <div>ගෙවීම් ක්‍රමය: Credit</div>
+          </div>
+          <div class="right">
+            <div>2026-07-16</div>
+            <div>00023</div>
+          </div>
+        </div>
+        <hr>
+        <table>
+          <thead><tr>
+            <th class="i">ද්‍රව්‍ය</th>
+            <th class="n u">ඒකක මිල</th>
+            <th class="n q">ප්‍රමාණය</th>
+            <th class="n t2">මුළු මිල</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="i">Eddie Chocolate</td><td class="n u">100.00</td><td class="n q">2</td><td class="n t2">200.00</td></tr>
+            <tr><td class="i">Red Rice</td><td class="n u">420.00</td><td class="n q">500</td><td class="n t2">200.00</td></tr>
+            <tr><td class="i">Coconut oil-100ml</td><td class="n u">150.00</td><td class="n q">500</td><td class="n t2">200.00</td></tr>
+            <tr><td class="i">Nylon string</td><td class="n u">50.00</td><td class="n q">500</td><td class="n t2">1000.00</td></tr>
+          </tbody>
+        </table>
+        <hr>
+        <div class="totals">
+          <div class="row"><p>එකතුව:</p><p class="tnum">2600.00</p></div>
+          <div class="row"><p>වට්ටම්:</p><p class="tnum">100.00</p></div>
+          <div class="row grand"><p>මුළු වටිනකම: </p><p class="tnum">2500.00</p></div>
+          <hr style="border-top-color:#6b7280;margin:16px 0;">
+          <div class="row"><p>ගෙවූ මුදල:</p><p class="tnum">5000.00</p></div>
+          <div class="row"><p>ඉතිරි මුදල:</p><p class="tnum">2500.00</p></div>
+        </div>
+        <hr>
+        <div class="foot">
+          <div>------------------------------</div>
+          <div>ඉහත සදහන් ද්‍රව්‍ය නිවැරදි බව සහතික කරමි</div>
+          <div style="font-size:21px">------THANK YOU COME AGAIN------</div>
+          <div style="font-size:23px;font-weight:800">POSMaster</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= NEW ================= -->
+    <div class="panel">
+      <p class="cap">New (proposed)<small>your design · 6 columns · barcode</small></p>
+      <div class="bill new">
+        <div class="center">
+          <div class="h-org">මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමූපකාර සමිතිය - කොටපොල</div>
+          <div class="h-sub">ඇලන්වැලි සමූපකාර වෙළදසැල</div>
+          <div class="h-addr">No.91, කොටපොල, මාතර -&nbsp;&nbsp; 0344940670</div>
+        </div>
+        <hr>
+        <div class="meta">
+          <div>
+            <div>ඉන්වොයිස් අංකය:</div>
+            <div class="inv">SALE-20260716-00011</div>
+            <div>අයකැමි: Namal</div>
+            <div>ගෙවීම් ක්‍රමය: Credit</div>
+          </div>
+          <div class="right">
+            <div>2025/07/01 04:53PM</div>
+            <div>සාමාජික නම : Kamal</div>
+            <div>සාමාජික අංකය : 00023</div>
+            <div>වාරික ගණන : 01 month</div>
+          </div>
+        </div>
+        <hr>
+        <table>
+          <thead><tr>
+            <th class="c" style="width:44px">අං.</th>
+            <th class="l">ද්‍රව්‍ය</th>
+            <th class="r">ද්‍රව්‍ය මිල</th>
+            <th class="r">ප්‍රමාණය</th>
+            <th class="r">වට්ටම</th>
+            <th class="r">වටිනාකම</th>
+          </tr></thead>
+          <tbody>
+            <tr class="line-top"><td class="ix">1</td><td class="nm" colspan="5">Eddie Chocolate</td></tr>
+            <tr class="line-bot"><td></td><td></td><td class="r">100.00 /1pcs</td><td class="r">2pcs</td><td class="r">0.00</td><td class="r">200.00</td></tr>
+
+            <tr class="line-top"><td class="ix">2</td><td class="nm" colspan="5">Red Rice</td></tr>
+            <tr class="line-bot"><td></td><td></td><td class="r">420.00 /100g</td><td class="r">500g</td><td class="r">0.00</td><td class="r">200.00</td></tr>
+
+            <tr class="line-top"><td class="ix">3</td><td class="nm" colspan="5">Coconut oil-100ml</td></tr>
+            <tr class="line-bot"><td></td><td></td><td class="r">150.00 /1pcs</td><td class="r">500g</td><td class="r">0.00</td><td class="r">200.00</td></tr>
+
+            <tr class="line-top"><td class="ix">4</td><td class="nm" colspan="5">Nylon string</td></tr>
+            <tr class="line-bot"><td></td><td></td><td class="r">50.00/10cm</td><td class="r">500cm</td><td class="r">0.00</td><td class="r">1,000.00</td></tr>
+          </tbody>
+        </table>
+        <hr class="strong">
+        <div class="totals">
+          <div class="row"><p>මුළු වටිනාකම:</p><p class="tnum">2600.00</p></div>
+          <div class="row"><p>වට්ටම් එකතුව:</p><p class="tnum">100.00</p></div>
+          <div class="row grand"><p>ගෙවිය යුතු මුදල:</p><p class="tnum">2500.00</p></div>
+          <hr class="strong">
+          <div class="row"><p>ලබා දුන් මුදල :</p><p class="tnum">5,000.00</p></div>
+          <div class="row"><p>ඉතිරි මුදල :</p><p class="tnum">2500.00</p></div>
+        </div>
+        <hr>
+        <div class="foot">
+          <div class="sig">
+            <div class="rule">------------------------------</div>
+            <div>අත්සන</div>
+          </div>
+          <div class="terms">
+            <div>ඉහත සදහන් ද්‍රව්‍ය නිවැරදිව භාර ගතිමි.</div>
+            <div>මුදල් හෝ භාණ්ඩ වෙනසක් අත්නම් දින 30ක් ඇතුලත දැනුම් දිය යුතුය.</div>
+          </div>
+          <div class="thanks">------------THANK YOU COME AGAIN-----------</div>
+          <div class="brand">POSMaster</div>
+          <div class="barcode">
+            <div class="bars" id="bars"></div>
+            <div class="code">T3HHQNN1191/CG14C1QDN</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= MAPPING ================= -->
+  <div class="map">
+    <h2>Field mapping — what the new layout needs from the system</h2>
+    <table>
+      <thead><tr><th>New receipt element</th><th>Source field</th><th>Status</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>Org name / “වෙළදසැල” lines</td><td><code>app_settings</code> (shop profile)</td><td><span class="tag wire">wire</span></td><td>Currently hard-coded in the JSX. New line “- කොටපොල” + shop line.</td></tr>
+        <tr><td>Address + phone line</td><td><code>app_settings.address</code>, <code>.phone</code></td><td><span class="tag new">new</span></td><td>Not on the receipt today; needs shop-profile settings.</td></tr>
+        <tr><td>Invoice no.</td><td><code>billData.invoiceNo</code></td><td><span class="tag ready">ready</span></td><td>Same value, moved to its own line.</td></tr>
+        <tr><td>Date <em>+ time</em></td><td><code>billData.date_time</code></td><td><span class="tag wire">wire</span></td><td>Today it’s date-only (<code>formattedDate</code> = YYYY-MM-DD). New shows time — add a timestamp.</td></tr>
+        <tr><td>Cashier / Payment method</td><td><code>cashier_name</code>, <code>payment_method</code></td><td><span class="tag ready">ready</span></td><td>Already present.</td></tr>
+        <tr><td>සාමාජික නම (member name)</td><td><code>selectedMember.full_name</code></td><td><span class="tag wire">wire</span></td><td>In the system; only <code>member_no</code> reaches billData now. Add the name.</td></tr>
+        <tr><td>සාමාජික අංකය (member no.)</td><td><code>billData.member_no</code></td><td><span class="tag ready">ready</span></td><td>Present.</td></tr>
+        <tr><td>වාරික ගණන (installment term)</td><td>—</td><td><span class="tag new">new</span></td><td>Credit-term field. Not in the data model; needs capture at checkout for Credit sales.</td></tr>
+        <tr><td>අං. (row index)</td><td>derived (row number)</td><td><span class="tag ready">ready</span></td><td>Pure presentation — just <code>index + 1</code>.</td></tr>
+        <tr><td>ද්‍රව්‍ය මිල with unit (<code>100.00 /1pcs</code>)</td><td><code>retail_price</code> + <code>uom.symbol</code></td><td><span class="tag wire">wire</span></td><td>UOM already on cart items (<code>uom.symbol</code>, <code>unit_name</code>); not shown on receipt yet.</td></tr>
+        <tr><td>ප්‍රමාණය with unit (<code>500g</code>)</td><td><code>customer_quantity</code> + <code>uom.symbol</code></td><td><span class="tag wire">wire</span></td><td>Same UOM source.</td></tr>
+        <tr><td>වට්ටම (per-item discount)</td><td><code>item.customer_discount</code></td><td><span class="tag wire">wire</span></td><td>Field exists on items (defaults 0); new column surfaces it per line.</td></tr>
+        <tr><td>වටිනාකම (line value)</td><td><code>item.total_price</code></td><td><span class="tag ready">ready</span></td><td>Already computed.</td></tr>
+        <tr><td>Totals (subtotal/discount/payable/paid/balance)</td><td><code>totalAmount</code>, <code>discountAmount</code>, <code>finalAmount</code>, <code>cashAmount</code>, <code>changeAmount</code></td><td><span class="tag ready">ready</span></td><td>Same five values; only the Sinhala labels change.</td></tr>
+        <tr><td>අත්සන (signature) + 30-day terms</td><td>static / <code>app_settings</code></td><td><span class="tag new">new</span></td><td>Static footer text; best kept editable in settings.</td></tr>
+        <tr><td>Barcode</td><td><code>invoiceNo</code> → <code>jsbarcode</code></td><td><span class="tag wire">wire</span></td><td><code>jsbarcode</code>/<code>react-barcode</code> already in deps; just render the invoice code.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    // Deterministic faux barcode strip (visual only — real one renders via jsbarcode).
+    (function () {
+      var el = document.getElementById('bars');
+      if (!el) return;
+      var seed = 'T3HHQNN1191/CG14C1QDN', out = '';
+      for (var i = 0; i < 120; i++) {
+        var c = seed.charCodeAt(i % seed.length);
+        var w = 1 + ((c + i * 7) % 4);          // bar width 1–4px
+        var gap = (c + i) % 3 === 0;             // occasional white gap
+        out += '<i style="width:' + w + 'px;background:' + (gap ? 'transparent' : '#000') + '"></i>';
+      }
+      el.innerHTML = out;
+    })();
+  </script>
+</body>
+</html>

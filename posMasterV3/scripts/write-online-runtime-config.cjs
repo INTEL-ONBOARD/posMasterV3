@@ -16,7 +16,7 @@ function optionalEnv(name, fallback) {
 const config = {
     ONLINE_API_HOST: optionalEnv('ONLINE_API_HOST', '127.0.0.1'),
     ONLINE_API_PORT: optionalEnv('ONLINE_API_PORT', '4100'),
-    ONLINE_API_CORS_ORIGIN: optionalEnv('ONLINE_API_CORS_ORIGIN', '*'),
+    ONLINE_API_CORS_ORIGIN: optionalEnv('ONLINE_API_CORS_ORIGIN', 'file://,http://localhost:5173,http://localhost:5174'),
     POS_ONLINE_CLIENT_HOST: optionalEnv('POS_ONLINE_CLIENT_HOST', '127.0.0.1'),
     MONGODB_URI: requiredEnv('MONGODB_URI'),
     MONGODB_DB: optionalEnv('MONGODB_DB', 'POSmaster'),

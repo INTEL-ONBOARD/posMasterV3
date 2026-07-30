@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="utf-8">
+<title>POSMaster — Receipt Layout Preview</title>
+<style>
+  /* Faithful translation of BillContent.jsx (current / v1.6.6).
+     Every rule maps to a Tailwind class in the component; comments cite it. */
+
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px 20px;
+    background: #52525b;              /* neutral backdrop so the paper reads */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, "Noto Sans", "Noto Sans Sinhala", sans-serif;
+  }
+
+  .stage-label {
+    color: #e4e4e7;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  /* .bill  ==  box-border w-[512px] bg-white px-5 pt-6 pb-16 text-black flex flex-col leading-[1.38] */
+  .bill {
+    width: 512px;                     /* w-[512px] — design width; print scales this to 72 mm */
+    background: #fff;
+    color: #000;
+    padding: 24px 20px 64px;          /* pt-6 (24) / px-5 (20) / pb-16 (64) */
+    display: flex;
+    flex-direction: column;
+    line-height: 1.38;                /* leading-[1.38] */
+    box-shadow: 0 10px 40px rgba(0,0,0,.35);
+  }
+
+  .center { display: flex; flex-direction: column; align-items: center; text-align: center; }
+
+  /* header h1/h1/h2 */
+  .h-org  { font-size: 24px; line-height: 1.25; font-weight: 800; margin: 0 0 4px; }  /* text-[24px] extrabold mb-1 */
+  .h-sub  { font-size: 22px; line-height: 1.25; font-weight: 700; margin: 0 0 4px; }  /* text-[22px] bold mb-1 */
+  .h-doc  { font-size: 23px; line-height: 1.25; font-weight: 700; margin: 0; }        /* text-[23px] bold */
+
+  hr { border: 0; border-top: 1px dashed #111827; margin: 20px 0; }   /* border-dashed border-gray-900 my-5 */
+  hr.light { border-top-color: #6b7280; margin: 16px 0; }             /* border-gray-500 my-4 */
+
+  /* meta row  ==  flex justify-between gap-4 text-[21px] leading-[1.45] */
+  .meta { display: flex; justify-content: space-between; gap: 16px; font-size: 21px; line-height: 1.45; }
+  .meta .col { display: flex; flex-direction: column; min-width: 0; }
+  .meta .col.right { text-align: right; flex-shrink: 0; }
+
+  /* items table  ==  w-full table-fixed border-collapse text-[21px] leading-[1.35] */
+  table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 21px; line-height: 1.35; }
+  thead tr { font-size: 18px; }                                        /* tr text-[18px] */
+  th { font-weight: 700; border-bottom: 1px solid #111827; padding: 8px; }
+  th.item  { text-align: left;  padding: 8px 8px 8px 0; }              /* pr-2 */
+  th.unit  { text-align: right; width: 116px; }                        /* w-[116px] */
+  th.qty   { text-align: right; width: 100px; }                        /* w-[100px] */
+  th.total { text-align: right; width: 116px; padding: 8px 0 8px 8px; }/* pl-2 */
+  td { padding: 12px 8px; vertical-align: top; }                       /* py-3 */
+  td.item  { text-align: left; padding: 12px 8px 12px 0; word-break: break-word; }
+  td.unit  { text-align: right; width: 116px; font-variant-numeric: tabular-nums; }
+  td.qty   { text-align: right; width: 100px; font-variant-numeric: tabular-nums; }
+  td.total { text-align: right; width: 116px; padding: 12px 0 12px 8px; font-variant-numeric: tabular-nums; }
+
+  /* totals block  ==  flex flex-col px-4 py-1 text-[22px] leading-[1.5] */
+  .totals { display: flex; flex-direction: column; padding: 4px 16px; font-size: 22px; line-height: 1.5; }
+  .row { display: flex; justify-content: space-between; gap: 32px; }   /* gap-8 */
+  .row p { margin: 0; }
+  .grand { font-weight: 800; font-size: 28px; line-height: 1.35; margin-top: 4px; }  /* font-extrabold text-[28px] mt-1 */
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* footer  ==  flex flex-col items-center text-[19px] leading-[1.3] mt-2 space-y-2 */
+  .footer { display: flex; flex-direction: column; align-items: center; text-align: center; font-size: 19px; line-height: 1.3; margin-top: 8px; }
+  .footer > div + div { margin-top: 8px; }                             /* space-y-2 */
+  .footer .thanks { font-size: 21px; }                                 /* text-[21px] */
+  .footer .brand  { font-size: 23px; font-weight: 800; }               /* text-[23px] extrabold */
+</style>
+</head>
+<body>
+
+  <div class="stage-label">POSMaster receipt — current layout (v1.6.6)</div>
+
+  <!-- BillContent.jsx rendered with a representative 2-item cash sale -->
+  <div class="bill">
+    <div class="center">
+      <h1 class="h-org">මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමූපකාර සමිතිය</h1>
+      <h1 class="h-sub">ටී කෝප් ඇලන් වැලි ට්‍රේඩ් සෙන්ටර්</h1>
+      <h2 class="h-doc">වෙළදාම්පත</h2>
+    </div>
+
+    <hr>
+
+    <div class="meta">
+      <div class="col">
+        <span>ඉන්වොයිස් අංකය: SALE-20260716-00008</span>
+        <span>අයකැමි: admin</span>
+        <span>ගෙවීම් ක්‍රමය: Cash</span>
+      </div>
+      <div class="col right">
+        <span>2026-07-16</span>
+        <span>GUEST</span>
+      </div>
+    </div>
+
+    <hr>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="item">ද්‍රව්‍ය</th>
+          <th class="unit">ඒකක මිල</th>
+          <th class="qty">ප්‍රමාණය</th>
+          <th class="total">මුළු මිල</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="item">Anchor</td>
+          <td class="unit">250.00</td>
+          <td class="qty">1</td>
+          <td class="total">250.00</td>
+        </tr>
+        <tr>
+          <td class="item">හයිලන්ඩ් කිරි</td>
+          <td class="unit">0.00</td>
+          <td class="qty">1</td>
+          <td class="total">0.00</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <hr>
+
+    <div class="totals">
+      <div class="row"><p>එකතුව:</p><p class="tnum">250.00</p></div>
+      <div class="row"><p>වට්ටම්:</p><p class="tnum">0.00</p></div>
+      <div class="row grand"><p>මුළු වටිනකම: </p><p class="tnum">250.00</p></div>
+
+      <hr class="light">
+
+      <div class="row"><p>ගෙවූ මුදල:</p><p class="tnum">250.00</p></div>
+      <div class="row"><p>ඉතිරි මුදල:</p><p class="tnum">0.00</p></div>
+    </div>
+
+    <hr>
+
+    <div class="footer">
+      <div>------------------------------</div>
+      <div>ඉහත සදහන් ද්‍රව්‍ය නිවැරදි බව සහතික කරමි</div>
+      <div class="thanks">------THANK YOU COME AGAIN------</div>
+      <div class="brand">POSMaster</div>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -5,6 +5,7 @@ import { motion as Motion, AnimatePresence } from "framer-motion";
 import { useStatusLog } from "../services/StatusLogService.jsx";
 import { onlineApi } from "../api/onlineApi";
 import StatusModal from "../components/StatusModal.jsx";
+import AuthRail from "../components/AuthRail.jsx";
 
 function resolveSyncStatus(status = {}) {
   return status.ready || status.online ? 'online' : 'unavailable';
@@ -59,12 +60,12 @@ function getSyncBadge(syncStatus) {
 const container = {
   hidden: {},
   visible: {
-    transition: { staggerChildren: 0.07, delayChildren: 0.15 },
+    transition: { staggerChildren: 0.06, delayChildren: 0.1 },
   },
 };
 
 const item = {
-  hidden: { opacity: 0, y: 16, filter: "blur(4px)" },
+  hidden: { opacity: 0, y: 14, filter: "blur(4px)" },
   visible: {
     opacity: 1,
     y: 0,
@@ -72,6 +73,23 @@ const item = {
     transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] },
   },
 };
+
+const FIELD_BASE_STYLE = {
+  background: "rgba(248,250,252,0.8)",
+  border: "1px solid rgba(203,213,225,0.8)",
+};
+
+function focusField(e) {
+  e.target.style.borderColor = "rgba(26,49,140,0.5)";
+  e.target.style.boxShadow = "0 0 0 3px rgba(26,49,140,0.08)";
+  e.target.style.background = "#fff";
+}
+
+function blurField(e) {
+  e.target.style.borderColor = "rgba(203,213,225,0.8)";
+  e.target.style.boxShadow = "none";
+  e.target.style.background = "rgba(248,250,252,0.8)";
+}
 
 function Login() {
   const navigate = useNavigate();
@@ -192,66 +210,41 @@ function Login() {
   return (
     <>
     <Motion.div
-      className="fixed inset-0 flex items-center justify-center overflow-hidden p-4"
-      style={{ background: "#ffffff" }}
+      className="fixed inset-0 flex overflow-hidden bg-white"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
+      <AuthRail />
 
-      {/* Card */}
-      <Motion.div
-        className="relative w-full max-w-[380px] z-10"
-        initial={{ opacity: 0, y: 24, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-      >
-        <div
-          className="rounded-2xl p-8"
-          style={{
-            background: "#ffffff",
-          }}
+      <div className="flex flex-1 items-center justify-center overflow-auto p-6">
+        <Motion.div
+          className="w-full max-w-[360px]"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
           <Motion.div
-            className="flex flex-col items-center"
+            className="flex flex-col items-start"
             variants={container}
             initial="hidden"
             animate="visible"
           >
-            {/* Logo */}
-            <Motion.div className="mb-5" variants={item}>
-              <div
-                className="w-[60px] h-[60px] rounded-[18px] flex items-center justify-center"
-                style={{
-                  background: "linear-gradient(145deg, #1e3ba8 0%, #152870 100%)",
-                  boxShadow: "0 6px 24px rgba(26,49,140,0.3), 0 2px 6px rgba(26,49,140,0.15), inset 0 1px 0 rgba(255,255,255,0.12)",
-                }}
-              >
-                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-            </Motion.div>
-
             {/* Title */}
             <Motion.h1
-              className="text-[26px] font-bold tracking-tight mb-1"
+              className="mb-1 text-[26px] font-semibold tracking-tight text-slate-900"
+              style={{ fontFamily: 'Charter, "Iowan Old Style", Georgia, serif' }}
               variants={item}
             >
-              <span style={{ color: "#1A318C" }}>POS</span>
-              <span className="text-slate-800"> MASTER</span>
-              <span className="text-slate-400 font-normal text-lg">.3</span>
+              Welcome back
             </Motion.h1>
 
             {/* Subtitle */}
-            <Motion.p
-              className="text-[13px] text-slate-400 mb-7 text-center leading-relaxed"
-              variants={item}
-            >
-              Welcome back! Enter your credentials to continue.
+            <Motion.p className="mb-6 text-[13px] leading-relaxed text-slate-400" variants={item}>
+              Sign in with your branch credentials.
             </Motion.p>
 
-            <Motion.div className="w-full mb-5" variants={item}>
+            <Motion.div className="mb-5 w-full" variants={item}>
               <div className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 ${syncBadge.bgClass}`}>
                 <div className={`flex items-center gap-2 text-[12px] font-medium ${syncBadge.textClass}`}>
                   <SyncBadgeIcon className={`h-4 w-4 ${syncBadge.spin ? 'animate-spin' : ''}`} />
@@ -269,12 +262,12 @@ function Login() {
             </Motion.div>
 
             {/* Email field */}
-            <Motion.div className="w-full mb-3" variants={item}>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">
+            <Motion.div className="mb-3 w-full" variants={item}>
+              <label htmlFor="email" className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                 Email or Username
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                   <Mail className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
@@ -283,21 +276,10 @@ function Login() {
                   type="text"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full h-11 pl-10 pr-4 rounded-xl text-[13px] text-slate-800 placeholder-slate-400 transition-all duration-200 outline-none"
-                  style={{
-                    background: "rgba(248,250,252,0.8)",
-                    border: "1px solid rgba(203,213,225,0.8)",
-                  }}
-                  onFocus={e => {
-                    e.target.style.borderColor = "rgba(26,49,140,0.5)";
-                    e.target.style.boxShadow = "0 0 0 3px rgba(26,49,140,0.08)";
-                    e.target.style.background = "#fff";
-                  }}
-                  onBlur={e => {
-                    e.target.style.borderColor = "rgba(203,213,225,0.8)";
-                    e.target.style.boxShadow = "none";
-                    e.target.style.background = "rgba(248,250,252,0.8)";
-                  }}
+                  className="h-11 w-full rounded-xl pl-10 pr-4 text-[13px] text-slate-800 outline-none transition-all duration-200 placeholder-slate-400"
+                  style={FIELD_BASE_STYLE}
+                  onFocus={focusField}
+                  onBlur={blurField}
                   placeholder="Enter your email or username"
                   required
                 />
@@ -305,12 +287,12 @@ function Login() {
             </Motion.div>
 
             {/* Password field */}
-            <Motion.div className="w-full mb-5" variants={item}>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">
+            <Motion.div className="mb-5 w-full" variants={item}>
+              <label htmlFor="password" className="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                 Password
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
                   <Lock className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
@@ -319,27 +301,16 @@ function Login() {
                   type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full h-11 pl-10 pr-11 rounded-xl text-[13px] text-slate-800 placeholder-slate-400 transition-all duration-200 outline-none"
-                  style={{
-                    background: "rgba(248,250,252,0.8)",
-                    border: "1px solid rgba(203,213,225,0.8)",
-                  }}
-                  onFocus={e => {
-                    e.target.style.borderColor = "rgba(26,49,140,0.5)";
-                    e.target.style.boxShadow = "0 0 0 3px rgba(26,49,140,0.08)";
-                    e.target.style.background = "#fff";
-                  }}
-                  onBlur={e => {
-                    e.target.style.borderColor = "rgba(203,213,225,0.8)";
-                    e.target.style.boxShadow = "none";
-                    e.target.style.background = "rgba(248,250,252,0.8)";
-                  }}
+                  className="h-11 w-full rounded-xl pl-10 pr-11 text-[13px] text-slate-800 outline-none transition-all duration-200 placeholder-slate-400"
+                  style={FIELD_BASE_STYLE}
+                  onFocus={focusField}
+                  onBlur={blurField}
                   placeholder="Enter your password"
                   required
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 transition-colors hover:text-slate-600"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   <AnimatePresence mode="wait">
@@ -363,14 +334,14 @@ function Login() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={isLoading}
-                className="w-full h-11 rounded-xl font-semibold text-[13px] text-white flex items-center justify-center gap-2 relative overflow-hidden"
+                className="relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl text-[13px] font-semibold text-white"
                 style={{
                   background: "linear-gradient(135deg, #1e3ba8 0%, #152870 100%)",
                   boxShadow: "0 4px 16px rgba(26,49,140,0.3), 0 1px 0 rgba(255,255,255,0.12) inset",
                 }}
                 whileHover={{ scale: 1.015, boxShadow: "0 6px 24px rgba(26,49,140,0.38), 0 1px 0 rgba(255,255,255,0.12) inset" }}
                 whileTap={{ scale: 0.975 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
               >
                 <AnimatePresence mode="wait">
                   {isLoading ? (
@@ -383,7 +354,7 @@ function Login() {
                       transition={{ duration: 0.15 }}
                     >
                       <Motion.div
-                        className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white"
+                        className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white"
                         animate={{ rotate: 360 }}
                         transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
                       />
@@ -399,17 +370,6 @@ function Login() {
                       transition={{ duration: 0.15 }}
                     >
                       <span>Sign In</span>
-                      <Motion.svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        initial={{ x: 0 }}
-                        whileHover={{ x: 3 }}
-                        transition={{ type: "spring", stiffness: 400 }}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </Motion.svg>
                     </Motion.div>
                   )}
                 </AnimatePresence>
@@ -417,25 +377,17 @@ function Login() {
             </Motion.div>
 
             {/* Support */}
-            <Motion.div className="mt-6 text-center" variants={item}>
-              <p className="text-[12px] text-slate-400">Need help?</p>
-              <button className="text-[12px] font-medium mt-0.5 transition-colors" style={{ color: "#1A318C" }}>
-                Contact Support
-              </button>
+            <Motion.div className="mt-6 w-full text-left" variants={item}>
+              <p className="text-[12px] text-slate-400">
+                Need help?{" "}
+                <button className="font-medium transition-colors" style={{ color: "#1A318C" }}>
+                  Contact support
+                </button>
+              </p>
             </Motion.div>
           </Motion.div>
-        </div>
-      </Motion.div>
-
-      {/* Footer */}
-      <Motion.p
-        className="absolute bottom-5 text-[11px] text-slate-400 tracking-wide"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.7, duration: 0.6 }}
-      >
-        © 2025 SLTC ® · v{import.meta.env.VITE_VERSION_NUMBER}
-      </Motion.p>
+        </Motion.div>
+      </div>
     </Motion.div>
     <StatusModal
       isOpen={statusModal.open}

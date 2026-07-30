@@ -20,8 +20,17 @@ class AppSettingsController {
     registerHandlers() {
         this.service = getAppSettingsService();
 
+        // See OnlineController.registerHandlers() for why this wrapper exists:
+        // tracks channels as they're registered so unregisterHandlers() can
+        // remove exactly what was added.
+        const registeredChannels = [];
+        const handle = (channel, listener) => {
+            registeredChannels.push(channel);
+            ipcMain.handle(channel, listener);
+        };
+
         // Get all app settings with their applied status
-        ipcMain.handle('appSettings:getAll', wrapIpcHandler(async () => {
+        handle('appSettings:getAll', wrapIpcHandler(async () => {
             try {
                 const settings = this.service.getAllSettings();
                 const isRunOnStartup = await this.service.isRunOnStartupEnabled();
@@ -42,7 +51,7 @@ class AppSettingsController {
         }));
 
         // Set logout on close configuration
-        ipcMain.handle('appSettings:setLogoutOnClose', wrapIpcHandler(async (event, enabled) => {
+        handle('appSettings:setLogoutOnClose', wrapIpcHandler(async (event, enabled) => {
             try {
                 this.service.setLogoutOnClose(enabled);
                 return {
@@ -56,7 +65,7 @@ class AppSettingsController {
         }));
 
         // Set run on startup
-        ipcMain.handle('appSettings:setRunOnStartup', wrapIpcHandler(async (event, enabled) => {
+        handle('appSettings:setRunOnStartup', wrapIpcHandler(async (event, enabled) => {
             try {
                 const result = await this.service.setRunOnStartup(enabled);
                 return {
@@ -70,7 +79,7 @@ class AppSettingsController {
         }));
 
         // Set maximize on start
-        ipcMain.handle('appSettings:setMaximizeOnStart', wrapIpcHandler(async (event, enabled) => {
+        handle('appSettings:setMaximizeOnStart', wrapIpcHandler(async (event, enabled) => {
             try {
                 this.service.setMaximizeOnStart(enabled);
                 return {
@@ -84,7 +93,7 @@ class AppSettingsController {
         }));
 
         // Set notifications enabled
-        ipcMain.handle('appSettings:setNotifications', wrapIpcHandler(async (event, enabled) => {
+        handle('appSettings:setNotifications', wrapIpcHandler(async (event, enabled) => {
             try {
                 this.service.setNotificationsEnabled(enabled);
                 return {
@@ -98,7 +107,7 @@ class AppSettingsController {
         }));
 
         // Send test notification
-        ipcMain.handle('appSettings:testNotification', wrapIpcHandler(async () => {
+        handle('appSettings:testNotification', wrapIpcHandler(async () => {
             try {
                 this.service.sendNotification(
                     'POS Master',
@@ -113,7 +122,7 @@ class AppSettingsController {
         }));
 
         // Apply all settings (called after login)
-        ipcMain.handle('appSettings:applyAll', wrapIpcHandler(async () => {
+        handle('appSettings:applyAll', wrapIpcHandler(async () => {
             try {
                 const mainWindow = BrowserWindow.getAllWindows()[0];
                 const settings = await this.service.applyAllSettings({
@@ -132,6 +141,7 @@ class AppSettingsController {
         }));
 
         console.log('[AppSettingsController] IPC handlers registered');
+        return registeredChannels;
     }
 }
 

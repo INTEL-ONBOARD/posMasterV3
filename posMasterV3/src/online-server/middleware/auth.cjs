@@ -62,6 +62,22 @@ function ownsUserScopedBody(req) {
     return targetUserId && String(targetUserId) === String(req.auth?.userId);
 }
 
+// Unlike ownsUserScopedBody() above, this only trusts req.params.id — the
+// value Express actually matched from the URL to select which /users/:id
+// record gets modified. ownsUserScopedBody() prefers req.body.userId, which
+// the caller fully controls: a PATCH to /collections/users/<victim-id> with
+// body.userId set to the attacker's own id would pass that check while
+// modifying someone else's account. Used only for the users-collection
+// self-update gate below, where req.params.id IS the target user record.
+function isSelfUserRecord(req) {
+    return Boolean(req.params?.id) && String(req.params.id) === String(req.auth?.userId);
+}
+
+function requireManagerRole(req, res, next) {
+    if (hasAnyRole(req.auth, MANAGER_ROLES)) return next();
+    return res.status(403).json({ status: 'error', message: 'This action requires manager access' });
+}
+
 function requireCatalogReadPermission(req, res, next) {
     const collection = req.params.collection;
     if (!collection) return next();
@@ -162,7 +178,7 @@ function requireCatalogPermission(req, res, next) {
         return res.status(403).json({ status: 'error', message: 'You can only update your own settings' });
     }
 
-    if (collection === 'users' && ownsUserScopedBody(req) && req.method === 'PATCH') {
+    if (collection === 'users' && isSelfUserRecord(req) && req.method === 'PATCH') {
         return next();
     }
 
@@ -197,5 +213,8 @@ module.exports = {
     requireCatalogReadPermission,
     requireCatalogPermission,
     requireSalesPermission,
-    requireInventoryPermission
+    requireInventoryPermission,
+    requireManagerRole,
+    hasAnyRole,
+    MANAGER_ROLES
 };

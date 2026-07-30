@@ -13,7 +13,16 @@ async function startOnlineServer() {
 
     let server = null;
     try {
-        await connectMongo();
+        console.log(
+            `[OnlineAPI] Starting (env=${config.nodeEnv}, mongoUri=${config.mongoUri.replace(/\/\/([^:]+):[^@]+@/, '//***:***@')}, corsOrigin=${config.corsOrigin})`
+        );
+
+        try {
+            await connectMongo();
+        } catch (mongoError) {
+            mongoError.message = `MongoDB connection failed: ${mongoError.message}. Check MONGODB_URI and the Atlas IP allowlist.`;
+            throw mongoError;
+        }
 
         const app = createApp();
         server = http.createServer(app);

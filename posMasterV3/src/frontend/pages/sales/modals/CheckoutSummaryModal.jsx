@@ -232,6 +232,7 @@ function CheckoutSummaryModal({
   const [finalDiscount, setFinalDiscount] = useState('0');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [cashReceived, setCashReceived] = useState('');
+  const [installmentMonths, setInstallmentMonths] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [saleResult, setSaleResult] = useState(null);
@@ -252,6 +253,7 @@ function CheckoutSummaryModal({
     if (isOpen) {
       setFinalDiscount('0');
       setCashReceived('');
+      setInstallmentMonths(1);
       setIsProcessing(false);
       setShowSuccess(false);
       setSaleResult(null);
@@ -270,6 +272,13 @@ function CheckoutSummaryModal({
     });
   }, [isOpen, activePaymentMethods]);
 
+  // Default the installment term to the method's own credit_months when a
+  // credit method is selected, so the cashier only adjusts when needed.
+  useEffect(() => {
+    const months = Number(selectedPaymentMethod?.credit_months ?? selectedPaymentMethod?.creditMonths ?? 0);
+    if (months > 0) setInstallmentMonths(months);
+  }, [selectedPaymentMethod]);
+
   if (!isOpen) return null;
 
   const discountAmount = Math.max(0, Math.min(stockTotal, parseFloat(finalDiscount) || 0));
@@ -278,7 +287,14 @@ function CheckoutSummaryModal({
   const balanceAmount = cashReceivedNum - totalAmount;
   const selectedMethodTheme = getPaymentMethodTheme(selectedPaymentMethod);
   const isCashMethod = String(selectedPaymentMethod?.type || "").toLowerCase() === "cash";
+  const isCreditMethod =
+    String(selectedPaymentMethod?.type || "").toLowerCase() === "credit" ||
+    String(selectedPaymentMethod?.name || "").toLowerCase().includes("credit") ||
+    Number(selectedPaymentMethod?.credit_months ?? selectedPaymentMethod?.creditMonths ?? 0) > 0;
   const SelectedMethodIcon = selectedMethodTheme.icon;
+
+  // Installment terms the cashier can pick for a credit sale (months).
+  const installmentOptions = [1, 2, 3, 6, 12];
 
   // Credit validation — any non-guest member can use credit regardless of balance
   const creditWarning = false;
@@ -298,6 +314,9 @@ function CheckoutSummaryModal({
       paymentMethodId: selectedPaymentMethod.id,
       paymentMethodName: selectedPaymentMethod.name,
       creditMonths: selectedPaymentMethod.credit_months || 0,
+      installmentTerm: isCreditMethod
+        ? `${String(installmentMonths).padStart(2, "0")} month${installmentMonths === 1 ? "" : "s"}`
+        : "",
       cashAmount: isCashMethod ? (cashReceivedNum || totalAmount) : 0,
       totalAmount,
       changeAmount: isCashMethod ? Math.max(0, balanceAmount) : 0
@@ -652,20 +671,50 @@ function CheckoutSummaryModal({
                     </div>
                   </>
                 ) : (
-                  <div className={`rounded-xl p-4 border-2 ${selectedMethodTheme.border} ${selectedMethodTheme.selectedBg}`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${selectedMethodTheme.bg}`}>
-                        <SelectedMethodIcon className={`w-5 h-5 ${selectedMethodTheme.text}`} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Selected Method</p>
-                        <p className={`text-lg font-semibold truncate ${selectedMethodTheme.selectedText}`}>
-                          {selectedPaymentMethod?.name || "Payment method"}
-                        </p>
-                        <p className="text-sm text-gray-500 mt-0.5">No cash entry is required for this method.</p>
+                  <>
+                    <div className={`rounded-xl p-4 border-2 ${selectedMethodTheme.border} ${selectedMethodTheme.selectedBg}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${selectedMethodTheme.bg}`}>
+                          <SelectedMethodIcon className={`w-5 h-5 ${selectedMethodTheme.text}`} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Selected Method</p>
+                          <p className={`text-lg font-semibold truncate ${selectedMethodTheme.selectedText}`}>
+                            {selectedPaymentMethod?.name || "Payment method"}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-0.5">No cash entry is required for this method.</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+
+                    {isCreditMethod ? (
+                      <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                          Installment Term
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {installmentOptions.map((months) => {
+                            const isSelected = installmentMonths === months;
+                            return (
+                              <button
+                                key={`installment-${months}`}
+                                type="button"
+                                onClick={() => setInstallmentMonths(months)}
+                                disabled={isProcessing}
+                                className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors border-2 disabled:opacity-50 ${
+                                  isSelected
+                                    ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                                }`}
+                              >
+                                {months} {months === 1 ? "month" : "months"}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+                  </>
                 )}
               </div>
             </div>

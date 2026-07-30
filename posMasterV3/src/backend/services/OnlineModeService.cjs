@@ -1,7 +1,9 @@
+const jwt = require('jsonwebtoken');
 const { OnlineApiClient } = require('../online/OnlineApiClient.cjs');
 const { OnlineRealtimeClient } = require('../online/OnlineRealtimeClient.cjs');
 const { config } = require('../../online-server/config.cjs');
 const { connectMongo, getDb } = require('../../online-server/db/mongo.cjs');
+const { hashToken } = require('../../online-server/utils/security.cjs');
 
 async function getConnectedDb() {
     try {
@@ -141,10 +143,46 @@ class OnlineModeService {
         return this.api.getTeaCoopStatus();
     }
 
+    // These four methods query MongoDB directly instead of going through the
+    // Express API (there is no REST endpoint for them), so they must do their
+    // own auth check. Without this they would return data with no session
+    // validation at all, scoped to config.defaultOrgId regardless of who's asking.
+    async _requireAuthContext() {
+        const token = this.api.getToken();
+        if (!token) {
+            throw Object.assign(new Error('Not authenticated'), { statusCode: 401 });
+        }
+
+        let claims;
+        try {
+            claims = jwt.verify(token, config.jwtSecret);
+        } catch {
+            throw Object.assign(new Error('Session expired or invalid'), { statusCode: 401 });
+        }
+
+        const db = await getConnectedDb();
+        const session = await db.collection('sessions').findOne({
+            tokenHash: hashToken(token),
+            active: true,
+            userId: claims.sub
+        });
+        if (!session) {
+            throw Object.assign(new Error('Session is no longer active'), { statusCode: 401 });
+        }
+
+        return {
+            userId: claims.sub,
+            orgId: claims.orgId,
+            branchId: claims.branchId || null,
+            roles: claims.roles || []
+        };
+    }
+
     async getSalesSummary(startDate, endDate) {
+        const auth = await this._requireAuthContext();
         const db = await getConnectedDb();
         const filter = {
-            orgId: config.defaultOrgId
+            orgId: auth.orgId
         };
         const dateRange = {};
         if (startDate) dateRange.$gte = new Date(startDate);
@@ -197,6 +235,7 @@ class OnlineModeService {
     }
 
     async getSalesDaily(days = 30) {
+        const auth = await this._requireAuthContext();
         const db = await getConnectedDb();
         const dayCount = Math.max(Number.parseInt(days, 10) || 30, 1);
         const start = new Date();
@@ -218,7 +257,7 @@ class OnlineModeService {
                     }
                 }
             },
-            { $match: { orgId: config.defaultOrgId, effectiveCreatedAt: { $gte: start } } },
+            { $match: { orgId: auth.orgId, effectiveCreatedAt: { $gte: start } } },
             { $match: { $or: [{ is_held: { $ne: true } }, { isHeld: { $ne: true } }, { status: { $ne: 'held' } }] } },
             {
                 $group: {
@@ -233,11 +272,16 @@ class OnlineModeService {
         return { success: true, status: 'success', data: rows };
     }
 
-    async getActiveSessions() {
+    async getActiveSessions(limit = 100, skip = 0) {
+        const auth = await this._requireAuthContext();
         const db = await getConnectedDb();
+        const cappedLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 100, 1), 500);
+        const safeSkip = Math.max(Number.parseInt(skip, 10) || 0, 0);
         const sessions = await db.collection('sessions')
-            .find({ active: true, orgId: config.defaultOrgId })
+            .find({ active: true, orgId: auth.orgId })
             .sort({ lastSeenAt: -1, createdAt: -1 })
+            .skip(safeSkip)
+            .limit(cappedLimit)
             .toArray();
         return {
             success: true,
@@ -247,8 +291,9 @@ class OnlineModeService {
     }
 
     async countActiveSessions() {
+        const auth = await this._requireAuthContext();
         const db = await getConnectedDb();
-        const count = await db.collection('sessions').countDocuments({ active: true, orgId: config.defaultOrgId });
+        const count = await db.collection('sessions').countDocuments({ active: true, orgId: auth.orgId });
         return {
             success: true,
             status: 'success',

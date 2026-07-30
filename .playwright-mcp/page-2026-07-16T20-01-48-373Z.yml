@@ -1,0 +1,568 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - paragraph [ref=f4e3]: System architecture · internal reference
+    - heading "POSMaster V3" [level=1] [ref=f4e4]
+    - paragraph [ref=f4e5]: An Electron point-of-sale terminal for a Sri Lankan tea cooperative — three processes, one strict IPC boundary, and a Mongo-backed event log that pushes every change back to the till in real time.
+    - generic [ref=f4e6]:
+      - generic [ref=f4e7]: v1.6.4
+      - generic [ref=f4e8]: Electron 30
+      - generic [ref=f4e9]: React 19
+      - generic [ref=f4e10]: Vite 6
+      - generic [ref=f4e11]: Express 5
+      - generic [ref=f4e12]: Socket.IO 4
+      - generic [ref=f4e13]: MongoDB Atlas
+  - generic [ref=f4e14]:
+    - generic [ref=f4e15]:
+      - generic [ref=f4e16]:
+        - generic [ref=f4e17]: Topology
+        - heading "The whole system on one page" [level=2] [ref=f4e18]
+      - paragraph [ref=f4e19]:
+        - text: The renderer never touches the network. Every read and write leaves the UI through a single
+        - code [ref=f4e20]: contextBridge
+        - text: namespace, crosses into the main process, and only there becomes HTTP. That's enforced by absence — a grep for
+        - code [ref=f4e21]: fetch(
+        - text: ","
+        - code [ref=f4e22]: axios
+        - text: or port
+        - code [ref=f4e23]: "4100"
+        - text: across all 116 renderer files returns nothing.
+    - figure "Solid lines are the sanctioned path. Dashed red are the two edges that contradict it — a direct Mongo channel that skips auth entirely, and a legacy cloud host still wired into logout." [ref=f4e24]:
+      - 'img "System topology: renderer, main process, online server and MongoDB, with external printers, Tea Coop API and GitHub releases." [ref=f4e26]':
+        - generic [ref=f4e28]: DESKTOP · POSMASTER.APP
+        - generic [ref=f4e30]: Renderer · React 19
+        - generic [ref=f4e31]: 60 pages · 9 routes · HashRouter
+        - generic [ref=f4e32]: localApi (25 namespaces) · DataStore (19 tables)
+        - generic [ref=f4e33]: contextBridge · electronAPI
+        - generic [ref=f4e34]: ~200 channels · the only door
+        - generic [ref=f4e36]: Main process · electron.cjs
+        - generic [ref=f4e37]: OnlineController (~150 channels) · AppSettingsController
+        - generic [ref=f4e38]: OnlineModeService · OnlineApiClient · RealtimeClient
+        - generic [ref=f4e39]: printing · auto-updater · window lifecycle
+        - generic [ref=f4e41]: Node 20 · full filesystem + net access
+        - generic [ref=f4e42]: "nodeIntegration: false · contextIsolation: true"
+        - generic [ref=f4e43]: HTTP · 127.0.0.1:4100/api
+        - generic [ref=f4e44]: Bearer JWT · retries GET on 5xx
+        - generic [ref=f4e46]: Online server · Express 5 + Socket.IO
+        - generic [ref=f4e47]: helmet → cors → json → 4 routers, all on /api
+        - generic [ref=f4e48]: authService · catalogService · salesService · restockService
+        - generic [ref=f4e49]: disposeService · transferService · teaCoopSync · domainEvents
+        - generic [ref=f4e50]: "Packaged: runs inside the Electron main process"
+        - generic [ref=f4e52]: MongoDB Atlas · POSmaster
+        - generic [ref=f4e53]: "31 collections · partial unique indexes on deletedAt: null"
+        - generic [ref=f4e55]: PATH B · NO AUTH
+        - generic [ref=f4e57]: GitHub Releases
+        - generic [ref=f4e58]: electron-updater · manual download AND install
+        - generic [ref=f4e60]: Thermal printer · raw TCP :9100
+        - generic [ref=f4e61]: ESC/POS over net.Socket · subnet autodiscovery
+        - generic [ref=f4e63]: OS print queue
+        - generic [ref=f4e64]: pdf-to-printer · hidden BrowserWindow fallback
+        - generic [ref=f4e66]: Tea Coop API · api.teacoop.lk
+        - generic [ref=f4e67]: /thirdPartyLogin · token cached 55m (hardcoded)
+        - generic [ref=f4e70]: posmasterv3-backend.onrender.com
+        - generic [ref=f4e71]: orphan · hardcoded logout POST · unrelated to :4100
+  - generic [ref=f4e73]:
+    - generic [ref=f4e74]:
+      - generic [ref=f4e75]:
+        - generic [ref=f4e76]: Runtimes
+        - heading "The same code ships as two topologies" [level=2] [ref=f4e77]
+      - paragraph [ref=f4e78]:
+        - text: In development the online server is a separate
+        - code [ref=f4e79]: node
+        - text: process you start yourself. Once packaged,
+        - code [ref=f4e80]: runtime.cjs
+        - text: is required
+        - emphasis [ref=f4e81]: into the Electron main process
+        - text: — Express, Socket.IO and the Mongo driver all run inside the desktop app, and "online" becomes a loopback call to itself. No external server exists.
+    - 'figure "The highlighted band is the whole difference: in production that server is not a network peer, it''s a module inside the app talking to itself over loopback." [ref=f4e82]':
+      - img "Development runtime with three processes versus packaged runtime with one process hosting the server." [ref=f4e84]:
+        - generic [ref=f4e85]: DEVELOPMENT · 3 PROCESSES
+        - generic [ref=f4e88]: node · vite
+        - generic [ref=f4e89]: :5173 — probed by HEAD, falls back to :5174
+        - generic [ref=f4e91]: node · src/online-server/server.cjs
+        - generic [ref=f4e92]: :4100 — started by hand (npm run online:dev)
+        - generic [ref=f4e94]: electron
+        - generic [ref=f4e95]: wait-on :5173 + :4100/api/ready
+        - generic [ref=f4e96]: renderer loaded over http://
+        - generic [ref=f4e97]: auto-updater skipped
+        - generic [ref=f4e98]: PACKAGED · 1 PROCESS
+        - generic [ref=f4e101]: POSMaster.app · single Electron process
+        - generic [ref=f4e102]: config from online-runtime-config.json (resourcesPath)
+        - generic [ref=f4e104]: renderer
+        - generic [ref=f4e105]: dist/index.html over file://
+        - generic [ref=f4e107]: Express + Socket.IO :4100 — in-process
+        - generic [ref=f4e108]: startBundledOnlineBackend() polls /api/ready ≤ 30s
+        - generic [ref=f4e110]: auto-updater
+        - generic [ref=f4e111]: GitHub releases, 5s after ready
+    - generic [ref=f4e114]:
+      - generic [ref=f4e115]: Consequence
+      - paragraph [ref=f4e116]:
+        - text: There is no
+        - code [ref=f4e117]: requestSingleInstanceLock
+        - text: anywhere in the repo. Two packaged copies can run at once, and the second one's attempt to bind
+        - code [ref=f4e118]: :4100
+        - text: fails into a swallowed
+        - code [ref=f4e119]: try/catch
+        - text: — leaving an app that looks fine but whose writes land through the first instance's server.
+  - generic [ref=f4e120]:
+    - generic [ref=f4e121]:
+      - generic [ref=f4e122]:
+        - generic [ref=f4e123]: Write path
+        - heading "How a sale reaches the database" [level=2] [ref=f4e124]
+      - paragraph [ref=f4e125]: Eight hops from a cashier's tap to a committed transaction, crossing four process zones. Each boundary is a place the call changes character — from a function call, to IPC, to HTTP, to a wire protocol.
+    - 'figure "The brass arrows mark the three boundary crossings; everything else is an ordinary call. Note step 07: the event is published after commit, so no subscriber can observe a sale that later rolls back." [ref=f4e126]':
+      - img "Swimlane diagram of a sale request descending through renderer, main process, server and MongoDB." [ref=f4e128]:
+        - generic [ref=f4e131]: RENDERER
+        - generic [ref=f4e132]: MAIN
+        - generic [ref=f4e133]: SERVER
+        - generic [ref=f4e134]: MONGO
+        - generic [ref=f4e135]: IPC · contextBridge
+        - generic [ref=f4e136]: HTTP · 127.0.0.1:4100
+        - generic [ref=f4e137]: MongoDB wire protocol
+        - generic [ref=f4e139]: 01 · SalesView.jsx
+        - generic [ref=f4e140]: cashier confirms cart → salesApi.createSale()
+        - generic [ref=f4e142]: 02 · api/localApi.js
+        - generic [ref=f4e143]: 3,783-line facade — resolves getElectronAPI(), hides IPC
+        - generic [ref=f4e145]: 03 · preload.cjs · contextBridge
+        - generic [ref=f4e146]: crosses the sandbox → window.electronAPI.online.createSale
+        - generic [ref=f4e148]: 04 · OnlineController · ipcMain.handle
+        - generic [ref=f4e149]: channel online:sales:create → OnlineModeService
+        - generic [ref=f4e151]: 05 · OnlineApiClient.cjs
+        - generic [ref=f4e152]: "attaches Authorization: Bearer <token>"
+        - generic [ref=f4e153]: fetch POST /api/sales
+        - generic [ref=f4e154]: Now — and only now — is it HTTP.
+        - generic [ref=f4e155]: Retries GET/HEAD twice on 5xx, never POST.
+        - generic [ref=f4e157]: 06 · Express middleware chain
+        - generic [ref=f4e158]: requireAuth · requireOrgScope · requireSalesPermission
+        - generic [ref=f4e159]: any failure → 401 / 403, nothing reaches the service
+        - generic [ref=f4e161]: 07 · salesService · withTransaction
+        - generic [ref=f4e162]: mint invoiceNo from invoice_counters
+        - generic [ref=f4e163]: decrement stock_batches · units → sold
+        - generic [ref=f4e164]: write 'sale' movement · insert sale
+        - generic [ref=f4e166]: assertTransactionSupport()
+        - generic [ref=f4e167]: requires a replica set or mongos.
+        - generic [ref=f4e168]: On a standalone mongod this throws 503
+        - generic [ref=f4e169]: — the till cannot take money.
+        - generic [ref=f4e171]: 08 · commit
+        - generic [ref=f4e172]: atomic — all four writes land, or none do
+        - generic [ref=f4e173]: after commit, never inside the transaction —
+        - generic [ref=f4e174]: no subscriber can see a sale that rolls back
+        - generic [ref=f4e176]: publishDomainEvent('sales.created')
+  - generic [ref=f4e178]:
+    - generic [ref=f4e179]:
+      - generic [ref=f4e180]:
+        - generic [ref=f4e181]: Read path
+        - heading "How the change comes back" [level=2] [ref=f4e182]
+      - paragraph [ref=f4e183]:
+        - text: The return trip is not a response to the request that caused it. Every mutation is persisted to
+        - code [ref=f4e184]: domain_events
+        - text: ", then fanned out over Socket.IO — so a sale rung up on one till updates stock on every other till in the branch, including the one that rang it."
+    - 'figure "Persist-then-emit. The trade-off: no outbox, no retry — if the socket emit fails, the write is durable but the till never hears about it." [ref=f4e185]':
+      - img "Domain event fan-out from publishDomainEvent through Socket.IO rooms back into the React DataStore." [ref=f4e187]:
+        - generic [ref=f4e189]: commit
+        - generic [ref=f4e190]: salesService, txn closed
+        - generic [ref=f4e192]: publishDomainEvent()
+        - generic [ref=f4e193]: stamps version + timestamps
+        - generic [ref=f4e195]: insert domain_events
+        - generic [ref=f4e196]: 2,047 rows · sole event log
+        - generic [ref=f4e198]: emitDomainEvent()
+        - generic [ref=f4e199]: single fan-out point
+        - generic [ref=f4e205]: "user:{userId}"
+        - generic [ref=f4e206]: targeted at one operator
+        - generic [ref=f4e208]: "branch:{branchId}"
+        - generic [ref=f4e209]: never also reaches org
+        - generic [ref=f4e211]: "org:{orgId}"
+        - generic [ref=f4e212]: + 'domain.event' firehose
+        - generic [ref=f4e214]: "role:{orgId}:{role}"
+        - generic [ref=f4e215]: joined — never emitted to
+        - generic [ref=f4e217]: if entity === 'sessions'
+        - generic [ref=f4e218]: disconnectInactiveUserSockets()
+        - generic [ref=f4e219]: force-kicks the replaced till
+        - generic [ref=f4e222]: OnlineRealtimeClient
+        - generic [ref=f4e223]: main process socket client
+        - generic [ref=f4e225]: IPC broadcast
+        - generic [ref=f4e226]: domain-event → all windows
+        - generic [ref=f4e229]: DataStore · normalize → debounce 500ms → invalidate
+        - generic [ref=f4e230]: refetches only tables with live subscribers
+        - generic [ref=f4e232]: useReactiveData()
+        - generic [ref=f4e233]: components re-render — no socket code anywhere in the renderer
+  - generic [ref=f4e235]:
+    - generic [ref=f4e236]:
+      - generic [ref=f4e237]:
+        - generic [ref=f4e238]: Identity
+        - heading "Auth is two factors, and one of them is a row" [level=2] [ref=f4e239]
+      - paragraph [ref=f4e240]:
+        - text: A valid signature is not enough.
+        - code [ref=f4e241]: requireAuth
+        - text: verifies the JWT
+        - emphasis [ref=f4e242]: and then
+        - text: looks up a matching
+        - code [ref=f4e243]: sessions
+        - text: document with
+        - code [ref=f4e244]: "active: true"
+        - text: . The raw token is never stored — only its SHA-256 hash — so the database can revoke a session it cannot read.
+    - figure [ref=f4e245]:
+      - img "Login issues a JWT and a session row; requireAuth checks both; a replaced session kicks the old device." [ref=f4e247]:
+        - generic [ref=f4e248]: ISSUE · POST /api/auth/login
+        - generic [ref=f4e250]: bcrypt.compare
+        - generic [ref=f4e251]: cost 12
+        - generic [ref=f4e253]: kill prior sessions
+        - generic [ref=f4e254]: replaced_by_new_login
+        - generic [ref=f4e256]: insert sessions row
+        - generic [ref=f4e257]: tokenHash = sha256(jwt)
+        - generic [ref=f4e259]: sign JWT · HS256 · 8h
+        - generic [ref=f4e260]: sub · orgId · branchId · roles
+        - generic [ref=f4e261]: VERIFY · EVERY REQUEST AND EVERY SOCKET
+        - generic [ref=f4e263]: Bearer token
+        - generic [ref=f4e264]: or socket handshake.auth
+        - generic [ref=f4e266]: ① jwt.verify
+        - generic [ref=f4e267]: signature + expiry
+        - generic [ref=f4e269]: ② sessions lookup
+        - generic [ref=f4e270]: "{tokenHash, active, userId}"
+        - generic [ref=f4e272]: req.auth populated
+        - generic [ref=f4e273]: both must pass
+        - generic [ref=f4e274]: KICK · THE OLD TILL FINDS OUT IMMEDIATELY
+        - generic [ref=f4e276]: sessions domain event
+        - generic [ref=f4e277]: emitted by the login above
+        - generic [ref=f4e279]: disconnectInactiveUserSockets()
+        - generic [ref=f4e280]: re-checks each socket's tokenHash
+        - generic [ref=f4e282]: socket.disconnect() on the orphans
+        - generic [ref=f4e283]: kicked in real time — not on their next request
+        - generic [ref=f4e285]: Caveat · roles live in the JWT claims, not re-read per request
+        - generic [ref=f4e286]: Promote or demote a user and nothing changes until the token expires — up to 8 hours — or they log in again.
+      - generic [ref=f4e287]:
+        - text: The
+        - code [ref=f4e288]: sessions
+        - text: collection is a hard runtime dependency of both the HTTP and WebSocket paths. Lose it and every authenticated request fails, valid token or not.
+    - table [ref=f4e291]:
+      - rowgroup [ref=f4e292]:
+        - row [ref=f4e293]:
+          - columnheader "Role set" [ref=f4e294]
+          - columnheader "Members" [ref=f4e295]
+          - columnheader "Reaches" [ref=f4e296]
+      - rowgroup [ref=f4e297]:
+        - row [ref=f4e298]:
+          - cell "ADMIN" [ref=f4e299]
+          - cell "admin, superadmin, super_admin, owner" [ref=f4e300]
+          - cell "Bypasses every permission check" [ref=f4e301]
+        - row [ref=f4e302]:
+          - cell "MANAGER" [ref=f4e303]
+          - cell "ADMIN + manager" [ref=f4e304]
+          - cell "users, app_settings, branches, payment_methods" [ref=f4e305]
+        - row [ref=f4e306]:
+          - cell "SALES" [ref=f4e307]
+          - cell "MANAGER + cashier, sales" [ref=f4e308]
+          - cell "Sales, tea coop, payment methods" [ref=f4e309]
+        - row [ref=f4e310]:
+          - cell "INVENTORY" [ref=f4e311]
+          - cell "MANAGER + inventory, stock_manager" [ref=f4e312]
+          - cell "Stock, transfers, restock" [ref=f4e313]
+  - generic [ref=f4e314]:
+    - generic [ref=f4e315]:
+      - generic [ref=f4e316]:
+        - generic [ref=f4e317]: State
+        - heading "Two machines worth knowing by heart" [level=2] [ref=f4e318]
+      - paragraph [ref=f4e319]: Most of this system is CRUD. These two aren't — they're the places where an object's history matters, and where a wrong transition means stock that exists in the database but not on a shelf.
+      - heading "Branch-to-branch transfer · two-stage approval" [level=3] [ref=f4e320]
+      - paragraph [ref=f4e321]:
+        - text: "A transfer is reviewed twice: once by the source branch's manager, then again by the receiving branch. Crucially,"
+        - strong [ref=f4e322]: no stock moves until the second accept
+        - text: — the first is a paperwork gate.
+    - figure [ref=f4e323]:
+      - 'img "Inventory transfer state machine: pending, manager approval, then target accept to accepted, with a reject branch at each stage." [ref=f4e325]':
+        - generic [ref=f4e327]: pending
+        - generic [ref=f4e328]: "stage: source_review"
+        - generic [ref=f4e329]: no stock moves yet
+        - generic [ref=f4e330]: manager accepts
+        - generic [ref=f4e332]: approved_by_manager
+        - generic [ref=f4e333]: "stage: target_review"
+        - generic [ref=f4e334]: or in_transit — same stage
+        - generic [ref=f4e335]: stock moves HERE
+        - generic [ref=f4e336]: target accepts
+        - generic [ref=f4e338]: accepted
+        - generic [ref=f4e339]: transfer_out + transfer_in
+        - generic [ref=f4e340]: manager
+        - generic [ref=f4e341]: rejects
+        - generic [ref=f4e342]: target
+        - generic [ref=f4e343]: rejects
+        - generic [ref=f4e345]: manager_rejected
+        - generic [ref=f4e347]: rejected
+      - generic [ref=f4e348]:
+        - text: Accepting at target review also verifies
+        - code [ref=f4e349]: auth.branchId === targetBranchId
+        - text: "— you cannot accept a transfer into a branch you aren't standing in. If the cluster lacks transaction support this one degrades instead of failing: it runs the moves without a session."
+    - generic [ref=f4e350]:
+      - heading "Inventory unit lifecycle" [level=3] [ref=f4e351]
+      - paragraph [ref=f4e352]:
+        - text: Individually tracked units carry a state, and every transition writes a matching row to
+        - code [ref=f4e353]: stock_movements
+        - text: . The movement type
+        - emphasis [ref=f4e354]: is
+        - text: the edge label.
+    - figure [ref=f4e355]:
+      - 'img "Inventory unit state machine: available to sold, disposed, returned to supplier or transferred, with restore paths back to available." [ref=f4e357]':
+        - generic [ref=f4e358]: sale_return_restore · sale_cancel_restore · sale_restore
+        - generic [ref=f4e361]: restock
+        - generic [ref=f4e363]: available
+        - generic [ref=f4e364]: on the shelf
+        - generic [ref=f4e365]: sale
+        - generic [ref=f4e366]: dispose
+        - generic [ref=f4e367]: supplier_return
+        - generic [ref=f4e368]: transfer_out
+        - generic [ref=f4e370]: sold
+        - generic [ref=f4e372]: disposed
+        - generic [ref=f4e374]: returned_to_supplier
+        - generic [ref=f4e376]: transferred
+        - generic [ref=f4e377]: reversible — the only one
+        - generic [ref=f4e378]: one-way door
+        - generic [ref=f4e379]: one-way door
+        - generic [ref=f4e380]: becomes 'available' again at
+        - generic [ref=f4e381]: the target branch (transfer_in)
+      - generic [ref=f4e382]:
+        - text: Nine movement types in total.
+        - generic [ref=f4e383]:
+          - text: Only
+          - code [ref=f4e384]: sold
+          - text: is reversible
+        - text: — dispose and supplier return are one-way doors.
+  - generic [ref=f4e385]:
+    - generic [ref=f4e386]:
+      - generic [ref=f4e387]:
+        - generic [ref=f4e388]: Printing
+        - heading "Two mechanisms, and a default resolved in the wrong place" [level=2] [ref=f4e389]
+      - paragraph [ref=f4e390]:
+        - code [ref=f4e391]: POS_RECEIPT_PRINTER_MODE
+        - text: picks between raw ESC/POS over TCP and the OS print queue. The default is
+        - code [ref=f4e392]: auto
+        - text: — and the main process, which owns both mechanisms, doesn't resolve it. It only
+        - emphasis [ref=f4e393]: reports
+        - text: the mode;
+        - code [ref=f4e394]: SalesView.jsx
+        - text: decides.
+    - 'figure "Autodiscovery is not free: it probes every IPv4 host on every local subnet. On a large flat store network that''s a lot of SYNs before the first receipt prints." [ref=f4e395]':
+      - img "Receipt printing decision tree across network, system and auto modes." [ref=f4e397]:
+        - generic [ref=f4e399]: receipt ready
+        - generic [ref=f4e400]: read PRINTER_MODE
+        - generic [ref=f4e403]: network
+        - generic [ref=f4e404]: auto ← default
+        - generic [ref=f4e405]: system
+        - generic [ref=f4e407]: tcp|network|raw|wifi
+        - generic [ref=f4e408]: → raw ESC/POS, no fallback
+        - generic [ref=f4e410]: resolved in SalesView.jsx
+        - generic [ref=f4e411]: no host & discovery off → system
+        - generic [ref=f4e412]: else try thermal, catch → system
+        - generic [ref=f4e414]: system | usb | windows
+        - generic [ref=f4e415]: os | pdf | queue
+        - generic [ref=f4e421]: net.Socket → :9100
+        - generic [ref=f4e422]: 8s timeout · scans the subnet in
+        - generic [ref=f4e423]: batches of 64 · 250ms · cached 5m
+        - generic [ref=f4e425]: pdf-to-printer
+        - generic [ref=f4e426]: "temp PDF → printer.print({silent})"
+        - generic [ref=f4e427]: falls back to hidden BrowserWindow
+  - generic [ref=f4e429]:
+    - generic [ref=f4e430]:
+      - generic [ref=f4e431]:
+        - generic [ref=f4e432]: Data
+        - heading "31 collections, grouped by who writes them" [level=2] [ref=f4e433]
+      - paragraph [ref=f4e434]:
+        - text: Counts are live from the
+        - code [ref=f4e435]: POSmaster
+        - text: Atlas cluster. Collections marked
+        - emphasis [ref=f4e436]: txn
+        - text: are only written inside a Mongo transaction and will 503 outright on a standalone
+        - code [ref=f4e437]: mongod
+        - text: .
+    - generic [ref=f4e438]:
+      - generic [ref=f4e439]:
+        - heading "Selling" [level=4] [ref=f4e440]
+        - generic [ref=f4e441]: salesService · transactional
+        - list [ref=f4e442]:
+          - listitem [ref=f4e443]:
+            - text: sales
+            - generic [ref=f4e444]: "432"
+            - text: txn
+          - listitem [ref=f4e445]:
+            - text: sales_items
+            - generic [ref=f4e446]: "28"
+          - listitem [ref=f4e447]:
+            - text: return_items
+            - generic [ref=f4e448]: "2"
+          - listitem [ref=f4e449]:
+            - text: invoice_counters
+            - generic [ref=f4e450]: "29"
+          - listitem [ref=f4e451]:
+            - text: offers
+            - generic [ref=f4e452]: "1"
+          - listitem [ref=f4e453]:
+            - text: payment_methods
+            - generic [ref=f4e454]: "7"
+      - generic [ref=f4e455]:
+        - heading "Stock" [level=4] [ref=f4e456]
+        - generic [ref=f4e457]: restock · dispose · transfer
+        - list [ref=f4e458]:
+          - listitem [ref=f4e459]:
+            - text: stock_batches
+            - generic [ref=f4e460]: "42"
+            - text: txn
+          - listitem [ref=f4e461]:
+            - text: stock_movements
+            - generic [ref=f4e462]: "101"
+          - listitem [ref=f4e463]:
+            - text: inventory_units
+            - generic [ref=f4e464]: "0"
+          - listitem [ref=f4e465]:
+            - text: inventory_transfers
+            - generic [ref=f4e466]: "41"
+          - listitem [ref=f4e467]:
+            - text: restock_transactions
+            - generic [ref=f4e468]: "87"
+            - text: txn
+          - listitem [ref=f4e469]:
+            - text: restock_items
+            - generic [ref=f4e470]: "18"
+          - listitem [ref=f4e471]:
+            - text: disposed_items
+            - generic [ref=f4e472]: "7"
+            - text: txn
+          - listitem [ref=f4e473]:
+            - text: branch_item_shares
+            - generic [ref=f4e474]: "6"
+          - listitem [ref=f4e475]:
+            - text: inventory_counters
+            - generic [ref=f4e476]: "1"
+      - generic [ref=f4e477]:
+        - heading "Catalog" [level=4] [ref=f4e478]
+        - generic [ref=f4e479]: catalogService · generic CRUD
+        - list [ref=f4e480]:
+          - listitem [ref=f4e481]:
+            - text: categories
+            - generic [ref=f4e482]: 1,115
+          - listitem [ref=f4e483]:
+            - text: items
+            - generic [ref=f4e484]: "48"
+          - listitem [ref=f4e485]:
+            - text: units_of_measurement
+            - generic [ref=f4e486]: "16"
+          - listitem [ref=f4e487]:
+            - text: suppliers
+            - generic [ref=f4e488]: "5"
+          - listitem [ref=f4e489]:
+            - text: branches
+            - generic [ref=f4e490]: "6"
+          - listitem [ref=f4e491]:
+            - text: organizations
+            - generic [ref=f4e492]: "1"
+      - generic [ref=f4e493]:
+        - heading "Identity" [level=4] [ref=f4e494]
+        - generic [ref=f4e495]: authService
+        - list [ref=f4e496]:
+          - listitem [ref=f4e497]:
+            - text: users
+            - generic [ref=f4e498]: "19"
+          - listitem [ref=f4e499]:
+            - text: sessions
+            - generic [ref=f4e500]: "542"
+          - listitem [ref=f4e501]:
+            - text: login_history
+            - generic [ref=f4e502]: "234"
+          - listitem [ref=f4e503]:
+            - text: user_settings
+            - generic [ref=f4e504]: "11"
+          - listitem [ref=f4e505]:
+            - text: app_settings
+            - generic [ref=f4e506]: "14"
+      - generic [ref=f4e507]:
+        - heading "Tea Coop" [level=4] [ref=f4e508]
+        - generic [ref=f4e509]: teaCoopSyncService · external
+        - list [ref=f4e510]:
+          - listitem [ref=f4e511]:
+            - text: tea_coop_members
+            - generic [ref=f4e512]: 5,152
+          - listitem [ref=f4e513]:
+            - text: tea_coop_payments
+            - generic [ref=f4e514]: "200"
+          - listitem [ref=f4e515]:
+            - text: tea_coop_sync_runs
+            - generic [ref=f4e516]: "0"
+      - generic [ref=f4e517]:
+        - heading "Events" [level=4] [ref=f4e518]
+        - generic [ref=f4e519]: domainEvents
+        - list [ref=f4e520]:
+          - listitem [ref=f4e521]:
+            - text: domain_events
+            - generic [ref=f4e522]: 2,047
+          - listitem [ref=f4e523]:
+            - text: audit_events
+            - generic [ref=f4e524]: "0"
+    - generic [ref=f4e526]:
+      - generic [ref=f4e527]: Two zeros worth explaining
+      - paragraph [ref=f4e528]:
+        - code [ref=f4e529]: audit_events
+        - text: is indexed on every connect and written by nothing — it's dead.
+        - code [ref=f4e530]: tea_coop_sync_runs
+        - text: "is at zero for a subtler reason: the sync-run row is only written on success, and a failure throws before reaching it."
+        - strong [ref=f4e531]: Failed syncs leave no trace at all.
+  - generic [ref=f4e532]:
+    - generic [ref=f4e533]:
+      - generic [ref=f4e534]: Findings
+      - heading "Things worth knowing before you change anything" [level=2] [ref=f4e535]
+    - paragraph [ref=f4e536]: Surfaced while mapping the system. Ordered by how much they'd cost you to discover the hard way.
+    - generic [ref=f4e537]:
+      - generic [ref=f4e538]:
+        - generic [ref=f4e539]: Security
+        - generic [ref=f4e540]: OnlineModeService.cjs · preload.cjs:28
+      - paragraph [ref=f4e541]:
+        - text: Two holes in the boundary the rest of the design depends on. Path B runs Mongo aggregations straight from the main process with no auth check, scoped only by a default org id. And
+        - code [ref=f4e542]: invoke
+        - text: /
+        - code [ref=f4e543]: send
+        - text: are exposed on the contextBridge as unrestricted passthroughs to
+        - emphasis [ref=f4e544]: any
+        - text: channel — the careful per-namespace API surface sits right next to a wildcard.
+    - generic [ref=f4e545]:
+      - generic [ref=f4e546]:
+        - generic [ref=f4e547]: Dead path
+        - generic [ref=f4e548]: electron.cjs:1009 · createWindow()
+      - paragraph [ref=f4e549]:
+        - text: Logout-on-close never fires. The
+        - code [ref=f4e550]: close
+        - text: handler that calls it lives inside
+        - code [ref=f4e551]: createWindow()
+        - text: ", which startup never calls — the real window is built inline at line 1255 and gets no listener. The AppSettings toggle persists a setting no main-process code reads."
+    - generic [ref=f4e552]:
+      - generic [ref=f4e553]:
+        - generic [ref=f4e554]: Silent wrong answer
+        - generic [ref=f4e555]: OnlineController.cjs:161–225
+      - paragraph [ref=f4e556]:
+        - text: Several legacy compat shims accept arguments and discard them.
+        - code [ref=f4e557]: categories:search
+        - text: ","
+        - code [ref=f4e558]: users:search
+        - text: ","
+        - code [ref=f4e559]: restocks:get-by-date-range
+        - text: and
+        - code [ref=f4e560]: stock:get-low-stock
+        - text: all return the unfiltered full list. They don't error — they answer a different question than the one asked.
+    - generic [ref=f4e561]:
+      - generic [ref=f4e562]:
+        - generic [ref=f4e563]: Scale
+        - generic [ref=f4e564]: teaCoopSyncService.cjs:268
+      - paragraph [ref=f4e565]:
+        - text: Members sync requests
+        - code [ref=f4e566]: page=1&limit=100
+        - text: with no pagination loop. There are 5,152 members in the collection today, so a full sync silently covers about 2% of them.
+    - generic [ref=f4e567]:
+      - generic [ref=f4e568]:
+        - generic [ref=f4e569]: Cleanup
+        - generic [ref=f4e570]: utils/eventBroadcaster.cjs · frontend/renderer/ · hooks/useDataChangeListener.js
+      - paragraph [ref=f4e571]:
+        - text: "Confirmed dead: a 270-line event broadcaster with zero requires, a"
+        - code [ref=f4e572]: renderer/
+        - text: directory containing nothing but three
+        - code [ref=f4e573]: .DS_Store
+        - text: files, an unused data-change hook, two fully commented-out bill components, and
+        - code [ref=f4e574]: audit_events
+        - text: .
+        - code [ref=f4e575]: unregisterAllHandlers()
+        - text: logs and returns without removing a single handler.
+  - contentinfo [ref=f4e576]:
+    - paragraph [ref=f4e577]: Mapped from hotfix/online-version @ f63ebd1 · POSMaster V3 v1.6.4 Structure verified by reading source; collection counts read live from the POSmaster cluster. File and line references were accurate at time of writing.

@@ -1,3 +1,6 @@
+const { createLogger } = require('./logger.cjs');
+const logger = createLogger('OnlineAPI');
+
 function asyncHandler(handler) {
     return (req, res, next) => {
         Promise.resolve(handler(req, res, next)).catch(next);
@@ -21,7 +24,7 @@ function errorMiddleware(error, req, res, next) {
     const statusCode = error.statusCode || error.status || 500;
     const message = statusCode >= 500 && !error.code ? 'Internal server error' : error.message;
     if (statusCode >= 500 && !error.code) {
-        console.error('[OnlineAPI] Unhandled error:', error);
+        logger.error(error.message, { stack: error.stack, path: req.originalUrl, method: req.method });
     }
     return fail(res, statusCode, message, error.code);
 }

@@ -1,0 +1,1129 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POSMaster V3 — System Architecture</title>
+
+<style>
+  /* ─── tokens ─────────────────────────────────────────────── */
+  :root {
+    --ground:#F2F5F3; --surface:#FFFFFF; --surface-2:#E9EEEB;
+    --ink:#121B18; --ink-2:#33433D; --muted:#5B6B65;
+    --line:#D7E0DC; --line-strong:#AFC0BA;
+    --accent:#8A6A1F; --accent-ink:#6B5217; --accent-soft:rgba(138,106,31,.10);
+    --good:#2E6F4E; --warn:#9A5B12; --crit:#A32E22;
+    --good-soft:rgba(46,111,78,.10); --warn-soft:rgba(154,91,18,.10); --crit-soft:rgba(163,46,34,.10);
+    --font-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --font-serif:Charter,"Bitstream Charter","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --measure:68ch; --wide:1160px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:#0D1412; --surface:#141E1B; --surface-2:#1B2724;
+      --ink:#E6EDEA; --ink-2:#C2CFCA; --muted:#8FA09A;
+      --line:#26332F; --line-strong:#44554F;
+      --accent:#D9A94E; --accent-ink:#E8BE6E; --accent-soft:rgba(217,169,78,.12);
+      --good:#5FB98A; --warn:#D4954A; --crit:#E0796B;
+      --good-soft:rgba(95,185,138,.12); --warn-soft:rgba(212,149,74,.12); --crit-soft:rgba(224,121,107,.12);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1412; --surface:#141E1B; --surface-2:#1B2724;
+    --ink:#E6EDEA; --ink-2:#C2CFCA; --muted:#8FA09A;
+    --line:#26332F; --line-strong:#44554F;
+    --accent:#D9A94E; --accent-ink:#E8BE6E; --accent-soft:rgba(217,169,78,.12);
+    --good:#5FB98A; --warn:#D4954A; --crit:#E0796B;
+    --good-soft:rgba(95,185,138,.12); --warn-soft:rgba(212,149,74,.12); --crit-soft:rgba(224,121,107,.12);
+  }
+  :root[data-theme="light"] {
+    --ground:#F2F5F3; --surface:#FFFFFF; --surface-2:#E9EEEB;
+    --ink:#121B18; --ink-2:#33433D; --muted:#5B6B65;
+    --line:#D7E0DC; --line-strong:#AFC0BA;
+    --accent:#8A6A1F; --accent-ink:#6B5217; --accent-soft:rgba(138,106,31,.10);
+    --good:#2E6F4E; --warn:#9A5B12; --crit:#A32E22;
+    --good-soft:rgba(46,111,78,.10); --warn-soft:rgba(154,91,18,.10); --crit-soft:rgba(163,46,34,.10);
+  }
+
+  /* ─── base ───────────────────────────────────────────────── */
+  * { box-sizing:border-box; }
+  body {
+    background:var(--ground); color:var(--ink);
+    font-family:var(--font-serif); font-size:17px; line-height:1.62;
+    -webkit-font-smoothing:antialiased; margin:0; padding:0 24px 96px;
+  }
+  .spine { max-width:var(--measure); margin-inline:auto; }
+  .bleed { max-width:var(--wide); margin-inline:auto; }
+  p { margin:0 0 1.1em; color:var(--ink-2); }
+  strong { color:var(--ink); font-weight:600; }
+  em { font-style:italic; }
+  code, .mono { font-family:var(--font-mono); }
+  p code, li code, td code, .cap code {
+    font-size:.83em; background:var(--surface-2); border:1px solid var(--line);
+    border-radius:3px; padding:.1em .36em; color:var(--ink); word-break:break-word;
+  }
+  a { color:var(--accent-ink); text-underline-offset:3px; }
+  a:focus-visible { outline:2px solid var(--accent); outline-offset:3px; border-radius:2px; }
+
+  /* ─── masthead ───────────────────────────────────────────── */
+  .masthead { padding:72px 0 30px; }
+  .eyebrow {
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 20px;
+  }
+  h1 {
+    font-family:var(--font-mono); font-size:clamp(30px,5.4vw,46px); line-height:1.06;
+    letter-spacing:-.02em; font-weight:600; margin:0 0 18px; text-wrap:balance;
+  }
+  .standfirst { font-size:20px; line-height:1.5; color:var(--ink-2); margin:0 0 28px; text-wrap:pretty; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip {
+    font-family:var(--font-mono); font-size:11px; color:var(--muted);
+    background:var(--surface); border:1px solid var(--line); border-radius:999px;
+    padding:4px 11px; white-space:nowrap;
+  }
+  .chip b { color:var(--ink); font-weight:600; }
+
+  /* ─── sections ───────────────────────────────────────────── */
+  .sec { padding-top:70px; }
+  .sec-head {
+    display:flex; align-items:baseline; gap:14px;
+    border-top:1px solid var(--line-strong); padding-top:14px; margin-bottom:24px;
+  }
+  .sec-head .tick {
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.14em;
+    color:var(--accent); text-transform:uppercase; flex:none;
+  }
+  h2 { font-family:var(--font-mono); font-size:21px; font-weight:600; letter-spacing:-.01em; margin:0; text-wrap:balance; }
+  h3 { font-family:var(--font-mono); font-size:13.5px; font-weight:600; letter-spacing:.02em; margin:38px 0 10px; }
+
+  /* ─── figure ─────────────────────────────────────────────── */
+  figure { margin:26px 0 0; }
+  .frame {
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:5px; padding:22px; overflow-x:auto;
+  }
+  .frame > svg { min-width:640px; }
+  figcaption {
+    font-family:var(--font-mono); font-size:11.5px; line-height:1.6;
+    color:var(--muted); margin-top:11px; padding-left:2px;
+  }
+  figcaption b { color:var(--ink); font-weight:600; }
+
+  /* ─── svg diagram styles ─────────────────────────────────── */
+  svg.dg { display:block; width:100%; height:auto; }
+  .dg text { font-family:var(--font-mono); }
+  .dg .t   { fill:var(--ink); font-size:12.5px; font-weight:600; }
+  .dg .s   { fill:var(--muted); font-size:10.5px; }
+  .dg .zt  { fill:var(--accent); font-size:10px; font-weight:600; letter-spacing:.11em; }
+  .dg .ct  { fill:var(--muted); font-size:10px; }
+  .dg .box { fill:var(--surface); stroke:var(--line-strong); stroke-width:1.1; }
+  .dg .fill2 { fill:var(--surface-2); stroke:var(--line); stroke-width:1; }
+  .dg .zone  { fill:var(--surface-2); stroke:none; }
+  .dg .zoneline { fill:none; stroke:var(--line); stroke-width:1; stroke-dasharray:3 3; }
+  .dg .ln  { fill:none; stroke:var(--line-strong); stroke-width:1.3; }
+  .dg .ah  { fill:var(--line-strong); stroke:none; }
+  .dg .acc { fill:none; stroke:var(--accent); stroke-width:1.5; }
+  .dg .acch{ fill:var(--accent); stroke:none; }
+  .dg .accbox { fill:var(--accent-soft); stroke:var(--accent); stroke-width:1.2; }
+  .dg .crit { fill:none; stroke:var(--crit); stroke-width:1.5; stroke-dasharray:5 4; }
+  .dg .crith{ fill:var(--crit); stroke:none; }
+  .dg .critt{ fill:var(--crit); font-size:10px; font-weight:600; }
+  .dg .critbox { fill:var(--crit-soft); stroke:var(--crit); stroke-width:1.2; stroke-dasharray:5 4; }
+  .dg .goodbox { fill:var(--good-soft); stroke:var(--good); stroke-width:1.2; }
+  .dg .goodt { fill:var(--good); font-size:10px; font-weight:600; }
+  .dg .warnbox { fill:var(--warn-soft); stroke:var(--warn); stroke-width:1.2; }
+
+  /* ─── numbered path ──────────────────────────────────────── */
+  .path { list-style:none; padding:0; margin:24px 0 0; counter-reset:step; }
+  .path li {
+    counter-increment:step; position:relative;
+    padding:0 0 20px 44px; border-left:1px solid var(--line-strong); margin-left:13px;
+  }
+  .path li:last-child { border-left-color:transparent; padding-bottom:0; }
+  .path li::before {
+    content:counter(step,decimal-leading-zero);
+    position:absolute; left:-13px; top:0; width:26px; height:26px;
+    display:grid; place-items:center;
+    font-family:var(--font-mono); font-size:10.5px; font-weight:600;
+    color:var(--accent); background:var(--ground);
+    border:1px solid var(--line-strong); border-radius:50%;
+  }
+  .path .where { font-family:var(--font-mono); font-size:12.5px; font-weight:600; color:var(--ink); display:block; margin:2px 0 3px; }
+  .path .what  { font-size:15px; line-height:1.55; color:var(--muted); }
+
+  /* ─── tables ─────────────────────────────────────────────── */
+  .tablewrap { overflow-x:auto; border:1px solid var(--line); border-radius:4px; background:var(--surface); margin:22px 0; }
+  table { border-collapse:collapse; width:100%; font-size:14px; }
+  th, td { text-align:left; padding:9px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td { border-bottom:none; }
+  th {
+    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.11em; text-transform:uppercase;
+    color:var(--muted); font-weight:600; white-space:nowrap; background:var(--surface-2);
+  }
+  td { color:var(--ink-2); }
+  td.m { font-family:var(--font-mono); font-size:12.5px; color:var(--ink); white-space:nowrap; }
+
+  /* ─── collection map ─────────────────────────────────────── */
+  .cmap { display:grid; grid-template-columns:repeat(auto-fit,minmax(232px,1fr)); gap:10px; margin:24px 0 0; }
+  .cgroup { background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:14px 15px; }
+  .cgroup h4 {
+    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--accent); font-weight:600; margin:0 0 4px;
+  }
+  .cgroup .gsub { font-family:var(--font-mono); font-size:10.5px; color:var(--muted); display:block; margin-bottom:10px; line-height:1.5; }
+  .cgroup ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; }
+  .cgroup li {
+    font-family:var(--font-mono); font-size:11.5px; color:var(--ink-2);
+    display:flex; justify-content:space-between; gap:10px; align-items:baseline;
+  }
+  .cgroup li .n { color:var(--muted); font-variant-numeric:tabular-nums; font-size:10.5px; }
+  .cgroup li.txn::after { content:"txn"; font-size:9px; color:var(--warn); border:1px solid var(--warn); border-radius:2px; padding:0 3px; }
+
+  /* ─── callout ────────────────────────────────────────────── */
+  .note {
+    background:var(--surface); border:1px solid var(--line); border-left:2px solid var(--accent);
+    border-radius:0 4px 4px 0; padding:15px 18px; margin:24px 0;
+  }
+  .note p { margin:0; font-size:15px; }
+  .note p + p { margin-top:.7em; }
+  .note.risk { border-left-color:var(--crit); }
+  .note-tag {
+    font-family:var(--font-mono); font-size:10px; font-weight:600; letter-spacing:.13em;
+    text-transform:uppercase; color:var(--accent); display:block; margin-bottom:6px;
+  }
+  .note.risk .note-tag { color:var(--crit); }
+
+  /* ─── findings ───────────────────────────────────────────── */
+  .find { background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:16px 18px; margin-bottom:10px; }
+  .find-top { display:flex; align-items:center; gap:10px; margin-bottom:7px; flex-wrap:wrap; }
+  .find-where { font-family:var(--font-mono); font-size:11.5px; color:var(--muted); word-break:break-all; }
+  .find p { margin:0; font-size:15px; line-height:1.55; }
+  .pill {
+    font-family:var(--font-mono); font-size:10px; font-weight:600; letter-spacing:.09em;
+    text-transform:uppercase; padding:2px 7px; border-radius:3px; white-space:nowrap; display:inline-block;
+  }
+  .pill.crit { background:var(--crit-soft); color:var(--crit); border:1px solid var(--crit); }
+  .pill.warn { background:var(--warn-soft); color:var(--warn); border:1px solid var(--warn); }
+  .pill.good { background:var(--good-soft); color:var(--good); border:1px solid var(--good); }
+
+  /* ─── footer ─────────────────────────────────────────────── */
+  .foot {
+    margin-top:78px; padding-top:18px; border-top:1px solid var(--line-strong);
+    font-family:var(--font-mono); font-size:11.5px; color:var(--muted); line-height:1.7;
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+
+<header class="masthead spine">
+  <p class="eyebrow">System architecture · internal reference</p>
+  <h1>POSMaster V3</h1>
+  <p class="standfirst">
+    An Electron point-of-sale terminal for a Sri Lankan tea cooperative — three
+    processes, one strict IPC boundary, and a Mongo-backed event log that pushes
+    every change back to the till in real time.
+  </p>
+  <div class="chips">
+    <span class="chip">v<b>1.6.4</b></span>
+    <span class="chip"><b>Electron</b> 30</span>
+    <span class="chip"><b>React</b> 19</span>
+    <span class="chip"><b>Vite</b> 6</span>
+    <span class="chip"><b>Express</b> 5</span>
+    <span class="chip"><b>Socket.IO</b> 4</span>
+    <span class="chip"><b>MongoDB</b> Atlas</span>
+  </div>
+</header>
+
+<!-- ══ 1. TOPOLOGY ══════════════════════════════════════════ -->
+<section class="sec bleed">
+  <div class="spine">
+    <div class="sec-head"><span class="tick">Topology</span><h2>The whole system on one page</h2></div>
+    <p>
+      The renderer never touches the network. Every read and write leaves the UI
+      through a single <code>contextBridge</code> namespace, crosses into the main
+      process, and only there becomes HTTP. That's enforced by absence — a grep for
+      <code>fetch(</code>, <code>axios</code> or port <code>4100</code> across all
+      116 renderer files returns nothing.
+    </p>
+  </div>
+
+  <figure>
+    <div class="frame">
+      <svg class="dg" viewBox="0 0 1000 600" role="img" aria-label="System topology: renderer, main process, online server and MongoDB, with external printers, Tea Coop API and GitHub releases.">
+        <defs>
+          <marker id="a-topo" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="ah"/>
+          </marker>
+          <marker id="a-topo-c" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="crith"/>
+          </marker>
+        </defs>
+
+        <!-- desktop container -->
+        <rect x="90" y="44" width="430" height="300" rx="6" class="zoneline"/>
+        <text x="102" y="36" class="zt">DESKTOP · POSMASTER.APP</text>
+
+        <!-- renderer -->
+        <rect x="110" y="62" width="390" height="78" rx="4" class="box"/>
+        <text x="126" y="86" class="t">Renderer · React 19</text>
+        <text x="126" y="105" class="s">60 pages · 9 routes · HashRouter</text>
+        <text x="126" y="122" class="s">localApi (25 namespaces) · DataStore (19 tables)</text>
+
+        <!-- bridge -->
+        <line x1="305" y1="140" x2="305" y2="174" class="ln" marker-end="url(#a-topo)" marker-start="url(#a-topo)"/>
+        <text x="318" y="155" class="ct">contextBridge · electronAPI</text>
+        <text x="318" y="168" class="ct">~200 channels · the only door</text>
+
+        <!-- main -->
+        <rect x="110" y="182" width="390" height="150" rx="4" class="box"/>
+        <text x="126" y="206" class="t">Main process · electron.cjs</text>
+        <text x="126" y="225" class="s">OnlineController (~150 channels) · AppSettingsController</text>
+        <text x="126" y="242" class="s">OnlineModeService · OnlineApiClient · RealtimeClient</text>
+        <text x="126" y="259" class="s">printing · auto-updater · window lifecycle</text>
+        <rect x="126" y="272" width="358" height="46" rx="3" class="fill2"/>
+        <text x="138" y="290" class="s">Node 20 · full filesystem + net access</text>
+        <text x="138" y="306" class="s">nodeIntegration: false · contextIsolation: true</text>
+
+        <!-- http down -->
+        <line x1="305" y1="344" x2="305" y2="392" class="acc" marker-end="url(#a-topo)"/>
+        <text x="318" y="362" class="ct">HTTP · 127.0.0.1:4100/api</text>
+        <text x="318" y="375" class="ct">Bearer JWT · retries GET on 5xx</text>
+
+        <!-- server -->
+        <rect x="90" y="394" width="430" height="112" rx="4" class="box"/>
+        <text x="106" y="418" class="t">Online server · Express 5 + Socket.IO</text>
+        <text x="106" y="437" class="s">helmet → cors → json → 4 routers, all on /api</text>
+        <text x="106" y="454" class="s">authService · catalogService · salesService · restockService</text>
+        <text x="106" y="471" class="s">disposeService · transferService · teaCoopSync · domainEvents</text>
+        <text x="106" y="493" class="s">Packaged: runs inside the Electron main process</text>
+
+        <!-- mongo -->
+        <line x1="305" y1="506" x2="305" y2="537" class="ln" marker-end="url(#a-topo)"/>
+        <rect x="90" y="539" width="430" height="46" rx="4" class="box"/>
+        <text x="106" y="562" class="t">MongoDB Atlas · POSmaster</text>
+        <text x="106" y="578" class="s">31 collections · partial unique indexes on deletedAt: null</text>
+
+        <!-- path B bypass -->
+        <path d="M110,300 H52 V562 H84" class="crit" marker-end="url(#a-topo-c)"/>
+        <text x="46" y="404" class="critt" transform="rotate(-90 46 404)" text-anchor="middle">PATH B · NO AUTH</text>
+
+        <!-- bus to externals -->
+        <path d="M500,238 H568" class="ln"/>
+        <path d="M568,88 V238" class="ln"/>
+        <path d="M568,88 H612" class="ln" marker-end="url(#a-topo)"/>
+        <path d="M568,163 H612" class="ln" marker-end="url(#a-topo)"/>
+        <path d="M568,238 H612" class="ln" marker-end="url(#a-topo)"/>
+
+        <rect x="614" y="64" width="346" height="48" rx="4" class="box"/>
+        <text x="630" y="84" class="t">GitHub Releases</text>
+        <text x="630" y="101" class="s">electron-updater · manual download AND install</text>
+
+        <rect x="614" y="139" width="346" height="48" rx="4" class="box"/>
+        <text x="630" y="159" class="t">Thermal printer · raw TCP :9100</text>
+        <text x="630" y="176" class="s">ESC/POS over net.Socket · subnet autodiscovery</text>
+
+        <rect x="614" y="214" width="346" height="48" rx="4" class="box"/>
+        <text x="630" y="234" class="t">OS print queue</text>
+        <text x="630" y="251" class="s">pdf-to-printer · hidden BrowserWindow fallback</text>
+
+        <!-- server → tea coop -->
+        <path d="M520,438 H612" class="ln" marker-end="url(#a-topo)"/>
+        <rect x="614" y="414" width="346" height="48" rx="4" class="box"/>
+        <text x="630" y="434" class="t">Tea Coop API · api.teacoop.lk</text>
+        <text x="630" y="451" class="s">/thirdPartyLogin · token cached 55m (hardcoded)</text>
+
+        <!-- orphan -->
+        <path d="M500,300 H540 V560 H612" class="crit" marker-end="url(#a-topo-c)"/>
+        <rect x="614" y="536" width="346" height="48" rx="4" class="critbox"/>
+        <text x="630" y="556" class="t">posmasterv3-backend.onrender.com</text>
+        <text x="630" y="573" class="s">orphan · hardcoded logout POST · unrelated to :4100</text>
+      </svg>
+    </div>
+    <figcaption>
+      <b>Solid lines</b> are the sanctioned path. <b>Dashed red</b> are the two edges that
+      contradict it — a direct Mongo channel that skips auth entirely, and a legacy cloud
+      host still wired into logout.
+    </figcaption>
+  </figure>
+</section>
+
+<!-- ══ 2. RUNTIMES ══════════════════════════════════════════ -->
+<section class="sec bleed">
+  <div class="spine">
+    <div class="sec-head"><span class="tick">Runtimes</span><h2>The same code ships as two topologies</h2></div>
+    <p>
+      In development the online server is a separate <code>node</code> process you
+      start yourself. Once packaged, <code>runtime.cjs</code> is required <em>into
+      the Electron main process</em> — Express, Socket.IO and the Mongo driver all
+      run inside the desktop app, and "online" becomes a loopback call to itself.
+      No external server exists.
+    </p>
+  </div>
+
+  <figure>
+    <div class="frame">
+      <svg class="dg" viewBox="0 0 1000 330" role="img" aria-label="Development runtime with three processes versus packaged runtime with one process hosting the server.">
+        <defs>
+          <marker id="a-rt" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="ah"/>
+          </marker>
+        </defs>
+
+        <!-- DEV -->
+        <text x="16" y="20" class="zt">DEVELOPMENT · 3 PROCESSES</text>
+        <rect x="16" y="34" width="452" height="278" rx="6" class="zoneline"/>
+
+        <rect x="34" y="52" width="416" height="58" rx="4" class="box"/>
+        <text x="50" y="74" class="t">node · vite</text>
+        <text x="50" y="92" class="s">:5173 — probed by HEAD, falls back to :5174</text>
+
+        <rect x="34" y="126" width="416" height="58" rx="4" class="box"/>
+        <text x="50" y="148" class="t">node · src/online-server/server.cjs</text>
+        <text x="50" y="166" class="s">:4100 — started by hand (npm run online:dev)</text>
+
+        <rect x="34" y="200" width="416" height="94" rx="4" class="box"/>
+        <text x="50" y="222" class="t">electron</text>
+        <text x="50" y="240" class="s">wait-on :5173 + :4100/api/ready</text>
+        <text x="50" y="257" class="s">renderer loaded over http://</text>
+        <text x="50" y="278" class="s">auto-updater skipped</text>
+
+        <path d="M242,110 V120" class="ln" marker-end="url(#a-rt)"/>
+        <path d="M242,184 V194" class="ln" marker-end="url(#a-rt)"/>
+
+        <!-- divider -->
+        <line x1="500" y1="34" x2="500" y2="312" class="zoneline"/>
+
+        <!-- PACKAGED -->
+        <text x="532" y="20" class="zt">PACKAGED · 1 PROCESS</text>
+        <rect x="532" y="34" width="452" height="278" rx="6" class="zoneline"/>
+
+        <rect x="550" y="52" width="416" height="242" rx="4" class="box"/>
+        <text x="566" y="74" class="t">POSMaster.app · single Electron process</text>
+        <text x="566" y="92" class="s">config from online-runtime-config.json (resourcesPath)</text>
+
+        <rect x="566" y="106" width="384" height="50" rx="3" class="fill2"/>
+        <text x="580" y="126" class="t">renderer</text>
+        <text x="580" y="143" class="s">dist/index.html over file://</text>
+
+        <rect x="566" y="168" width="384" height="50" rx="3" class="accbox"/>
+        <text x="580" y="188" class="t">Express + Socket.IO :4100 — in-process</text>
+        <text x="580" y="205" class="s">startBundledOnlineBackend() polls /api/ready ≤ 30s</text>
+
+        <rect x="566" y="230" width="384" height="50" rx="3" class="fill2"/>
+        <text x="580" y="250" class="t">auto-updater</text>
+        <text x="580" y="267" class="s">GitHub releases, 5s after ready</text>
+      </svg>
+    </div>
+    <figcaption>
+      The highlighted band is the whole difference: in production that server is not a
+      network peer, it's <b>a module inside the app talking to itself over loopback</b>.
+    </figcaption>
+  </figure>
+
+  <div class="spine">
+    <div class="note risk">
+      <span class="note-tag">Consequence</span>
+      <p>
+        There is no <code>requestSingleInstanceLock</code> anywhere in the repo. Two
+        packaged copies can run at once, and the second one's attempt to bind
+        <code>:4100</code> fails into a swallowed <code>try/catch</code> — leaving an
+        app that looks fine but whose writes land through the first instance's server.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 3. WRITE PATH ════════════════════════════════════════ -->
+<section class="sec bleed">
+  <div class="spine">
+    <div class="sec-head"><span class="tick">Write path</span><h2>How a sale reaches the database</h2></div>
+    <p>
+      Eight hops from a cashier's tap to a committed transaction, crossing four
+      process zones. Each boundary is a place the call changes character — from a
+      function call, to IPC, to HTTP, to a wire protocol.
+    </p>
+  </div>
+
+  <figure>
+    <div class="frame">
+      <svg class="dg" viewBox="0 0 1000 650" role="img" aria-label="Swimlane diagram of a sale request descending through renderer, main process, server and MongoDB.">
+        <defs>
+          <marker id="a-wp" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="ah"/>
+          </marker>
+          <marker id="a-wp-a" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="acch"/>
+          </marker>
+        </defs>
+
+        <!-- lanes -->
+        <rect x="0" y="26"  width="1000" height="140" class="zone" opacity=".55"/>
+        <rect x="0" y="330" width="1000" height="196" class="zone" opacity=".55"/>
+
+        <text x="14" y="46"  class="zt">RENDERER</text>
+        <text x="14" y="192" class="zt">MAIN</text>
+        <text x="14" y="350" class="zt">SERVER</text>
+        <text x="14" y="546" class="zt">MONGO</text>
+
+        <!-- boundary rules -->
+        <line x1="0" y1="166" x2="1000" y2="166" class="acc" stroke-dasharray="6 4"/>
+        <text x="986" y="160" class="ct" text-anchor="end">IPC · contextBridge</text>
+        <line x1="0" y1="330" x2="1000" y2="330" class="acc" stroke-dasharray="6 4"/>
+        <text x="986" y="324" class="ct" text-anchor="end">HTTP · 127.0.0.1:4100</text>
+        <line x1="0" y1="526" x2="1000" y2="526" class="acc" stroke-dasharray="6 4"/>
+        <text x="986" y="520" class="ct" text-anchor="end">MongoDB wire protocol</text>
+
+        <!-- steps -->
+        <rect x="150" y="38" width="440" height="46" rx="4" class="box"/>
+        <text x="166" y="58" class="t">01 · SalesView.jsx</text>
+        <text x="166" y="75" class="s">cashier confirms cart → salesApi.createSale()</text>
+
+        <rect x="150" y="98" width="440" height="46" rx="4" class="box"/>
+        <text x="166" y="118" class="t">02 · api/localApi.js</text>
+        <text x="166" y="135" class="s">3,783-line facade — resolves getElectronAPI(), hides IPC</text>
+
+        <rect x="150" y="184" width="440" height="46" rx="4" class="box"/>
+        <text x="166" y="204" class="t">03 · preload.cjs · contextBridge</text>
+        <text x="166" y="221" class="s">crosses the sandbox → window.electronAPI.online.createSale</text>
+
+        <rect x="150" y="244" width="440" height="46" rx="4" class="box"/>
+        <text x="166" y="264" class="t">04 · OnlineController · ipcMain.handle</text>
+        <text x="166" y="281" class="s">channel online:sales:create → OnlineModeService</text>
+
+        <rect x="612" y="184" width="374" height="106" rx="4" class="fill2"/>
+        <text x="628" y="204" class="t">05 · OnlineApiClient.cjs</text>
+        <text x="628" y="222" class="s">attaches Authorization: Bearer &lt;token&gt;</text>
+        <text x="628" y="239" class="s">fetch POST /api/sales</text>
+        <text x="628" y="261" class="s">Now — and only now — is it HTTP.</text>
+        <text x="628" y="278" class="s">Retries GET/HEAD twice on 5xx, never POST.</text>
+        <path d="M590,214 H606" class="ln" marker-end="url(#a-wp)"/>
+
+        <rect x="150" y="344" width="440" height="64" rx="4" class="box"/>
+        <text x="166" y="364" class="t">06 · Express middleware chain</text>
+        <text x="166" y="381" class="s">requireAuth · requireOrgScope · requireSalesPermission</text>
+        <text x="166" y="398" class="s">any failure → 401 / 403, nothing reaches the service</text>
+
+        <rect x="150" y="422" width="440" height="88" rx="4" class="accbox"/>
+        <text x="166" y="442" class="t">07 · salesService · withTransaction</text>
+        <text x="166" y="459" class="s">mint invoiceNo from invoice_counters</text>
+        <text x="166" y="476" class="s">decrement stock_batches · units → sold</text>
+        <text x="166" y="493" class="s">write 'sale' movement · insert sale</text>
+
+        <rect x="612" y="422" width="374" height="88" rx="4" class="warnbox"/>
+        <text x="628" y="442" class="t">assertTransactionSupport()</text>
+        <text x="628" y="460" class="s">requires a replica set or mongos.</text>
+        <text x="628" y="477" class="s">On a standalone mongod this throws 503</text>
+        <text x="628" y="494" class="s">— the till cannot take money.</text>
+        <path d="M590,466 H606" class="ln" marker-end="url(#a-wp)"/>
+
+        <rect x="150" y="540" width="440" height="46" rx="4" class="box"/>
+        <text x="166" y="560" class="t">08 · commit</text>
+        <text x="166" y="577" class="s">atomic — all four writes land, or none do</text>
+
+        <!-- flow arrows down -->
+        <path d="M370,84  V92"  class="ln" marker-end="url(#a-wp)"/>
+        <path d="M370,144 V178" class="acc" marker-end="url(#a-wp-a)"/>
+        <path d="M370,230 V238" class="ln" marker-end="url(#a-wp)"/>
+        <path d="M370,290 V338" class="acc" marker-end="url(#a-wp-a)"/>
+        <path d="M370,408 V416" class="ln" marker-end="url(#a-wp)"/>
+        <path d="M370,510 V534" class="acc" marker-end="url(#a-wp-a)"/>
+
+        <!-- post-commit event -->
+        <path d="M370,586 V600" class="ln" marker-end="url(#a-wp)"/>
+        <text x="612" y="622" class="ct">after commit, never inside the transaction —</text>
+        <text x="612" y="636" class="ct">no subscriber can see a sale that rolls back</text>
+        <rect x="150" y="604" width="440" height="34" rx="4" class="goodbox"/>
+        <text x="166" y="626" class="t">publishDomainEvent('sales.created')</text>
+      </svg>
+    </div>
+    <figcaption>
+      The <b>brass arrows</b> mark the three boundary crossings; everything else is an
+      ordinary call. Note step 07: the event is published <b>after</b> commit, so no
+      subscriber can observe a sale that later rolls back.
+    </figcaption>
+  </figure>
+</section>
+
+<!-- ══ 4. REALTIME ══════════════════════════════════════════ -->
+<section class="sec bleed">
+  <div class="spine">
+    <div class="sec-head"><span class="tick">Read path</span><h2>How the change comes back</h2></div>
+    <p>
+      The return trip is not a response to the request that caused it. Every mutation
+      is persisted to <code>domain_events</code>, then fanned out over Socket.IO — so
+      a sale rung up on one till updates stock on every other till in the branch,
+      including the one that rang it.
+    </p>
+  </div>
+
+  <figure>
+    <div class="frame">
+      <svg class="dg" viewBox="0 0 1000 470" role="img" aria-label="Domain event fan-out from publishDomainEvent through Socket.IO rooms back into the React DataStore.">
+        <defs>
+          <marker id="a-rl" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="ah"/>
+          </marker>
+        </defs>
+
+        <rect x="16" y="40" width="200" height="60" rx="4" class="goodbox"/>
+        <text x="32" y="64" class="t">commit</text>
+        <text x="32" y="82" class="s">salesService, txn closed</text>
+
+        <path d="M216,70 H254" class="ln" marker-end="url(#a-rl)"/>
+
+        <rect x="256" y="40" width="212" height="60" rx="4" class="box"/>
+        <text x="272" y="64" class="t">publishDomainEvent()</text>
+        <text x="272" y="82" class="s">stamps version + timestamps</text>
+
+        <!-- persist branch -->
+        <path d="M362,100 V142" class="ln" marker-end="url(#a-rl)"/>
+        <rect x="256" y="144" width="212" height="54" rx="4" class="box"/>
+        <text x="272" y="166" class="t">insert domain_events</text>
+        <text x="272" y="184" class="s">2,047 rows · sole event log</text>
+
+        <!-- emit branch -->
+        <path d="M468,70 H508" class="ln" marker-end="url(#a-rl)"/>
+        <rect x="510" y="40" width="212" height="60" rx="4" class="box"/>
+        <text x="526" y="64" class="t">emitDomainEvent()</text>
+        <text x="526" y="82" class="s">single fan-out point</text>
+
+        <!-- rooms -->
+        <path d="M722,70 H756 V128" class="ln"/>
+        <path d="M756,128 H790" class="ln" marker-end="url(#a-rl)"/>
+        <path d="M756,128 V188 H790" class="ln" marker-end="url(#a-rl)"/>
+        <path d="M756,188 V248 H790" class="ln" marker-end="url(#a-rl)"/>
+        <path d="M756,248 V308 H790" class="ln" marker-end="url(#a-rl)"/>
+
+        <rect x="792" y="106" width="192" height="44" rx="4" class="box"/>
+        <text x="806" y="126" class="t">user:{userId}</text>
+        <text x="806" y="142" class="s">targeted at one operator</text>
+
+        <rect x="792" y="166" width="192" height="44" rx="4" class="box"/>
+        <text x="806" y="186" class="t">branch:{branchId}</text>
+        <text x="806" y="202" class="s">never also reaches org</text>
+
+        <rect x="792" y="226" width="192" height="44" rx="4" class="box"/>
+        <text x="806" y="246" class="t">org:{orgId}</text>
+        <text x="806" y="262" class="s">+ 'domain.event' firehose</text>
+
+        <rect x="792" y="286" width="192" height="44" rx="4" class="critbox"/>
+        <text x="806" y="306" class="t">role:{orgId}:{role}</text>
+        <text x="806" y="322" class="s">joined — never emitted to</text>
+
+        <!-- session kick -->
+        <rect x="510" y="144" width="228" height="72" rx="4" class="critbox"/>
+        <text x="526" y="166" class="t">if entity === 'sessions'</text>
+        <text x="526" y="184" class="s">disconnectInactiveUserSockets()</text>
+        <text x="526" y="201" class="s">force-kicks the replaced till</text>
+        <path d="M616,100 V138" class="ln" marker-end="url(#a-rl)"/>
+
+        <!-- return into app -->
+        <path d="M888,330 V368 H660" class="ln" marker-end="url(#a-rl)"/>
+
+        <rect x="440" y="346" width="216" height="46" rx="4" class="box"/>
+        <text x="456" y="366" class="t">OnlineRealtimeClient</text>
+        <text x="456" y="383" class="s">main process socket client</text>
+
+        <path d="M440,369 H404" class="ln" marker-end="url(#a-rl)"/>
+
+        <rect x="188" y="346" width="214" height="46" rx="4" class="box"/>
+        <text x="204" y="366" class="t">IPC broadcast</text>
+        <text x="204" y="383" class="s">domain-event → all windows</text>
+
+        <path d="M188,369 H152 V414" class="ln" marker-end="url(#a-rl)"/>
+
+        <rect x="16" y="416" width="470" height="46" rx="4" class="accbox"/>
+        <text x="32" y="436" class="t">DataStore · normalize → debounce 500ms → invalidate</text>
+        <text x="32" y="453" class="s">refetches only tables with live subscribers</text>
+
+        <rect x="500" y="416" width="484" height="46" rx="4" class="fill2"/>
+        <text x="516" y="436" class="t">useReactiveData()</text>
+        <text x="516" y="453" class="s">components re-render — no socket code anywhere in the renderer</text>
+        <path d="M486,439 H494" class="ln" marker-end="url(#a-rl)"/>
+      </svg>
+    </div>
+    <figcaption>
+      Persist-then-emit. The trade-off: <b>no outbox, no retry</b> — if the socket emit
+      fails, the write is durable but the till never hears about it.
+    </figcaption>
+  </figure>
+</section>
+
+<!-- ══ 5. AUTH ══════════════════════════════════════════════ -->
+<section class="sec bleed">
+  <div class="spine">
+    <div class="sec-head"><span class="tick">Identity</span><h2>Auth is two factors, and one of them is a row</h2></div>
+    <p>
+      A valid signature is not enough. <code>requireAuth</code> verifies the JWT
+      <em>and then</em> looks up a matching <code>sessions</code> document with
+      <code>active: true</code>. The raw token is never stored — only its SHA-256
+      hash — so the database can revoke a session it cannot read.
+    </p>
+  </div>
+
+  <figure>
+    <div class="frame">
+      <svg class="dg" viewBox="0 0 1000 400" role="img" aria-label="Login issues a JWT and a session row; requireAuth checks both; a replaced session kicks the old device.">
+        <defs>
+          <marker id="a-au" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="ah"/>
+          </marker>
+        </defs>
+
+        <text x="16" y="20" class="zt">ISSUE · POST /api/auth/login</text>
+        <rect x="16" y="32" width="180" height="52" rx="4" class="box"/>
+        <text x="32" y="54" class="t">bcrypt.compare</text>
+        <text x="32" y="71" class="s">cost 12</text>
+
+        <path d="M196,58 H232" class="ln" marker-end="url(#a-au)"/>
+        <rect x="234" y="32" width="220" height="52" rx="4" class="critbox"/>
+        <text x="250" y="54" class="t">kill prior sessions</text>
+        <text x="250" y="71" class="s">replaced_by_new_login</text>
+
+        <path d="M454,58 H490" class="ln" marker-end="url(#a-au)"/>
+        <rect x="492" y="32" width="228" height="52" rx="4" class="box"/>
+        <text x="508" y="54" class="t">insert sessions row</text>
+        <text x="508" y="71" class="s">tokenHash = sha256(jwt)</text>
+
+        <path d="M720,58 H756" class="ln" marker-end="url(#a-au)"/>
+        <rect x="758" y="32" width="226" height="52" rx="4" class="accbox"/>
+        <text x="774" y="54" class="t">sign JWT · HS256 · 8h</text>
+        <text x="774" y="71" class="s">sub · orgId · branchId · roles</text>
+
+        <!-- verify -->
+        <text x="16" y="130" class="zt">VERIFY · EVERY REQUEST AND EVERY SOCKET</text>
+        <rect x="16" y="142" width="180" height="60" rx="4" class="box"/>
+        <text x="32" y="166" class="t">Bearer token</text>
+        <text x="32" y="184" class="s">or socket handshake.auth</text>
+
+        <path d="M196,172 H232" class="ln" marker-end="url(#a-au)"/>
+        <rect x="234" y="142" width="220" height="60" rx="4" class="box"/>
+        <text x="250" y="166" class="t">① jwt.verify</text>
+        <text x="250" y="184" class="s">signature + expiry</text>
+
+        <path d="M454,172 H490" class="ln" marker-end="url(#a-au)"/>
+        <rect x="492" y="142" width="228" height="60" rx="4" class="box"/>
+        <text x="508" y="166" class="t">② sessions lookup</text>
+        <text x="508" y="184" class="s">{tokenHash, active, userId}</text>
+
+        <path d="M720,172 H756" class="ln" marker-end="url(#a-au)"/>
+        <rect x="758" y="142" width="226" height="60" rx="4" class="goodbox"/>
+        <text x="774" y="166" class="t">req.auth populated</text>
+        <text x="774" y="184" class="s">both must pass</text>
+
+        <!-- kick -->
+        <text x="16" y="250" class="zt">KICK · THE OLD TILL FINDS OUT IMMEDIATELY</text>
+        <rect x="16" y="262" width="238" height="60" rx="4" class="box"/>
+        <text x="32" y="286" class="t">sessions domain event</text>
+        <text x="32" y="304" class="s">emitted by the login above</text>
+
+        <path d="M254,292 H290" class="ln" marker-end="url(#a-au)"/>
+        <rect x="292" y="262" width="266" height="60" rx="4" class="box"/>
+        <text x="308" y="286" class="t">disconnectInactiveUserSockets()</text>
+        <text x="308" y="304" class="s">re-checks each socket's tokenHash</text>
+
+        <path d="M558,292 H594" class="ln" marker-end="url(#a-au)"/>
+        <rect x="596" y="262" width="388" height="60" rx="4" class="critbox"/>
+        <text x="612" y="286" class="t">socket.disconnect() on the orphans</text>
+        <text x="612" y="304" class="s">kicked in real time — not on their next request</text>
+
+        <!-- caveat -->
+        <rect x="16" y="342" width="968" height="46" rx="4" class="warnbox"/>
+        <text x="32" y="362" class="t">Caveat · roles live in the JWT claims, not re-read per request</text>
+        <text x="32" y="379" class="s">Promote or demote a user and nothing changes until the token expires — up to 8 hours — or they log in again.</text>
+      </svg>
+    </div>
+    <figcaption>
+      The <code>sessions</code> collection is a <b>hard runtime dependency of both the
+      HTTP and WebSocket paths</b>. Lose it and every authenticated request fails, valid
+      token or not.
+    </figcaption>
+  </figure>
+
+  <div class="spine">
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th scope="col">Role set</th><th scope="col">Members</th><th scope="col">Reaches</th></tr></thead>
+        <tbody>
+          <tr><td class="m">ADMIN</td><td>admin, superadmin, super_admin, owner</td><td>Bypasses every permission check</td></tr>
+          <tr><td class="m">MANAGER</td><td>ADMIN + manager</td><td>users, app_settings, branches, payment_methods</td></tr>
+          <tr><td class="m">SALES</td><td>MANAGER + cashier, sales</td><td>Sales, tea coop, payment methods</td></tr>
+          <tr><td class="m">INVENTORY</td><td>MANAGER + inventory, stock_manager</td><td>Stock, transfers, restock</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 6. STATE MACHINES ════════════════════════════════════ -->
+<section class="sec bleed">
+  <div class="spine">
+    <div class="sec-head"><span class="tick">State</span><h2>Two machines worth knowing by heart</h2></div>
+    <p>
+      Most of this system is CRUD. These two aren't — they're the places where an
+      object's history matters, and where a wrong transition means stock that exists
+      in the database but not on a shelf.
+    </p>
+    <h3>Branch-to-branch transfer · two-stage approval</h3>
+    <p>
+      A transfer is reviewed twice: once by the source branch's manager, then again by
+      the receiving branch. Crucially, <strong>no stock moves until the second
+      accept</strong> — the first is a paperwork gate.
+    </p>
+  </div>
+
+  <figure>
+    <div class="frame">
+      <svg class="dg" viewBox="0 0 1000 280" role="img" aria-label="Inventory transfer state machine: pending, manager approval, then target accept to accepted, with a reject branch at each stage.">
+        <defs>
+          <marker id="a-sm" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="ah"/>
+          </marker>
+        </defs>
+
+        <rect x="40" y="70" width="190" height="60" rx="30" class="box"/>
+        <text x="135" y="96" class="t" text-anchor="middle">pending</text>
+        <text x="135" y="114" class="s" text-anchor="middle">stage: source_review</text>
+
+        <path d="M230,100 H384" class="ln" marker-end="url(#a-sm)"/>
+        <text x="307" y="73" class="ct" text-anchor="middle">no stock moves yet</text>
+        <text x="307" y="87" class="ct" text-anchor="middle">manager accepts</text>
+
+        <rect x="390" y="62" width="230" height="76" rx="38" class="box"/>
+        <text x="505" y="90" class="t" text-anchor="middle">approved_by_manager</text>
+        <text x="505" y="108" class="s" text-anchor="middle">stage: target_review</text>
+        <text x="505" y="124" class="s" text-anchor="middle">or in_transit — same stage</text>
+
+        <path d="M620,100 H774" class="acc" marker-end="url(#a-sm)"/>
+        <text x="697" y="73" class="ct" text-anchor="middle">stock moves HERE</text>
+        <text x="697" y="87" class="ct" text-anchor="middle">target accepts</text>
+
+        <rect x="780" y="70" width="200" height="60" rx="30" class="goodbox"/>
+        <text x="880" y="96" class="t" text-anchor="middle">accepted</text>
+        <text x="880" y="114" class="s" text-anchor="middle">transfer_out + transfer_in</text>
+
+        <path d="M135,130 V199" class="ln" marker-end="url(#a-sm)"/>
+        <text x="147" y="158" class="ct">manager</text>
+        <text x="147" y="171" class="ct">rejects</text>
+
+        <path d="M505,138 V199" class="ln" marker-end="url(#a-sm)"/>
+        <text x="517" y="162" class="ct">target</text>
+        <text x="517" y="175" class="ct">rejects</text>
+
+        <rect x="40" y="205" width="190" height="46" rx="23" class="critbox"/>
+        <text x="135" y="234" class="t" text-anchor="middle">manager_rejected</text>
+
+        <rect x="390" y="205" width="230" height="46" rx="23" class="critbox"/>
+        <text x="505" y="234" class="t" text-anchor="middle">rejected</text>
+      </svg>
+    </div>
+    <figcaption>
+      Accepting at target review also verifies <code>auth.branchId === targetBranchId</code> —
+      you cannot accept a transfer into a branch you aren't standing in. If the cluster
+      lacks transaction support this one <b>degrades instead of failing</b>: it runs the
+      moves without a session.
+    </figcaption>
+  </figure>
+
+  <div class="spine">
+    <h3>Inventory unit lifecycle</h3>
+    <p>
+      Individually tracked units carry a state, and every transition writes a matching
+      row to <code>stock_movements</code>. The movement type <em>is</em> the edge label.
+    </p>
+  </div>
+
+  <figure>
+    <div class="frame">
+      <svg class="dg" viewBox="0 0 1000 340" role="img" aria-label="Inventory unit state machine: available to sold, disposed, returned to supplier or transferred, with restore paths back to available.">
+        <defs>
+          <marker id="a-un" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="ah"/>
+          </marker>
+        </defs>
+
+        <!-- restore path, routed above everything -->
+        <text x="480" y="20" class="ct" text-anchor="middle">sale_return_restore · sale_cancel_restore · sale_restore</text>
+        <path d="M538,80 H512 V32 H294 V133" class="ln" marker-end="url(#a-un)"/>
+
+        <!-- entry -->
+        <rect x="16" y="146" width="150" height="46" rx="23" class="box"/>
+        <text x="91" y="174" class="t" text-anchor="middle">restock</text>
+        <path d="M166,169 H198" class="ln" marker-end="url(#a-un)"/>
+
+        <!-- hub -->
+        <rect x="204" y="139" width="180" height="60" rx="30" class="accbox"/>
+        <text x="294" y="165" class="t" text-anchor="middle">available</text>
+        <text x="294" y="182" class="s" text-anchor="middle">on the shelf</text>
+
+        <!-- fan-out bus -->
+        <path d="M384,169 H424" class="ln"/>
+        <path d="M424,80 V286" class="ln"/>
+        <path d="M424,80 H532" class="ln" marker-end="url(#a-un)"/>
+        <path d="M424,149 H532" class="ln" marker-end="url(#a-un)"/>
+        <path d="M424,218 H532" class="ln" marker-end="url(#a-un)"/>
+        <path d="M424,286 H532" class="ln" marker-end="url(#a-un)"/>
+
+        <text x="480" y="72"  class="ct" text-anchor="middle">sale</text>
+        <text x="480" y="141" class="ct" text-anchor="middle">dispose</text>
+        <text x="480" y="210" class="ct" text-anchor="middle">supplier_return</text>
+        <text x="480" y="278" class="ct" text-anchor="middle">transfer_out</text>
+
+        <rect x="538" y="56" width="230" height="48" rx="24" class="box"/>
+        <text x="653" y="85" class="t" text-anchor="middle">sold</text>
+
+        <rect x="538" y="125" width="230" height="48" rx="24" class="critbox"/>
+        <text x="653" y="154" class="t" text-anchor="middle">disposed</text>
+
+        <rect x="538" y="194" width="230" height="48" rx="24" class="critbox"/>
+        <text x="653" y="223" class="t" text-anchor="middle">returned_to_supplier</text>
+
+        <rect x="538" y="262" width="230" height="48" rx="24" class="box"/>
+        <text x="653" y="291" class="t" text-anchor="middle">transferred</text>
+
+        <text x="790" y="86"  class="s">reversible — the only one</text>
+        <text x="790" y="155" class="s">one-way door</text>
+        <text x="790" y="224" class="s">one-way door</text>
+        <text x="790" y="285" class="s">becomes 'available' again at</text>
+        <text x="790" y="299" class="s">the target branch (transfer_in)</text>
+      </svg>
+    </div>
+    <figcaption>
+      Nine movement types in total. <b>Only <code>sold</code> is reversible</b> — dispose
+      and supplier return are one-way doors.
+    </figcaption>
+  </figure>
+</section>
+
+<!-- ══ 7. PRINTING ══════════════════════════════════════════ -->
+<section class="sec bleed">
+  <div class="spine">
+    <div class="sec-head"><span class="tick">Printing</span><h2>Two mechanisms, and a default resolved in the wrong place</h2></div>
+    <p>
+      <code>POS_RECEIPT_PRINTER_MODE</code> picks between raw ESC/POS over TCP and the
+      OS print queue. The default is <code>auto</code> — and the main process, which
+      owns both mechanisms, doesn't resolve it. It only <em>reports</em> the mode;
+      <code>SalesView.jsx</code> decides.
+    </p>
+  </div>
+
+  <figure>
+    <div class="frame">
+      <svg class="dg" viewBox="0 0 1000 320" role="img" aria-label="Receipt printing decision tree across network, system and auto modes.">
+        <defs>
+          <marker id="a-pr" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="ah"/>
+          </marker>
+        </defs>
+
+        <rect x="16" y="126" width="180" height="60" rx="4" class="box"/>
+        <text x="32" y="150" class="t">receipt ready</text>
+        <text x="32" y="168" class="s">read PRINTER_MODE</text>
+
+        <path d="M196,156 H244 V56 H392" class="ln" marker-end="url(#a-pr)"/>
+        <path d="M244,156 H392" class="ln" marker-end="url(#a-pr)"/>
+        <path d="M244,156 V262 H392" class="ln" marker-end="url(#a-pr)"/>
+
+        <text x="252" y="48" class="ct">network</text>
+        <text x="252" y="148" class="ct">auto ← default</text>
+        <text x="252" y="254" class="ct">system</text>
+
+        <!-- network -->
+        <rect x="394" y="32" width="252" height="48" rx="4" class="box"/>
+        <text x="408" y="52" class="t">tcp|network|raw|wifi</text>
+        <text x="408" y="69" class="s">→ raw ESC/POS, no fallback</text>
+
+        <!-- auto -->
+        <rect x="394" y="126" width="252" height="62" rx="4" class="accbox"/>
+        <text x="408" y="147" class="t">resolved in SalesView.jsx</text>
+        <text x="408" y="165" class="s">no host &amp; discovery off → system</text>
+        <text x="408" y="180" class="s">else try thermal, catch → system</text>
+
+        <!-- system -->
+        <rect x="394" y="238" width="252" height="48" rx="4" class="box"/>
+        <text x="408" y="258" class="t">system | usb | windows</text>
+        <text x="408" y="275" class="s">os | pdf | queue</text>
+
+        <path d="M646,56 H676 V90 H694" class="ln" marker-end="url(#a-pr)"/>
+        <path d="M646,148 H676 V90" class="ln"/>
+        <path d="M646,172 H662 V234 H694" class="ln" marker-end="url(#a-pr)"/>
+        <path d="M646,262 H676 V234" class="ln"/>
+
+        <rect x="696" y="60" width="288" height="62" rx="4" class="box"/>
+        <text x="710" y="82" class="t">net.Socket → :9100</text>
+        <text x="710" y="100" class="s">8s timeout · scans the subnet in</text>
+        <text x="710" y="115" class="s">batches of 64 · 250ms · cached 5m</text>
+
+        <rect x="696" y="204" width="288" height="62" rx="4" class="box"/>
+        <text x="710" y="226" class="t">pdf-to-printer</text>
+        <text x="710" y="244" class="s">temp PDF → printer.print({silent})</text>
+        <text x="710" y="259" class="s">falls back to hidden BrowserWindow</text>
+      </svg>
+    </div>
+    <figcaption>
+      Autodiscovery is not free: it probes <b>every IPv4 host on every local subnet</b>.
+      On a large flat store network that's a lot of SYNs before the first receipt prints.
+    </figcaption>
+  </figure>
+</section>
+
+<!-- ══ 8. DATA ══════════════════════════════════════════════ -->
+<section class="sec bleed">
+  <div class="spine">
+    <div class="sec-head"><span class="tick">Data</span><h2>31 collections, grouped by who writes them</h2></div>
+    <p>
+      Counts are live from the <code>POSmaster</code> Atlas cluster. Collections marked
+      <em>txn</em> are only written inside a Mongo transaction and will 503 outright on
+      a standalone <code>mongod</code>.
+    </p>
+  </div>
+
+  <div class="cmap">
+    <div class="cgroup">
+      <h4>Selling</h4>
+      <span class="gsub">salesService · transactional</span>
+      <ul>
+        <li class="txn">sales <span class="n">432</span></li>
+        <li>sales_items <span class="n">28</span></li>
+        <li>return_items <span class="n">2</span></li>
+        <li>invoice_counters <span class="n">29</span></li>
+        <li>offers <span class="n">1</span></li>
+        <li>payment_methods <span class="n">7</span></li>
+      </ul>
+    </div>
+    <div class="cgroup">
+      <h4>Stock</h4>
+      <span class="gsub">restock · dispose · transfer</span>
+      <ul>
+        <li class="txn">stock_batches <span class="n">42</span></li>
+        <li>stock_movements <span class="n">101</span></li>
+        <li>inventory_units <span class="n">0</span></li>
+        <li>inventory_transfers <span class="n">41</span></li>
+        <li class="txn">restock_transactions <span class="n">87</span></li>
+        <li>restock_items <span class="n">18</span></li>
+        <li class="txn">disposed_items <span class="n">7</span></li>
+        <li>branch_item_shares <span class="n">6</span></li>
+        <li>inventory_counters <span class="n">1</span></li>
+      </ul>
+    </div>
+    <div class="cgroup">
+      <h4>Catalog</h4>
+      <span class="gsub">catalogService · generic CRUD</span>
+      <ul>
+        <li>categories <span class="n">1,115</span></li>
+        <li>items <span class="n">48</span></li>
+        <li>units_of_measurement <span class="n">16</span></li>
+        <li>suppliers <span class="n">5</span></li>
+        <li>branches <span class="n">6</span></li>
+        <li>organizations <span class="n">1</span></li>
+      </ul>
+    </div>
+    <div class="cgroup">
+      <h4>Identity</h4>
+      <span class="gsub">authService</span>
+      <ul>
+        <li>users <span class="n">19</span></li>
+        <li>sessions <span class="n">542</span></li>
+        <li>login_history <span class="n">234</span></li>
+        <li>user_settings <span class="n">11</span></li>
+        <li>app_settings <span class="n">14</span></li>
+      </ul>
+    </div>
+    <div class="cgroup">
+      <h4>Tea Coop</h4>
+      <span class="gsub">teaCoopSyncService · external</span>
+      <ul>
+        <li>tea_coop_members <span class="n">5,152</span></li>
+        <li>tea_coop_payments <span class="n">200</span></li>
+        <li>tea_coop_sync_runs <span class="n">0</span></li>
+      </ul>
+    </div>
+    <div class="cgroup">
+      <h4>Events</h4>
+      <span class="gsub">domainEvents</span>
+      <ul>
+        <li>domain_events <span class="n">2,047</span></li>
+        <li>audit_events <span class="n">0</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="spine">
+    <div class="note risk">
+      <span class="note-tag">Two zeros worth explaining</span>
+      <p>
+        <code>audit_events</code> is indexed on every connect and written by nothing —
+        it's dead. <code>tea_coop_sync_runs</code> is at zero for a subtler reason: the
+        sync-run row is only written on success, and a failure throws before reaching it.
+        <strong>Failed syncs leave no trace at all.</strong>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 9. FINDINGS ══════════════════════════════════════════ -->
+<section class="sec spine">
+  <div class="sec-head"><span class="tick">Findings</span><h2>Things worth knowing before you change anything</h2></div>
+  <p>Surfaced while mapping the system. Ordered by how much they'd cost you to discover the hard way.</p>
+
+  <div class="find">
+    <div class="find-top"><span class="pill crit">Security</span><span class="find-where">OnlineModeService.cjs · preload.cjs:28</span></div>
+    <p>
+      Two holes in the boundary the rest of the design depends on. Path B runs Mongo
+      aggregations straight from the main process with no auth check, scoped only by a
+      default org id. And <code>invoke</code>/<code>send</code> are exposed on the
+      contextBridge as unrestricted passthroughs to <em>any</em> channel — the careful
+      per-namespace API surface sits right next to a wildcard.
+    </p>
+  </div>
+
+  <div class="find">
+    <div class="find-top"><span class="pill crit">Dead path</span><span class="find-where">electron.cjs:1009 · createWindow()</span></div>
+    <p>
+      Logout-on-close never fires. The <code>close</code> handler that calls it lives
+      inside <code>createWindow()</code>, which startup never calls — the real window is
+      built inline at line 1255 and gets no listener. The AppSettings toggle persists a
+      setting no main-process code reads.
+    </p>
+  </div>
+
+  <div class="find">
+    <div class="find-top"><span class="pill warn">Silent wrong answer</span><span class="find-where">OnlineController.cjs:161–225</span></div>
+    <p>
+      Several legacy compat shims accept arguments and discard them.
+      <code>categories:search</code>, <code>users:search</code>,
+      <code>restocks:get-by-date-range</code> and <code>stock:get-low-stock</code> all
+      return the unfiltered full list. They don't error — they answer a different
+      question than the one asked.
+    </p>
+  </div>
+
+  <div class="find">
+    <div class="find-top"><span class="pill warn">Scale</span><span class="find-where">teaCoopSyncService.cjs:268</span></div>
+    <p>
+      Members sync requests <code>page=1&amp;limit=100</code> with no pagination loop.
+      There are 5,152 members in the collection today, so a full sync silently covers
+      about 2% of them.
+    </p>
+  </div>
+
+  <div class="find">
+    <div class="find-top"><span class="pill good">Cleanup</span><span class="find-where">utils/eventBroadcaster.cjs · frontend/renderer/ · hooks/useDataChangeListener.js</span></div>
+    <p>
+      Confirmed dead: a 270-line event broadcaster with zero requires, a
+      <code>renderer/</code> directory containing nothing but three <code>.DS_Store</code>
+      files, an unused data-change hook, two fully commented-out bill components, and
+      <code>audit_events</code>. <code>unregisterAllHandlers()</code> logs and returns
+      without removing a single handler.
+    </p>
+  </div>
+</section>
+
+<footer class="foot spine">
+  <p>
+    Mapped from <span class="mono">hotfix/online-version</span> @ <span class="mono">f63ebd1</span> · POSMaster V3 v1.6.4<br>
+    Structure verified by reading source; collection counts read live from the POSmaster cluster.<br>
+    File and line references were accurate at time of writing.
+  </p>
+</footer>
+
+</html>
