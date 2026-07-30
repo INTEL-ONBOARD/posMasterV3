@@ -16,6 +16,17 @@ const loginLimiter = rateLimit({
     message: { status: 'error', message: 'Too many login attempts. Please try again later.' }
 });
 
+// Throttle sensitive account-management writes (register / password changes /
+// resets) once the server is internet-facing, so a stolen token can't be used
+// to brute or spray these endpoints.
+const writeLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { status: 'error', message: 'Too many requests. Please try again later.' }
+});
+
 router.post('/auth/login', loginLimiter, asyncHandler(async (req, res) => {
     const result = await authService.login(req.body || {});
     if (!result.success) {
@@ -29,7 +40,7 @@ router.post('/auth/login', loginLimiter, asyncHandler(async (req, res) => {
 // required a valid session, not a manager role. Bootstrap of the very first
 // admin account happens via scripts/seed-online-admin.cjs (a direct DB
 // write), not through this endpoint, so gating it here doesn't block setup.
-router.post('/auth/register', requireAuth, requireManagerRole, asyncHandler(async (req, res) => {
+router.post('/auth/register', writeLimiter, requireAuth, requireManagerRole, asyncHandler(async (req, res) => {
     const result = await authService.register(req.body || {}, req.auth);
     return res.status(201).json(result);
 }));
@@ -39,7 +50,7 @@ router.post('/auth/logout', requireAuth, asyncHandler(async (req, res) => {
     return res.json(result);
 }));
 
-router.post('/auth/change-password', requireAuth, asyncHandler(async (req, res) => {
+router.post('/auth/change-password', writeLimiter, requireAuth, asyncHandler(async (req, res) => {
     const result = await authService.changePassword(req.auth, req.body || {});
     return res.json(result);
 }));
@@ -54,7 +65,7 @@ router.get('/auth/session', requireAuth, asyncHandler(async (req, res) => {
     });
 }));
 
-router.post('/users/:id/reset-password', requireAuth, asyncHandler(async (req, res) => {
+router.post('/users/:id/reset-password', writeLimiter, requireAuth, asyncHandler(async (req, res) => {
     const result = await authService.resetPassword(req.auth, req.params.id, req.body?.newPassword || req.body?.password);
     return res.json(result);
 }));
