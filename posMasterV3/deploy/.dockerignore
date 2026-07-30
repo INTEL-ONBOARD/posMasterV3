@@ -1,0 +1,6 @@
+# Keep secrets and runtime artifacts out of image layers.
+.env.online
+.env
+certs
+node_modules
+*.log

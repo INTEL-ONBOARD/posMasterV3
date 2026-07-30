@@ -1,0 +1,24 @@
+# Central POSMaster API — deployed as a container alongside the other
+# services on the host. Publishes HTTPS on 4100 directly (self-signed TLS the
+# desktop app trusts), matching the direct-port-publish pattern used by the
+# other apps on this box. Secrets come from .env.online at runtime (never baked
+# into the image); the TLS cert/key are mounted read-only.
+services:
+  posmaster-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: posmaster-api:latest
+    container_name: posmaster-api
+    restart: always
+    env_file: .env.online
+    ports:
+      - "4100:4100"
+    volumes:
+      - ./certs:/certs:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('https').get({host:'127.0.0.1',port:4100,path:'/api/ready',rejectUnauthorized:false},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
