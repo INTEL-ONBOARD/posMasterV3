@@ -8,6 +8,7 @@ const healthRoutes = require('./routes/health.cjs');
 const authRoutes = require('./routes/auth.cjs');
 const catalogRoutes = require('./routes/catalog.cjs');
 const teaCoopRoutes = require('./routes/teaCoop.cjs');
+const reportsRoutes = require('./routes/reports.cjs');
 
 // Origins are known ahead of time: the packaged app loads over file://,
 // the dev renderer loads from the Vite dev server. ONLINE_API_CORS_ORIGIN can
@@ -45,6 +46,7 @@ function createApp() {
     app.use('/api', authRoutes);
     app.use('/api', teaCoopRoutes);
     app.use('/api', catalogRoutes);
+    app.use('/api', reportsRoutes);
 
     app.use((req, res) => {
         res.status(404).json({ status: 'error', message: 'Route not found' });

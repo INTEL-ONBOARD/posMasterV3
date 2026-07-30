@@ -933,10 +933,45 @@ async function returnSaleItems(auth, saleId, body = {}) {
     return sale;
 }
 
+// Aggregate sales totals for the caller's org, excluding held tickets.
+// Ported from the former desktop-side direct-Mongo path so tills need no DB access.
+async function getSalesSummary(auth, { startDate = null, endDate = null } = {}) {
+    const db = getDb();
+    const dateRange = {};
+    if (startDate) dateRange.$gte = new Date(startDate);
+    if (endDate) dateRange.$lte = new Date(endDate);
+    const pipeline = [
+        { $addFields: { effectiveCreatedAt: { $ifNull: ['$createdAt', { $cond: [{ $ne: ['$created_at', null] }, { $toDate: '$created_at' }, null] }] } } },
+        { $match: { orgId: auth.orgId } },
+        { $match: { $or: [{ is_held: { $ne: true } }, { isHeld: { $ne: true } }, { status: { $ne: 'held' } }] } },
+        ...(Object.keys(dateRange).length ? [{ $match: { effectiveCreatedAt: dateRange } }] : []),
+        { $group: { _id: null, total_sales: { $sum: '$totalAmount' }, total_amount: { $sum: '$totalAmount' }, total_transactions: { $sum: 1 }, count: { $sum: 1 } } }
+    ];
+    const [summary] = await db.collection('sales').aggregate(pipeline).toArray();
+    return summary || { total_sales: 0, total_amount: 0, total_transactions: 0, count: 0 };
+}
+
+// Daily sales series for the last `days` days, org-scoped, excluding held tickets.
+async function getSalesDaily(auth, days = 30) {
+    const db = getDb();
+    const dayCount = Math.max(Number.parseInt(days, 10) || 30, 1);
+    const start = new Date();
+    start.setDate(start.getDate() - dayCount);
+    return db.collection('sales').aggregate([
+        { $addFields: { effectiveCreatedAt: { $ifNull: ['$createdAt', { $cond: [{ $ne: ['$created_at', null] }, { $toDate: '$created_at' }, null] }] } } },
+        { $match: { orgId: auth.orgId, effectiveCreatedAt: { $gte: start } } },
+        { $match: { $or: [{ is_held: { $ne: true } }, { isHeld: { $ne: true } }, { status: { $ne: 'held' } }] } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$effectiveCreatedAt' } }, total_amount: { $sum: '$totalAmount' }, total_sales: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+    ]).toArray();
+}
+
 module.exports = {
     generateInvoiceNo,
     createSale,
     completeHeldSale,
     cancelSale,
-    returnSaleItems
+    returnSaleItems,
+    getSalesSummary,
+    getSalesDaily
 };
