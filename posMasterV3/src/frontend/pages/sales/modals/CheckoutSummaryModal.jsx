@@ -323,14 +323,25 @@ function CheckoutSummaryModal({
     };
 
     try {
-      // Call the parent's confirm handler which processes the sale
-      await onConfirmSale(checkoutData);
+      // Call the parent's confirm handler which processes the sale.
+      // handleConfirmSale resolves with {success:false} on a *handled*
+      // failure (insufficient stock, missing ids, invalid qty) instead of
+      // throwing — and it has already surfaced its own error modal. So we
+      // only celebrate on a genuine success; otherwise a "Sale complete!"
+      // popup stacks on top of the "Failed" one the cashier just saw.
+      const result = await onConfirmSale(checkoutData);
 
-      // Show success animation - keep isProcessing true during animation
-      // to prevent user interaction, but it will be reset when modal closes
-      setSaleResult(checkoutData);
-      setShowSuccess(true);
-      // Don't set isProcessing to false here - the success animation handles the flow
+      if (result?.success) {
+        // Show success animation - keep isProcessing true during animation
+        // to prevent user interaction, but it will be reset when modal closes
+        setSaleResult(checkoutData);
+        setShowSuccess(true);
+        // Don't set isProcessing to false here - the success animation handles the flow
+      } else {
+        // Failure already reported by the parent; re-enable the button so
+        // the cashier can correct the cart and retry.
+        setIsProcessing(false);
+      }
     } catch (error) {
       console.error('Sale failed:', error);
       setIsProcessing(false);

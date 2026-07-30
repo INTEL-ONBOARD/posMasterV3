@@ -14,7 +14,7 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
   const [isLoadingBatches, setIsLoadingBatches] = useState(false);
   const quantityInputRef = useRef(null);
   const updateBtnRef = useRef(null);
-  const maxQuantityRef = useRef(999);
+  const maxQuantityRef = useRef(0);
   const uomSymbol = item?.uom?.symbol || item?.uom_symbol || '';
   const isDecimalQuantityUom = supportsDecimalSaleQuantity(uomSymbol);
 
@@ -124,7 +124,9 @@ function CartItemEditModal({ isOpen, closeModal, item, onUpdate, onRemove, onClo
 
   if (!isOpen || !item) return null;
 
-  const maxQuantity = selectedBatch?.qty || item.quantity || 999;
+  // Use ?? not || so a genuine 0-stock batch reads as 0, not the old 999
+  // fallback — a falsy 0 must not fall through to "unlimited".
+  const maxQuantity = selectedBatch?.qty ?? item.quantity ?? 0;
   maxQuantityRef.current = maxQuantity;
   const discountAmount = Math.max(0, Math.min(unitPrice, parseFloat(discount) || 0));
   const lineTotal = Math.max(0, (unitPrice - discountAmount) * quantity);

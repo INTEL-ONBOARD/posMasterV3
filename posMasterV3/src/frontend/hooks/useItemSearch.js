@@ -22,19 +22,16 @@ export function useItemSearch({ inventoryItems, categoriesData }) {
     return Array.from(new Set((categoriesData || []).map(c => c.type)));
   }, [categoriesData]);
 
-  const interpretAvailability = (item) => {
-    const a = item?.availability;
-    if (typeof a === "boolean") return a;
-    if (typeof a === "string") return a.toLowerCase() === "true";
-    return Boolean(a);
-  };
+  // A tile is sellable only if its batch actually holds stock. The stored
+  // `availability` flag can't be trusted for this — empty placeholder
+  // batches (e.g. INIT-*) ship with availability:true and quantity 0 — so
+  // we gate on real quantity instead. This is what keeps out-of-stock items
+  // and empty batches out of the cashier's reach entirely, rather than
+  // letting them be added and then rejected at checkout.
+  const hasSellableStock = (item) => Number(item?.quantity ?? item?.qty ?? 0) > 0;
 
   const filteredItems = inventoryItems.filter((item) => {
     const matchesCategory = searchCategory === "All" || (item?.category && item.category.type === searchCategory);
-    const isAvailable = interpretAvailability(item);
-    const matchesAvailability = searchAvailability === "All" ||
-      (searchAvailability === "Available" && isAvailable) ||
-      (searchAvailability === "Unavailable" && !isAvailable);
 
     // Search by item name, SKU (product code), or item_code
     const searchLower = (search || "").toLowerCase();
@@ -44,7 +41,7 @@ export function useItemSearch({ inventoryItems, categoriesData }) {
       (item?.item_code || "").toLowerCase().includes(searchLower) ||
       (item?.batch_code || "").toLowerCase().includes(searchLower);
 
-    return matchesCategory && matchesAvailability && matchesSearch;
+    return matchesCategory && hasSellableStock(item) && matchesSearch;
   });
 
   return {

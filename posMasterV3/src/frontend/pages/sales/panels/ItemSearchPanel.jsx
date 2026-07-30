@@ -102,13 +102,16 @@ export default function ItemSearchPanel({
             <span className="mt-1 text-xs text-slate-400">Try a different search or category</span>
           </div>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(158px,1fr))] gap-2.5">
+          // Fixed 208px tracks (not 1fr) so cards never stretch to fill a
+          // short row — a row of three looks identical to a full one.
+          // justify-start keeps them packed left instead of spread out.
+          <div className="grid grid-cols-[repeat(auto-fill,208px)] justify-start gap-3">
             {filteredItems.map((item, index) => (
               // Virtualize: off-screen tiles skip rendering/layout.
               // contain-intrinsic-size reserves the tile's box so the scrollbar stays stable.
               <div
                 key={`${item.id ?? item._id ?? item.sku ?? "item"}-${index}`}
-                style={{ contentVisibility: "auto", containIntrinsicSize: "158px 196px" }}
+                style={{ contentVisibility: "auto", containIntrinsicSize: "208px 172px" }}
               >
                 <SalesItemTile
                   item={item}
