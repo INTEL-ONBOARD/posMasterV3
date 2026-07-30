@@ -1,5 +1,17 @@
+const fs = require('fs');
 const { io } = require('socket.io-client');
 const { BrowserWindow } = require('electron');
+
+// Trust the bundled internal CA for the realtime (wss) connection when the
+// central server uses a self-signed cert. socket.io-client passes these
+// options through to the Node TLS transport.
+function tlsOptions() {
+    const caFile = process.env.POS_TLS_CA_FILE;
+    if (caFile && fs.existsSync(caFile)) {
+        return { ca: fs.readFileSync(caFile), rejectUnauthorized: true };
+    }
+    return {};
+}
 
 class OnlineRealtimeClient {
     constructor(options = {}) {
@@ -16,7 +28,8 @@ class OnlineRealtimeClient {
             transports: ['websocket'],
             reconnection: true,
             reconnectionAttempts: Infinity,
-            reconnectionDelay: 1000
+            reconnectionDelay: 1000,
+            ...tlsOptions()
         });
 
         this.socket.on('connect', () => this.broadcast('online:realtime-status', {

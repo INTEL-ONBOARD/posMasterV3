@@ -1,3 +1,26 @@
+const fs = require('fs');
+const { Agent } = require('undici');
+
+// When the central server uses a self-signed cert, POS_TLS_CA_FILE points at
+// the internal CA we bundle with the app. Build one undici dispatcher that
+// trusts that CA and reuse it for every request. We trust the specific CA
+// only — never a blanket rejectUnauthorized:false. Resolves to undefined when
+// no CA is configured (plain HTTP / system-trusted TLS), so fetch behaves
+// exactly as before.
+let _caDispatcher;
+function getCaDispatcher() {
+    if (_caDispatcher !== undefined) return _caDispatcher || undefined;
+    const caFile = process.env.POS_TLS_CA_FILE;
+    try {
+        _caDispatcher = caFile && fs.existsSync(caFile)
+            ? new Agent({ connect: { ca: fs.readFileSync(caFile) } })
+            : false;
+    } catch {
+        _caDispatcher = false;
+    }
+    return _caDispatcher || undefined;
+}
+
 class OnlineApiClient {
     constructor(options = {}) {
         this.baseUrl = options.baseUrl || process.env.POS_ONLINE_API_URL || 'http://localhost:4100/api';
@@ -43,6 +66,7 @@ class OnlineApiClient {
                     ...options,
                     headers,
                     method,
+                    dispatcher: getCaDispatcher(),
                     body: options.body && typeof options.body !== 'string'
                         ? JSON.stringify(options.body)
                         : options.body
