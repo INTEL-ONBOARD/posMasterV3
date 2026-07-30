@@ -1,9 +1,26 @@
-# Central POSMaster API — deployed as a container alongside the other
-# services on the host. Publishes HTTPS on 4100 directly (self-signed TLS the
-# desktop app trusts), matching the direct-port-publish pattern used by the
-# other apps on this box. Secrets come from .env.online at runtime (never baked
-# into the image); the TLS cert/key are mounted read-only.
+# Central POSMaster stack: a dedicated MongoDB + the API server.
+#
+# posmaster-mongo is INTERNAL ONLY (no published ports) — reachable only by
+# posmaster-api over the compose network, never from the internet. The API
+# publishes HTTPS on 4100 (self-signed TLS the desktop trusts). Secrets come
+# from env files at runtime (never baked into images).
 services:
+  posmaster-mongo:
+    image: mongo:7
+    container_name: posmaster-mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    volumes:
+      - posmaster_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   posmaster-api:
     build:
       context: .
@@ -12,6 +29,8 @@ services:
     container_name: posmaster-api
     restart: always
     env_file: .env.online
+    depends_on:
+      - posmaster-mongo
     ports:
       - "4100:4100"
     volumes:
@@ -22,3 +41,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+
+volumes:
+  posmaster_mongo_data:
