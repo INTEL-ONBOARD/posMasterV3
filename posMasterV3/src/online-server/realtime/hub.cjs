@@ -52,6 +52,13 @@ function createRealtimeServer(httpServer) {
     return io;
 }
 
+// Entities whose named events describe one specific user's own session or
+// account state. These must reach only that user's room. Fanning
+// `session.replaced` out to the branch/org room made every other client in
+// the branch believe it had been kicked, so one person signing in logged
+// everybody else out.
+const USER_PRIVATE_ENTITIES = new Set(['sessions']);
+
 function emitDomainEvent(event) {
     if (!io) return;
 
@@ -62,12 +69,18 @@ function emitDomainEvent(event) {
     if (event.userId) {
         io.to(`user:${event.userId}`).emit(event.event, event);
     }
-    if (event.branchId) {
-        io.to(`branch:${event.branchId}`).emit(event.event, event);
-    } else if (event.orgId) {
-        io.to(`org:${event.orgId}`).emit(event.event, event);
+
+    if (!USER_PRIVATE_ENTITIES.has(event.entity)) {
+        if (event.branchId) {
+            io.to(`branch:${event.branchId}`).emit(event.event, event);
+        } else if (event.orgId) {
+            io.to(`org:${event.orgId}`).emit(event.event, event);
+        }
     }
 
+    // Cache-invalidation channel, deliberately still org-wide: DataStore keys
+    // off it to refresh lists (including an admin's active-sessions view), and
+    // nothing in the client wires `domain.event` to a logout path.
     if (event.orgId) {
         io.to(`org:${event.orgId}`).emit('domain.event', event);
     }

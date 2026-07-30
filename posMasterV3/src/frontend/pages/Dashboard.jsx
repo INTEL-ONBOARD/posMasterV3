@@ -205,6 +205,15 @@ function Dashboard() {
         if (!isMountedRef.current) return;
         if (eventName === 'session.replaced') {
           console.log('[Dashboard] Online session replaced:', payload);
+          // Only react when it was THIS user's session that got replaced.
+          // The event can still reach other clients (older builds fanned it
+          // out branch-wide), and without this check every user in the branch
+          // logs themselves out whenever anyone else signs in.
+          const currentUserId = sessionStorage.getItem('_id');
+          const replacedUserId = payload?.userId != null ? String(payload.userId) : null;
+          if (!currentUserId || !replacedUserId || replacedUserId !== String(currentUserId)) {
+            return;
+          }
           setShowKickedModal(true);
         }
       });
@@ -221,13 +230,31 @@ function Dashboard() {
     };
   }, [handleForcedLogout]);
 
-  // Auto-enforce kicked modal: force logout after 8 seconds if user doesn't click OK
+  // Auto-enforce kicked modal: force logout after 8 seconds if user doesn't click OK.
+  // Confirms with the server first — a modal shown in error must never end a
+  // session that is actually still valid.
   useEffect(() => {
     if (!showKickedModal) return;
-    const timer = setTimeout(() => {
-      handleForcedLogout('Logged out - another device signed in');
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
+      try {
+        const response = await window.electronAPI?.online?.validateSession?.();
+        const stillValid = response?.status === 'success' && response?.data?.valid !== false;
+        if (cancelled) return;
+        if (stillValid) {
+          console.warn('[Dashboard] Kick signal was stale — session still valid, staying signed in.');
+          setShowKickedModal(false);
+          return;
+        }
+      } catch {
+        // Server unreachable: fall through and log out. For single-session
+        // enforcement, failing closed is safer than assuming we are still valid.
+      }
+      if (!cancelled) handleForcedLogout('Logged out - another device signed in');
     }, 8000);
-    return () => clearTimeout(timer);
+
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [showKickedModal, handleForcedLogout]);
 
   const style = getStatusStyle(currentStatus.type, currentStatus.isLoading);
