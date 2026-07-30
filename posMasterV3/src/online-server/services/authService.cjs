@@ -340,11 +340,34 @@ async function resetPassword(auth, targetUserId, newPassword) {
     };
 }
 
+// List active sessions for the caller's org (manager view). tokenHash is
+// stripped so the response never carries session-bearing material.
+async function listActiveSessions(auth, { limit = 100, skip = 0 } = {}) {
+    const db = getDb();
+    const cappedLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 100, 1), 500);
+    const safeSkip = Math.max(Number.parseInt(skip, 10) || 0, 0);
+    const sessions = await db.collection('sessions')
+        .find({ active: true, orgId: auth.orgId })
+        .sort({ lastSeenAt: -1, createdAt: -1 })
+        .skip(safeSkip)
+        .limit(cappedLimit)
+        .toArray();
+    return sessions.map(({ tokenHash, ...safe }) => safe);
+}
+
+async function countActiveSessions(auth) {
+    const db = getDb();
+    const count = await db.collection('sessions').countDocuments({ active: true, orgId: auth.orgId });
+    return { count };
+}
+
 module.exports = {
     register,
     login,
     validateSession,
     logout,
     changePassword,
-    resetPassword
+    resetPassword,
+    listActiveSessions,
+    countActiveSessions
 };
