@@ -28,6 +28,10 @@ function resolveJwtSecret() {
         if (explicit.length < 32) {
             throw new Error(`JWT_SECRET must be at least 32 characters long. Generate one with: ${generateHint}`);
         }
+        const placeholders = ['replace-with-a-long-random-secret', 'dev-only-change-this-secret'];
+        if (placeholders.includes(explicit)) {
+            throw new Error(`JWT_SECRET is a known placeholder value. Set a real secret. Generate one with: ${generateHint}`);
+        }
         return explicit;
     }
 
