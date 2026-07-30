@@ -537,6 +537,17 @@ function applyBundledOnlineDefaults() {
     process.env.POS_ONLINE_API_URL || `http://${clientHost}:${port}/api`;
   process.env.POS_ONLINE_REALTIME_URL =
     process.env.POS_ONLINE_REALTIME_URL || `http://${clientHost}:${port}`;
+
+  // POS_TLS_CA_FILE ships as a bare filename (the CA cert is bundled as an
+  // extraResource). Resolve it to the packaged resources path so the HTTP and
+  // socket clients can trust the central server's self-signed certificate.
+  const caFile = process.env.POS_TLS_CA_FILE;
+  if (caFile && !path.isAbsolute(caFile) && process.resourcesPath) {
+    const resolvedCa = path.join(process.resourcesPath, caFile);
+    if (fsSync.existsSync(resolvedCa)) {
+      process.env.POS_TLS_CA_FILE = resolvedCa;
+    }
+  }
 }
 
 function prepareBundledOnlineEnvironment() {

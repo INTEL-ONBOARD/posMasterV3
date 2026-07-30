@@ -61,6 +61,10 @@
       {
         "from": "online-runtime-config.json",
         "to": "online-runtime-config.json"
+      },
+      {
+        "from": "deploy/pos-ca.pem",
+        "to": "pos-ca.pem"
       }
     ],
     "publish": {
