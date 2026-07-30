@@ -63,6 +63,8 @@ const config = {
     jwtSecret: resolveJwtSecret(),
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
     defaultOrgId: process.env.POS_ORG_ID || 'default-org',
+    tlsCertFile: process.env.POS_TLS_CERT_FILE || '',
+    tlsKeyFile: process.env.POS_TLS_KEY_FILE || '',
     teaCoopApiUrl: process.env.TEA_COOP_API_URL || 'https://api.teacoop.lk/api/v1',
     teaCoopApiToken: process.env.TEA_COOP_API_TOKEN || '',
     teaCoopAuthPath: process.env.TEA_COOP_AUTH_PATH || '/thirdPartyLogin',

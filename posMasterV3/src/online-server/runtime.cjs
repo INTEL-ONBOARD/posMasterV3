@@ -1,4 +1,6 @@
 const http = require('http');
+const https = require('https');
+const fs = require('fs');
 const { config } = require('./config.cjs');
 const { connectMongo, closeMongo } = require('./db/mongo.cjs');
 const { createApp } = require('./app.cjs');
@@ -25,7 +27,18 @@ async function startOnlineServer() {
         }
 
         const app = createApp();
-        server = http.createServer(app);
+        // Serve HTTPS directly when a TLS cert/key are configured (the central
+        // on-prem deployment uses a self-signed cert the desktop trusts). Falls
+        // back to HTTP for local dev and reverse-proxy-terminated setups.
+        if (config.tlsCertFile && config.tlsKeyFile) {
+            server = https.createServer({
+                cert: fs.readFileSync(config.tlsCertFile),
+                key: fs.readFileSync(config.tlsKeyFile)
+            }, app);
+            console.log('[OnlineAPI] TLS enabled (serving HTTPS)');
+        } else {
+            server = http.createServer(app);
+        }
         const io = createRealtimeServer(server);
 
         await new Promise((resolve, reject) => {
