@@ -107,6 +107,26 @@ class OnlineApiClient {
         return this.request('/ready');
     }
 
+    getSalesSummary({ startDate, endDate } = {}) {
+        const q = new URLSearchParams();
+        if (startDate) q.set('startDate', startDate);
+        if (endDate) q.set('endDate', endDate);
+        const suffix = q.toString() ? `?${q}` : '';
+        return this.request(`/sales/summary${suffix}`);
+    }
+
+    getSalesDaily(days = 30) {
+        return this.request(`/sales/daily?days=${encodeURIComponent(days)}`);
+    }
+
+    getActiveSessions(limit = 100, skip = 0) {
+        return this.request(`/sessions/active?limit=${encodeURIComponent(limit)}&skip=${encodeURIComponent(skip)}`);
+    }
+
+    countActiveSessions() {
+        return this.request('/sessions/active/count');
+    }
+
     async login(email, password, deviceInfo = null) {
         const result = await this.request('/auth/login', {
             method: 'POST',
