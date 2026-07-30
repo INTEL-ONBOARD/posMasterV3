@@ -295,7 +295,11 @@ function Dashboard() {
       {/* Main content area */}
       <div className="flex flex-1">
         <Sidebar />
-        <main className="flex-1 ml-[128px] pb-10">
+        {/* min-w-0 lets this shrink below its content's intrinsic width. A
+            flex item defaults to min-width:auto, so without it a wide child
+            (e.g. the sales item grid) inflates <main> past the viewport and
+            pushes the rest of that page's layout off-screen. */}
+        <main className="flex-1 min-w-0 ml-[128px] pb-10">
           <Outlet context={{ setActiveSection }} />
         </main>
       </div>

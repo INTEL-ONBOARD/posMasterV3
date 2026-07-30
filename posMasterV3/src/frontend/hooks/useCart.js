@@ -135,6 +135,20 @@ export function useCart({ inventoryItems, isActive, setSearch }) {
     return total + (discountedPrice * item.customer_quantity);
   }, 0);
 
+  // Inline +/- on a cart row. Mirrors loadItemtoList's stepping rules so a
+  // KG/Liter line moves in 0.5 increments while everything else stays whole,
+  // and never drops below one step (removing is a separate explicit action).
+  const changeQuantity = (id, direction) => {
+    setSelectedItems(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      const canUseDecimalQuantity = supportsDecimalSaleQuantity(item);
+      const step = canUseDecimalQuantity ? 0.5 : 1;
+      const next = (Number(item.customer_quantity) || 0) + (direction * step);
+      const rounded = canUseDecimalQuantity ? Math.round(next * 100) / 100 : Math.round(next);
+      return { ...item, customer_quantity: Math.max(step, rounded) };
+    }));
+  };
+
   const handleTableRowClick = (item) => {
     setSelectedCartItem(item);
     setCartItemModal(true);
@@ -173,6 +187,7 @@ export function useCart({ inventoryItems, isActive, setSearch }) {
     buildCartItem,
     loadItemtoList,
     stockTotal,
+    changeQuantity,
     handleTableRowClick,
     handleItemCardClick,
     handleCartItemUpdate

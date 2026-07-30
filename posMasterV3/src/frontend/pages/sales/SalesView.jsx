@@ -11,7 +11,7 @@ import CartItemEditModal from "./modals/CartItemEditModal.jsx";
 import CheckoutSummaryModal from "./modals/CheckoutSummaryModal.jsx";
 import ClearCartConfirmModal from "./modals/ClearCartConfirmModal.jsx";
 import ReceiptPreviewModal from "./modals/ReceiptPreviewModal.jsx";
-import SalesHeaderBar from "./panels/SalesHeaderBar.jsx";
+import CartRailHeader from "./panels/CartRailHeader.jsx";
 import CartListPanel from "./panels/CartListPanel.jsx";
 import ItemSearchPanel from "./panels/ItemSearchPanel.jsx";
 import CartActionsFooter from "./panels/CartActionsFooter.jsx";
@@ -298,6 +298,12 @@ export default function SalesView({ isActive }) {
   };
 
   const hasItems = cart.selectedItems.length > 0;
+  // Sum of per-line discounts already applied in the cart. Distinct from the
+  // final checkout discount, which is entered later in the checkout modal.
+  const lineDiscountTotal = useMemo(() => cart.selectedItems.reduce(
+    (sum, item) => sum + ((Number(item.customer_discount) || 0) * (Number(item.customer_quantity) || 0)),
+    0
+  ), [cart.selectedItems]);
   const canPreviewReceipt = hasItems || Boolean(receiptPrinting.lastReceiptData);
   const receiptPreviewBillData = receiptPrinting.receiptPreviewData || receiptPrinting.lastReceiptData || receiptPrinting.billData;
 
@@ -308,49 +314,49 @@ export default function SalesView({ isActive }) {
         <BillContent ref={receiptPrinting.billRef} billData={receiptPrinting.billData} variant={receiptPrinting.receiptVariant} />
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 h-full flex flex-col p-4 min-w-0 overflow-hidden">
-        {/* Header Section */}
-        <SalesHeaderBar
+      {/* Catalogue — the widest surface, because finding an item is the
+          action a cashier repeats most often. */}
+      <ItemSearchPanel
+        searchInputRef={searchInputRef}
+        search={itemSearch.search}
+        onSearchChange={itemSearch.handleSearch}
+        onSearchKeyDown={handleSearchInputKeyDown}
+        searchCategory={itemSearch.searchCategory}
+        onCategoryChange={itemSearch.setSearchCategory}
+        uniqueCategoryTypes={itemSearch.uniqueCategoryTypes}
+        isLoading={isLoading}
+        searchLoading={itemSearch.searchLoading}
+        filteredItems={itemSearch.filteredItems}
+        onItemOpen={cart.handleItemCardClick}
+        onRefresh={() => refetchItems()}
+        lastScannedCode={cart.lastScannedCode}
+      />
+
+      {/* Cart rail */}
+      <aside className="flex h-full w-[392px] shrink-0 flex-col border-l border-slate-200 bg-white">
+        <CartRailHeader
           selectedMember={selectedMember}
           onOpenMemberModal={() => setModal(true)}
           formattedDate={formattedDate}
           preparedBy={preparedBy}
           invoiceNo={invoiceNo}
-          lastScannedCode={cart.lastScannedCode}
-          onRefresh={() => refetchItems()}
           onClearAll={openClearConfirm}
+          hasItems={hasItems}
         />
 
-        {/* Items Table */}
         <CartListPanel
           selectedItems={cart.selectedItems}
           onRowClick={cart.handleTableRowClick}
           onRemoveItem={cart.removeItemFromList}
+          onChangeQuantity={cart.changeQuantity}
           getCartUnitPrice={cart.getCartUnitPrice}
           formatCurrency={formatCurrency}
-        />
-      </div>
-
-      {/* Right Sidebar - Action Cards */}
-      <div className="w-[320px] bg-gradient-to-b from-slate-100 to-slate-50 h-full p-4 flex flex-col gap-3 shrink-0 border-l border-slate-200">
-        <ItemSearchPanel
-          searchInputRef={searchInputRef}
-          search={itemSearch.search}
-          onSearchChange={itemSearch.handleSearch}
-          onSearchKeyDown={handleSearchInputKeyDown}
-          searchCategory={itemSearch.searchCategory}
-          onCategoryChange={itemSearch.setSearchCategory}
-          uniqueCategoryTypes={itemSearch.uniqueCategoryTypes}
-          isLoading={isLoading}
-          searchLoading={itemSearch.searchLoading}
-          filteredItems={itemSearch.filteredItems}
-          onItemOpen={cart.handleItemCardClick}
         />
 
         <CartActionsFooter
           itemCount={cart.selectedItems.length}
           stockTotal={cart.stockTotal}
+          discountTotal={lineDiscountTotal}
           formatCurrency={formatCurrency}
           onClearAll={openClearConfirm}
           hasItems={hasItems}
@@ -363,7 +369,7 @@ export default function SalesView({ isActive }) {
           proceedBtnRef={proceedBtnRef}
           onProceed={checkout.handleProceedClick}
         />
-      </div>
+      </aside>
 
       {/* Member Selection Modal */}
       <MemEvaluationModal
