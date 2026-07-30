@@ -3736,6 +3736,10 @@ const installOnlineOnlyOverrides = () => {
         getAllMembers: async () => teaCoopApi.getAll(),
         getMemberById: async (memberId) => teaCoopApi.getById(memberId),
         searchMembers: async (term) => teaCoopApi.search(term),
+        // One page of members, filtered server-side. Powers the member picker's
+        // type-to-search + load-as-you-scroll instead of loading all 6000+ rows.
+        searchMembersPaged: async (term = '', limit = 40, skip = 0) =>
+            fetchCollectionPage('tea_coop_members', { search: term || '', limit, skip }),
         getPaymentHistory: async (memberId) => fetchAllCollection('tea_coop_payments', { member_id: memberId }),
         syncMembers: async () => onlineCall((api) => api.syncTeaCoop()),
         syncPayments: async (memberId, options = {}) => onlineCall((api) => api.syncTeaCoopPayments(memberId, options)),

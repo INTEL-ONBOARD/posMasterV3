@@ -1,10 +1,11 @@
 import React from "react";
-import { Package } from "lucide-react";
-import SalesItemCard from "../../../components/SalesItemCard";
+import { Package, RefreshCw, ScanLine, Search } from "lucide-react";
+import SalesItemTile from "../../../components/SalesItemTile";
 
 /**
- * Right-sidebar item picker: search box + category filter + the scrollable
- * list of available items (SalesItemCard grid).
+ * Main catalogue surface of the sales terminal: search/scan bar, category
+ * filter pills, and the item grid. This owns the widest part of the screen
+ * because finding an item is the action a cashier repeats most.
  */
 export default function ItemSearchPanel({
   searchInputRef,
@@ -17,60 +18,106 @@ export default function ItemSearchPanel({
   isLoading,
   searchLoading,
   filteredItems,
-  onItemOpen
+  onItemOpen,
+  onRefresh,
+  lastScannedCode
 }) {
+  // Rendered as a single horizontally-scrolling row rather than a wrapping
+  // block so an org with many categories can't push the grid off-screen.
+  const categories = ["All", ...uniqueCategoryTypes];
+
   return (
-    <div className="flex-1 overflow-y-auto">
-      {/* Items List View */}
-      <div className="flex flex-col h-full bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
-        {/* Search Header */}
-        <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-          <div className="mb-3">
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={search}
-              onChange={onSearchChange}
-              placeholder="Search by name, SKU, or code..."
-              className="w-full pl-4 pr-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition-all"
-              onKeyDown={onSearchKeyDown}
-            />
-          </div>
-          <select
-            value={searchCategory}
-            onChange={(e) => onCategoryChange(e.target.value)}
-            className="w-full px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition-all"
-          >
-            <option value="All">All Categories</option>
-            {uniqueCategoryTypes.map((type, index) => (
-              <option key={`${type || "category"}-${index}`} value={type}>{type}</option>
-            ))}
-          </select>
+    // min-w-0 is load-bearing: a flex item defaults to min-width:auto, which
+    // stops it shrinking below its content width. Without it the item grid
+    // resolves against an unbounded width, never wraps, and pushes the cart
+    // rail off-screen.
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      {/* Search / scan bar */}
+      <div className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-2.5">
+        <div className="relative max-w-[560px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={search}
+            onChange={onSearchChange}
+            onKeyDown={onSearchKeyDown}
+            placeholder="Search or scan — name, SKU, or code"
+            className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-[13.5px] font-medium text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#1A318C] focus:ring-2 focus:ring-[#1A318C]/10"
+          />
         </div>
 
-        {/* Items List */}
-        <div className="flex-1 overflow-y-auto p-3">
-          {(isLoading || searchLoading) ? (
-            <div className="flex flex-col items-center justify-center h-full">
-              <div className="w-12 h-12 border-4 border-slate-200 border-t-teal-500 rounded-full animate-spin mb-4"></div>
-              <span className="text-slate-500 text-sm font-medium">Loading items...</span>
+        <button
+          type="button"
+          onClick={onRefresh}
+          title="Refresh items"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </button>
+
+        {lastScannedCode && (
+          <div className="flex shrink-0 items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-emerald-700">
+            <ScanLine className="h-4 w-4" />
+            <span className="font-mono text-[11.5px] font-semibold">{lastScannedCode}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Category pills */}
+      <div className="flex shrink-0 gap-1.5 overflow-x-auto px-4 py-2.5">
+        {categories.map((type, index) => {
+          const active = searchCategory === type;
+          return (
+            <button
+              key={`${type || "category"}-${index}`}
+              type="button"
+              onClick={() => onCategoryChange(type)}
+              aria-pressed={active}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                active
+                  ? "border-[#1A318C] bg-[#1A318C] text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              {type === "All" ? "All items" : type}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Item grid */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+        {(isLoading || searchLoading) ? (
+          <div className="flex h-full flex-col items-center justify-center">
+            <div className="mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-[#1A318C]" />
+            <span className="text-sm font-medium text-slate-500">Loading items...</span>
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center py-12 text-slate-400">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
+              <Package className="h-8 w-8 text-slate-300" />
             </div>
-          ) : filteredItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400 py-12">
-              <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-                <Package className="w-8 h-8 text-slate-300" />
+            <span className="text-sm font-semibold text-slate-500">No items found</span>
+            <span className="mt-1 text-xs text-slate-400">Try a different search or category</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(158px,1fr))] gap-2.5">
+            {filteredItems.map((item, index) => (
+              // Virtualize: off-screen tiles skip rendering/layout.
+              // contain-intrinsic-size reserves the tile's box so the scrollbar stays stable.
+              <div
+                key={`${item.id ?? item._id ?? item.sku ?? "item"}-${index}`}
+                style={{ contentVisibility: "auto", containIntrinsicSize: "158px 196px" }}
+              >
+                <SalesItemTile
+                  item={item}
+                  onOpen={() => onItemOpen(item)}
+                />
               </div>
-              <span className="text-sm font-semibold text-slate-500">No items found</span>
-              <span className="text-xs text-slate-400 mt-1">Try a different search</span>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredItems.map((item, index) => (
-                <SalesItemCard key={`${item.id ?? item._id ?? item.sku ?? "item"}-${index}`} item={item} onOpen={() => onItemOpen(item)} />
-              ))}
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

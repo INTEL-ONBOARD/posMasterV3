@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Search, X, User, CreditCard, Clock, AlertTriangle, CheckCircle, UserCheck, Users, Leaf, Banknote, RefreshCw, Plus, Minus } from "lucide-react";
 import { teaCoopApi } from "../../../api/localApi";
-import { useReactiveData, TABLES } from "../../../store";
+
+const MEMBER_PAGE_SIZE = 40;
 
 function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember }) {
   const [_activeTab, setActiveTab] = useState("search"); // search | details
@@ -13,27 +14,51 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncError, setSyncError] = useState("");
 
-  // Use reactive data hook for Tea Coop members
-  const { data: members, loading: isLoading, refetch } = useReactiveData(
-    TABLES.TEA_COOP_MEMBERS,
-    null,
-    { enabled: isOpen }
-  );
+  // Server-paged members: type-to-search + load-as-you-scroll, so the picker
+  // never pulls all 6000+ members at once.
+  const [members, setMembers] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const skipRef = useRef(0);
+  const reqIdRef = useRef(0);
 
-  // Filter members based on search using useMemo
-  const filteredMembers = useMemo(() => {
-    const safeMembers = members || [];
-    if (searchTerm.trim() === "") {
-      return safeMembers;
+  const loadMembers = useCallback(async (term, reset) => {
+    const myReq = ++reqIdRef.current;
+    if (reset) { setIsLoading(true); skipRef.current = 0; } else { setIsLoadingMore(true); }
+    try {
+      const skip = reset ? 0 : skipRef.current;
+      const res = await teaCoopApi.searchMembersPaged(term, MEMBER_PAGE_SIZE, skip);
+      if (myReq !== reqIdRef.current) return; // a newer request superseded this one
+      const rows = Array.isArray(res?.data) ? res.data : [];
+      setMembers((prev) => (reset ? rows : [...prev, ...rows]));
+      skipRef.current = skip + rows.length;
+      setHasMore(rows.length === MEMBER_PAGE_SIZE);
+    } catch (error) {
+      console.error("[MemEvaluationModal] Error loading members:", error);
+      if (myReq === reqIdRef.current && reset) { setMembers([]); setHasMore(false); }
+    } finally {
+      if (myReq === reqIdRef.current) { setIsLoading(false); setIsLoadingMore(false); }
     }
-    const term = searchTerm.toLowerCase();
-    return safeMembers.filter(m =>
-      (m.full_name || "").toLowerCase().includes(term) ||
-      (m.member_no || "").toLowerCase().includes(term) ||
-      (m.member_id || "").toLowerCase().includes(term) ||
-      (m.contact || "").includes(term)
-    );
-  }, [searchTerm, members]);
+  }, []);
+
+  // (Re)load the first page when the modal opens or the search term changes,
+  // debounced so typing does not fire a request per keystroke.
+  useEffect(() => {
+    if (!isOpen) return;
+    const term = searchTerm.trim();
+    const timer = setTimeout(() => loadMembers(term, true), term ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [isOpen, searchTerm, loadMembers]);
+
+  // Infinite scroll: fetch the next page as the list nears the bottom.
+  const handleListScroll = (e) => {
+    const el = e.currentTarget;
+    if (hasMore && !isLoading && !isLoadingMore &&
+        el.scrollHeight - el.scrollTop - el.clientHeight < 240) {
+      loadMembers(searchTerm.trim(), false);
+    }
+  };
 
   // Sync members from external API with progress simulation
   const handleSyncMembers = async () => {
@@ -55,7 +80,7 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
         throw new Error(result?.message || "Tea Coop sync failed");
       }
       setSyncProgress(100);
-      await refetch();
+      await loadMembers(searchTerm.trim(), true);
     } catch (error) {
       console.error("[MemEvaluationModal] Error syncing members:", error);
       setSyncError(error?.message || "Tea Coop sync failed");
@@ -192,7 +217,7 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-gray-800">Select Member</h2>
                 <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
-                  {filteredMembers.length}
+                  {members.length}{hasMore ? "+" : ""}
                 </span>
               </div>
               <button
@@ -275,20 +300,20 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
           </div>
 
           {/* Members List */}
-          <div className="flex-1 overflow-y-auto px-4 pb-4">
+          <div className="flex-1 overflow-y-auto px-4 pb-4" onScroll={handleListScroll}>
             {isLoading ? (
               <div className="flex flex-col items-center justify-center h-40">
                 <div className="w-10 h-10 border-3 border-gray-200 border-t-[#1A318C] rounded-full animate-spin mb-3"></div>
                 <span className="text-sm text-gray-500">Loading members...</span>
               </div>
-            ) : filteredMembers.length === 0 ? (
+            ) : members.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-40 text-gray-400">
                 <Users className="w-12 h-12 mb-3 text-gray-200" />
                 <span className="text-sm">No members found</span>
               </div>
             ) : (
               <div className="space-y-2">
-                {filteredMembers.map((member, index) => {
+                {members.map((member, index) => {
                   // Use member_no as the unique identifier since id/_id may be undefined
                   const memberId = member.member_no || member.id || member._id;
                   const selectedId = selectedMember?.member_no || selectedMember?.id || selectedMember?._id;
@@ -297,6 +322,8 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
                     <button
                       key={`${memberId || member.full_name || "member"}-${index}`}
                       onClick={() => handleSelectMember(member)}
+                      // Virtualize: skip rendering rows scrolled out of view.
+                      style={{ contentVisibility: "auto", containIntrinsicSize: "72px" }}
                       className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 ${
                         isSelected
                           ? "border-emerald-500 bg-emerald-50 shadow-md shadow-emerald-100"
@@ -328,6 +355,15 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
                     </button>
                   );
                 })}
+
+                {isLoadingMore && (
+                  <div className="py-3 flex justify-center">
+                    <div className="w-6 h-6 border-2 border-gray-200 border-t-[#1A318C] rounded-full animate-spin"></div>
+                  </div>
+                )}
+                {!hasMore && members.length > 0 && (
+                  <p className="text-center text-xs text-gray-400 py-3">— end of list —</p>
+                )}
               </div>
             )}
           </div>

@@ -87,7 +87,7 @@ const SEARCH_FIELDS = {
     login_history: ['email', 'username', 'deviceName', 'device_name', 'status'],
     offers: ['name', 'description', 'code'],
     disposed_items: ['sku', 'batchCode', 'batch_code', 'item_name'],
-    tea_coop_members: ['name', 'full_name', 'member_no', 'memberNo']
+    tea_coop_members: ['name', 'full_name', 'fullName', 'member_no', 'memberNo', 'member_id', 'memberId', 'contact', 'phone']
 };
 
 const USER_SECRET_FIELDS = [
