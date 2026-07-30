@@ -610,6 +610,14 @@ async function startBundledOnlineBackend() {
 
   prepareBundledOnlineEnvironment();
 
+  // Remote/central-server mode: the app talks to a deployed server over the
+  // network (POS_ONLINE_API_URL), so there is no local server to embed. Return
+  // before setting bundledOnlineBackendStarted so shutdown stays a no-op.
+  if (String(process.env.POS_ONLINE_EMBED_SERVER).toLowerCase() === "false") {
+    console.log("[Electron] Embedded server disabled; using remote POS_ONLINE_API_URL");
+    return;
+  }
+
   if (await waitForOnlineBackendReady(1000)) {
     console.log("[Electron] Online backend already reachable");
     bundledOnlineBackendStarted = true;
