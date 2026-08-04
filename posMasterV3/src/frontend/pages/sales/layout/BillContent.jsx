@@ -75,7 +75,7 @@ const BillContent = React.forwardRef(({ billData = {}, variant = "office" }, ref
       className="box-border w-[512px] bg-white px-5 pt-6 pb-10 text-black font-sans flex flex-col leading-[1.4]"
     >
       {/* ---------- header ---------- */}
-      <div className="flex flex-col items-center justify-center text-center">
+      <div className="flex flex-col items-center justify-center text-center mb-5">
         <h1 className="text-[24px] leading-[1.24] font-extrabold mb-1">
           {billData.org_name ?? "මොරවක්කෝරලේ තේ නිපදවන්නන්ගේ සමූපකාර සමිතිය - කොටපොල"}
         </h1>
@@ -116,10 +116,10 @@ const BillContent = React.forwardRef(({ billData = {}, variant = "office" }, ref
           <tr>
             <th className="py-2 pr-1 font-bold text-center border-b border-gray-500 w-[34px]">අං.</th>
             <th className="py-2 px-1 font-bold text-left border-b border-gray-500">ද්‍රව්‍ය</th>
-            <th className="py-2 px-1 font-bold text-right border-b border-gray-500 w-[104px]">ද්‍රව්‍ය මිල</th>
-            <th className="py-2 px-1 font-bold text-right border-b border-gray-500 w-[64px]">ප්‍රමාණය</th>
+            <th className="py-2 px-1 font-bold text-right border-b border-gray-500 w-[104px]">මිල</th>
+            <th className="py-2 px-1 font-bold text-right border-b border-gray-500 w-[64px]">ප්‍රමා.</th>
             <th className="py-2 px-1 font-bold text-right border-b border-gray-500 w-[56px]">වට්ටම</th>
-            <th className="py-2 pl-1 font-bold text-right border-b border-gray-500 w-[84px]">වටිනාකම</th>
+            <th className="py-2 pl-1 font-bold text-right border-b border-gray-500 w-[84px]">වටිනා.</th>
           </tr>
         </thead>
         <tbody>
@@ -178,7 +178,7 @@ const BillContent = React.forwardRef(({ billData = {}, variant = "office" }, ref
       {/* ---------- footer (varies by copy) ---------- */}
       <div className="flex flex-col items-center justify-center text-center text-[15px] leading-[1.45]">
         {isOffice ? (
-          <div className="mb-2">
+          <div className="mb-2 mt-14">
             <div>------------------------------</div>
             <div>අත්සන</div>
             <div className="mt-2">ඉහත සදහන් ද්‍රව්‍ය නිවැරදිව භාර ගතිමි.</div>
