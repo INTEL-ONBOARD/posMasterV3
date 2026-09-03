@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, Cloud, CloudOff, RefreshCw } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
@@ -102,22 +102,45 @@ function Login() {
   const [syncStatus, setSyncStatus] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  useEffect(() => {
-    const checkOnlineServer = async () => {
-      try {
-        const statusResult = await onlineApi.ready();
-        if (statusResult?.status === 'success') {
-          setSyncStatus(resolveSyncStatus(statusResult.data));
-          return;
-        }
-        setSyncStatus('unavailable');
-      } catch (error) {
-        console.error('Failed to check online server status:', error);
-        setSyncStatus('unavailable');
-      }
-    };
-    checkOnlineServer();
+  /**
+   * Silent readiness probe. Deliberately free of any dependency so it stays
+   * referentially stable and can be wired to listeners and a timer without
+   * re-subscribing on every render.
+   */
+  const refreshReadyState = useCallback(async () => {
+    try {
+      const statusResult = await onlineApi.ready();
+      setSyncStatus(statusResult?.status === 'success'
+        ? resolveSyncStatus(statusResult.data)
+        : 'unavailable');
+    } catch (error) {
+      console.error('Failed to check online server status:', error);
+      setSyncStatus('unavailable');
+    }
   }, []);
+
+  useEffect(() => {
+    refreshReadyState();
+  }, [refreshReadyState]);
+
+  // The status used to be a single snapshot taken when this screen mounted, so
+  // a server that recovered — or a laptop that woke up — left it stale until
+  // the app was restarted. Re-probe on the events that actually change it.
+  useEffect(() => {
+    window.addEventListener('focus', refreshReadyState);
+    window.addEventListener('online', refreshReadyState);
+    return () => {
+      window.removeEventListener('focus', refreshReadyState);
+      window.removeEventListener('online', refreshReadyState);
+    };
+  }, [refreshReadyState]);
+
+  // Keep retrying only while something is wrong; once ready, stop polling.
+  useEffect(() => {
+    if (syncStatus === 'online' || syncStatus === 'syncing') return undefined;
+    const timer = setInterval(refreshReadyState, 20000);
+    return () => clearInterval(timer);
+  }, [syncStatus, refreshReadyState]);
 
   const handleSyncNow = async (silent = false) => {
     setIsSyncing(true);
@@ -155,6 +178,10 @@ function Login() {
 
   const syncBadge = getSyncBadge(syncStatus);
   const SyncBadgeIcon = syncBadge.icon;
+  // null means "first probe hasn't answered yet", which is not a fault — only
+  // a resolved non-ready state is worth interrupting the sign-in form for.
+  // 'syncing' stays truthy so the notice doesn't vanish mid-retry.
+  const needsAttention = syncStatus !== null && syncStatus !== 'online';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -244,22 +271,28 @@ function Login() {
               Sign in with your branch credentials.
             </Motion.p>
 
-            <Motion.div className="mb-5 w-full" variants={item}>
-              <div className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 ${syncBadge.bgClass}`}>
-                <div className={`flex items-center gap-2 text-[12px] font-medium ${syncBadge.textClass}`}>
-                  <SyncBadgeIcon className={`h-4 w-4 ${syncBadge.spin ? 'animate-spin' : ''}`} />
-                  <span>{syncBadge.label}</span>
+            {/* A healthy connection is the normal case and says nothing — the
+                app connects on its own and sign-in never depended on this.
+                The notice appears only when the server can't be reached, so
+                it carries a real warning and a real action when it shows. */}
+            {needsAttention && (
+              <Motion.div className="mb-5 w-full" variants={item}>
+                <div className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 ${syncBadge.bgClass}`}>
+                  <div className={`flex items-center gap-2 text-[12px] font-medium ${syncBadge.textClass}`}>
+                    <SyncBadgeIcon className={`h-4 w-4 ${syncBadge.spin ? 'animate-spin' : ''}`} />
+                    <span>{syncBadge.label}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSyncNow(false)}
+                    disabled={isSyncing}
+                    className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isSyncing ? 'Checking' : 'Retry'}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleSyncNow(false)}
-                  disabled={isSyncing}
-                  className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isSyncing ? 'Please wait' : 'Check'}
-                </button>
-              </div>
-            </Motion.div>
+              </Motion.div>
+            )}
 
             {/* Email field */}
             <Motion.div className="mb-3 w-full" variants={item}>

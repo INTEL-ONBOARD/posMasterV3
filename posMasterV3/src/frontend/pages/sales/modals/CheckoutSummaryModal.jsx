@@ -232,7 +232,6 @@ function CheckoutSummaryModal({
   const [finalDiscount, setFinalDiscount] = useState('0');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [cashReceived, setCashReceived] = useState('');
-  const [installmentMonths, setInstallmentMonths] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [saleResult, setSaleResult] = useState(null);
@@ -253,7 +252,6 @@ function CheckoutSummaryModal({
     if (isOpen) {
       setFinalDiscount('0');
       setCashReceived('');
-      setInstallmentMonths(1);
       setIsProcessing(false);
       setShowSuccess(false);
       setSaleResult(null);
@@ -272,13 +270,6 @@ function CheckoutSummaryModal({
     });
   }, [isOpen, activePaymentMethods]);
 
-  // Default the installment term to the method's own credit_months when a
-  // credit method is selected, so the cashier only adjusts when needed.
-  useEffect(() => {
-    const months = Number(selectedPaymentMethod?.credit_months ?? selectedPaymentMethod?.creditMonths ?? 0);
-    if (months > 0) setInstallmentMonths(months);
-  }, [selectedPaymentMethod]);
-
   if (!isOpen) return null;
 
   const discountAmount = Math.max(0, Math.min(stockTotal, parseFloat(finalDiscount) || 0));
@@ -293,8 +284,14 @@ function CheckoutSummaryModal({
     Number(selectedPaymentMethod?.credit_months ?? selectedPaymentMethod?.creditMonths ?? 0) > 0;
   const SelectedMethodIcon = selectedMethodTheme.icon;
 
-  // Installment terms the cashier can pick for a credit sale (months).
-  const installmentOptions = [1, 2, 3, 6, 12];
+  // The credit term comes from the payment method itself ("Credit 9 Months"
+  // carries credit_months: 9), so it is derived rather than picked separately.
+  // A separate picker offered 1/2/3/6/12 — which could not even express the
+  // 9-month method — and its value was printed on the receipt while the sale
+  // record stored the method's own term, so the two could disagree.
+  const creditTermMonths = isCreditMethod
+    ? Number(selectedPaymentMethod?.credit_months ?? selectedPaymentMethod?.creditMonths ?? 0)
+    : 0;
 
   // Credit validation — any non-guest member can use credit regardless of balance
   const creditWarning = false;
@@ -313,9 +310,11 @@ function CheckoutSummaryModal({
       paymentMethod: selectedPaymentMethod.type,
       paymentMethodId: selectedPaymentMethod.id,
       paymentMethodName: selectedPaymentMethod.name,
-      creditMonths: selectedPaymentMethod.credit_months || 0,
-      installmentTerm: isCreditMethod
-        ? `${String(installmentMonths).padStart(2, "0")} month${installmentMonths === 1 ? "" : "s"}`
+      creditMonths: creditTermMonths,
+      // Derived from the same value as creditMonths so the printed receipt and
+      // the stored sale can never disagree about the credit duration.
+      installmentTerm: creditTermMonths > 0
+        ? `${String(creditTermMonths).padStart(2, "0")} month${creditTermMonths === 1 ? "" : "s"}`
         : "",
       cashAmount: isCashMethod ? (cashReceivedNum || totalAmount) : 0,
       totalAmount,
@@ -698,30 +697,18 @@ function CheckoutSummaryModal({
                       </div>
                     </div>
 
-                    {isCreditMethod ? (
+                    {creditTermMonths > 0 ? (
                       <div>
                         <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
                           Installment Term
                         </p>
-                        <div className="flex flex-wrap gap-2">
-                          {installmentOptions.map((months) => {
-                            const isSelected = installmentMonths === months;
-                            return (
-                              <button
-                                key={`installment-${months}`}
-                                type="button"
-                                onClick={() => setInstallmentMonths(months)}
-                                disabled={isProcessing}
-                                className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors border-2 disabled:opacity-50 ${
-                                  isSelected
-                                    ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                                }`}
-                              >
-                                {months} {months === 1 ? "month" : "months"}
-                              </button>
-                            );
-                          })}
+                        <div className="flex items-baseline gap-2 rounded-lg border-2 border-indigo-100 bg-indigo-50 px-3 py-2">
+                          <span className="text-sm font-bold text-indigo-700">
+                            {creditTermMonths} {creditTermMonths === 1 ? "month" : "months"}
+                          </span>
+                          <span className="text-xs text-indigo-700">
+                            from &ldquo;{selectedPaymentMethod?.name}&rdquo;
+                          </span>
                         </div>
                       </div>
                     ) : null}

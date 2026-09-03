@@ -122,20 +122,46 @@ function MemEvaluationModal({ isOpen, closeModal, onSelectMember, currentMember 
     }
   }, [isOpen, currentMember]);
 
-  // Fetch payment history from Tea Coop API
+  // Guards against a slow response for a previously-selected member landing
+  // after the cashier has already picked someone else.
+  const paymentRequestRef = useRef(null);
+
+  // Loads a member's payment history.
+  //
+  // getPaymentHistory only reads the local tea_coop_payments cache. The member
+  // sync does NOT carry payment figures — those come from a separate per-member
+  // Tea Coop endpoint — so without the syncPayments call below the green leaf /
+  // additions / deductions / loans / net tiles stay at Rs. 0.00 forever.
+  //
+  // Cached rows are shown first so the panel fills immediately, then refreshed
+  // once the live pull completes, to keep the counter responsive.
   const fetchPaymentHistory = async (memberId) => {
     if (!memberId) return;
+    paymentRequestRef.current = memberId;
+    const isStale = () => paymentRequestRef.current !== memberId;
+
     setHistoryLoading(true);
     try {
-      const response = await teaCoopApi.getPaymentHistory(memberId, 6);
-      if (response.status === "success") {
-        setPaymentHistory(response.data || []);
+      const cached = await teaCoopApi.getPaymentHistory(memberId, 6);
+      if (isStale()) return;
+      if (cached?.status === "success") setPaymentHistory(cached.data || []);
+
+      const synced = await teaCoopApi.syncPayments(memberId, { months: 6 });
+      if (isStale()) return;
+
+      if (synced?.status === "success" || synced?.success) {
+        const refreshed = await teaCoopApi.getPaymentHistory(memberId, 6);
+        if (isStale()) return;
+        if (refreshed?.status === "success") setPaymentHistory(refreshed.data || []);
+      } else if (synced?.message) {
+        console.warn("[MemEvaluationModal] Payment sync did not complete:", synced.message);
       }
     } catch (error) {
+      // Deliberately keeps any cached rows on screen — a failed live refresh
+      // should not blank out figures the cashier could still act on.
       console.error("[MemEvaluationModal] Error fetching payment history:", error);
-      setPaymentHistory([]);
     } finally {
-      setHistoryLoading(false);
+      if (!isStale()) setHistoryLoading(false);
     }
   };
 

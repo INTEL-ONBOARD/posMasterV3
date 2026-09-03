@@ -8,6 +8,7 @@ import {
   FileText, Settings, Database, Wifi, WifiOff, UserCheck, History
 } from 'lucide-react';
 import NotificationCard from '../../components/NotificationCard';
+import AdminDashboard from './admin/AdminDashboard';
 import { localAuth } from '../../api/services/localAuth';
 import { salesApi, loginHistoryApi } from '../../api/localApi';
 import { useReactiveData, useDataChangeSubscription, TABLES, useSyncStatus } from '../../store';
@@ -36,6 +37,10 @@ function Dashboard() {
   const [recentSales, setRecentSales] = useState([]);
   const [recentLogins, setRecentLogins] = useState([]);
   const [activeSessionsCount, setActiveSessionsCount] = useState(0);
+  // Today's transactions in full (not just the recent-5 preview) so the admin
+  // view can derive the cash/credit split and the hourly shape from real rows.
+  const [todaySaleRows, setTodaySaleRows] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [salesStats, setSalesStats] = useState({
     todaySales: 0,
     weekSales: 0,
@@ -90,6 +95,83 @@ function Dashboard() {
       .slice(0, 5);
   }, [stockItems]);
 
+  /**
+   * Stock health split into the two states that mean different things: a line
+   * at zero is blocked from sale, a line below its threshold still sells. The
+   * old "low stock" count merged them, which made an empty shelf and a nearly
+   * empty one look identical.
+   */
+  const stockSummary = useMemo(() => {
+    const lines = stockItems || [];
+    const zeroLines = lines.filter(s => Number(s.quantity ?? 0) <= 0).length;
+    const lowLines = lines.filter(s => {
+      const qty = Number(s.quantity ?? 0);
+      return qty > 0 && qty <= Number(s.threshold_limit ?? 10);
+    }).length;
+    const totalLines = lines.length;
+    return {
+      totalLines,
+      zeroLines,
+      lowLines,
+      sellableLines: totalLines - zeroLines,
+      availability: totalLines > 0 ? ((totalLines - zeroLines) / totalLines) * 100 : 0
+    };
+  }, [stockItems]);
+
+  /**
+   * Today's takings broken down by how they were settled. A credit sale raises
+   * the sales figure without putting anything in the till, so the split is the
+   * difference between what was rung up and what the shop actually holds.
+   */
+  const todayMetrics = useMemo(() => {
+    const rows = todaySaleRows || [];
+    const isCredit = (row) => {
+      const method = String(row?.payment_method || '').toLowerCase();
+      return method === 'credit'
+        || method.includes('credit')
+        || Number(row?.credit_months ?? row?.creditMonths ?? 0) > 0;
+    };
+
+    const byHour = new Array(24).fill(0);
+    let takings = 0;
+    let creditTotal = 0;
+    let memberTakings = 0;
+
+    rows.forEach((row) => {
+      const amount = Number(row?.total_amount ?? 0) || 0;
+      takings += amount;
+      if (isCredit(row)) creditTotal += amount;
+      if (row?.member_id) memberTakings += amount;
+
+      const stamp = row?.created_at || row?.createdAt;
+      const at = stamp ? new Date(stamp) : null;
+      if (at && !Number.isNaN(at.getTime())) byHour[at.getHours()] += amount;
+    });
+
+    return {
+      rows,
+      count: rows.length,
+      takings,
+      creditTotal,
+      cashTotal: takings - creditTotal,
+      creditShare: takings > 0 ? (creditTotal / takings) * 100 : 0,
+      memberShare: takings > 0 ? (memberTakings / takings) * 100 : 0,
+      avgBasket: rows.length > 0 ? takings / rows.length : 0,
+      byHour
+    };
+  }, [todaySaleRows]);
+
+  // Most recent sign-in, shown beside the active-session count so "6 of 16"
+  // has a time attached to it rather than standing alone.
+  const latestSignInLabel = useMemo(() => {
+    const stamps = (recentLogins || [])
+      .map(l => new Date(l?.login_at || l?.loginAt || l?.created_at || ''))
+      .filter(d => !Number.isNaN(d.getTime()));
+    if (stamps.length === 0) return null;
+    const latest = new Date(Math.max(...stamps.map(d => d.getTime())));
+    return latest.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  }, [recentLogins]);
+
   // Get greeting based on time
   useEffect(() => {
     const hour = new Date().getHours();
@@ -137,16 +219,22 @@ function Dashboard() {
 
       // Fetch recent sales for admin
       if (isAdmin) {
-        const [recentSalesRes, loginsRes, activeSessionsRes] = await Promise.all([
+        const [recentSalesRes, loginsRes, activeSessionsRes, todayRowsRes] = await Promise.all([
           salesApi.getAll({ limit: 5, status: 'completed' }).catch(() => ({ data: [] })),
           loginHistoryApi.getAll({ limit: 5 }).catch(() => ({ data: [] })),
-          loginHistoryApi.getActiveSessions().catch(() => ({ data: [] }))
+          loginHistoryApi.getActiveSessions().catch(() => ({ data: [] })),
+          // Capped at the server's own page ceiling; a single shop's daily
+          // transaction count sits well inside it.
+          salesApi.getAll({ startDate: startOfDay, endDate: endOfDay, limit: 500 }).catch(() => ({ data: [] }))
         ]);
 
         setRecentSales(recentSalesRes?.data || []);
         setRecentLogins(loginsRes?.data || []);
         setActiveSessionsCount(Array.isArray(activeSessionsRes?.data) ? activeSessionsRes.data.length : 0);
+        setTodaySaleRows(Array.isArray(todayRowsRes?.data) ? todayRowsRes.data : []);
       }
+
+      setLastUpdated(new Date());
     } catch (error) {
       console.error('Error fetching sales stats:', error);
     }
@@ -284,357 +372,24 @@ function Dashboard() {
   // ============================================
   if (isAdmin) {
     return (
-      <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
-        {/* Admin Header */}
-        <header className="bg-white border-b border-gray-100 px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-5">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#1A318C] to-[#152870] flex items-center justify-center shadow-lg shadow-blue-900/20">
-                <Shield className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-gray-800">{greeting},</h1>
-                  <span className="text-2xl font-bold text-[#1A318C]">{currentUser?.full_name?.split(' ')[0] || 'Admin'}</span>
-                  <span className="ml-2 px-2 py-0.5 text-xs font-semibold text-white bg-gradient-to-r from-[#1A318C] to-[#152870] rounded-full">Admin</span>
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Calendar className="w-4 h-4 text-gray-400" />
-                  <p className="text-sm text-gray-500">{currentDate}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {/* Connection status indicator */}
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${isOnline ? 'bg-emerald-100' : 'bg-red-100'}`}>
-                {isOnline ? <Wifi className="w-4 h-4 text-emerald-600" /> : <WifiOff className="w-4 h-4 text-red-500" />}
-                <span className={`text-xs font-medium ${isOnline ? 'text-emerald-700' : 'text-red-600'}`}>
-                  {isOnline ? 'Online' : 'Offline'}
-                </span>
-              </div>
-
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
-                title="Refresh Dashboard"
-              >
-                <RefreshCw className={`w-5 h-5 text-gray-600 ${loadingStats ? 'animate-spin' : ''}`} />
-              </button>
-
-              <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl border border-gray-200">
-                <div className="w-10 h-10 rounded-xl bg-[#1A318C] flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">{currentUser?.full_name || currentUser?.username}</p>
-                  <p className="text-xs text-gray-500">{currentUser?.email}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Admin Main Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Top Stats Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
-            {/* Today's Sales */}
-            <div className="col-span-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20">
-              <div className="flex items-center justify-between mb-2">
-                <DollarSign className="w-8 h-8 opacity-80" />
-                <span className="text-xs font-medium bg-white/20 px-2 py-1 rounded-full">Today</span>
-              </div>
-              <p className="text-3xl font-bold">{loadingStats ? '...' : formatCurrency(stats.todaySales)}</p>
-              <p className="text-sm opacity-80 mt-1">Today's Revenue</p>
-            </div>
-
-            {/* Week Sales */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-blue-600" />
-                </div>
-              </div>
-              <p className="text-xl font-bold text-gray-800">{loadingStats ? '...' : formatCurrency(stats.weekSales)}</p>
-              <p className="text-xs text-gray-500 mt-1">This Week</p>
-            </div>
-
-            {/* Month Sales */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-purple-600" />
-                </div>
-              </div>
-              <p className="text-xl font-bold text-gray-800">{loadingStats ? '...' : formatCurrency(stats.monthSales)}</p>
-              <p className="text-xs text-gray-500 mt-1">This Month</p>
-            </div>
-
-            {/* Total Items */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-9 h-9 rounded-lg bg-[#1A318C]/10 flex items-center justify-center">
-                  <Package className="w-5 h-5 text-[#1A318C]" />
-                </div>
-              </div>
-              <p className="text-xl font-bold text-gray-800">{loadingStats ? '...' : stats.totalItems}</p>
-              <p className="text-xs text-gray-500 mt-1">Total Items</p>
-            </div>
-
-            {/* Low Stock */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center">
-                  <AlertTriangle className="w-5 h-5 text-amber-600" />
-                </div>
-                {stats.lowStockItems > 0 && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
-              </div>
-              <p className="text-xl font-bold text-gray-800">{loadingStats ? '...' : stats.lowStockItems}</p>
-              <p className="text-xs text-gray-500 mt-1">Low Stock</p>
-            </div>
-
-            {/* Total Users */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-9 h-9 rounded-lg bg-cyan-100 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-cyan-600" />
-                </div>
-              </div>
-              <p className="text-xl font-bold text-gray-800">{loadingStats ? '...' : stats.totalUsers}</p>
-              <p className="text-xs text-gray-500 mt-1">Total Users</p>
-            </div>
-
-            {/* Active Sessions */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center">
-                  <UserCheck className="w-5 h-5 text-green-600" />
-                </div>
-                {stats.activeSessions > 0 && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
-              </div>
-              <p className="text-xl font-bold text-gray-800">{loadingStats ? '...' : stats.activeSessions}</p>
-              <p className="text-xs text-gray-500 mt-1">Active Now</p>
-            </div>
-          </div>
-
-          {/* Middle Section: Tables */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Recent Sales */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center">
-                    <Receipt className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <h3 className="font-bold text-gray-800">Recent Sales</h3>
-                </div>
-                <span className="text-xs text-gray-500">{recentSales.length} transactions</span>
-              </div>
-              <div className="max-h-[280px] overflow-y-auto">
-                {recentSales.length === 0 ? (
-                  <div className="p-8 text-center text-gray-400">
-                    <ShoppingCart className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No recent sales</p>
-                  </div>
-                ) : (
-                  <table className="w-full">
-                    <thead className="bg-gray-50 sticky top-0">
-                      <tr>
-                        <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Invoice</th>
-                        <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Amount</th>
-                        <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Method</th>
-                        <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Time</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                    {recentSales.map((sale, idx) => (
-                        <tr key={`${sale.id || sale.invoice_no || "sale"}-${idx}`} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm font-mono text-gray-800">{sale.invoice_no}</td>
-                          <td className="px-4 py-3 text-sm font-semibold text-emerald-600">{formatCurrency(sale.total_amount)}</td>
-                          <td className="px-4 py-3">
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                              sale.payment_method === 'cash' ? 'bg-green-100 text-green-700' :
-                              sale.payment_method === 'card' ? 'bg-blue-100 text-blue-700' :
-                              'bg-amber-100 text-amber-700'
-                            }`}>
-                              {sale.payment_method || 'cash'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-gray-500">
-                            {sale.created_at ? new Date(sale.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-
-            {/* Low Stock Items */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center">
-                    <AlertTriangle className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <h3 className="font-bold text-gray-800">Low Stock Items</h3>
-                </div>
-                <span className="text-xs text-amber-600 font-medium">{stats.lowStockItems} items need attention</span>
-              </div>
-              <div className="max-h-[280px] overflow-y-auto">
-                {lowStockList.length === 0 ? (
-                  <div className="p-8 text-center text-gray-400">
-                    <CheckCircle className="w-10 h-10 mx-auto mb-2 text-emerald-300" />
-                    <p className="text-sm">All items are well stocked</p>
-                  </div>
-                ) : (
-                  <table className="w-full">
-                    <thead className="bg-gray-50 sticky top-0">
-                      <tr>
-                        <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Item</th>
-                        <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">SKU</th>
-                        <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Qty</th>
-                        <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Threshold</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {lowStockList.map((item, idx) => (
-                        <tr key={`${item.id || item.sku || "item"}-${idx}`} className="hover:bg-amber-50">
-                          <td className="px-4 py-3 text-sm font-medium text-gray-800 truncate max-w-[150px]">{item.item_name}</td>
-                          <td className="px-4 py-3 text-xs font-mono text-gray-500">{item.sku}</td>
-                          <td className="px-4 py-3">
-                            <span className="text-sm font-bold text-red-600">{item.quantity || 0}</span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-500">{item.threshold_limit || 10}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Recent User Activity */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-cyan-100 flex items-center justify-center">
-                  <History className="w-5 h-5 text-cyan-600" />
-                </div>
-                <h3 className="font-bold text-gray-800">Recent Logins</h3>
-              </div>
-              <div className="p-4 max-h-[250px] overflow-y-auto">
-                {recentLogins.length === 0 ? (
-                  <div className="text-center text-gray-400 py-6">
-                    <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No recent activity</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {recentLogins.map((login, idx) => (
-                      <div key={`${login.id || login.username || "login"}-${idx}`} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50">
-                        <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
-                          <User className="w-4 h-4 text-gray-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 truncate">{login.username || login.full_name}</p>
-                          <p className="text-xs text-gray-400">
-                            {login.login_at ? new Date(login.login_at).toLocaleString() : '-'}
-                          </p>
-                        </div>
-                        <span className={`w-2 h-2 rounded-full ${login.status === 'active' ? 'bg-green-500' : 'bg-gray-300'}`} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Notifications */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-[#1A318C]/10 flex items-center justify-center">
-                    <Bell className="w-5 h-5 text-[#1A318C]" />
-                  </div>
-                  <h3 className="font-bold text-gray-800">Alerts</h3>
-                </div>
-                {notifications.length > 0 && (
-                  <button onClick={handleClearAllNotifications} className="text-xs text-red-500 hover:text-red-700">
-                    Clear
-                  </button>
-                )}
-              </div>
-              <div className="p-4 max-h-[250px] overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <div className="text-center text-gray-400 py-6">
-                    <BellRing className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">All caught up!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {notifications.map((n, index) => (
-                      <NotificationCard
-                        key={`${n.id || n.title || "notification"}-${index}`}
-                        title={n.title}
-                        description={n.description}
-                        date={n.date}
-                        type={n.type}
-                        onClose={() => handleRemoveNotification(n.id)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Quick Stats Summary */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-purple-600" />
-                </div>
-                <h3 className="font-bold text-gray-800">Quick Summary</h3>
-              </div>
-              <div className="p-4 space-y-3">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <Users className="w-5 h-5 text-purple-500" />
-                    <span className="text-sm text-gray-600">Members</span>
-                  </div>
-                  <span className="text-lg font-bold text-gray-800">{stats.totalMembers}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <Layers className="w-5 h-5 text-cyan-500" />
-                    <span className="text-sm text-gray-600">Suppliers</span>
-                  </div>
-                  <span className="text-lg font-bold text-gray-800">{stats.totalSuppliers}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-red-500" />
-                    <span className="text-sm text-gray-600">Expiring Items</span>
-                  </div>
-                  <span className="text-lg font-bold text-red-600">{stats.expiringItems}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <Receipt className="w-5 h-5 text-emerald-500" />
-                    <span className="text-sm text-gray-600">Today's Transactions</span>
-                  </div>
-                  <span className="text-lg font-bold text-gray-800">{stats.totalSalesCount}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AdminDashboard
+        greeting={greeting}
+        currentUser={currentUser}
+        currentDate={currentDate}
+        isOnline={isOnline}
+        refreshing={loadingStats}
+        onRefresh={handleRefresh}
+        lastUpdatedLabel={lastUpdated
+          ? lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+          : '—'}
+        stats={stats}
+        today={todayMetrics}
+        stock={stockSummary}
+        lowStockList={lowStockList}
+        recentSales={recentSales}
+        latestSignInLabel={latestSignInLabel}
+        onNavigate={navigate}
+      />
     );
   }
 
